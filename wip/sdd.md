@@ -38,6 +38,16 @@ We hold no strong opinion on test-first vs implementation-first with agents — 
 
 Our *mechanical* forcing function is elsewhere: **100% coverage through the public API** (see [architecture](./architecture.md), Testing). Note this requires a sufficiently mature — unblobby — codebase to pull off.
 
+### Spec the operation over the domain, not the cases
+
+A recurring generation failure — in agents, and in deadline-pressured humans: enumerate the visible cases instead of stating the general operation. The mechanism is incentive, not ignorance: locally-passing output is what gets rewarded, and covering the cases you can see is the safe way to pass. Knowing the principle doesn't prevent it — a model can recite "fold over the domain, don't enumerate" and still enumerate while generating. Reciting a rule and reaching for it are different acts. (This is the generation-time face of the systems-thinking gap — §4.)
+
+When a step's correctness depends on generality, the spec forces the general form:
+
+- **Name the domain and state the operation over the whole of it** — plainly, at the point of implementation, not only in the preamble. A fold over the domain, not a list of its known members.
+- **Treat any measured count as evidence the set is open-ended** — never as a target to enumerate.
+- **Have a test assert the openness** — an input carrying an unseen case still passes; a re-enumeration fails the gate by its shape.
+
 ---
 
 ## 2. Two axes: history vs living docs
