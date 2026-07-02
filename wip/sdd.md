@@ -187,6 +187,15 @@ The economics of agent-assisted development: production got cheap, review stayed
 
 Implementation between the gates is reviewed opportunistically, not exhaustively — the architecture's structural rules (mechanically enforced) and 100% contract coverage carry the weight there.
 
+### The System-2 surfaces
+
+A repeated observation across models, frontier included: **agents fail at systems thinking.** They solve the *case*, not the *class* — procedural, not functional; they patch the instance without stepping back to the generic solution. The spec's forcing sections exist for exactly this, and two of them are where the generic-vs-case judgement actually lives:
+
+- **API** — including the public/internal boundary (§1);
+- **Implementation** — the chosen approach, not the line-by-line diff.
+
+These are the System-2 surfaces: the reviewer engages deliberate, active attention there — precisely because the agent is weakest where passive acceptance is most tempting. "Opportunistic" implementation review means *selective*, never *passive*: when you do look, the question to ask is case-vs-class. The stakes are asymmetric — a systems-thinking miss at the API is a ticket to the wrong destination; no after-the-fact course correction fixes it, and the cost lands later and compounds. The review gate is the only cheap place to catch it. Tie the gate to this failure mode, or it decays into ritual.
+
 ### Commits as the lower level of the same system
 
 **No-squash / meaningful commits.** The commit log IS documentation — WHY matters as much as WHAT. Squashing destroys knowledge (the Linux kernel and git.git have known this for decades). Micro-commits keep rebases light and review granular. **A commit message is SDD at level 0** (§3): the quintet as compressed sections — empty ones drop — carrying the spec for a contained change.
