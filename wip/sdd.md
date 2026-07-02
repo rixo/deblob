@@ -15,7 +15,7 @@ Asking the right questions in the right order forces good architecture. Each ste
 | Step               | What it forces                                                                                        |
 | ------------------ | ----------------------------------------------------------------------------------------------------- |
 | **Goals**          | Articulate success before touching anything. Prevents building the wrong thing.                       |
-| **API**            | Think about consumers, contracts, surface. Prevents implementation-driven design.                     |
+| **API**            | Name the contracts you commit to — public surface *and* internal seams. Prevents implementation-driven design and wrong-layer cuts. |
 | **Tests**          | Think *how do we verify this* before committing to an approach. Can't test without IoC → decoupling.  |
 | **Implementation** | The code. Part plan, mostly post-hoc record of what the code actually does.                           |
 | **Docs**           | Forces planning the documentation: what living docs need writing/updating, tracked as you go.         |
@@ -23,6 +23,20 @@ Asking the right questions in the right order forces good architecture. Each ste
 Same mechanism as TDD — the constraint IS the value.
 
 This is not process for its own sake. The constraints produce better architecture as a side effect.
+
+### The API step covers internal seams, not just the public surface
+
+"API" reads as the consumer contract; stopping there leaves a whole bug class unconstrained. A port improvised at code time gets cut at the wrong layer — and a domain decision that slips to the far side of an injected boundary becomes unreachable through the real composition: unit tests stub the port, the decision disappears from every tested path, everything goes green while the actual wiring is broken. The spec is the cheap place to prevent this, so the API step forces naming, for every layer that has a contract:
+
+- the **ports** — the boundaries to be injected;
+- the **purity split** — what is a pure model function vs an effectful adapter;
+- the **home of each domain decision** — which layer owns it. A domain decision must never hide inside an adapter.
+
+Phrased once: **API = the contracts you commit to, at every layer that has one.** Same forcing spirit as tests-first forcing decoupling — naming your ports and purity boundaries forces correct layering before code.
+
+**Guardrail — don't over-spec.** Piskala's warning applies internally too: this is NOT "spec every internal signature" — that rots instantly and drowns the signal. Force only the load-bearing contracts: ports, the pure/effectful boundary, domain-decision placement — the decisions expensive to get wrong and hard to move later. Leaf signatures stay free to evolve.
+
+**Test corollary.** A stub at a port erases everything on its far side. If a domain decision lives there — inside the adapter — no test through the public contract can reach it. So domain decisions belong on the *inside* of the injected boundary (service or model), and the API spec naming the port-vs-domain split is what guarantees that placement (see [architecture](./architecture.md), Testing).
 
 ### The `5-docs` step is a forcing function — for the *living* docs
 
