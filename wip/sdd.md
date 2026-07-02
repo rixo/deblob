@@ -119,6 +119,7 @@ The quintet admits no variants — but not every block on the history axis is a 
 - **Spec** — the quintet. Fractal, recursive, no variants.
 - **Research** — free-form exploration (see below).
 - **Scratch** — `PLAN.md`, WIP notes. Churns during the work; cleaned at consolidation (§2).
+- **META** — the methodology log (see below).
 
 Growing the alphabet is a methodology decision — rare, explicit, named — not something a step does on its own because the quintet felt tight that day.
 
@@ -130,6 +131,14 @@ Two-sided constraint:
 
 - A research step is **not directly implementable** — no quality gates have constrained it. It feeds a spec; it doesn't replace one.
 - The looseness is **scoped to the research step**. The implementation step it feeds runs under full gates, always. Exploration being allowed to be loose is never a reason to relax the systematic guardrails on implementation.
+
+#### META: the methodology log
+
+History records *what happened*; living docs record *what is*. Neither fits an observation about the practice itself — the methodology insight surfaced *while doing the work*. That's META: a history-axis, append-only log of such insights, harvested later by grep (`history/**/META.md` plus `## META` sections) into the living methodology docs. The filename IS the index; naming consistency is the cornerstone.
+
+- **Bar: salient methodology insight** — something that changes the *practice*. Task findings belong in steps and commits, doc corrections upstream in the docs; routine work produces nothing.
+- **Entries dated and themed.** Append-only, like everything on this axis.
+- **Placement follows the triggering work's form** — the same materialization ladder as the spec: commit-scale → a `META:` section in the commit message; single-file step → a `## META` section; directory step → `META.md`; chapter-root `META.md` when insights span the chapter.
 
 ### Terminology
 
@@ -158,7 +167,7 @@ Implementation between the gates is reviewed opportunistically, not exhaustively
 
 **No-squash / meaningful commits.** The commit log IS documentation — WHY matters as much as WHAT. Squashing destroys knowledge (the Linux kernel and git.git have known this for decades). Micro-commits keep rebases light and review granular. **A commit message is SDD at level 0** (§3): the quintet as compressed sections — empty ones drop — carrying the spec for a contained change.
 
-**Agent retex in commits.** We already push thousands of tokens per task; a few tokens of reflection are free. Agents drop structured observations — things noticed about the system *orthogonal* to the task — that accumulate and get grepped for improvement material. Not a report; a low-friction channel. Threshold: "really notable" — routine work produces nothing.
+**Meta-observations in commits.** We already push thousands of tokens per task; a few tokens of reflection are free. Agents drop structured observations — things noticed about the system or the practice, *orthogonal* to the task — that accumulate and get grepped for improvement material. Not a report; a low-friction channel. Threshold: "really notable" — routine work produces nothing. Methodology-grade observations carry the `META:` label (§3) so the harvest grep finds them: this is META's level-0 materialization, same ladder as the spec.
 
 ---
 
@@ -168,7 +177,7 @@ Implementation between the gates is reviewed opportunistically, not exhaustively
 
 **Why not an existing tool?** The SDD tooling space (Spec Kit, Kiro, Tessl, OpenSpec, BMAD) is hot but immature — mostly too heavy (Fowler: "sledgehammer to crack a nut"; Adzic: "the worst parts of Waterfall under a shinier name"). The most successful spec-driven practice in history (Linux kernel) uses plain text and discipline. Our constraints (brownfield, mixed team, varying AI maturity) reinforce KISS: *if coworkers won't use it, it doesn't exist.* OpenSpec is closest in spirit; worth watching.
 
-What the tools don't cover for us: (1) *ordering* as the explicit forcing function — phases exist elsewhere, the cascade-constraint framing doesn't; (2) lightweight & organic — Markdown in a folder, no CLI; (3) brownfield-native — we model the *change*, not the codebase; (4) integration with git philosophy — no-squash + SDD + retex as one system.
+What the tools don't cover for us: (1) *ordering* as the explicit forcing function — phases exist elsewhere, the cascade-constraint framing doesn't; (2) lightweight & organic — Markdown in a folder, no CLI; (3) brownfield-native — we model the *change*, not the codebase; (4) integration with git philosophy — no-squash + SDD + META as one system.
 
 **Ideas worth stealing:** OpenSpec's ADDED/MODIFIED/REMOVED delta markers for brownfield review; Spec Kit's "constitution" (immutable principles that win conflicts).
 
