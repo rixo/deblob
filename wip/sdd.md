@@ -64,18 +64,20 @@ Refusing to mix them keeps both honest.
 
 ---
 
-## 3. The history axis: one shape, four fidelities
+## 3. The history axis: one shape, recursive
 
-The spec shape — Goal → API → Tests → Implementation → Docs — is **the same at every scale**. Only the materialization scales with the task. You pick the **form** by the *nature* of the work, not a rigid rule.
+The spec shape — Goal → API → Tests → Implementation → Docs — is **the same at every scale**: a commit, a file, a directory of files, a directory of steps. Same building blocks, same natures, different sizes. This is meant literally — the fractal *is* the learning model: learn the shape once, read any unit of history. And the claim only survives if it admits no exceptions: the first exception adds a second thing to learn; a few more and the system reads as noise. When a scale seems to demand its own shape, that's a modelling smell to resolve — never a licence to deviate. (Needs that genuinely aren't specs get their own *named* block type — see "Not everything is a spec" below — not a bent spec.)
+
+Only the **materialization** scales with the task. You pick the **form** by the *nature* of the work, not a rigid rule.
 
 Spelling this out matters, doubly so for agents: told "a spec is a directory," an agent will happily split 30 lines of spec across 5 files. The ladder is explicit permission to keep small things small. **When unsure: level 1.**
 
 | Level | Form                                                       | For                                                          |
 | ----- | ---------------------------------------------------------- | ------------------------------------------------------------ |
-| **0** | The **commit message** (Goal / API / Changes / …)          | a *contained side-show discovered mid-mission* — see below   |
+| **0** | The **commit message** — the quintet as compressed sections (empty ones drop) | a *contained side-show discovered mid-mission* — see below   |
 | **1** | A **single file** with `1- 2- 3-…` sections embedded       | most *planned* work — one unit, not multi-step               |
 | **2** | A **directory** with split section files (`1-goals.md`, …) | bigger planned work — sections earn their own files          |
-| **3** | A directory of **steps**: `GOAL.md` + `PLAN.md` → `00_…`   | big work, sliced into chronological steps                    |
+| **3** | A directory of **steps** — each step *itself a spec* (see recursion below) | big work, sliced into chronological steps                    |
 
 ### The axis is *planned* vs *contained-discovery* (not just size)
 
@@ -84,25 +86,36 @@ Spelling this out matters, doubly so for agents: told "a spec is a directory," a
 
 > **"Contained" is load-bearing.** Discovering a need mid-task is NOT a license to skip planning. You do not bypass the task tracker, planning and concertation for a full refactor just because you stumbled on it. Level 0 is for genuinely small, contained detours. **Judgement always.**
 
-### Level 3: how a big chapter actually lives
+### Level 3: recursion — a chapter is a spec of specs
 
-A chapter big enough to slice into steps is, at its core, mostly a **GOAL** + an **initial PLAN**. The PLAN then gets refined and re-refined *into* the steps (`00_`, `01_`, …) — and the steps hold the real detail (each is a mini `1-…` spec for its slice).
+At chapter scale the sections don't get bigger files — they **distribute into child specs**. Each step (`00_`, `01_`, …) is a *full spec of its own slice*, and picks its own form on the same ladder: a small step is a single file (level 1), a bigger one a directory of sections (level 2), and a step that grows a self-contained concern becomes a directory of steps itself (level 3 again). That is the recursion — there is no fifth form, only the same four at the next depth.
+
+What stays at the chapter root is what binds the children:
+
+- `GOAL.md` — the chapter's *goals section*, materialized as its own file because it outlives every step.
+- `PLAN.md` — **not part of the shape.** The scratch buffer where the plan churns before crystallizing into steps; cleaned at consolidation (§2). The knowledge isn't lost — it migrates into steps and commit messages.
 
 ```
 history/20260427_ISSUE-772_skill-rewrite/
-  GOAL.md             ← the overarching goal (stable)
-  PLAN.md             ← refines into steps; the scratch — clean at stint's end
-  00_spec-service/    ← a step (here itself a sub-concern, kept whole)
-  01_skill-rewrite.md ← a step
-  02_tracker.md       ← a step
+  GOAL.md             ← the chapter's goals section (stable)
+  PLAN.md             ← scratch — refines into steps; cleaned at stint's end
+  00_spec-service/    ← a step: itself a spec, directory form (own concern)
+  01_skill-rewrite.md ← a step: itself a spec, single-file form
+  02_tracker.md       ← a step: itself a spec, single-file form
 ```
 
-Consequence: the full `1- … 5-` quintet *as separate files per chapter* loses its juice at this scale — the steps already mirror it AND carry the detail. So **PLAN is the doc that calls for cleanup at the end** (it's the churn); GOAL and the steps stay as the chronological archive. Experience: our largest chapters lived as numbered steps + a few global docs, never a `1-5` quintet, and that was *fine*. Steps that are self-complete about their own concern beat one mixed-concern mega-doc.
+**Nest where a concern begins, not where a count is reached.** A step forks into its own directory when a self-contained concern starts — its internals belong to *it*, not to the chapter's top-level sequence. Flat siblings express sequence; nesting expresses ownership. A concern ballooning into `07 08 09…` siblings at the parent level is the smell; `07_concern/` with its own `GOAL` and steps is the fix.
+
+Experience: our largest chapters lived exactly like this — `GOAL` + steps, each step self-complete about its own concern. The chapter-scale quintet doesn't vanish; goals hold the top, and the other sections live *inside the steps that own them*. Steps self-complete about their concern beat one mixed-concern mega-doc.
+
+### Spec depth follows foundation stability
+
+How far ahead to spec the steps? As deep as the ground under each is stable: the active step fully; later steps as far as they are load-bearing and their premises look settled; looser further out — then let each step's implementation feed the next spec. Both extremes are known failure modes. Full detail up front writes over theory the earlier steps haven't settled yet — one early spec mistake trashes downstream work, the classic waterfall cost. Proceeding step-by-step with no forward spec loses the constraint that makes the ordering worth anything. The forcing function is a thinking discipline, not a licence to waterfall.
 
 ### Terminology
 
 - **Chapter** — a folder for one task/feature: `history/DATE_ISSUE_topic/`.
-- **Step** — a chronological working note within a chapter: `00_`, `01_`, ….
+- **Step** — a child spec within a chapter, chronologically numbered (`00_`, `01_`, …); itself any level of the ladder.
 - **Section** — a spec part (`1-goals`, `2-api`, …) — embedded (level 1), split into files (level 2), or carried inside steps (level 3).
 
 ### Lifecycle & growth
@@ -124,7 +137,7 @@ Implementation between the gates is reviewed opportunistically, not exhaustively
 
 ### Commits as the lower level of the same system
 
-**No-squash / meaningful commits.** The commit log IS documentation — WHY matters as much as WHAT. Squashing destroys knowledge (the Linux kernel and git.git have known this for decades). Micro-commits keep rebases light and review granular. **A commit message is SDD at level 0** (§3): Goal / API / Changes carry the spec for a contained change.
+**No-squash / meaningful commits.** The commit log IS documentation — WHY matters as much as WHAT. Squashing destroys knowledge (the Linux kernel and git.git have known this for decades). Micro-commits keep rebases light and review granular. **A commit message is SDD at level 0** (§3): the quintet as compressed sections — empty ones drop — carrying the spec for a contained change.
 
 **Agent retex in commits.** We already push thousands of tokens per task; a few tokens of reflection are free. Agents drop structured observations — things noticed about the system *orthogonal* to the task — that accumulate and get grepped for improvement material. Not a report; a low-friction channel. Threshold: "really notable" — routine work produces nothing.
 
