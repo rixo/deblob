@@ -112,6 +112,25 @@ Experience: our largest chapters lived exactly like this — `GOAL` + steps, eac
 
 How far ahead to spec the steps? As deep as the ground under each is stable: the active step fully; later steps as far as they are load-bearing and their premises look settled; looser further out — then let each step's implementation feed the next spec. Both extremes are known failure modes. Full detail up front writes over theory the earlier steps haven't settled yet — one early spec mistake trashes downstream work, the classic waterfall cost. Proceeding step-by-step with no forward spec loses the constraint that makes the ordering worth anything. The forcing function is a thinking discipline, not a licence to waterfall.
 
+### Not everything is a spec: the block alphabet
+
+The quintet admits no variants — but not every block on the history axis is a spec. Needs of a genuinely different *nature* get their own **named block type**, never a bent spec. The alphabet is small and deliberate:
+
+- **Spec** — the quintet. Fractal, recursive, no variants.
+- **Research** — free-form exploration (see below).
+- **Scratch** — `PLAN.md`, WIP notes. Churns during the work; cleaned at consolidation (§2).
+
+Growing the alphabet is a methodology decision — rare, explicit, named — not something a step does on its own because the quintet felt tight that day.
+
+#### Research steps
+
+A **research step**'s job is exploration: turning open ground into an actionable plan for a *later* implementation step. It is a different nature of work, so it gets a different block: free-form, not a mini-spec — yet a real numbered step in the chapter's sequence, because the exploration *happened there* in the chronology.
+
+Two-sided constraint:
+
+- A research step is **not directly implementable** — no quality gates have constrained it. It feeds a spec; it doesn't replace one.
+- The looseness is **scoped to the research step**. The implementation step it feeds runs under full gates, always. Exploration being allowed to be loose is never a reason to relax the systematic guardrails on implementation.
+
 ### Terminology
 
 - **Chapter** — a folder for one task/feature: `history/DATE_ISSUE_topic/`.
@@ -168,6 +187,7 @@ Why so light, when the [architecture](./architecture.md) demands CI-enforced too
 - **Test vs implementation order** with agents (§1) — no conviction yet.
 - **README/living-doc structure** (§2) — sections not locked; this is the next normalization target, and the weaker half of the two-axis model in practice (the history axis is far more worked out than the living-docs axis).
 - **When does scratch (PLAN) get cleaned, by whom** — "at consolidation" in principle; the cleanup-into-steps motion hasn't been practiced enough to prescribe.
+- **Research-step internal conventions** (§3) — the block type is adopted; what a *good* research step looks like inside (structure, exit criteria, how it hands off to the spec it feeds) is unpracticed.
 
 ---
 
