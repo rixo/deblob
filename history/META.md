@@ -1,6 +1,6 @@
 # META — project-spanning methodology log
 
-> Append-only ([sdd](../wip/sdd.md) §3). Insights about the practice itself,
+> Append-only ([sdd](../docs/sdd.md) §3). Insights about the practice itself,
 > surfaced while working, harvested later into the living methodology docs.
 
 ## 2026-07-07 — the recursion has a top

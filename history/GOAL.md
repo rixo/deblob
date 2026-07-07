@@ -1,6 +1,6 @@
 # deblob — program goal
 
-> The outermost chapter's GOAL ([sdd](../wip/sdd.md) §3). Stable why — the
+> The outermost chapter's GOAL ([sdd](../docs/sdd.md) §3). Stable why — the
 > roadmap churns in [PLAN.md](./PLAN.md), never here.
 
 Distill a production-proven practice into a public, adoptable system, on four
