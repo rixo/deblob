@@ -1,0 +1,14 @@
+{
+  "name": "deblob",
+  "version": "0.0.1",
+  "description": "Home of the deblob CLI — under construction. Machine-checkable hexagonal architecture for TypeScript/ESM.",
+  "license": "MIT",
+  "author": "rixo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rixo/deblob"
+  },
+  "files": [
+    "README.md"
+  ]
+}
