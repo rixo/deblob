@@ -1,7 +1,5 @@
 # Spec-Driven Development
 
-_Author: rixo_
-
 **Status**: living draft, distilled from practice (two prior internal iterations).
 
 Our adaptation of spec-driven development: AI-accelerated work, small team, brownfield codebase, real adoption constraints. We aren't inventing SDD — tailoring it (see Grounding).
@@ -94,14 +92,18 @@ The spec shape — Goal → API → Tests → Implementation → Docs — is **t
 
 Only the **materialization** scales with the task. You pick the **form** by the *nature* of the work, not a rigid rule.
 
-Spelling this out matters, doubly so for agents: told "a spec is a directory," an agent will happily split 30 lines of spec across 5 files. The ladder is explicit permission to keep small things small. **When unsure: level 1.**
+From level 1 up, **a move IS a directory — no exceptions.** The ladder describes what's *inside*. Three reasons, each earned: chronological sort survives dirs-first file viewers (files and directories never interleave in the listing); a growing move upgrades **in place** — add section files or steps next to `SPEC.md`, no file→dir conversion, no path breakage; and the fractal claim stays exceptionless (see above).
+
+Spelling this out matters, doubly so for agents: told "a spec is a directory," an agent will happily split 30 lines of spec across 5 files. The ladder is explicit permission to keep small things small — level 1 is *one file* in its directory. **When unsure: level 1.**
 
 | Level | Form                                                       | For                                                          |
 | ----- | ---------------------------------------------------------- | ------------------------------------------------------------ |
 | **0** | The **commit message** — the quintet as compressed sections (empty ones drop) | a *contained side-show discovered mid-mission* — see below   |
-| **1** | A **single file** with `1- 2- 3-…` sections embedded       | most *planned* work — one unit, not multi-step               |
-| **2** | A **directory** with split section files (`1-goals.md`, …) | bigger planned work — sections earn their own files          |
+| **1** | A directory with a single **`SPEC.md`** (`1- 2- 3-…` sections embedded) | most *planned* work — one unit, not multi-step               |
+| **2** | A directory with **split section files** (`1-goals.md`, …) | bigger planned work — sections earn their own files          |
 | **3** | A directory of **steps** — each step *itself a spec* (see recursion below) | big work, sliced into chronological steps                    |
+
+`SPEC.md` joins the caps-name family (`GOAL.md`, `PLAN.md`, `META.md`): the file is named by role, identity is carried by the directory. The cost — many files sharing one name — is accepted with eyes open: nothing imports a spec, and the directory name is always in view.
 
 ### The axis is *planned* vs *contained-discovery* (not just size)
 
@@ -112,7 +114,7 @@ Spelling this out matters, doubly so for agents: told "a spec is a directory," a
 
 ### Level 3: recursion — a chapter is a spec of specs
 
-At chapter scale the sections don't get bigger files — they **distribute into child specs**. Each step (`00_`, `01_`, …) is a *full spec of its own slice*, and picks its own form on the same ladder: a small step is a single file (level 1), a bigger one a directory of sections (level 2), and a step that grows a self-contained concern becomes a directory of steps itself (level 3 again). That is the recursion — there is no fifth form, only the same four at the next depth.
+At chapter scale the sections don't get bigger files — they **distribute into child specs**. Each step (`00_`, `01_`, …) is a *full spec of its own slice*, and picks its own form on the same ladder: a small step is a directory with one `SPEC.md` (level 1), a bigger one splits section files (level 2), and a step that grows a self-contained concern becomes a directory of steps itself (level 3 again). That is the recursion — there is no fifth form, only the same four at the next depth. The all-dirs rule recurses too: steps mix files and directories inside a chapter exactly like chapters do inside `history/`, and the sort breaks the same way.
 
 What stays at the chapter root is what binds the children:
 
@@ -120,12 +122,14 @@ What stays at the chapter root is what binds the children:
 - `PLAN.md` — **not part of the shape.** The scratch buffer where the plan churns before crystallizing into steps; cleaned at consolidation (§2). The knowledge isn't lost — it migrates into steps and commit messages.
 
 ```
-history/20260427_ISSUE-772_skill-rewrite/
-  GOAL.md             ← the chapter's goals section (stable)
-  PLAN.md             ← scratch — refines into steps; cleaned at stint's end
-  00_spec-service/    ← a step: itself a spec, directory form (own concern)
-  01_skill-rewrite.md ← a step: itself a spec, single-file form
-  02_tracker.md       ← a step: itself a spec, single-file form
+history/20260214_icons-revamp/
+  GOAL.md               ← the chapter's goals section (stable)
+  PLAN.md               ← scratch — refines into steps; cleaned at stint's end
+  00_icons-service/     ← a step: itself a spec, section-files form (level 2)
+  01_manifest-import/
+    SPEC.md             ← a step: itself a spec, level-1 form
+  02_sprite-explorer/
+    SPEC.md             ← a step: itself a spec, level-1 form
 ```
 
 **Nest where a concern begins, not where a count is reached.** A step forks into its own directory when a self-contained concern starts — its internals belong to *it*, not to the chapter's top-level sequence. Flat siblings express sequence; nesting expresses ownership. A concern ballooning into `07 08 09…` siblings at the parent level is the smell; `07_concern/` with its own `GOAL` and steps is the fix.
@@ -159,13 +163,23 @@ History records *what happened*; living docs record *what is*. Neither fits an o
 
 - **Bar: salient methodology insight** — something that changes the *practice*. Task findings belong in steps and commits, doc corrections upstream in the docs; routine work produces nothing.
 - **Entries dated and themed.** Append-only, like everything on this axis.
-- **Placement follows the triggering work's form** — the same materialization ladder as the spec: commit-scale → a `META:` section in the commit message; single-file step → a `## META` section; directory step → `META.md`; chapter-root `META.md` when insights span the chapter.
+- **Placement follows the triggering work's form** — the same materialization ladder as the spec: commit-scale → a `META:` section in the commit message; level-1 move → a `## META` section in its `SPEC.md`; levels 2–3 → `META.md` in the directory; chapter-root `META.md` when insights span the chapter; `history/META.md` when they span the project (see the outermost chapter, below).
+
+### The outermost chapter: `history/` itself
+
+The recursion has a top. The project is the outermost chapter, and `history/` is its directory:
+
+- **`history/GOAL.md`** — the program's stable why, the goal that outlives every chapter.
+- **`history/PLAN.md`** — the rolling roadmap: the scratch where the *next chapters* stage. Same object as a chapter PLAN with one difference: the outermost PLAN never consolidates once — it consolidates *continuously*, shedding items into chapters and living docs as they crystallize, and rolling on.
+- **`history/META.md`** — project-spanning methodology insights, same bar as everywhere.
+
+This wasn't designed; it surfaced by need — repeatedly re-deriving "where were we, what's next?" in conversation is the tell that GOAL and PLAN were missing at a scale the theory hadn't named. It also dissolved a misnamed doc: a "ground-rulings inbox" (rulings and staged work awaiting their home) is not a separate doc kind — it is the outermost PLAN.
 
 ### Terminology
 
-- **Chapter** — a folder for one task/feature: `history/DATE_ISSUE_topic/`.
+- **Chapter** — a folder for one task/feature: `history/DATE_ISSUE_topic/`. The project itself is the outermost chapter, rooted at `history/`.
 - **Step** — a child spec within a chapter, chronologically numbered (`00_`, `01_`, …); itself any level of the ladder.
-- **Section** — a spec part (`1-goals`, `2-api`, …) — embedded (level 1), split into files (level 2), or carried inside steps (level 3).
+- **Section** — a spec part (`1-goals`, `2-api`, …) — embedded in `SPEC.md` (level 1), split into files (level 2), or carried inside steps (level 3).
 
 ### Lifecycle & growth
 
