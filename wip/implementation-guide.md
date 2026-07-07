@@ -1,7 +1,5 @@
 # Implementation Guide — TypeScript / ESM, factory-injection flavor
 
-_Author: rixo_
-
 **Status**: draft, distilled from production practice (two brownfield codebases,
 ~7 months of daily use). Conventions below are observed-and-settled unless
 marked **[prescribed]** (rule adopted, practice still catching up).
@@ -141,12 +139,16 @@ The questions every implementer hits in the first week, answered from the
   date library, a parsing utility — legal model dependencies as long as they are
   side-effect-free and deterministic. Anything with I/O, ambient state, or
   environment access is concrete and belongs behind a port.
-- **A `.port.ts` file is not restricted to type declarations.** The port — the
-  contract — is types. But pure companions that belong to the contract are
-  welcome in the file: constants, enums, type guards, small pure functions.
-  That's inner-layer (model-grade) code hosted in the ports layer, and it
-  inherits the host's constraints: pure, effect-free, dependency-matrix rules
-  apply. What must never appear there is an implementation.
+- **A `.port.ts` file contains the contract — and nothing that isn't the
+  contract.** Its raison d'être is the port itself (`IconSourcePort`);
+  supporting types may accompany it *only because they are part of the
+  contract* (a parameter shape, a result shape). A type that stands on its
+  own — domain vocabulary, not contract piece — belongs in the model, and
+  gets ejected there the moment it does. The reverse flows freely: ports use
+  model types at will (`model < ports`). And no runtime code, ever — no
+  constants, no enums, no functions, no defaults: runtime in a port file
+  means a model or adapter extraction is pending (Rule 10). Runtime
+  companions (discriminant constants, type guards) are model code.
 - **Type-only imports are exempt from composition rules — not from packaging
   rules.** `import type { IconsService } from "../icons/icons.service"` is
   legal anywhere; so is the `IconsService["list"]` shorthand, and `Pick` to
