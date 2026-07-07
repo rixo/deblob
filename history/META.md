@@ -3,6 +3,27 @@
 > Append-only ([sdd](../docs/sdd.md) §3). Insights about the practice itself,
 > surfaced while working, harvested later into the living methodology docs.
 
+## 2026-07-07 — the outermost PLAN is mortal per item
+
+Probing "what does PLAN-as-temporary-artifact mean for the root PLAN" exposed
+a loophole: a legitimately-permanent rolling PLAN is a blank check to bypass
+SDD entirely — all work lives forever as staged scratch, no chapters born, no
+gates fire, history stays empty. Resolution: same mortal object at every
+scale; the outermost chapter merely lacks a terminal event, so dissolution is
+per-item, triggered by chapter birth. Corollary smell: spec-grade detail
+accumulating in a PLAN item means a chapter wants to be born — caught red-
+handed the same day (the roadmap items were carrying full spec payloads).
+
+## 2026-07-07 — rules unapplied while editing the rules (enforcement-gap evidence)
+
+A full day spent editing sdd.md — including its commit-grammar section — and
+none of the day's commits used the level-0 quintet, nor did the planned work
+get a chapter. The rules were *in the context window* and still didn't drive
+behavior: knowledge in view ≠ behavior, without something that loads and
+enforces it (skills, always-on instructions, CI). Strongest self-collected
+RED-phase evidence yet for the flight-manual work; also calibrates
+expectations for coworkers' compliance.
+
 ## 2026-07-07 — the recursion has a top
 
 Weeks of methodology work kept re-deriving "where were we, what's next?" in

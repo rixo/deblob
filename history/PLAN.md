@@ -7,36 +7,10 @@
 
 ## Staged next
 
-1. **Reconcile `sdd.md` with the field audit** (private capture, 2026-07-07):
-   - level-0 grammar: reconcile with the practiced
-     `Goal/Changes/API/Implementation` form — `Changes` maps into the
-     quintet's Implementation (the record of what changed); no new section
-     kind;
-   - split **NOTABLE** (reviewer-attention flag, feeds the review gates) from
-     **META** (methodology log, feeds the harvest) — include calibration:
-     salience is relative to the reviewer's queue, not the agent's task;
-     expected base rate low (~6% observed); litmus: "notable compared to the
-     other commits under triage, or merely central to my task?";
-   - name the recurring support sections (Decisions log, Open questions /
-     Out of scope, Commits trailer);
-   - **ruled: `3-testing`** (not `3-tests`) — the section answers "how do we
-     prove this works as intended?", not a minute catalog of tests to
-     implement; align the quintet table's "Tests" wording;
-   - **`5-docs` is a hard upfront requirement, not a trailing nicety**: the
-     spec gate must answer "how is this taught? which existing living docs
-     are affected from the get-go?" before implementation runs — the step
-     most likely to be glossed over, so homework comes before play. Design
-     the enforcement for it and for PLAN-cleanup (0% self-execution observed
-     — the gap is enforcement, not design);
-   - **rule on the `> **What this is.**` doc-header blockquote**: keep or
-     clean out. Leaning noise — tokens spent restating what a proper learning
-     path (humans) and progressive disclosure (agents) should carry; datapoint:
-     superpowers, far deeper-resourced on agent behavior, doesn't do it. Until
-     ruled: stop adding new ones.
-2. **Scaffold** — pnpm workspace, `.claude-plugin/plugin.json`,
+1. **Scaffold** — pnpm workspace, `.claude-plugin/plugin.json`,
    `packages/cli` skeleton, `tests/` for skill scenarios.
-3. **Skills GREEN** — order: `deblob` → `deblob-commit` → `deblob-review` →
-   `deblob-sdd` (last: depends on item 1 landing). Per skill: SKILL.md under
+2. **Skills GREEN** — order: `deblob` → `deblob-commit` → `deblob-review` →
+   `deblob-sdd` (last: depends on the sdd-field-reconciliation chapter). Per skill: SKILL.md under
    ~500 words (trigger-only `description: Use when…`, hard rules, decision
    points), companion reference files for anything heavy, rationalization
    table seeded from its documented failures. RED material per skill:
@@ -49,10 +23,12 @@
    - `deblob-sdd`: section drift, PLAN sprawl, scratch wedged into step
      numbering, case-enumeration instead of domain operation.
    Exit per skill: with-skill micro-test passes on the scenarios drawn from
-   its RED list (item 4 harness). Distribution ruled: skills via git plugin
+   its RED list (item 3 harness). Distribution ruled: skills via git plugin
    marketplace, CLI via npm — skills carry judgment, CLI carries determinism
    (sdd §6). Authoring per superpowers' writing-skills method (MIT).
-4. **Pressure-test harness** — concrete shape, not vibes:
+   Includes the enforcement design for `5-docs` and PLAN hygiene (prescriptions
+   landed in sdd; the mechanism lands here and/or in the CLI).
+3. **Pressure-test harness** — concrete shape, not vibes:
    `tests/<skill>/<scenario>.md` = task prompt + pressures applied (time /
    sunk cost / authority / exhaustion) + forbidden behaviors + required
    behaviors. Runner: one fresh subagent per scenario, always paired with a
@@ -62,15 +38,19 @@
    the baseline already passes tests nothing). Start: 3 scenarios for
    `deblob` (matrix violation under time pressure; defensive catch under
    sunk cost; export-for-test under authority).
-5. **CLI v0** — service DAG, module cycles, dependency matrix by suffix,
+4. **CLI v0** — service DAG, module cycles, dependency matrix by suffix,
    composition rules, `private/` boundary, barrel detection. Dogfood against
    a production codebase.
-6. **Architecture doc touches** — `XxxService` (not `XxxServiceAPI`) in
+5. **Architecture doc touches** — `XxxService` (not `XxxServiceAPI`) in
    examples; Store pattern reality check (zero `.store.ts` in practice —
    role, not file kind). (Rule 10 stands as written: ports are types only —
    an earlier softening idea was a misreading, since reverted in the guide.)
 
 ## Parked / awaiting material
+
+- **Doc-header blockquote ruling** (`> **What this is.** …`): keep or clean
+  out — leaning noise vs learning path (humans) and progressive disclosure
+  (agents); superpowers doesn't do it. Until ruled: no new ones.
 
 - **Coverage tooling note** — how transitive-100% on test utils is actually
   measured; → implementation guide §8 once the recipe exists.
