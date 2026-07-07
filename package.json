@@ -1,6 +1,18 @@
 {
   "name": "deblob-workspace",
-  "private": true,
   "version": "0.0.0",
-  "packageManager": "pnpm@10.12.1"
+  "private": true,
+  "packageManager": "pnpm@10.12.1",
+  "devDependencies": {
+    "lefthook": "^2.1.6",
+    "npm-run-all2": "^9.0.2",
+    "prettier": "^3.9.4",
+    "prettier-plugin-jsdoc": "^1.8.1"
+  },
+  "scripts": {
+    "prepare": "lefthook install",
+    "lint": "run-p lint:prettier",
+    "lint:prettier": "prettier --check .",
+    "format": "prettier --write ."
+  }
 }
