@@ -14,11 +14,13 @@ Asking the right questions in the right order forces good architecture. Each ste
 | ------------------ | ----------------------------------------------------------------------------------------------------- |
 | **Goals**          | Articulate success before touching anything. Prevents building the wrong thing.                       |
 | **API**            | Name the contracts you commit to — public surface *and* internal seams. Prevents implementation-driven design and wrong-layer cuts. |
-| **Tests**          | Think *how do we verify this* before committing to an approach. Can't test without IoC → decoupling.  |
+| **Testing**        | Answer *how do we prove this works as intended?* before committing to an approach — the verification strategy, including completion criteria and gates. Can't test without IoC → decoupling. |
 | **Implementation** | The code. Part plan, mostly post-hoc record of what the code actually does.                           |
 | **Docs**           | Forces planning the documentation: what living docs need writing/updating, tracked as you go.         |
 
 Same mechanism as TDD — the constraint IS the value.
+
+**Depth is discretionary; the answer is not.** Each section's minimum requirement is the high-level answer to its question — Testing's is the verification strategy, not necessarily a catalog of tests; Docs' is the doc plan, not the drafted docs. More detail (enumerated tests, spec'd doc fragments, implementation notes) is welcome whenever complexity warrants or the author wants it. What the forcing function forces is that the question gets *answered* before moving on — not a word count.
 
 This is not process for its own sake. The constraints produce better architecture as a side effect.
 
@@ -42,9 +44,11 @@ Docs IS a forcing function: it forces you to **think about documentation implica
 
 Crucially: **`5-docs` is the doc *plan*, not the docs.** It is the strategy for the living documentation (READMEs, usage docs). The living docs are written *from* it — on the other axis (§2). Keeping these separate is the whole point: the spec plans the docs; the README *is* the doc.
 
+**And it is upfront homework, not a trailing nicety.** The docs section is answered at spec time — *how is this taught? which existing living docs are affected, from the get-go?* — and reviewed at the spec gate (§4), before implementation runs. Being last in the quintet is reading order, not scheduling: it is the step every project glosses over under pressure (observed compliance without enforcement: zero), which is exactly why it is a hard requirement of the spec, not a wish for later. Homework before play.
+
 ### On TDD and test ordering
 
-"Tests" in the spec sequence is a *thinking* step, not strict TDD. Strict TDD with agents is workable — but only under tight supervision; its benefit is preventing tests that test wind. Unsupervised, agents cheat grossly at it.
+"Testing" in the spec sequence is a *thinking* step, not strict TDD. Strict TDD with agents is workable — but only under tight supervision; its benefit is preventing tests that test wind. Unsupervised, agents cheat grossly at it.
 
 We hold no strong opinion on test-first vs implementation-first with agents — fast agent iteration makes discovery during implementation common, and tests can grind the flow. Genuinely unsettled.
 
@@ -88,7 +92,7 @@ Refusing to mix them keeps both honest.
 
 ## 3. The history axis: one shape, recursive
 
-The spec shape — Goal → API → Tests → Implementation → Docs — is **the same at every scale**: a commit, a file, a directory of files, a directory of steps. Same building blocks, same natures, different sizes. This is meant literally — the fractal *is* the learning model: learn the shape once, read any unit of history. And the claim only survives if it admits no exceptions: the first exception adds a second thing to learn; a few more and the system reads as noise. When a scale seems to demand its own shape, that's a modelling smell to resolve — never a licence to deviate. (The fractal claim is about *implementation* units; research moves and support docs are free-form by nature — see "Two kinds of moves" below.)
+The spec shape — Goals → API → Testing → Implementation → Docs — is **the same at every scale**: a commit, a file, a directory of files, a directory of steps. Same building blocks, same natures, different sizes. This is meant literally — the fractal *is* the learning model: learn the shape once, read any unit of history. And the claim only survives if it admits no exceptions: the first exception adds a second thing to learn; a few more and the system reads as noise. When a scale seems to demand its own shape, that's a modelling smell to resolve — never a licence to deviate. (The fractal claim is about *implementation* units; research moves and support docs are free-form by nature — see "Two kinds of moves" below.)
 
 Only the **materialization** scales with the task. You pick the **form** by the *nature* of the work, not a rigid rule.
 
@@ -157,6 +161,12 @@ Free-form documents are allowed *alongside* steps, at any scale. They are suppor
 - **META** — the methodology log (below).
 - Whatever else a chapter genuinely needs — free-form, named for what it is.
 
+Three recurring support *sections* have earned names (each observed independently reinvented across many chapters — standardize, don't rediscover):
+
+- **`## Decisions`** — rulings made along the way, logged so they aren't re-debated (rejected options included).
+- **`## Open questions` / `## Out of scope`** — deferred-work pointers: named, parked, not lost.
+- **`## Commits`** — the hashes that implemented the spec, closing the loop down to level 0.
+
 #### META: the methodology log
 
 History records *what happened*; living docs record *what is*. Neither fits an observation about the practice itself — the methodology insight surfaced *while doing the work*. That's META: a history-axis, append-only log of such insights, harvested later by grep (`history/**/META.md` plus `## META` sections) into the living methodology docs. The filename IS the index; naming consistency is the cornerstone.
@@ -170,7 +180,7 @@ History records *what happened*; living docs record *what is*. Neither fits an o
 The recursion has a top. The project is the outermost chapter, and `history/` is its directory:
 
 - **`history/GOAL.md`** — the program's stable why, the goal that outlives every chapter.
-- **`history/PLAN.md`** — the rolling roadmap: the scratch where the *next chapters* stage. Same object as a chapter PLAN with one difference: the outermost PLAN never consolidates once — it consolidates *continuously*, shedding items into chapters and living docs as they crystallize, and rolling on.
+- **`history/PLAN.md`** — the roadmap scratch where the *next chapters* stage. The same mortal object as a chapter PLAN; only the terminal event differs. The outermost chapter never consolidates, so the file persists — but **every item in it is mortal**: the moment an item's work begins, a chapter is born and the item dissolves into it (payload moves to the chapter's spec, the item disappears). Items stay **thin** — what, why staged, rough order. Spec-grade detail accumulating in an item is the smell that a chapter wants to be born. This mortality is load-bearing: a PLAN allowed to hold work indefinitely is a standing bypass of the entire system — everything lives in scratch, no chapters are born, no gates fire, history stays empty.
 - **`history/META.md`** — project-spanning methodology insights, same bar as everywhere.
 
 This wasn't designed; it surfaced by need — repeatedly re-deriving "where were we, what's next?" in conversation is the tell that GOAL and PLAN were missing at a scale the theory hadn't named. It also dissolved a misnamed doc: a "ground-rulings inbox" (rulings and staged work awaiting their home) is not a separate doc kind — it is the outermost PLAN.
@@ -209,9 +219,22 @@ These are the System-2 surfaces: the reviewer engages deliberate, active attenti
 
 ### Commits as the lower level of the same system
 
-**No-squash / meaningful commits.** The commit log IS documentation — WHY matters as much as WHAT. Squashing destroys knowledge (the Linux kernel and git.git have known this for decades). Micro-commits keep rebases light and review granular. **A commit message is SDD at level 0** (§3): the quintet as compressed sections — empty ones drop — carrying the spec for a contained change.
+**No-squash / meaningful commits.** The commit log IS documentation — WHY matters as much as WHAT. Squashing destroys knowledge (the Linux kernel and git.git have known this for decades). Micro-commits keep rebases light and review granular. **A commit message is SDD at level 0** (§3): the quintet as compressed sections — empty ones drop — carrying the spec for a contained change:
 
-**Meta-observations in commits.** We already push thousands of tokens per task; a few tokens of reflection are free. Agents drop structured observations — things noticed about the system or the practice, *orthogonal* to the task — that accumulate and get grepped for improvement material. Not a report; a low-friction channel. Threshold: "really notable" — routine work produces nothing. Methodology-grade observations carry the `META:` label (§3) so the harvest grep finds them: this is META's level-0 materialization, same ladder as the spec.
+```
+Goal:            why this change exists
+API:             contract changes — when any
+Testing:         how it's proven — when non-obvious
+Implementation:  what changed and how; the file-by-file record lives here
+Docs:            living docs affected — when any
+```
+
+(A `Changes:`-style file list is not a sixth section — it is the Implementation record.)
+
+**Two orthogonal labels ride along** — an attention flag and a knowledge log; conflating them buries both:
+
+- **`NOTABLE:` — the reviewer-attention flag.** Signals: of the many commits under triage, spend scarce review budget *here* — dangerous, architectural, judgment-heavy. Salience is relative to the **reviewer's queue, not the agent's task**: within its own task, everything an agent just did feels notable, and that is exactly not the point. Litmus: *notable compared to the other commits under review, or merely central to my task?* — only the first earns the label. Expected base rate: low, single-digit percent of commits.
+- **`META:` — the methodology insight** (§3): an observation about the practice itself, orthogonal to the task, dropped where the harvest grep finds it — META's level-0 materialization, same ladder as the spec. We already push thousands of tokens per task; a few tokens of reflection are free. Threshold: it changes the *practice* — routine work produces nothing.
 
 ---
 
