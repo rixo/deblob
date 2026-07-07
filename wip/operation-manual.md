@@ -73,8 +73,11 @@ Apart from the specials above, test dirs behave like normal deblob services:
 
 ## To sort later
 
-- Does this whole testing section become its own page in the operation manual,
-  or fold into the architecture doc's Testing section as "placement & coverage
-  conventions"? (It's the *what/how* of testing; arch Testing is the *why*.)
+- ~~Does this whole testing section become its own page in the operation
+  manual, or fold into the architecture doc's Testing section?~~ **Resolved
+  (2026-07-07): folded into the [implementation guide](./implementation-guide.md)
+  §8 Testing** (placement, `__tests__` ADR, transitive-100% rule,
+  exporting-internals litmus). This file keeps the raw originals until the
+  guide stabilizes, then these entries get pruned.
 - "transitive 100% on test-util / test-model" deserves a crisp general
   statement + maybe a tooling note (how coverage is measured to see it).
