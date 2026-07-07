@@ -7,8 +7,9 @@
 
 ## Staged next
 
-1. **Scaffold** — pnpm workspace, `.claude-plugin/plugin.json`,
-   `packages/cli` skeleton, `tests/` for skill scenarios.
+1. **Scaffold** — chapter born: `history/20260707_scaffold/` (repo layout is
+   its API section). Workspace + plugin manifest + harness home only; no CLI
+   skeleton.
 2. **Skills GREEN** — order: `deblob` → `deblob-commit` → `deblob-review` →
    `deblob-sdd` (last: depends on the sdd-field-reconciliation chapter). Per skill: SKILL.md under
    ~500 words (trigger-only `description: Use when…`, hard rules, decision
@@ -28,7 +29,11 @@
    (sdd §6). Authoring per superpowers' writing-skills method (MIT).
    Includes the enforcement design for `5-docs` and PLAN hygiene (prescriptions
    landed in sdd; the mechanism lands here and/or in the CLI).
-3. **Pressure-test harness** — concrete shape, not vibes:
+3. **Pressure-test harness** — downscoped (2026-07-07): scenario *docs* ride
+   with each skill; runs start as manual spot-checks; the automation below
+   only if wording iteration demands it (real cost: ~30 subagent runs per
+   wording iteration per skill, plus transcript judging). Full shape if/when
+   automated:
    `tests/<skill>/<scenario>.md` = task prompt + pressures applied (time /
    sunk cost / authority / exhaustion) + forbidden behaviors + required
    behaviors. Runner: one fresh subagent per scenario, always paired with a
@@ -40,7 +45,9 @@
    sunk cost; export-for-test under authority).
 4. **CLI v0** — service DAG, module cycles, dependency matrix by suffix,
    composition rules, `private/` boundary, barrel detection. Dogfood against
-   a production codebase.
+   a production codebase. **Opens with a research move**: boundary-detection
+   approach, config shape, ts-morph vs madge/dpdm, output format — no design
+   exists yet.
 5. **Architecture doc touches** — `XxxService` (not `XxxServiceAPI`) in
    examples; Store pattern reality check (zero `.store.ts` in practice —
    role, not file kind). (Rule 10 stands as written: ports are types only —
