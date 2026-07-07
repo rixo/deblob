@@ -6,8 +6,8 @@ marked **[prescribed]** (rule adopted, practice still catching up).
 
 A note on altitude: the [architecture](./architecture.md) states principles and
 deliberately leaves room for several valid materializations. This guide is where
-opinions get introduced — it picks one. Where it says "always", that is *this
-flavor's* choice, not a claim that the theory forbids the alternatives. What the
+opinions get introduced — it picks one. Where it says "always", that is _this
+flavor's_ choice, not a claim that the theory forbids the alternatives. What the
 guide doesn't regulate is out of its scope on purpose: do as you see fit, the
 architectural rules still apply.
 
@@ -28,15 +28,15 @@ program, not a component tree.
 
 **The suffix is load-bearing. Always suffix.**
 
-| Suffix          | Layer      | Declares                                        |
-| --------------- | ---------- | ----------------------------------------------- |
-| `*.model.ts`    | model      | pure — no side effects, no outer-layer imports  |
-| `*.port.ts`     | ports      | types only, boundary contract                   |
-| `*.service.ts`  | service    | composition unit — assembly-only import         |
-| `*.adapter.ts`  | adapters   | port implementation — assembly-only import      |
-| `*.context.ts`  | assembly   | context wiring (web/UI runtimes)                |
-| `*.spec.ts`     | test       | unit test, colocated with its subject           |
-| `*.e2e.ts`      | test       | end-to-end test, lives outside `src/`           |
+| Suffix         | Layer    | Declares                                       |
+| -------------- | -------- | ---------------------------------------------- |
+| `*.model.ts`   | model    | pure — no side effects, no outer-layer imports |
+| `*.port.ts`    | ports    | types only, boundary contract                  |
+| `*.service.ts` | service  | composition unit — assembly-only import        |
+| `*.adapter.ts` | adapters | port implementation — assembly-only import     |
+| `*.context.ts` | assembly | context wiring (web/UI runtimes)               |
+| `*.spec.ts`    | test     | unit test, colocated with its subject          |
+| `*.e2e.ts`     | test     | end-to-end test, lives outside `src/`          |
 
 - The theory allows the bare layer filename (`icons/model.ts`) as a degenerate
   case; this flavor opts not to use it — the suffixed form even when a service
@@ -46,12 +46,12 @@ program, not a component tree.
   visible in the import path.)
 - A file without a layer suffix inside a service directory is **blob** —
   pre-architectural residue awaiting distillation, consumable by assembly only.
-  In a mature service there are none. (Small type-only or constant helpers get
-  a real home: fold them into the model file they serve.)
+  In a mature service there are none. (Small type-only or constant helpers get a
+  real home: fold them into the model file they serve.)
 - `.test.ts` is not used. One unit-test suffix, not two.
 - There is no `.store.ts` in this flavor. Reactive-state concerns materialize as
   ports and adapters like everything else (`*-store.port.ts`,
-  `fs-*-store.adapter.ts`); the Store *pattern* is a role, not a file kind.
+  `fs-*-store.adapter.ts`); the Store _pattern_ is a role, not a file kind.
 
 ## 2. Service directory anatomy
 
@@ -88,7 +88,7 @@ icons/
 - **An adapter with its own ports** is normal (adapters are hexagons): a
   directory adapter carrying `ports/` of its own nests exactly like a service.
 - **`README.md` per service** — the living doc (see [sdd](./sdd.md) §2): what it
-  is *now*, its API, its layer map. History stays in `history/`.
+  is _now_, its API, its layer map. History stays in `history/`.
 - **When to split**: not a file-count threshold — the decomposition signals from
   [architecture](./architecture.md), Lifecycle: test pressure (case explosion),
   naming pressure (long disambiguating qualifiers), cognitive load. Extract to
@@ -114,6 +114,7 @@ icons/
   ```
 
   A single-dependency factory may take it positionally.
+
 - **Types**: `<Name>Port` for port contracts, `<Name>Service` for the returned
   service API (not `ServiceAPI`, not `IService`), `<Name>Config` for resolved
   configuration, `Input<Name>Config` for the pre-hydration user-facing shape
@@ -141,21 +142,21 @@ The questions every implementer hits in the first week, answered from the
   environment access is concrete and belongs behind a port.
 - **A `.port.ts` file contains the contract — and nothing that isn't the
   contract.** Its raison d'être is the port itself (`IconSourcePort`);
-  supporting types may accompany it *only because they are part of the
-  contract* (a parameter shape, a result shape). A type that stands on its
-  own — domain vocabulary, not contract piece — belongs in the model, and
-  gets ejected there the moment it does. The reverse flows freely: ports use
-  model types at will (`model < ports`). And no runtime code, ever — no
-  constants, no enums, no functions, no defaults: runtime in a port file
-  means a model or adapter extraction is pending (Rule 10). Runtime
-  companions (discriminant constants, type guards) are model code.
+  supporting types may accompany it _only because they are part of the contract_
+  (a parameter shape, a result shape). A type that stands on its own — domain
+  vocabulary, not contract piece — belongs in the model, and gets ejected there
+  the moment it does. The reverse flows freely: ports use model types at will
+  (`model < ports`). And no runtime code, ever — no constants, no enums, no
+  functions, no defaults: runtime in a port file means a model or adapter
+  extraction is pending (Rule 10). Runtime companions (discriminant constants,
+  type guards) are model code.
 - **Type-only imports are exempt from composition rules — not from packaging
-  rules.** `import type { IconsService } from "../icons/icons.service"` is
-  legal anywhere; so is the `IconsService["list"]` shorthand, and `Pick` to
-  scope a port to what a consumer uses (the dialect-trap solution). But the
-  exemption covers *runtime coupling* only: a type import is still a dependency
-  edge — the service DAG must stay acyclic, and `private/` stays sealed to type
-  imports like everything else.
+  rules.** `import type { IconsService } from "../icons/icons.service"` is legal
+  anywhere; so is the `IconsService["list"]` shorthand, and `Pick` to scope a
+  port to what a consumer uses (the dialect-trap solution). But the exemption
+  covers _runtime coupling_ only: a type import is still a dependency edge — the
+  service DAG must stay acyclic, and `private/` stays sealed to type imports
+  like everything else.
 - **Logging is an effect.** It goes through an injected `LoggerPort` like any
   other effect. No `console.*` below drivers/assembly.
 
@@ -196,8 +197,8 @@ rather than papered over; see Open below.
 One `cli.ts` (or `main.ts`) owns the wiring:
 
 - Per-subsystem `build<Name>Service()` helpers that instantiate concrete
-  adapters and pass them to service factories. The helper is assembly code —
-  it may import anything.
+  adapters and pass them to service factories. The helper is assembly code — it
+  may import anything.
 - **Shared kernel instances are created once** at the root and threaded down:
   one `const fs = createNodeFs()` passed to every disk-touching adapter — never
   one per adapter. Central control of side-effect surfaces is the point of
@@ -235,27 +236,26 @@ leak below the driver.
 ## 7. Error management
 
 Nothing exotic — classical clean error discipline. Spelled out because it is
-*not* the instinct of the average JS codebase:
+_not_ the instinct of the average JS codebase:
 
-- **Exceptions are the mechanism.** They break loudly by default when
-  forgotten — that's the feature. No error-value plumbing as the default idiom.
+- **Exceptions are the mechanism.** They break loudly by default when forgotten
+  — that's the feature. No error-value plumbing as the default idiom.
 - **Discriminate with `err.code`** (JS reality: `instanceof` breaks across
   package boundaries and realms; a `code` field + a duck-typed guard
   (`isIconsError(err)`) travels).
-- **Error classes and guards live in the model.** `IconsError` +
-  `isIconsError` belong in `icons.model.ts` — failure modes are domain
-  vocabulary, and every layer (service, adapters, drivers) needs to reference
-  them.
+- **Error classes and guards live in the model.** `IconsError` + `isIconsError`
+  belong in `icons.model.ts` — failure modes are domain vocabulary, and every
+  layer (service, adapters, drivers) needs to reference them.
 - **Catch only what you know how to handle.** In practice that means
-  orchestrator/driver code almost exclusively. A local `catch` is legitimate
-  for exactly two things: a genuine, known recovery at that site, or
-  **enrichment** — wrap with context and rethrow
+  orchestrator/driver code almost exclusively. A local `catch` is legitimate for
+  exactly two things: a genuine, known recovery at that site, or **enrichment**
+  — wrap with context and rethrow
   (`throw new Error("loading icon manifest", { cause: err })`).
 - **Catch what you expect, rethrow the rest.** A `catch` block starts by
   checking the discriminant; unexpected errors propagate.
 - **Absolutely no defensive catch.** No catch-just-in-case, no
-  catch-log-continue, no `catch {}`. Swallowing a real failure is the
-  worst outcome available (see silent-failure class in the
+  catch-log-continue, no `catch {}`. Swallowing a real failure is the worst
+  outcome available (see silent-failure class in the
   [self-review checklist](./self-review-checklist.md)).
 - **Never lose the stack.** Wrap-and-rethrow uses `new Error(msg, { cause })`;
   the original error rides along.
@@ -265,7 +265,7 @@ Nothing exotic — classical clean error discipline. Spelled out because it is
 - **Degraded results are a domain decision, not an error-handling default.**
   Returning `[]`/`null` because extraction failed is lying to the caller. If a
   domain genuinely has partial-success semantics, model them explicitly (a
-  discriminated result type naming *how* it degraded and what recovery applies)
+  discriminated result type naming _how_ it degraded and what recovery applies)
   — an exceptional, deliberate design, not a habit.
 
 ## 8. Testing
@@ -278,22 +278,22 @@ Consequences of [architecture](./architecture.md) Testing, materialized:
 - **E2e tests (`*.e2e.ts`) live outside `src/`** (root `tests/` per package).
   E2e exercises the system from outside — it lives outside. The in/out placement
   mirrors the in/out semantics.
-- **Fixtures**: unit fixtures colocate (`__fixtures__/` next to the specs);
-  e2e fixtures live with the e2e tests. Fixtures are test-purpose adapters —
-  shared ones follow the normal sharing progression.
+- **Fixtures**: unit fixtures colocate (`__fixtures__/` next to the specs); e2e
+  fixtures live with the e2e tests. Fixtures are test-purpose adapters — shared
+  ones follow the normal sharing progression.
 - **Shared test utils** live in `test/` directories that are ordinary services:
   `src/lib/test/` for the codebase-wide kernel, `src/lib/<domain>/test/` for
   domain-scoped sharing. Named layers, usual packaging rules (`private/` etc.).
-  Not `__tests__/` — test runners execute what's in there, and the name
-  promises "tests that run" to anyone from the Jest crowd; don't overload it.
+  Not `__tests__/` — test runners execute what's in there, and the name promises
+  "tests that run" to anyone from the Jest crowd; don't overload it.
 - **Test utils are NOT coverage-excluded.** They get no dedicated tests (that
   goes circular) but must reach 100% transitively, through the tests that use
   them. A util below 100% is dead weight or hiding something — justify
   case-by-case or rip it.
 - **No exporting internals "for tests".** Wiring a unit test into a
-  previously-internal function by exporting it = violation (tests go through
-  the contract). Promoting it to genuine public API — kept exported regardless
-  of tests — is fine. Litmus: would the export survive deleting the tests?
+  previously-internal function by exporting it = violation (tests go through the
+  contract). Promoting it to genuine public API — kept exported regardless of
+  tests — is fine. Litmus: would the export survive deleting the tests?
 - **Test factory pattern [prescribed]** — one per test module, wrapping service
   assembly with sensible defaults; tests override only what they mean to test
   (full rationale in [architecture](./architecture.md), Testing). Inline
@@ -301,8 +301,8 @@ Consequences of [architecture](./architecture.md) Testing, materialized:
 - **Coverage: the goal is 100% of the coverable layers** (model, service, pure
   helpers — everything testable through contracts). **Every exclusion must be
   motivated by a comment** at the exclusion site: type-only files (`ports/`),
-  generated code, thin platform glue covered by e2e. An unmotivated exclude
-  list is debt — it hides exactly the code most likely to be hiding something.
+  generated code, thin platform glue covered by e2e. An unmotivated exclude list
+  is debt — it hides exactly the code most likely to be hiding something.
 
 ## 9. Reading a real codebase against this guide
 

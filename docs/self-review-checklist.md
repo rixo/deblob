@@ -23,10 +23,10 @@ actually catches it (the tool matters — see "what catches what" below).
    - sweep prose for old shapes/names/URLs (e.g. a renamed type still named in a
      comment, a URL pattern that gained a segment).
 
-2. **Broken promises** — does any API accept more than the code handles?
-   _The array-accepted-but-only-last-honored class._ If a type says "many",
-   prove many works (or reject the extras loudly). _Caught by: thinking about
-   the type's full domain; sometimes tsc if the shape is strict enough._
+2. **Broken promises** — does any API accept more than the code handles? _The
+   array-accepted-but-only-last-honored class._ If a type says "many", prove
+   many works (or reject the extras loudly). _Caught by: thinking about the
+   type's full domain; sometimes tsc if the shape is strict enough._
 
 3. **Silent failure** — any `?? null`, `?.`, skip, or `catch` that swallows a
    real problem instead of surfacing it? Distinguish "capability absent"
@@ -37,10 +37,10 @@ actually catches it (the tool matters — see "what catches what" below).
    throw semantics, naming, error-message shape). One resolver helper, not two
    that can drift. _Caught by: grep the concept across the diff._
 
-5. **Dead / changed refs** — anything referencing a name/shape/file I
-   renamed or removed? _Caught by: tsc for structural (imports, renames, types);
-   grep for string-level (comments, messages, spec); **before removing a field,
-   grep its consumers** — don't trust "looks unused"._
+5. **Dead / changed refs** — anything referencing a name/shape/file I renamed or
+   removed? _Caught by: tsc for structural (imports, renames, types); grep for
+   string-level (comments, messages, spec); **before removing a field, grep its
+   consumers** — don't trust "looks unused"._
 
 6. **tsc clean** — `--noEmit` on the package; and the **downstream** build, not
    just the package's own units. A package can be green while a consumer breaks
@@ -71,8 +71,8 @@ actually catches it (the tool matters — see "what catches what" below).
   It pattern-matches "tests green → done" and stops. The list is the
   intervention.
 - Items 1–3 (comments / promises / silent-failure) are where the value
-  concentrates — exactly what tsc/coverage can't see. Items 5–6 mostly
-  duplicate what the compiler already enforces (still worth the glance for the
+  concentrates — exactly what tsc/coverage can't see. Items 5–6 mostly duplicate
+  what the compiler already enforces (still worth the glance for the
   string-level slice).
 - "Units green in the package" repeatedly lied about integrated state (a stale
   single-element array in a downstream consumer broke the integration build
