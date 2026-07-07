@@ -82,6 +82,8 @@ Refusing to mix them keeps both honest.
 
 **Rule for agents:** history answers *why*, never *what-is*. Current state lives in READMEs; a frozen chapter's constraints may be stale **by design**. Never treat a history chapter as a description of the present.
 
+**A plan only survives until contact with reality.** Corollary, spelled out loud: **past plans in history are NOT canon.** Canon is the living docs plus the *latest* plans — the current outermost PLAN, the active chapter's spec. A frozen SPEC is the record of what was decided and done at its date; its forward-looking parts (projections, extension rules, staged next-steps) died the moment reality answered. Reading an old chapter's roadmap as commitment is the same axis-mixing error as reading history for what-is.
+
 - **History is a chronological archive — it stays.** Someone reading it later is *favorably* informed by the chronology: the spec appearing and evolving alongside the code it documents. You don't dissolve that into one giant doc — that mixes concerns and loses the timeline.
 - **Consolidation lives on the OTHER axis** — the living docs. That is where "current state" is distilled and maintained. History never tries to be current; READMEs never try to be historical.
 - Raw *scratch* (a churning PLAN, WIP notes) gets cleaned up when the work is consolidated for review/merge — tidied into meaningful commits and clean dated steps. The knowledge isn't deleted; it migrates to where it belongs (steps + commit messages + living docs). See §4.
@@ -203,7 +205,7 @@ This wasn't designed; it surfaced by need — repeatedly re-deriving "where were
 
 The economics of agent-assisted development: production got cheap, review stayed expensive — review is the bottleneck. The methodology's job is to concentrate scarce human review attention where it pays. Two gates:
 
-1. **Spec gate** — human reviews Goals + API *before* implementation runs away. Catches building the wrong thing, implementation-driven design, surface bloat — at the cheapest possible moment. If you can't understand what the public API is supposed to do, that's a spec problem, not an implementation problem.
+1. **Spec gate** — human reviews Goals + API *before* implementation runs away. Catches building the wrong thing, implementation-driven design, surface bloat — at the cheapest possible moment. If you can't understand what the public API is supposed to do, that's a spec problem, not an implementation problem. The gate approves **direction**: far-future details in a spec are placeholders until their ground becomes active (§3, spec depth) — challenging every projection at the gate is paralysis by analysis, and plans aren't canon once frozen anyway (§2).
 2. **Test gate** — human reads the tests as the behavioral spec, at consolidation time. Tests go through the public API (see [architecture](./architecture.md), Testing), so they read as behavior statements, reviewable without implementation knowledge. If you accept a test that says in plain language your API does something dumb, that's a review problem.
 
 Implementation between the gates is reviewed opportunistically, not exhaustively — the architecture's structural rules (mechanically enforced) and 100% contract coverage carry the weight there.

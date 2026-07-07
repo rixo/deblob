@@ -14,6 +14,17 @@ per-item, triggered by chapter birth. Corollary smell: spec-grade detail
 accumulating in a PLAN item means a chapter wants to be born — caught red-
 handed the same day (the roadmap items were carrying full spec payloads).
 
+## 2026-07-07 — plans are not canon; the gate approves direction
+
+Reviewing the scaffold spec surfaced a reviewer posture worth naming: approve
+the direction while *knowing* some spec'd details won't survive (the layout
+extension rules, say) — challenging every projection at the gate is paralysis
+by analysis: demanding up-front certainty about ground nobody has stood on
+yet, the classic waterfall mistake. This only works if the system
+spells out the flip side: a plan survives until contact with reality, so
+**past plans in history are not canon** — canon is living docs + latest
+plans. Both now stated in sdd (§2 agent rule, §4 spec gate).
+
 ## 2026-07-07 — rules unapplied while editing the rules (enforcement-gap evidence)
 
 A full day spent editing sdd.md — including its commit-grammar section — and
