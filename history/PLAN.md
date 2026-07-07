@@ -1,16 +1,13 @@
 # PLAN — rolling roadmap
 
-> The outermost chapter's PLAN ([sdd](../wip/sdd.md) §3): scratch where the
+> The outermost chapter's PLAN ([sdd](../docs/sdd.md) §3): scratch where the
 > next chapters stage. Consolidates continuously — items shed into chapters
 > and living docs as they crystallize. Absorbed the former "operation manual"
 > (which was this file, misnamed).
 
 ## Staged next
 
-1. **Promote `wip/` → `docs/`** — README rewritten as front door (what deblob
-   is, map, install); merge `wip` branch → `main`. Unblocks the citable
-   architecture-doc story (consuming repos currently cite a ghost file).
-2. **Reconcile `sdd.md` with the field audit** (private capture, 2026-07-07):
+1. **Reconcile `sdd.md` with the field audit** (private capture, 2026-07-07):
    - level-0 grammar: reconcile with the practiced
      `Goal/Changes/API/Implementation` form — `Changes` maps into the
      quintet's Implementation (the record of what changed); no new section
@@ -36,10 +33,10 @@
      path (humans) and progressive disclosure (agents) should carry; datapoint:
      superpowers, far deeper-resourced on agent behavior, doesn't do it. Until
      ruled: stop adding new ones.
-3. **Scaffold** — pnpm workspace, `.claude-plugin/plugin.json`,
+2. **Scaffold** — pnpm workspace, `.claude-plugin/plugin.json`,
    `packages/cli` skeleton, `tests/` for skill scenarios.
-4. **Skills GREEN** — order: `deblob` → `deblob-commit` → `deblob-review` →
-   `deblob-sdd` (last: depends on item 2 landing). Per skill: SKILL.md under
+3. **Skills GREEN** — order: `deblob` → `deblob-commit` → `deblob-review` →
+   `deblob-sdd` (last: depends on item 1 landing). Per skill: SKILL.md under
    ~500 words (trigger-only `description: Use when…`, hard rules, decision
    points), companion reference files for anything heavy, rationalization
    table seeded from its documented failures. RED material per skill:
@@ -52,10 +49,10 @@
    - `deblob-sdd`: section drift, PLAN sprawl, scratch wedged into step
      numbering, case-enumeration instead of domain operation.
    Exit per skill: with-skill micro-test passes on the scenarios drawn from
-   its RED list (item 5 harness). Distribution ruled: skills via git plugin
+   its RED list (item 4 harness). Distribution ruled: skills via git plugin
    marketplace, CLI via npm — skills carry judgment, CLI carries determinism
    (sdd §6). Authoring per superpowers' writing-skills method (MIT).
-5. **Pressure-test harness** — concrete shape, not vibes:
+4. **Pressure-test harness** — concrete shape, not vibes:
    `tests/<skill>/<scenario>.md` = task prompt + pressures applied (time /
    sunk cost / authority / exhaustion) + forbidden behaviors + required
    behaviors. Runner: one fresh subagent per scenario, always paired with a
@@ -65,10 +62,10 @@
    the baseline already passes tests nothing). Start: 3 scenarios for
    `deblob` (matrix violation under time pressure; defensive catch under
    sunk cost; export-for-test under authority).
-6. **CLI v0** — service DAG, module cycles, dependency matrix by suffix,
+5. **CLI v0** — service DAG, module cycles, dependency matrix by suffix,
    composition rules, `private/` boundary, barrel detection. Dogfood against
    a production codebase.
-7. **Architecture doc touches** — `XxxService` (not `XxxServiceAPI`) in
+6. **Architecture doc touches** — `XxxService` (not `XxxServiceAPI`) in
    examples; Store pattern reality check (zero `.store.ts` in practice —
    role, not file kind). (Rule 10 stands as written: ports are types only —
    an earlier softening idea was a misreading, since reverted in the guide.)
