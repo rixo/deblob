@@ -11,8 +11,8 @@
   manual plugin-load gate (rixo). npm publish + GitHub remote: done
   (2026-07-08).
 - **Skills** — chapter born: `history/20260708_skills/` (GOAL carries the
-  four-skill set and method; chapter PLAN carries the step queue and status).
-  In flight: step 00 (`deblob`) spec'd, gate passed, implementation next.
+  four-skill set and method; chapter PLAN carries the step queue and status). In
+  flight: step 00 (`deblob`) spec'd, gate passed, implementation next.
 - **Pressure-test harness** — downscoped (2026-07-07): scenario _docs_ ride with
   each skill; runs start as manual spot-checks; the automation below only if
   wording iteration demands it (real cost: ~30 subagent runs per wording
@@ -34,22 +34,21 @@
 - **Architecture doc touches** — `XxxService` (not `XxxServiceAPI`) in examples;
   Store pattern reality check (zero `.store.ts` in practice — role, not file
   kind); **nesting DAG implications spelled out** — direction law
-  (nested-adapter edges point up via the port; parent stays import-blind to
-  its children; only the cycle trap is documented today). (Rule 10 stands as
+  (nested-adapter edges point up via the port; parent stays import-blind to its
+  children; only the cycle trap is documented today). (Rule 10 stands as
   written: ports are types only — an earlier softening idea was a misreading,
   since reverted in the guide.)
 
 ## Parked / awaiting material
 
-- **RESEARCH: the packaging dimension of nesting** — the arch states layers
-  and composition well; packaging (the dimension the DAG is anchored into) is
+- **RESEARCH: the packaging dimension of nesting** — the arch states layers and
+  composition well; packaging (the dimension the DAG is anchored into) is
   under-articulated. Mental model to develop: any service must be splittable
-  into a real package at any time — impossible with DAG violations or
-  services picking into each other without clear public surfaces. Strong
-  suspicion: "a service _contains_ child services" has unexplored
-  implications in this model — probably hard, negative rules not yet
-  discovered. Research move when picked up; feeds architecture Packaging +
-  Nesting sections.
+  into a real package at any time — impossible with DAG violations or services
+  picking into each other without clear public surfaces. Strong suspicion: "a
+  service _contains_ child services" has unexplored implications in this model —
+  probably hard, negative rules not yet discovered. Research move when picked
+  up; feeds architecture Packaging + Nesting sections.
 - **Skill-trigger hook** — plugin hook injecting "deblob rules apply" on
   layer-suffix path hits; deterministic mid-task trigger. Build only if
   spot-runs show description-based recall failing (sdd §6: escalate when

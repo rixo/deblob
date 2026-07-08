@@ -706,19 +706,19 @@ than by discipline alone.
 
 Beyond going through the contract, tests are optimized for **reading, not
 writing**. The reviewer reads the test suite as the behavioral specification
-(see [sdd](./sdd.md), the test gate) — that only works, and only stays cheap,
-if each test is legible as a behavior statement:
+(see [sdd](./sdd.md), the test gate) — that only works, and only stays cheap, if
+each test is legible as a behavior statement:
 
 - The shape is obvious: _given X, when I do Y with Z, I expect A, B and C_ —
   visible in the test, not reconstructed from helpers.
-- The **unit under test stands out** — which function, which service, which
-  call is being exercised must be identifiable at a glance.
+- The **unit under test stands out** — which function, which service, which call
+  is being exercised must be identifiable at a glance.
 - The **fixture → assertion line reads naturally**: what goes in and what is
   expected out sit close enough to be compared by eye.
 
-A suite optimized for writing — clever helpers, data-driven indirection,
-DRY-ed setup that hides the scenario — can hit 100% coverage and still defeat
-the review gate: illegible tests cost exactly the reviewer attention the whole
+A suite optimized for writing — clever helpers, data-driven indirection, DRY-ed
+setup that hides the scenario — can hit 100% coverage and still defeat the
+review gate: illegible tests cost exactly the reviewer attention the whole
 system exists to save. The test factory pattern (below) serves this: assembly
 noise leaves the test body, and what remains is the scenario.
 
