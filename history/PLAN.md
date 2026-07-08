@@ -13,9 +13,9 @@
 - **Skills** — chapter in flight: `history/20260708_skills/` (GOAL carries the
   four-skill set and method; **chapter PLAN carries the step queue and status —
   read it first when resuming**). Done: 00 `deblob` skill, 01 knowledge cards
-  (`skills/*/knowledge/`), 02 guide cards (`implem/`), 03 assembly-is-not-blob.
-  Next in queue: the commit/review/sdd skills. Outstanding gates: local plugin
-  load + spot-runs S1–S3 (manual, rixo).
+  (`skills/*/knowledge/`), 02 guide cards (`implem/`), 03 assembly-is-not-blob,
+  04 `deblob-commit` skill. Next in queue: the review/sdd skills. Outstanding
+  gates: local plugin load + spot-runs (manual, rixo).
 - **Pressure-test harness** — downscoped (2026-07-07): scenario _docs_ ride with
   each skill; runs start as manual spot-checks; the automation below only if
   wording iteration demands it (real cost: ~30 subagent runs per wording

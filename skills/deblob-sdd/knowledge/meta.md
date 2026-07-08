@@ -16,7 +16,7 @@ cornerstone.
   docs; routine work produces nothing.
 - **Entries dated and themed**, append-only.
 - **Placement follows the triggering work's form**, same ladder as the spec:
-  commit-scale → `META:` section in the message ([commits](commits.md)); any
+  commit-scale → `META:` trailer in the message ([commits](commits.md)); any
   move from level 1 up → `META.md` in its directory (always its own file, never
   a spec section — META is off-topic by nature, and a move is always a
   directory); chapter-spanning → chapter-root META.md; project-spanning →

@@ -21,13 +21,13 @@ SPECs; cleaned at chapter consolidation.
 - `03_assembly-is-not-blob` — implemented (2026-07-08): the blob-vs-assembly
   ruling landed in arch + guide §6, propagated to 5 derived views; SKILL.md
   gains the "it's just wiring" rationalization row. See its SPEC.
+- `04_deblob-commit` — implemented (2026-07-09): SKILL.md + scenarios; Deeper
+  cross-links into `deblob-sdd/knowledge/` (first use). Seven commit-message
+  rulings landed docs-first in sdd.md §4 (subject grammar, size, signal line,
+  defer-to-spec, trailers, breaking≠NOTABLE, trivial-body litmus). See its SPEC.
 
 ## Step queue (each dissolves into its step's SPEC when spec'd)
 
-- `04_deblob-commit` — RED material: NOTABLE over-flagging (~6% observed base
-  rate is the calibration), body-less commits, squash instinct. The 13
-  `deblob-sdd/knowledge/` cards are reference material pre-written for this and
-  the sdd skill.
 - `05_deblob-review` — RED material: self-review-checklist "honest limits"
   section verbatim (tests-green→done pattern-match). Absorbs
   `docs/self-review-checklist.md`, then tombstones it. Honest scope +

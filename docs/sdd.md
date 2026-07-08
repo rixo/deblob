@@ -198,12 +198,12 @@ an agent will happily split 30 lines of spec across 5 files. The ladder is
 explicit permission to keep small things small — level 1 is _one file_ in its
 directory. **When unsure: level 1.**
 
-| Level | Form                                                                          | For                                                        |
-| ----- | ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| **0** | The **commit message** — the quintet as compressed sections (empty ones drop) | a _contained side-show discovered mid-mission_ — see below |
-| **1** | A directory with a single **`SPEC.md`** (`1- 2- 3-…` sections embedded)       | most _planned_ work — one unit, not multi-step             |
-| **2** | A directory with **split section files** (`1-goals.md`, …)                    | bigger planned work — sections earn their own files        |
-| **3** | A directory of **steps** — each step _itself a spec_ (see recursion below)    | big work, sliced into chronological steps                  |
+| Level | Form                                                                       | For                                                        |
+| ----- | -------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **0** | The **commit message** — the quintet as compressed sections (§4)           | a _contained side-show discovered mid-mission_ — see below |
+| **1** | A directory with a single **`SPEC.md`** (`1- 2- 3-…` sections embedded)    | most _planned_ work — one unit, not multi-step             |
+| **2** | A directory with **split section files** (`1-goals.md`, …)                 | bigger planned work — sections earn their own files        |
+| **3** | A directory of **steps** — each step _itself a spec_ (see recursion below) | big work, sliced into chronological steps                  |
 
 `SPEC.md` joins the caps-name family (`GOAL.md`, `PLAN.md`, `META.md`): the file
 is named by role, identity is carried by the directory. The cost — many files
@@ -333,8 +333,8 @@ the cornerstone.
   docs; routine work produces nothing.
 - **Entries dated and themed.** Append-only, like everything on this axis.
 - **Placement follows the triggering work's form** — the same materialization
-  ladder as the spec: commit-scale → a `META:` section in the commit message;
-  any move from level 1 up → `META.md` in its directory (the all-dirs rule
+  ladder as the spec: commit-scale → a `META:` trailer in the commit message
+  (§4); any move from level 1 up → `META.md` in its directory (the all-dirs rule
   guarantees the home; META is off-topic by nature — always its own file, never
   a spec section); chapter-root `META.md` when insights span the chapter;
   `history/META.md` when they span the project (see the outermost chapter,
@@ -440,8 +440,7 @@ to catch it. Tie the gate to this failure mode, or it decays into ritual.
 matters as much as WHAT. Squashing destroys knowledge (the Linux kernel and
 git.git have known this for decades). Micro-commits keep rebases light and
 review granular. **A commit message is SDD at level 0** (§3): the quintet as
-compressed sections — empty ones drop — carrying the spec for a contained
-change:
+compressed sections, carrying the spec for a contained change:
 
 ```
 Goal:            why this change exists
@@ -453,6 +452,28 @@ Docs:            living docs affected — when any
 
 (A `Changes:`-style file list is not a sixth section — it is the Implementation
 record.)
+
+The subject line is a semantic commit — `type(scope): summary` (Conventional
+Commits). In monorepos with many packages, the scope names the package
+(`fix(icons): …`). A breaking change is an API-section fact, flagged `!` in the
+subject per the convention — breakage does not itself earn `NOTABLE:` (attention
+≠ breakage, though the two often coincide; run the litmus separately).
+
+**The message scales with the surface of the change — judgment, not template.**
+The quintet is a checklist to _answer_, not sections to fill. Sections with
+nothing to say collapse into one short line naming them ("No API or doc surface;
+testing: existing suite covers.") — the difference between _considered empty_
+and _skipped_ is exactly one line, and the reviewer can't tell otherwise. At the
+other end, a commit that ships its own spec (a step's `SPEC.md` landing with the
+change) **defers to it**: Goal in a line, the spec carries the detail. The spec
+is in the tree of that very commit — copying it into the message stores the same
+record twice in one object, and the message copy freezes while later commits may
+amend the spec: dead weight now, misleading later. The pointer has a standing
+form — the `Spec:` trailer (below). And at the trivial end the body may drop
+entirely, under a strict litmus: the subject fully states the why AND no quintet
+section would carry content (`style(docs): prettier reflow` needs no more) —
+"the subject says it all" without passing both halves is the rationalization,
+not the rule.
 
 **Two orthogonal labels ride along** — an attention flag and a knowledge log;
 conflating them buries both:
@@ -469,6 +490,13 @@ conflating them buries both:
   META's level-0 materialization, same ladder as the spec. We already push
   thousands of tokens per task; a few tokens of reflection are free. Threshold:
   it changes the _practice_ — routine work produces nothing.
+
+**Labels and the spec pointer are git trailers** — one final block after the
+quintet (`NOTABLE:`, `META:`, `Spec: history/<chapter>/<step>/`), never inline
+in sections. Trailer position is what makes them mechanically harvestable
+(`git log --format='%(trailers:key=META,valueonly)'`): the META harvest grep
+becomes structured extraction for free, and `Spec:` closes the level-0 ↔ level-1
+loop machine-followably.
 
 ---
 
