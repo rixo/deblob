@@ -18,30 +18,21 @@ SPECs; cleaned at chapter consolidation.
 - `02_guide-cards-adoption` — implemented (2026-07-08): 9 implem cards
   (`skills/deblob/knowledge/implem/`), INDEX section, last guide Deeper links
   rewired. See its SPEC.
+- `03_assembly-is-not-blob` — implemented (2026-07-08): the blob-vs-assembly
+  ruling landed in arch + guide §6, propagated to 5 derived views; SKILL.md
+  gains the "it's just wiring" rationalization row. See its SPEC.
 
 ## Step queue (each dissolves into its step's SPEC when spec'd)
 
-- `assembly-is-not-blob` (unnumbered — order at pickup; rixo, 2026-07-08) —
-  observed agent failure mode: "assembly = necessary evil, untestable, may
-  import anything" read as a free pass to stuff logic there, bypassing
-  model/service extraction. The distinction to sharpen everywhere: **blob is
-  unqualified code, owned as debt; assembly is code _ruled_ necessary for
-  wiring** — necessary evil, not lazy default. If it's blob, own it and make it
-  blob (suffixless, assembly-only importable) — don't hide it in assembly
-  pretending the arch allows it. `references/placement.md` assembly bullet
-  ("keep it thin — every line of logic here is untestable") states it well;
-  audit refs, arch cards (layer-assembly), guide §6, SKILL.md (rationalization
-  table candidate: "it's just wiring") for the same clarity across the board.
-  RED material for spot-runs.
-- `03_deblob-commit` — RED material: NOTABLE over-flagging (~6% observed base
+- `04_deblob-commit` — RED material: NOTABLE over-flagging (~6% observed base
   rate is the calibration), body-less commits, squash instinct. The 13
   `deblob-sdd/knowledge/` cards are reference material pre-written for this and
   the sdd skill.
-- `04_deblob-review` — RED material: self-review-checklist "honest limits"
+- `05_deblob-review` — RED material: self-review-checklist "honest limits"
   section verbatim (tests-green→done pattern-match). Absorbs
   `docs/self-review-checklist.md`, then tombstones it. Honest scope +
   adversarial-subagent direction: see chapter GOAL.
-- `05_deblob-sdd` — RED material: section drift, PLAN sprawl, scratch wedged
+- `06_deblob-sdd` — RED material: section drift, PLAN sprawl, scratch wedged
   into step numbering, case-enumeration instead of domain operation.
 
 ## Carried notes

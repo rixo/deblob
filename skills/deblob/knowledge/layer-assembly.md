@@ -14,6 +14,10 @@ essentially untestable.
   `.adapter.ts`) and blob ([dependency-matrix](dependency-matrix.md)).
 - **Discipline: keep it thin.** Every line of logic here can't be tested in
   isolation — push everything pushable into the service layer.
+- **Not blob.** Assembly is code _ruled_ necessary for wiring — necessary evil,
+  not lazy default. May-import-anything is not may-contain-anything: a decision
+  or computation here is blob hiding in assembly ([blob](blob.md)) — own it as
+  blob rather than launder it.
 - A shared composition unit (service/adapter instance, e.g. one
   `createNodeFs()`) is instantiated once at the root and threaded down — central
   control of side-effect surfaces is assembly's point.

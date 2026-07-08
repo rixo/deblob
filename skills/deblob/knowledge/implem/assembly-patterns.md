@@ -9,7 +9,9 @@ wiring:
 
 - Per-subsystem `build<Name>Service()` helpers instantiate concrete adapters and
   pass them to service factories. The helper is assembly code — it may import
-  anything.
+  anything. Import privilege is not placement licence: the helper instantiates
+  and connects, nothing more — a decision or computation inside it is blob
+  hiding in assembly ([layer-assembly](../layer-assembly.md)).
 - **A shared composition unit (`.service.ts` / `.adapter.ts`) is instantiated
   once** at the root and threaded down: one `const fs = createNodeFs()` passed
   to every disk-touching adapter — never one instance per consumer.

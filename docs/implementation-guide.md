@@ -211,7 +211,9 @@ One `cli.ts` (or `main.ts`) owns the wiring:
 
 - Per-subsystem `build<Name>Service()` helpers that instantiate concrete
   adapters and pass them to service factories. The helper is assembly code — it
-  may import anything.
+  may import anything. Import privilege is not placement licence: the helper
+  instantiates and connects, nothing more — a decision or computation inside it
+  is blob hiding in assembly (see [architecture](./architecture.md), Assembly).
 - **A shared composition unit (`.service.ts` / `.adapter.ts`) is instantiated
   once** at the root and threaded down: one `const fs = createNodeFs()` passed
   to every disk-touching adapter — never one instance per consumer. Central

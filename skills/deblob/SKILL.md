@@ -71,6 +71,7 @@ another service.
 | Excuse                               | Reality                                                                              |
 | ------------------------------------ | ------------------------------------------------------------------------------------ |
 | "it's just a helper"                 | Helpers have layers too. Place it, or it's blob (assembly-only).                     |
+| "it's just wiring"                   | Wiring instantiates and connects, nothing more. Decides or computes → service/model. |
 | "export it so the test can reach it" | Would the export survive deleting the tests? No → violation.                         |
 | "catch, just to be safe"             | Swallowed failures ship corrupt output with no trace. Loud beats safe.               |
 | "return `[]` on failure — graceful"  | That's lying to the caller. Throw, or model the degradation explicitly.              |

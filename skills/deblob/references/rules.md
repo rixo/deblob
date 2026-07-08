@@ -19,6 +19,9 @@ _Lookup, not reading._
 "Concrete" = platform/I/O: `node:fs`, HTTP clients, DB drivers. Pure,
 deterministic third-party libraries count as model-layer code.
 
+Assembly's "anything" is import privilege, not placement licence — logic in
+assembly is blob hiding there.
+
 ## Composition
 
 - `.service.ts` / `.adapter.ts` are imported by assembly only.

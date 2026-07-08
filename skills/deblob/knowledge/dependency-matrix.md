@@ -19,6 +19,9 @@ forbids it. Governs **runtime imports** (type-only exemption:
 "Concrete" = platform/I/O: `node:fs`, HTTP clients, DB drivers. Pure
 deterministic libraries count as model.
 
+Assembly's "anything" is import privilege, not placement licence — logic in
+assembly is blob hiding there ([layer-assembly](layer-assembly.md)).
+
 The five layer rules behind it:
 
 1. **Dependencies point inward** —

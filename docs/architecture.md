@@ -42,9 +42,9 @@ The story goes like this — you have a working prototype — rough, messy code,
 in a blob. You separate concerns into services (packaging, interdependencies).
 Then from each service, use cases surface into `.service.ts`, types and pure
 functions into `.model.ts`. The extensionless files left over? That's the blob —
-assembly before it's been organised. It shrinks as extraction proceeds. The
-architecture doesn't require a greenfield start; it reveals itself in existing
-code under the pressure of testing.
+code no layer has been ruled for yet, owned as debt. It shrinks as extraction
+proceeds. The architecture doesn't require a greenfield start; it reveals itself
+in existing code under the pressure of testing.
 
 In use across several production codebases — design-system packages, web apps,
 CLI tooling — at varying degrees of maturity and completeness.
@@ -366,6 +366,15 @@ the only layer where that label is justified.
 The discipline is to keep it as thin as possible. Every line of logic in
 assembly is a line that can't be tested in isolation. The practical mechanism:
 push as much as possible into the service layer.
+
+**Assembly is not blob.** Blob is unqualified code — no layer ruled, owned as
+debt until distillation places it. Assembly is code _ruled_ necessary for
+wiring: it earns its untestability by building the system, and by nothing else.
+The privilege to import anything is not permission for anything to live here — a
+decision or computation written in assembly isn't wiring, it's blob hiding in
+the one layer whose label seems to allow it. If a piece of code is genuinely
+unplaced, own it as blob (suffixless, importable by assembly only): the debt
+stays visible instead of laundered.
 
 A CLI tool illustrates this well. A CLI service (`src/lib/cli/`) can expose use
 cases cleanly, receive a `LoggerPort`, be tested in isolation — that's service
