@@ -324,9 +324,9 @@ independently reinvented across many chapters — standardize, don't rediscover)
 History records _what happened_; living docs record _what is_. Neither fits an
 observation about the practice itself — the methodology insight surfaced _while
 doing the work_. That's META: a history-axis, append-only log of such insights,
-harvested later by grep (`history/**/META.md` plus `## META` sections) into the
-living methodology docs. The filename IS the index; naming consistency is the
-cornerstone.
+harvested later by grep (`history/**/META.md` plus commit `META:` labels) into
+the living methodology docs. The filename IS the index; naming consistency is
+the cornerstone.
 
 - **Bar: salient methodology insight** — something that changes the _practice_.
   Task findings belong in steps and commits, doc corrections upstream in the
@@ -334,8 +334,9 @@ cornerstone.
 - **Entries dated and themed.** Append-only, like everything on this axis.
 - **Placement follows the triggering work's form** — the same materialization
   ladder as the spec: commit-scale → a `META:` section in the commit message;
-  level-1 move → a `## META` section in its `SPEC.md`; levels 2–3 → `META.md` in
-  the directory; chapter-root `META.md` when insights span the chapter;
+  any move from level 1 up → `META.md` in its directory (the all-dirs rule
+  guarantees the home; META is off-topic by nature — always its own file, never
+  a spec section); chapter-root `META.md` when insights span the chapter;
   `history/META.md` when they span the project (see the outermost chapter,
   below).
 

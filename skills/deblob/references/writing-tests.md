@@ -1,7 +1,8 @@
-# Writing tests
+---
+source: docs/architecture.md (Testing) and docs/implementation-guide.md §8
+---
 
-> Derived from `docs/architecture.md` (Testing) and
-> `docs/implementation-guide.md` §8 — the sources of truth.
+# Writing tests
 
 - **Write for the reviewer.** The test suite is the behavioral spec a human
   reviews. Every test reads: _given X, when Y with Z, expect A, B, C_ — the
@@ -42,5 +43,12 @@
 
 Per judgment — not required for implementation.
 
-- `docs/architecture.md` — Testing (all four subsections)
+- [testing-contract](../knowledge/testing-contract.md) — through the contract,
+  coverage rules
+- [testing-seams](../knowledge/testing-seams.md) — seams are not test surfaces,
+  the exceptions
+- [testing-isolation](../knowledge/testing-isolation.md) — fixtures are
+  adapters, the test factory
+- [testing-reviewer](../knowledge/testing-reviewer.md) — tests as behavior
+  statements for the reviewer
 - `docs/implementation-guide.md` — §8

@@ -6,22 +6,31 @@ SPECs; cleaned at chapter consolidation.
 ## Status
 
 - `00_deblob` — implemented (2026-07-08): SKILL.md + 5 cards + scenarios.
-  Deviation note: L2b why-cards not materialized — the layer is conditional by
-  spec ("where 3–5 lines don't suffice") and no judgment block crossed the
-  threshold. Trigger to birth the first one: usage shows a block
-  under-motivating an agent (likeliest: crossing-services kernel-cracking).
-  Remaining gates: local plugin load (manual, rixo); spot-runs S1–S3 (no-skill
-  control vs with-skill).
+  Deviation note: L2b why-cards not materialized at first — then step 01
+  materialized the layer corpus-wide as `skills/*/knowledge/` (supersedes the
+  on-demand trigger). Remaining gates: local plugin load (manual, rixo);
+  spot-runs S1–S3 (no-skill control vs with-skill).
+- `01_knowledge-cards-adoption` — implemented (2026-07-08): opened with a
+  contained research move (36 cards + INDEX), then adoption — the skills
+  knowledge layer born (`skills/{deblob,deblob-sdd}/knowledge/`), frontmatter
+  provenance, Deeper rewiring. See its SPEC's Decisions and META.
 
 ## Step queue (each dissolves into its step's SPEC when spec'd)
 
-- `01_deblob-commit` — RED material: NOTABLE over-flagging (~6% observed base
-  rate is the calibration), body-less commits, squash instinct.
-- `02_deblob-review` — RED material: self-review-checklist "honest limits"
+- `02_guide-cards-research` — slice `docs/implementation-guide.md` into
+  `skills/deblob/knowledge/implem/` (flat — one flavor, mirrors docs/), same
+  authoring contract (step-00 SPEC §2 register + passes); then rewire the guide
+  links left in `references/{placement,handling-failure,writing-tests}.md`
+  Deeper sections.
+- `03_deblob-commit` — RED material: NOTABLE over-flagging (~6% observed base
+  rate is the calibration), body-less commits, squash instinct. The 13
+  `deblob-sdd/knowledge/` cards are reference material pre-written for this and
+  the sdd skill.
+- `04_deblob-review` — RED material: self-review-checklist "honest limits"
   section verbatim (tests-green→done pattern-match). Absorbs
   `docs/self-review-checklist.md`, then tombstones it. Honest scope +
   adversarial-subagent direction: see chapter GOAL.
-- `03_deblob-sdd` — RED material: section drift, PLAN sprawl, scratch wedged
+- `05_deblob-sdd` — RED material: section drift, PLAN sprawl, scratch wedged
   into step numbering, case-enumeration instead of domain operation.
 
 ## Carried notes

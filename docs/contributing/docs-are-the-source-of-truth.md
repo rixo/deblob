@@ -7,9 +7,10 @@ when a rule changes, and what happens if you pick wrong.
 
 - **`docs/`** is the human narrative and the **single source of truth** —
   theory, guide, methodology.
-- **Skill cards** (`skills/*/references/`) and future why-cards are **derived
-  views**: the same rules distilled for agent consumption, each stamped with its
-  provenance ("Derived from `docs/…` — the source of truth").
+- **Skill cards** (`skills/*/references/`) and **knowledge cards**
+  (`skills/*/knowledge/`) are **derived views**: the same rules distilled for
+  agents, each stamped with its provenance — a machine-parseable frontmatter
+  line (`source: docs/… § …`).
 - Derived views **never evolve on their own**. A view that contradicts its
   source is a bug in the view, always.
 

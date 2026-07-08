@@ -1,7 +1,10 @@
+---
+source: docs/architecture.md (Rules)
+---
+
 # Rules — lookup tables
 
-> Derived from `docs/architecture.md` (Rules) — the source of truth. Lookup, not
-> reading.
+_Lookup, not reading._
 
 ## Dependency matrix (runtime imports)
 

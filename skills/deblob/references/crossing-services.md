@@ -1,7 +1,9 @@
-# Crossing services — using another service's code
+---
+source:
+  docs/architecture.md (Sharing, The acyclic dependency rule, Port derivation)
+---
 
-> Derived from `docs/architecture.md` (Sharing, The acyclic dependency rule,
-> Port derivation) — the sources of truth.
+# Crossing services — using another service's code
 
 You need something from another service. In escalation order:
 
@@ -48,5 +50,8 @@ You need something from another service. In escalation order:
 
 Per judgment — not required for implementation.
 
-- `docs/architecture.md` — Sharing (the full progression), Port derivation — the
-  dialect trap, The acyclic dependency rule
+- [sharing](../knowledge/sharing.md) — the full progression, kernel cracking,
+  anti-corruption
+- [ports](../knowledge/layer-ports.md) — port derivation, the dialect trap
+- [acyclic](../knowledge/acyclic.md) — service DAG, module cycles
+- [pattern-kernel](../knowledge/pattern-kernel.md) — kernels, shared utils

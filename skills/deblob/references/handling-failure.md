@@ -1,6 +1,8 @@
-# Handling failure
+---
+source: docs/implementation-guide.md §7
+---
 
-> Derived from `docs/implementation-guide.md` §7 — the source of truth.
+# Handling failure
 
 - **Throw.** Exceptions break loudly when forgotten — that's the feature, not a
   risk to defend against.

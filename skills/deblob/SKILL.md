@@ -88,7 +88,10 @@ another service.
 - Import legality lookup → [rules](references/rules.md)
 
 Link grammar: an imperative "read X" is part of the procedure. Anything under a
-`## Deeper` section is optional — per judgment, for non-clear-cut calls.
+`## Deeper` section is optional — per judgment, for non-clear-cut calls. Deeper
+links point into [knowledge/](knowledge/INDEX.md) — self-contained knowledge
+cards (~300 tokens each), question-indexed, each naming its source section in
+`docs/`.
 
 ## Install (adopting repo)
 

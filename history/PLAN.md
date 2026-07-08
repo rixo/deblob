@@ -30,7 +30,10 @@
   composition rules, `private/` boundary, barrel detection. Dogfood against a
   production codebase. **Opens with a research move**: boundary-detection
   approach, config shape, ts-morph vs madge/dpdm, output format — no design
-  exists yet.
+  exists yet. Also: **derived-view staleness check** — diff `docs/` sections
+  against the `source:` frontmatter stamps in `skills/*/knowledge/` and
+  `skills/*/references/` (stamps standardized in the skills chapter, step 02);
+  needs the stamp-text ↔ heading matching rule spec'd.
 - **Architecture doc touches** — `XxxService` (not `XxxServiceAPI`) in examples;
   Store pattern reality check (zero `.store.ts` in practice — role, not file
   kind); **nesting DAG implications spelled out** — direction law

@@ -1,7 +1,10 @@
-# Placement — where code goes
+---
+source:
+  docs/architecture.md (Services, Rules, Distillation, Lifecycle, Nesting) and
+  docs/implementation-guide.md (§1–§4)
+---
 
-> Derived from `docs/architecture.md` (Services, Rules, Distillation, Lifecycle,
-> Nesting) and `docs/implementation-guide.md` (§1–§4) — the sources of truth.
+# Placement — where code goes
 
 Two entry points, same rules. **New service**: pick the owning domain, create
 the directory, lay the layers out below. **Extending a service**: place each new
@@ -114,7 +117,8 @@ A service directory may contain child services — semantic filing, zero
 privilege: a child cannot touch its parent's `private/`; every normal rule
 applies. A nested adapter is a full service that points UP (it imports the
 parent's port) — therefore the parent must never import from its own adapters,
-not even their model: that's an instant cycle.
+not even their model: that's an instant cycle. (The general direction law is a
+derived rule, staged for arch clarification — see root PLAN.)
 
 ## When judgment is needed
 
@@ -131,7 +135,14 @@ not even their model: that's an instant cycle.
 
 Per judgment — not required for implementation.
 
-- `docs/architecture.md` — Services (layer semantics), Distillation, Lifecycle
-  (decomposition), Nesting
+- Layer semantics: [model](../knowledge/layer-model.md),
+  [ports](../knowledge/layer-ports.md),
+  [service](../knowledge/layer-service.md),
+  [adapters](../knowledge/layer-adapters.md),
+  [assembly](../knowledge/layer-assembly.md);
+  [what "service" means](../knowledge/service-three-meanings.md)
+- [distillation](../knowledge/distillation.md) — when to extract, costs
+- [decomposition](../knowledge/decomposition.md) — signals, scales
+- [nesting](../knowledge/nesting.md) — no privilege, the direction law
 - `docs/implementation-guide.md` — §2 anatomy, §3 naming, §4 layer contents
 - [rules](rules.md) — the dependency matrix
