@@ -12,6 +12,12 @@ description:
 This codebase is layered. Every file declares its layer by suffix; every layer
 has hard rules. Your job: place code correctly, then prove it.
 
+**Why "deblob".** The blob is unqualified code — pre-architectural residue with
+no layer and no guarantees. Codebases grow entropy; deblobbing fights it
+methodically: knowledge extracts to model, decisions to services, effects behind
+ports — the blob shrinks until it's gone. Every rule here serves that fight;
+code you add either respects the layers or feeds the blob.
+
 ## The five layers (innermost first)
 
 - **model** (`*.model.ts`) — pure domain knowledge: types, pure functions,
@@ -47,7 +53,7 @@ another service.
 
 ## Non-negotiables
 
-- Layer suffix on every file. Suffixless = unplaced code; only assembly may
+- Layer suffix on every file. Suffixless = unqualified code; only assembly may
   import it.
 - No `index.ts` barrels — the layer stays visible in every import path.
 - `*.service.ts` / `*.adapter.ts`: imported by assembly only (`import type`
