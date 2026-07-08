@@ -272,6 +272,18 @@ _not_ the instinct of the average JS codebase:
 
 Consequences of [architecture](./architecture.md) Testing, materialized:
 
+- **Write for the reviewer** (architecture: tests ARE the reviewed behavioral
+  spec). Concretely:
+  - each test reads _given X, when I do Y with Z, expect A, B, C_ — the
+    scenario visible in the test body, not reconstructed from helpers;
+  - the unit under test is identifiable at a glance — name it in the
+    `describe`/test title and keep the exercised call prominent in the body;
+  - fixture and assertion sit close enough to compare by eye — inline the
+    values that the assertion is about; the test factory absorbs everything
+    the scenario is _not_ about;
+  - resist write-time DRY that hides scenarios (data-driven loops, layered
+    helpers): duplication between tests is cheaper than illegibility at the
+    gate.
 - **Unit tests (`*.spec.ts`) colocate with their subject.**
   `icons.service.spec.ts` next to `icons.service.ts`. Unit tests exercise the
   codebase from inside — they live inside it.
