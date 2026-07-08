@@ -21,6 +21,18 @@ SPECs; cleaned at chapter consolidation.
 
 ## Step queue (each dissolves into its step's SPEC when spec'd)
 
+- `assembly-is-not-blob` (unnumbered — order at pickup; rixo, 2026-07-08) —
+  observed agent failure mode: "assembly = necessary evil, untestable, may
+  import anything" read as a free pass to stuff logic there, bypassing
+  model/service extraction. The distinction to sharpen everywhere: **blob is
+  unqualified code, owned as debt; assembly is code _ruled_ necessary for
+  wiring** — necessary evil, not lazy default. If it's blob, own it and make it
+  blob (suffixless, assembly-only importable) — don't hide it in assembly
+  pretending the arch allows it. `references/placement.md` assembly bullet
+  ("keep it thin — every line of logic here is untestable") states it well;
+  audit refs, arch cards (layer-assembly), guide §6, SKILL.md (rationalization
+  table candidate: "it's just wiring") for the same clarity across the board.
+  RED material for spot-runs.
 - `03_deblob-commit` — RED material: NOTABLE over-flagging (~6% observed base
   rate is the calibration), body-less commits, squash instinct. The 13
   `deblob-sdd/knowledge/` cards are reference material pre-written for this and

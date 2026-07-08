@@ -10,9 +10,12 @@
 - **Scaffold** — chapter `history/20260707_scaffold/` implemented; remaining:
   manual plugin-load gate (rixo). npm publish + GitHub remote: done
   (2026-07-08).
-- **Skills** — chapter born: `history/20260708_skills/` (GOAL carries the
-  four-skill set and method; chapter PLAN carries the step queue and status). In
-  flight: step 00 (`deblob`) spec'd, gate passed, implementation next.
+- **Skills** — chapter in flight: `history/20260708_skills/` (GOAL carries the
+  four-skill set and method; **chapter PLAN carries the step queue and status —
+  read it first when resuming**). Done: 00 `deblob` skill, 01 knowledge cards
+  (`skills/*/knowledge/`), 02 guide cards (`implem/`). Next in queue:
+  assembly-is-not-blob audit, then the commit/review/sdd skills. Outstanding
+  gates: local plugin load + spot-runs S1–S3 (manual, rixo).
 - **Pressure-test harness** — downscoped (2026-07-07): scenario _docs_ ride with
   each skill; runs start as manual spot-checks; the automation below only if
   wording iteration demands it (real cost: ~30 subagent runs per wording
@@ -60,9 +63,11 @@
   layer-suffix path hits; deterministic mid-task trigger. Build only if
   spot-runs show description-based recall failing (sdd §6: escalate when
   discipline fails).
-- **Doc-header blockquote ruling** (`> **What this is.** …`): keep or clean out
-  — leaning noise vs learning path (humans) and progressive disclosure (agents);
-  superpowers doesn't do it. Until ruled: no new ones.
+- **Flavor naming** — the implementation guide's flavor has no settled name; the
+  guide title says "factory-injection" provisionally, the knowledge cards
+  deliberately say "this flavor" (skills chapter step 02). Rule a name (or bless
+  the provisional one) before the second flavor guide makes the ambiguity
+  expensive.
 
 - **Coverage tooling note** — how transitive-100% on test utils is actually
   measured; → implementation guide §8 once the recipe exists.
