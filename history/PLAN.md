@@ -40,7 +40,11 @@
   (nested-adapter edges point up via the port; parent stays import-blind to its
   children; only the cycle trap is documented today). (Rule 10 stands as
   written: ports are types only — an earlier softening idea was a misreading,
-  since reverted in the guide.)
+  since reverted in the guide.) Port-type examples (`FsPort`, `LoggerPort`,
+  `IconSourcePort`) predate the guide's name-by-role ruling (2026-07-08, skills
+  chapter step 02: bare role names, qualify only to disambiguate) — rename at
+  the next arch pass, then propagate to the arch cards mirroring them
+  (layer-ports, crossing-services ref).
 
 ## Parked / awaiting material
 

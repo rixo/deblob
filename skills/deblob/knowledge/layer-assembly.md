@@ -14,8 +14,9 @@ essentially untestable.
   `.adapter.ts`) and blob ([dependency-matrix](dependency-matrix.md)).
 - **Discipline: keep it thin.** Every line of logic here can't be tested in
   isolation — push everything pushable into the service layer.
-- Shared instances (one `createNodeFs()`) are created once at the root and
-  threaded down — central control of side-effect surfaces is assembly's point.
+- A shared composition unit (service/adapter instance, e.g. one
+  `createNodeFs()`) is instantiated once at the root and threaded down — central
+  control of side-effect surfaces is assembly's point.
 - Forms vary, role doesn't: CLI `main.ts` (eager root), DI container, Svelte
   context providers (lazy, hierarchical), a test setup function — test setup IS
   assembly ([testing-isolation](testing-isolation.md)).

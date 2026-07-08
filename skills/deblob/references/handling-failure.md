@@ -40,5 +40,6 @@ source: docs/implementation-guide.md §7
 
 Per judgment — not required for implementation.
 
-- `docs/implementation-guide.md` §7 — the full discipline
+- [error-management](../knowledge/implem/error-management.md) — the full
+  discipline
 - `docs/self-review-checklist.md` — the silent-failure defect class

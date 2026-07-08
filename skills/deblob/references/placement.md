@@ -69,8 +69,9 @@ which adapter it got). Imports: model, ports, own service's `private/`, concrete
 tech. Never: other adapters.
 
 **assembly** — may import anything; keep it thin — every line of logic here is
-untestable. Shared instances (one `createNodeFs()`) are created once at the root
-and threaded down, never one per consumer.
+untestable. A shared composition unit (service/adapter instance — one
+`createNodeFs()`) is instantiated once at the root and threaded down, never one
+per consumer.
 
 ## Config
 
@@ -144,5 +145,7 @@ Per judgment — not required for implementation.
 - [distillation](../knowledge/distillation.md) — when to extract, costs
 - [decomposition](../knowledge/decomposition.md) — signals, scales
 - [nesting](../knowledge/nesting.md) — no privilege, the direction law
-- `docs/implementation-guide.md` — §2 anatomy, §3 naming, §4 layer contents
+- [service-anatomy](../knowledge/implem/service-anatomy.md) — the canonical
+  directory shape
+- [naming](../knowledge/implem/naming.md) — factories, types, adapter grammar
 - [rules](rules.md) — the dependency matrix

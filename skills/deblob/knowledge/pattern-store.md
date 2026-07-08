@@ -11,8 +11,8 @@ A **role**, not a file kind: a service whose state is reactive — consumers
 observe changes rather than polling. Relevant where UI must reflect changing
 data.
 
-In the factory-injection flavor, store concerns materialize as ordinary ports
-and adapters (`*-store.port.ts`, `fs-*-store.adapter.ts`); in
+In the implementation guide's flavor, store concerns materialize as ordinary
+ports and adapters (`*-store.port.ts`, `fs-*-store.adapter.ts`); in
 context-composition flavors, as context-provided reactive services.
 
 Pattern vocabulary exists to communicate _why a service exists and how it should

@@ -50,3 +50,17 @@ cross-linked. Pick by the question you're holding.
 | Test at internal seams?            | [testing-seams](testing-seams.md)         |
 | Setup, fixtures, test factory?     | [testing-isolation](testing-isolation.md) |
 | Who are tests written for?         | [testing-reviewer](testing-reviewer.md)   |
+
+## Implementation — the guide's flavor (TS/ESM)
+
+| Question                                         | Card                                                        |
+| ------------------------------------------------ | ----------------------------------------------------------- |
+| What's a "flavor"? what does "always" mean?      | [implem/flavor](implem/flavor.md)                           |
+| Which suffix on which file?                      | [implem/file-naming](implem/file-naming.md)                 |
+| What does a service directory look like?         | [implem/service-anatomy](implem/service-anatomy.md)         |
+| Factory / type / adapter naming?                 | [implem/naming](implem/naming.md)                           |
+| index.ts? package exports?                       | [implem/no-barrels](implem/no-barrels.md)                   |
+| Composition root — CLI, config, context, plugin? | [implem/assembly-patterns](implem/assembly-patterns.md)     |
+| try/catch, error classes, degraded results?      | [implem/error-management](implem/error-management.md)       |
+| Where do tests, fixtures, utils go?              | [implem/testing-in-practice](implem/testing-in-practice.md) |
+| Inspecting a brownfield codebase — what's debt?  | [implem/brownfield-reading](implem/brownfield-reading.md)   |

@@ -51,4 +51,5 @@ Per judgment — not required for implementation.
   adapters, the test factory
 - [testing-reviewer](../knowledge/testing-reviewer.md) — tests as behavior
   statements for the reviewer
-- `docs/implementation-guide.md` — §8
+- [testing-in-practice](../knowledge/implem/testing-in-practice.md) — placement,
+  factories, coverage rules

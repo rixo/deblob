@@ -15,13 +15,12 @@ SPECs; cleaned at chapter consolidation.
   knowledge layer born (`skills/{deblob,deblob-sdd}/knowledge/`), frontmatter
   provenance, Deeper rewiring. See its SPEC's Decisions and META.
 
+- `02_guide-cards-adoption` — implemented (2026-07-08): 9 implem cards
+  (`skills/deblob/knowledge/implem/`), INDEX section, last guide Deeper links
+  rewired. See its SPEC.
+
 ## Step queue (each dissolves into its step's SPEC when spec'd)
 
-- `02_guide-cards-research` — slice `docs/implementation-guide.md` into
-  `skills/deblob/knowledge/implem/` (flat — one flavor, mirrors docs/), same
-  authoring contract (step-00 SPEC §2 register + passes); then rewire the guide
-  links left in `references/{placement,handling-failure,writing-tests}.md`
-  Deeper sections.
 - `03_deblob-commit` — RED material: NOTABLE over-flagging (~6% observed base
   rate is the calibration), body-less commits, squash instinct. The 13
   `deblob-sdd/knowledge/` cards are reference material pre-written for this and

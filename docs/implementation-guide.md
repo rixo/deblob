@@ -108,19 +108,32 @@ icons/
     source,
     store,
   }: {
-    source: IconSourcePort;
-    store: IconStorePort;
+    source: IconSource;
+    store: IconStore;
   }): IconsService { ... }
   ```
 
   A single-dependency factory may take it positionally.
 
-- **Types**: `<Name>Port` for port contracts, `<Name>Service` for the returned
-  service API (not `ServiceAPI`, not `IService`), `<Name>Config` for resolved
-  configuration, `Input<Name>Config` for the pre-hydration user-facing shape
-  (before defaults/resolution are applied). The Input/resolved split is a real
-  boundary: user config is an adapter concern, resolved config is what services
-  receive.
+- **Types: name by role, qualify to disambiguate.** A port type is its role —
+  `Logger`, `IconSource` — with no mandatory `Port` suffix: the layer is already
+  declared where the flavor puts it, in the file path (`.port.ts`). Add the kind
+  qualifier when the bare name is taken by domain vocabulary — which is why the
+  returned service API is `<Name>Service` in practice (`Icons` is the data;
+  `IconsService` operates on it; not `ServiceAPI`, not `IService`), while ports
+  rarely collide and stay bare.
+
+  Why not mandatory kind suffixes: a naming rule that fights the pull of the
+  cleaner form loses. `{ logger: Logger }` reads right;
+  `{ loggerService: LoggerPort }` begs to be shortened — and once the rule is
+  "suffix always", the idiomatic short form everyone (humans and agents alike)
+  instinctively writes becomes a violation. Don't legislate against instinct
+  unless a stronger formalism demands it; here none does — readability is a
+  value in this flavor.
+
+- **`<Name>Config` / `Input<Name>Config` keep their suffix** — the thing _is_
+  config; the name is the role. The Input/resolved split is a real boundary:
+  user config is an adapter concern, resolved config is what services receive.
 - **Defining the service type**: an explicit `type IconsService = {...}` and an
   inferred `type IconsService = ReturnType<typeof createIconsService>` are both
   fine. The architecture's extraction pressures decide when the explicit form
@@ -141,9 +154,9 @@ The questions every implementer hits in the first week, answered from the
   side-effect-free and deterministic. Anything with I/O, ambient state, or
   environment access is concrete and belongs behind a port.
 - **A `.port.ts` file contains the contract — and nothing that isn't the
-  contract.** Its raison d'être is the port itself (`IconSourcePort`);
-  supporting types may accompany it _only because they are part of the contract_
-  (a parameter shape, a result shape). A type that stands on its own — domain
+  contract.** Its raison d'être is the port itself (`IconSource`); supporting
+  types may accompany it _only because they are part of the contract_ (a
+  parameter shape, a result shape). A type that stands on its own — domain
   vocabulary, not contract piece — belongs in the model, and gets ejected there
   the moment it does. The reverse flows freely: ports use model types at will
   (`model < ports`). And no runtime code, ever — no constants, no enums, no
@@ -157,7 +170,7 @@ The questions every implementer hits in the first week, answered from the
   covers _runtime coupling_ only: a type import is still a dependency edge — the
   service DAG must stay acyclic, and `private/` stays sealed to type imports
   like everything else.
-- **Logging is an effect.** It goes through an injected `LoggerPort` like any
+- **Logging is an effect.** It goes through an injected `Logger` port like any
   other effect. No `console.*` below drivers/assembly.
 
 ## 5. No barrels — and what packaging does instead
@@ -199,10 +212,10 @@ One `cli.ts` (or `main.ts`) owns the wiring:
 - Per-subsystem `build<Name>Service()` helpers that instantiate concrete
   adapters and pass them to service factories. The helper is assembly code — it
   may import anything.
-- **Shared kernel instances are created once** at the root and threaded down:
-  one `const fs = createNodeFs()` passed to every disk-touching adapter — never
-  one per adapter. Central control of side-effect surfaces is the point of
-  assembly.
+- **A shared composition unit (`.service.ts` / `.adapter.ts`) is instantiated
+  once** at the root and threaded down: one `const fs = createNodeFs()` passed
+  to every disk-touching adapter — never one instance per consumer. Central
+  control of side-effect surfaces is the point of assembly.
 - Driver glue (arg parsing, command registration) and assembly share the file in
   simple programs — two hats, same place, fine until it grows (see
   [architecture](./architecture.md), Assembly).
