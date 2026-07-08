@@ -18,3 +18,6 @@ Rationale: a reader opens a manifest to learn what the package _is_ and
 _exposes_ before how its maintainers work on it. (Not enforceable by
 `sort-package-json`-style tools — they impose their own canonical order; manual
 until it hurts.)
+
+See also: [docs are the source of truth](./docs-are-the-source-of-truth.md) —
+methodology, not convention; read it before editing `docs/` or `skills/`.

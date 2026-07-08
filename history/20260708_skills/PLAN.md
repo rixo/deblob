@@ -1,11 +1,17 @@
 # Chapter PLAN — skills
 
-Scratch: the step queue and each future step's input material. Refines into
-step SPECs; cleaned at chapter consolidation.
+Scratch: the step queue and each future step's input material. Refines into step
+SPECs; cleaned at chapter consolidation.
 
 ## Status
 
-- `00_deblob` — spec'd, gate passed (2026-07-08). Implementation next.
+- `00_deblob` — implemented (2026-07-08): SKILL.md + 5 cards + scenarios.
+  Deviation note: L2b why-cards not materialized — the layer is conditional by
+  spec ("where 3–5 lines don't suffice") and no judgment block crossed the
+  threshold. Trigger to birth the first one: usage shows a block
+  under-motivating an agent (likeliest: crossing-services kernel-cracking).
+  Remaining gates: local plugin load (manual, rixo); spot-runs S1–S3 (no-skill
+  control vs with-skill).
 
 ## Step queue (each dissolves into its step's SPEC when spec'd)
 
@@ -22,6 +28,6 @@ step SPECs; cleaned at chapter consolidation.
 
 - Enforcement design for `5-docs` and PLAN hygiene lands somewhere in this
   chapter and/or the CLI (prescriptions already in sdd).
-- Exit per skill: with-skill spot-runs pass on scenarios drawn from its RED
-  list where the no-skill baseline fails (harness item in root PLAN —
-  downscoped to manual).
+- Exit per skill: with-skill spot-runs pass on scenarios drawn from its RED list
+  where the no-skill baseline fails (harness item in root PLAN — downscoped to
+  manual).

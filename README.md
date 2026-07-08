@@ -31,7 +31,7 @@ scope:
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [docs/architecture.md](./docs/architecture.md)                   | **Why** — the theory: layers, ports & adapters, the rules and their reasoning                                                                     |
 | [docs/implementation-guide.md](./docs/implementation-guide.md)   | **What** — one flavor made concrete: file naming, layouts, patterns (TypeScript/ESM, factory-injection)                                           |
-| _skills (planned)_                                               | **How** — the flight manual: lookup-grade rules for agents and daily use                                                                          |
+| [skills/](./skills/)                                             | **How** — the flight manual as agent skills: [deblob](./skills/deblob/SKILL.md) (architecture ground rules); commit / review / sdd skills coming  |
 | [docs/sdd.md](./docs/sdd.md)                                     | The workflow: spec-driven development, two axes (history / living docs), review gates                                                             |
 | [docs/self-review-checklist.md](./docs/self-review-checklist.md) | Working material — the ground-level self-review pass (will fold into a skill)                                                                     |
 | [history/](./history/)                                           | This project's own chapters — dogfooding the methodology: [GOAL](./history/GOAL.md), rolling [PLAN](./history/PLAN.md), [META](./history/META.md) |
