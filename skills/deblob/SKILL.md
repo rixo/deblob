@@ -46,7 +46,7 @@ another service.
 1. Implement per the cards.
 2. **Run** the guardrails — typecheck, coverage, `deblob check` where present.
    Run them; never simulate, never skip. Invocation commands come from the
-   project's own docs (CLAUDE.md, run skills).
+   project's own docs and skills.
 3. Iterate until green.
 4. Self-review (use the `deblob-review` skill if available).
 5. Only then hand off.
@@ -93,8 +93,3 @@ Link grammar: an imperative "read X" is part of the procedure. Anything under a
 links point into [knowledge/](knowledge/INDEX.md) — self-contained knowledge
 cards (~300 tokens each), question-indexed, each naming its source section in
 `docs/`.
-
-## Install (adopting repo)
-
-Add to the repo's CLAUDE.md: "This codebase follows the deblob architecture —
-load the `deblob` skill before writing code."

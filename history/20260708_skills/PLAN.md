@@ -26,17 +26,25 @@ SPECs; cleaned at chapter consolidation.
   rulings landed docs-first in sdd.md §4 (subject grammar, size, signal line,
   defer-to-spec, trailers, breaking≠NOTABLE, trivial-body litmus). See its SPEC.
 
+- `05_deblob-review` — implemented (2026-07-09): SKILL.md + scenarios; checklist
+  absorbed, `docs/self-review-checklist.md` deleted (tombstone considered, ruled
+  against — SPEC §5), three referrers rewired (guide, README, handling-failure).
+  See its SPEC.
+
 ## Step queue (each dissolves into its step's SPEC when spec'd)
 
-- `05_deblob-review` — RED material: self-review-checklist "honest limits"
-  section verbatim (tests-green→done pattern-match). Absorbs
-  `docs/self-review-checklist.md`, then tombstones it. Honest scope +
-  adversarial-subagent direction: see chapter GOAL.
 - `06_deblob-sdd` — RED material: section drift, PLAN sprawl, scratch wedged
   into step numbering, case-enumeration instead of domain operation.
 
 ## Carried notes
 
+- **Install sections removed from SKILL.md bodies** (2026-07-09, reverses the
+  step-00 "installation prescription" ruling): skill bodies follow authoritative
+  skill-authoring practice (frontmatter trigger + task instructions, nothing
+  else) and stay agent-agnostic — no CLAUDE.md mentions in shipping content. The
+  deterministic-trigger line ("load the skill before X") still wants a home in
+  README/plugin docs, phrased agent-agnostic (CLAUDE.md / AGENTS.md /
+  equivalent) — pending, chapter exit.
 - Enforcement design for `5-docs` and PLAN hygiene lands somewhere in this
   chapter and/or the CLI (prescriptions already in sdd).
 - Exit per skill: with-skill spot-runs pass on scenarios drawn from its RED list

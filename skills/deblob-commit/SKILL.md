@@ -90,8 +90,3 @@ Per judgment — the why behind the grammar:
   no-squash rationale
 - [meta](../deblob-sdd/knowledge/meta.md) — the methodology log, placement
   ladder
-
-## Install (adopting repo)
-
-Add to the repo's CLAUDE.md: "Commits follow deblob SDD conventions — load the
-`deblob-commit` skill before committing."
