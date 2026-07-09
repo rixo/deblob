@@ -124,6 +124,11 @@ form:
 - **Have a test assert the openness** — an input carrying an unseen case still
   passes; a re-enumeration fails the gate by its shape.
 
+Calling out meaningful cases remains welcome — illustrations, edge-case pins,
+detail on the tricky members — layered on the stated operation, never
+substituting for it. The failure is enumeration _in place of_ the general form,
+not the presence of examples.
+
 ---
 
 ## 2. Two axes: history vs living docs
