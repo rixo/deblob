@@ -1,7 +1,9 @@
 # Docs are the source of truth — everything else is a derived view
 
 Read this before touching `docs/` or `skills/`: it defines which file you edit
-when a rule changes, and what happens if you pick wrong.
+when a rule changes, and what happens if you pick wrong. Its companion,
+[prompt-optimized authoring](./prompt-optimized-authoring.md), defines the
+register the agent-facing side is written in.
 
 ## The model
 

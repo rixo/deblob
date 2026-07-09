@@ -20,4 +20,6 @@ _exposes_ before how its maintainers work on it. (Not enforceable by
 until it hurts.)
 
 See also: [docs are the source of truth](./docs-are-the-source-of-truth.md) —
-methodology, not convention; read it before editing `docs/` or `skills/`.
+methodology, not convention; read it before editing `docs/` or `skills/`. And
+[prompt-optimized authoring](./prompt-optimized-authoring.md) — the register
+agent-facing artifacts are written in.
