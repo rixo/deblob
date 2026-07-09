@@ -14,8 +14,9 @@
   four-skill set and method; **chapter PLAN carries the step queue and status —
   read it first when resuming**). Done: 00 `deblob` skill, 01 knowledge cards
   (`skills/*/knowledge/`), 02 guide cards (`implem/`), 03 assembly-is-not-blob,
-  04 `deblob-commit` skill. Next in queue: the review/sdd skills. Outstanding
-  gates: local plugin load + spot-runs (manual, rixo).
+  04 `deblob-commit` skill, 05 `deblob-review` skill (checklist absorbed +
+  deleted). Next in queue: the sdd skill. Outstanding gates: local plugin load +
+  spot-runs (manual, rixo).
 - **Pressure-test harness** — downscoped (2026-07-07): scenario _docs_ ride with
   each skill; runs start as manual spot-checks; the automation below only if
   wording iteration demands it (real cost: ~30 subagent runs per wording

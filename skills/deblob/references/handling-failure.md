@@ -42,4 +42,5 @@ Per judgment — not required for implementation.
 
 - [error-management](../knowledge/implem/error-management.md) — the full
   discipline
-- `docs/self-review-checklist.md` — the silent-failure defect class
+- [deblob-review](../../deblob-review/SKILL.md) — the silent-failure defect
+  class in the pre-checkpoint pass

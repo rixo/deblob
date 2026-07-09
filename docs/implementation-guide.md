@@ -277,8 +277,8 @@ _not_ the instinct of the average JS codebase:
   checking the discriminant; unexpected errors propagate.
 - **Absolutely no defensive catch.** No catch-just-in-case, no
   catch-log-continue, no `catch {}`. Swallowing a real failure is the worst
-  outcome available (see silent-failure class in the
-  [self-review checklist](./self-review-checklist.md)).
+  outcome available (see the silent-failure class in the
+  [deblob-review skill](../skills/deblob-review/SKILL.md)).
 - **Never lose the stack.** Wrap-and-rethrow uses `new Error(msg, { cause })`;
   the original error rides along.
 - **Report at the edge.** The driver decides presentation: expected,
