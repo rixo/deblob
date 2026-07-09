@@ -15,8 +15,9 @@
   read it first when resuming**). Done: 00 `deblob` skill, 01 knowledge cards
   (`skills/*/knowledge/`), 02 guide cards (`implem/`), 03 assembly-is-not-blob,
   04 `deblob-commit` skill, 05 `deblob-review` skill (checklist absorbed +
-  deleted). Next in queue: the sdd skill. Outstanding gates: local plugin load +
-  spot-runs (manual, rixo).
+  deleted), 06 `deblob-sdd` skill — four-skill set complete, manifest 0.1.0.
+  Queued: 07 consolidation-commit ruling (candidate). Outstanding gates: local
+  plugin load (`claude --plugin-dir <repo>`) + spot-runs (manual, rixo).
 - **Pressure-test harness** — downscoped (2026-07-07): scenario _docs_ ride with
   each skill; runs start as manual spot-checks; the automation below only if
   wording iteration demands it (real cost: ~30 subagent runs per wording

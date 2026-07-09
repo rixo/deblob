@@ -2,7 +2,7 @@
 
 One card per concept; each card is self-contained, provenance-stamped, and
 cross-linked. Pick by the question you're holding. (Reference material for the
-sdd-facing skills; the `deblob-sdd` SKILL.md arrives with its step.)
+sdd-facing skills: [deblob-sdd](../SKILL.md), `deblob-commit`.)
 
 ## The spec
 

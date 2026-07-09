@@ -31,13 +31,42 @@ SPECs; cleaned at chapter consolidation.
   against — SPEC §5), three referrers rewired (guide, README, handling-failure).
   See its SPEC.
 
+- `06_deblob-sdd` — implemented (2026-07-09): SKILL.md + scenarios; four-skill
+  set complete, manifest bumped 0.1.0; INDEX header note and README skills row
+  updated. See its SPEC.
+
 ## Step queue (each dissolves into its step's SPEC when spec'd)
 
-- `06_deblob-sdd` — RED material: section drift, PLAN sprawl, scratch wedged
-  into step numbering, case-enumeration instead of domain operation.
+- `07_arc-recursion` (candidate, not yet spec'd; from the 2026-07-09 facade
+  discussion — deliberately not rushed as one-bullet rulings). **The spine: a
+  branch/unit-of-work is a chapter at level 0** — the chapter's temporal shape
+  (opening GOAL → steps, each spec'ing only its own slice → consolidation into
+  living docs) recurses to commit scale (opening commit ships the SPEC →
+  progress commits, each carrying only what that commit knows → consolidation
+  commit covering the whole arc). Extends the fractal claim from the artifact
+  (quintet, four sizes — already law) to the arc's lifecycle. Three corollaries
+  fall out, replacing separate rulings: (a) defer-to-spec = steps don't restate
+  GOAL (already law, §4); (b) **message scope** = a commit states what only it
+  knows — deviations, gate results, surprises — and defers step context to the
+  `Spec:` trailer (today only the spec-SHIPPING commit is regulated; this closes
+  the gap for the commits after it); (c) **consolidation commit** covers the arc
+  — restates the grand Goal, quintet at arc scale; varnish: GitLab prefills MR
+  title+description from the branch's last commit, so the MR facade assembles
+  itself from the log instead of being authored. Degenerate case folds in: a
+  small arc = one commit carrying spec+work (current practice) — materialization
+  scales like the ladder; when unsure, one commit. Lands docs-first (sdd §3
+  consolidation + §4 commit grammar), then `deblob-sdd`/`deblob-commit` skills +
+  commits/chapters cards. Explicitly NOT ratified: repo-resolvable-references as
+  a general rule, granularity criterion (reviewer context switches) — parked
+  until a RED demands them (2026-07-09 noise-trap call).
 
 ## Carried notes
 
+- **Open micro-question** (2026-07-09, step 06 review): the deblob-sdd skill
+  unpacks "measured count" into defined-vs-measured (closed union → exhaustive
+  enumeration is correct); sdd §1 + operation-over-cases card carry only the
+  word "measured". Mirror the exemption sentence into both? (recommended,
+  unruled — rixo).
 - **Install sections removed from SKILL.md bodies** (2026-07-09, reverses the
   step-00 "installation prescription" ruling): skill bodies follow authoritative
   skill-authoring practice (frontmatter trigger + task instructions, nothing
