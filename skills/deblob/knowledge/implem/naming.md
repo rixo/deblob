@@ -2,8 +2,13 @@
 source: docs/implementation-guide.md §3
 ---
 
-# Naming in code — factories, types, adapters
+# Naming in code — explicitness, factories, types, adapters
 
+- **Names say what the thing is or does — explicitly.** No cryptic contractions
+  (`rnode`, `fnode`, `cfgMgr`) — a name the reader must decode failed. Function
+  names contain a verb (`resolveNode`, not `rnode`). Ceiling matches floor: as
+  explicit as necessary, no more — descriptive ≠ javaesque; the
+  no-mandatory-suffix ruling below guards that flank.
 - **Factories: `create<Name><Kind>`** — `createIconsService`,
   `createManifestSourceAdapter`, `createNodeFs`. One factory per composition
   unit, named export, no default export.
