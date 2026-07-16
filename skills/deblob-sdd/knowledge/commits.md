@@ -6,7 +6,9 @@ source: docs/sdd.md §4, "Commits as the lower level"
 
 **No-squash / meaningful commits.** The commit log IS documentation — WHY as
 much as WHAT. Squashing destroys knowledge (Linux kernel and git.git have known
-for decades). Micro-commits keep rebases light and review granular.
+for decades). Micro-commits keep rebases light and review granular. Binds
+**landed** history only (past = merged): ironing an open arc — rebase, reorder,
+reword — is normal, even desirable.
 
 A commit message is the quintet, compressed:
 
@@ -56,3 +58,13 @@ Labels and the spec pointer are **git trailers** — one final block after the
 quintet (`NOTABLE:`, `META:`, `Spec: history/<chapter>/<step>/`), never inline:
 trailer position makes them mechanically harvestable
 (`git log --format='%(trailers:key=META,valueonly)'`).
+
+**The arc — the chapter lifecycle at commit scale.** A branch replays the
+chapter's lifecycle in the log (the tree holds the artifact, the log holds the
+lifecycle): the **opening commit** ships the spec AND authors the arc's public
+face (goal-stating subject + MR-description-grade body — GitLab prefills MR
+title + description from the branch's _first_ commit; the goal is knowable at
+opening, detail added as known); **progress commits** state what only they know
+(deviations, gate results, surprises), deferring step context to `Spec:`; the
+**consolidation commit** closes the arc (grand Goal restated, quintet at arc
+scale). Small arc = one commit carrying spec + work — when unsure, one commit.

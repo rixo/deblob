@@ -37,28 +37,10 @@ SPECs; cleaned at chapter consolidation.
 
 ## Step queue (each dissolves into its step's SPEC when spec'd)
 
-- `07_arc-recursion` (candidate, not yet spec'd; from the 2026-07-09 facade
-  discussion — deliberately not rushed as one-bullet rulings). **The spine: a
-  branch/unit-of-work is a chapter at level 0** — the chapter's temporal shape
-  (opening GOAL → steps, each spec'ing only its own slice → consolidation into
-  living docs) recurses to commit scale (opening commit ships the SPEC →
-  progress commits, each carrying only what that commit knows → consolidation
-  commit covering the whole arc). Extends the fractal claim from the artifact
-  (quintet, four sizes — already law) to the arc's lifecycle. Three corollaries
-  fall out, replacing separate rulings: (a) defer-to-spec = steps don't restate
-  GOAL (already law, §4); (b) **message scope** = a commit states what only it
-  knows — deviations, gate results, surprises — and defers step context to the
-  `Spec:` trailer (today only the spec-SHIPPING commit is regulated; this closes
-  the gap for the commits after it); (c) **consolidation commit** covers the arc
-  — restates the grand Goal, quintet at arc scale; varnish: GitLab prefills MR
-  title+description from the branch's last commit, so the MR facade assembles
-  itself from the log instead of being authored. Degenerate case folds in: a
-  small arc = one commit carrying spec+work (current practice) — materialization
-  scales like the ladder; when unsure, one commit. Lands docs-first (sdd §3
-  consolidation + §4 commit grammar), then `deblob-sdd`/`deblob-commit` skills +
-  commits/chapters cards. Explicitly NOT ratified: repo-resolvable-references as
-  a general rule, granularity criterion (reviewer context switches) — parked
-  until a RED demands them (2026-07-09 noise-trap call).
+- `07_arc-recursion` — spec'd (2026-07-16), awaiting spec gate (rixo): see
+  `07_arc-recursion/SPEC.md`. Folds in the GitLab first-commit correction
+  (2026-07-16, reverses the 2026-07-09 last-commit belief — the MR facade is the
+  opening commit's job).
 
 ## Carried notes
 

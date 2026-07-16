@@ -50,7 +50,26 @@ Docs:            living docs affected — when any
 ## Granularity — no squash
 
 Meaningful micro-commits, never squashed: each commit's WHY survives only
-unsquashed. Micro-commits keep rebases light and review granular.
+unsquashed. Micro-commits keep rebases light and review granular. The stance
+binds **landed** history (past = merged): ironing an open arc's log — rebase,
+reorder, reword, fixup — is normal, even desirable. No-squash is never an excuse
+for sloppy commits.
+
+## The arc — the chapter lifecycle at commit scale
+
+A branch replays the chapter's lifecycle in the log:
+
+- **Opening commit** — ships the spec (in-tree + `Spec:` trailer) AND authors
+  the arc's public face: goal-stating subject, body that reads as an MR
+  description — GitLab prefills MR title + description from the branch's
+  **first** commit. Most of the face is knowable at opening (the goal); add
+  detail as it becomes known.
+- **Progress commits** — state what only this commit knows: deviations, gate
+  results, surprises. Step context defers to the `Spec:` trailer.
+- **Consolidation commit** — closes the arc: grand Goal restated, quintet at arc
+  scale; the arc's record in the log.
+
+Small arc = one commit carrying spec + work. When unsure: one commit.
 
 ## Labels — two, orthogonal; conflating them buries both
 
@@ -71,16 +90,17 @@ keeps them mechanically harvestable.
 
 ## When you catch yourself thinking…
 
-| Excuse                                     | Reality                                                                                    |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| "big task — the reviewer should see this"  | Salience is relative to the reviewer's queue, not your task. Run the litmus. ~6%.          |
-| "small change, a body is overkill"         | Run the drop litmus: why fully in subject AND no section content — else Goal, one line.    |
-| "squash the fixups — clean history"        | Squash destroys the why. Meaningful micro-commits ARE clean history.                       |
-| "I'll put the insight in the PR"           | PR prose vanishes from the log. `META:` rides the commit; grep finds it.                   |
-| "NOTABLE, and the insight goes in it too"  | Attention flag ≠ knowledge log. Two labels, orthogonal — conflating buries both.           |
-| "the SPEC explains it — copy it in"        | The spec ships in this commit. A copy stores it twice, then freezes stale. Goal + `Spec:`. |
-| "nothing to say for API, drop the section" | Name the empties in one line. Silent absence reads as skipped, not considered.             |
-| "breaking change — that's a NOTABLE"       | Breakage is an API fact + `!` in the subject. NOTABLE = queue-attention; run the litmus.   |
+| Excuse                                     | Reality                                                                                                |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| "big task — the reviewer should see this"  | Salience is relative to the reviewer's queue, not your task. Run the litmus. ~6%.                      |
+| "small change, a body is overkill"         | Run the drop litmus: why fully in subject AND no section content — else Goal, one line.                |
+| "squash the fixups — clean history"        | Squash destroys the why. Meaningful micro-commits ARE clean history.                                   |
+| "I'll put the insight in the PR"           | PR prose vanishes from the log. `META:` rides the commit; grep finds it.                               |
+| "NOTABLE, and the insight goes in it too"  | Attention flag ≠ knowledge log. Two labels, orthogonal — conflating buries both.                       |
+| "the SPEC explains it — copy it in"        | The spec ships in this commit. A copy stores it twice, then freezes stale. Goal + `Spec:`.             |
+| "nothing to say for API, drop the section" | Name the empties in one line. Silent absence reads as skipped, not considered.                         |
+| "breaking change — that's a NOTABLE"       | Breakage is an API fact + `!` in the subject. NOTABLE = queue-attention; run the litmus.               |
+| "`wip:` to open the branch, polish later"  | The MR prefills from the FIRST commit. Author the face at opening — or you owe a rebase before the MR. |
 
 ## Deeper
 

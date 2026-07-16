@@ -10,7 +10,7 @@
 
 - **Skills** — chapter in flight: `history/20260708_skills/` (**chapter PLAN
   carries the step queue and status — read it first when resuming**). Remaining:
-  07 consolidation-commit ruling (candidate); gates: local plugin load
+  07 arc-recursion (spec'd, awaiting spec gate); gates: local plugin load
   (`claude --plugin-dir <repo>`) + spot-runs (manual, rixo).
 - **CLI v0** — service DAG, module cycles, dependency matrix by suffix,
   composition rules, `private/` boundary, barrel detection; dogfood against a
@@ -34,11 +34,6 @@
 - **Pressure-test harness automation** — full design banked →
   `future/pressure-test-harness/` — blocked: only if skill-wording iteration
   demands it (manual spot-checks first).
-- **GitLab MR defaults — first commit, not last** (2026-07-16, corrects an
-  earlier belief): GitLab prefills MR title + description from the branch's
-  _first_ commit → opening commits deserve special care (goal-stating title +
-  description); later commits contribute additive detail only. Candidate:
-  commit-guidance touch (docs/skills).
 - **Pause-for-review-before-commit — canon candidate** (2026-07-16): agent
   presents diff + proposed message, waits for go; git index untouched (the
   reviewer's reviewed-files tracker). Personal workflow but SDD spirit — the

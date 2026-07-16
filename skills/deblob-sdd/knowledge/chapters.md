@@ -26,6 +26,11 @@ far as they're load-bearing and their premises settled; looser further out. Full
 up-front detail = waterfall cost (one early mistake trashes downstream); no
 forward spec = the ordering loses its constraint.
 
+**The lifecycle recurses too**: a branch replays the chapter's temporal shape at
+commit scale — opening commit ships the spec and authors the arc's face,
+progress commits state only what they know, a consolidation commit closes the
+arc ([commits](commits.md)).
+
 **The outermost chapter**: the project itself, rooted at `history/` —
 `history/GOAL.md` (the program's stable why), `history/PLAN.md` (roadmap scratch
 and the project board — [future](future.md); the file persists because the

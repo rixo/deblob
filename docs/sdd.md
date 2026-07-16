@@ -480,7 +480,8 @@ only pays if cards actually carry it.
   influencing agents is the entire value proposition — governed by the agent
   rule in §2: history for _why_, never for _what-is_.)
 - Scratch (PLAN, WIP) is cleaned when the work is consolidated for review/merge;
-  the knowledge migrates to clean steps + commit messages.
+  the knowledge migrates to clean steps + commit messages — and the arc closes
+  in the log with a consolidation commit (§4, the arc).
 - When a chapters directory gets unwieldy, move older ones to
   `history/archive/`. Filenames are the index — anything more structured is
   over-engineering until ~50 specs reveal real lookup patterns.
@@ -540,8 +541,11 @@ to catch it. Tie the gate to this failure mode, or it decays into ritual.
 **No-squash / meaningful commits.** The commit log IS documentation — WHY
 matters as much as WHAT. Squashing destroys knowledge (the Linux kernel and
 git.git have known this for decades). Micro-commits keep rebases light and
-review granular. **A commit message is SDD at level 0** (§3): the quintet as
-compressed sections, carrying the spec for a contained change:
+review granular. The stance binds **landed** history — the past is what's
+merged. An open arc's log is a working artifact: rebasing hard near the end
+(reorder, reword, fixup) is normal and desirable — no-squash is never an excuse
+for shipping a sloppy log. **A commit message is SDD at level 0** (§3): the
+quintet as compressed sections, carrying the spec for a contained change:
 
 ```
 Goal:            why this change exists
@@ -598,6 +602,33 @@ in sections. Trailer position is what makes them mechanically harvestable
 (`git log --format='%(trailers:key=META,valueonly)'`): the META harvest grep
 becomes structured extraction for free, and `Spec:` closes the level-0 ↔ level-1
 loop machine-followably.
+
+### The arc: the chapter lifecycle at commit scale
+
+The fractal covers the artifact — the quintet at four sizes (§3). It also covers
+the **lifecycle**, along its own dimension: the tree holds the artifact, the log
+holds the lifecycle. A branch/unit-of-work replays the chapter's temporal shape
+(opening GOAL → steps, each spec'ing only its own slice → consolidation into
+living docs) at commit scale:
+
+- **The opening commit** ships the spec (in-tree, plus the `Spec:` trailer) —
+  and authors the arc's **public face**: a goal-stating subject and a body that
+  reads as an MR description. GitLab prefills MR title + description from the
+  branch's _first_ commit, and most of the face is knowable at opening — the
+  goal; detail is added as it becomes known.
+- **Progress commits state what only they know** — deviations, gate results,
+  surprises — and defer step context to the `Spec:` trailer. Defer-to-spec
+  (above) extends from the spec-shipping commit to every commit after it.
+- **The consolidation commit closes the arc**: the grand Goal restated, the
+  quintet at arc scale — the arc's record in the log and the reviewer's entry
+  point into it.
+
+The degenerate case folds in: a small arc is one commit carrying spec + work —
+materialization scales like the ladder (§3). When unsure: one commit.
+
+Not ratified with the above, parked until practice demands them: repo-resolvable
+references as a general rule; a granularity criterion (reviewer context
+switches).
 
 ---
 
