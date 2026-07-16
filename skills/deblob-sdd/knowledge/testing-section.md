@@ -2,14 +2,14 @@
 source: docs/sdd.md §1 (section table, "On TDD and test ordering")
 ---
 
-# The Testing step — strategy, not catalog
+# The Testing section — strategy, not catalog
 
 The Testing section answers **"how do we prove this works as intended?"** — the
 verification strategy, **including completion criteria and gates** ("done
 when…"). Thinking _how do we verify_ before committing to an approach forces
 decoupling: can't test without IoC.
 
-- A _thinking_ step, not strict TDD. Strict TDD with agents works only under
+- A _thinking_ exercise, not strict TDD. Strict TDD with agents works only under
   tight supervision (its benefit: preventing tests that test wind);
   unsupervised, agents cheat grossly at it.
 - Test-first vs implementation-first: **out of scope for this methodology — it

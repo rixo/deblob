@@ -2,7 +2,7 @@
 source: docs/sdd.md §1, "The API section covers internal seams"
 ---
 
-# The API step — internal seams included
+# The API section — internal seams included
 
 "API" reads as the consumer contract; stopping there leaves a whole bug class
 unconstrained. A port improvised at code time gets cut at the wrong layer — and

@@ -2,7 +2,8 @@
 name: deblob-sdd
 description:
   Use when planning, structuring, or recording work — writing or amending
-  SPEC/GOAL/PLAN files, opening a chapter or step — in a repository with a
+  SPEC/GOAL/PLAN files, opening a chapter or step, capturing or staging future
+  work (backlog, ideas, the PLAN board, future/) — in a repository with a
   history/ directory of dated chapters and quintet-section specs
   (Goal/API/Testing/Implementation/Docs).
 ---
@@ -29,12 +30,16 @@ Goals → API → Testing → Implementation → Docs.
 **Depth is discretionary; the answer is not.** A section's minimum is the
 high-level answer to its question — never a word count.
 
-## Two axes — never mix
+## Three axes — never mix
 
 - **`history/`** — append-only, indexed by time; answers _why / how did we get
   here_. Never read a frozen chapter as present truth: past plans are not canon;
   their forward-looking parts died on contact with reality.
 - **Living docs** (READMEs) — always current; answer _what is it now_.
+- **Future** — the PLAN's `## Future` board (staged queue, ordered; `### Ideas`
+  = zero-cost capture pool) + `future/` unborn chapters (payload dirs, quintet
+  minus the date). State on the board only — never status dirs or draft suffixes
+  in the tree. Graduation = dating rename ([future](knowledge/future.md)).
 - Canon = living docs + the latest plans (outermost PLAN, active spec) only.
 
 ## Form — pick the ladder rung
@@ -50,9 +55,11 @@ on.
 
 ## PLAN hygiene
 
-A PLAN is scratch that consolidates continuously; every item is mortal: work
-begins → a chapter is born → the item dissolves into it. Spec-grade detail
-piling up in a PLAN item means a chapter wants to be born — open it.
+A PLAN is scratch that consolidates continuously; no item outlives its own
+ripening: work begins → a chapter is born → the item dissolves into it.
+Spec-grade detail piling up in a PLAN item means the item has outgrown its card
+— committed: open the chapter; not committed: materialize it into `future/` as
+an unborn chapter ([future](knowledge/future.md)).
 
 ## Spec the operation, not the cases
 
@@ -76,14 +83,15 @@ tricky members — on top of the stated operation, never in place of it.
 
 ## When you catch yourself thinking…
 
-| Excuse                                   | Reality                                                                                        |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| "this section sort of covers it"         | Each section answers ITS question. A drifted answer unconstrains the next step.                |
-| "the roadmap should carry this detail"   | Spec-grade detail in a PLAN item = a chapter wants to be born. Open it; the item dissolves.    |
-| "I'll add a step dir for these notes"    | Scratch has named homes (PLAN, META, research/). A fake step breaks learn-the-shape-once.      |
-| "list the cases — clearer than abstract" | Enumeration IN PLACE of the rule fails the unseen case. State the operation; cases illustrate. |
-| "spec's written; order was guidance"     | The order IS the mechanism. An unanswered upstream question = unconstrained downstream work.   |
-| "the old chapter says X, so X holds"     | Frozen ≠ current. History answers why; the present lives in living docs and the latest plans.  |
+| Excuse                                   | Reality                                                                                                |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| "this section sort of covers it"         | Each section answers ITS question. A drifted answer unconstrains the next section.                     |
+| "the roadmap should carry this detail"   | Spec-grade detail = the item outgrew its card. Chapter if committed; `future/` unborn chapter if not.  |
+| "I'll mark this future item's status"    | State lives on the board only. The tree is payload keyed by topic — no status dirs, no draft suffixes. |
+| "I'll add a step dir for these notes"    | Scratch has named homes (PLAN, META, research/). A fake step breaks learn-the-shape-once.              |
+| "list the cases — clearer than abstract" | Enumeration IN PLACE of the rule fails the unseen case. State the operation; cases illustrate.         |
+| "spec's written; order was guidance"     | The order IS the mechanism. An unanswered upstream question = unconstrained downstream work.           |
+| "the old chapter says X, so X holds"     | Frozen ≠ current. History answers why; the present lives in living docs and the latest plans.          |
 
 ## Deeper
 
@@ -92,6 +100,7 @@ Per judgment — the why behind each rule, in [knowledge/](knowledge/INDEX.md):
 - [forcing-function](knowledge/forcing-function.md) — why this order
 - [ladder](knowledge/ladder.md) / [chapters](knowledge/chapters.md) — forms,
   recursion, the outermost chapter
-- [two-axes](knowledge/two-axes.md) — why mixing rots both
+- [three-axes](knowledge/three-axes.md) — why mixing rots each axis
+- [future](knowledge/future.md) — the board, unborn chapters, graduation
 - [operation-over-cases](knowledge/operation-over-cases.md) — the enumeration
   failure mechanism

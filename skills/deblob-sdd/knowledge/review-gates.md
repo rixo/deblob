@@ -13,7 +13,7 @@ where it pays. Two gates:
    the cheapest moment. The gate approves **direction**: far-future detail is
    placeholder until its ground is active; challenging every projection is
    paralysis by analysis — and frozen plans aren't canon anyway
-   ([two-axes](two-axes.md)).
+   ([three-axes](three-axes.md)).
 2. **Test gate** — human reads the tests as the behavioral spec at
    consolidation. Tests go through the public API, so they read as behavior
    statements

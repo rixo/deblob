@@ -27,12 +27,17 @@ up-front detail = waterfall cost (one early mistake trashes downstream); no
 forward spec = the ordering loses its constraint.
 
 **The outermost chapter**: the project itself, rooted at `history/` —
-`history/GOAL.md` (the program's stable why), `history/PLAN.md` (roadmap
-scratch; the file persists because the project never consolidates, but **every
-item is mortal**: work begins → a chapter is born → the item dissolves into it;
-items stay thin; spec-grade detail piling up in an item means a chapter wants to
-be born), `history/META.md` ([meta](meta.md)). A PLAN allowed to hold work
+`history/GOAL.md` (the program's stable why), `history/PLAN.md` (roadmap scratch
+and the project board — [future](future.md); the file persists because the
+project never consolidates, but **no item outlives its own ripening**: work
+begins → a chapter is born → the item dissolves into it; items stay thin;
+spec-grade detail piling up means the item has outgrown its card — committed:
+open the chapter; not committed: materialize into `future/` as an unborn
+chapter), `history/META.md` ([meta](meta.md)). A PLAN allowed to hold work
 forever would bypass the whole system.
 
-Naming: `history/DATE_topic/` (+ issue ref when one exists). Archive older
-chapters to `history/archive/` when unwieldy; filenames are the index.
+Naming: `history/DATE_topic/` (+ issue ref when one exists). Reserved undated
+names at any chapter root: `GOAL.md`, `PLAN.md`, `SPEC.md`, `META.md`,
+`future/`, `archive/` — undated-vs-dated is the future-vs-born discriminator.
+Archive older chapters to `history/archive/` when unwieldy; filenames are the
+index.
