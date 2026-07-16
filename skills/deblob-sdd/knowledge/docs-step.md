@@ -1,5 +1,5 @@
 ---
-source: docs/sdd.md §1, "The 5-docs step"
+source: docs/sdd.md §1, "The Docs section"
 ---
 
 # The Docs step — the plan, upfront

@@ -12,10 +12,10 @@ tailoring it (see Grounding).
 ## 1. The core insight: ordering as a forcing function
 
 Asking the right questions in the right order forces good architecture. Each
-step **constrains** the next — skip it and the downstream step loses its
+section **constrains** the next — skip it and the downstream section loses its
 constraint.
 
-| Step               | What it forces                                                                                                                                                                               |
+| Section            | What it forces                                                                                                                                                                               |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goals**          | Articulate success before touching anything. Prevents building the wrong thing.                                                                                                              |
 | **API**            | Name the contracts you commit to — public surface _and_ internal seams. Prevents implementation-driven design and wrong-layer cuts.                                                          |
@@ -36,15 +36,15 @@ before moving on — not a word count.
 This is not process for its own sake. The constraints produce better
 architecture as a side effect.
 
-### The API step covers internal seams, not just the public surface
+### The API section covers internal seams, not just the public surface
 
 "API" reads as the consumer contract; stopping there leaves a whole bug class
 unconstrained. A port improvised at code time gets cut at the wrong layer — and
 a domain decision that slips to the far side of an injected boundary becomes
 unreachable through the real composition: unit tests stub the port, the decision
 disappears from every tested path, everything goes green while the actual wiring
-is broken. The spec is the cheap place to prevent this, so the API step forces
-naming, for every layer that has a contract:
+is broken. The spec is the cheap place to prevent this, so the API section
+forces naming, for every layer that has a contract:
 
 - the **ports** — the boundaries to be injected;
 - the **purity split** — what is a pure model function vs an effectful adapter;
@@ -68,35 +68,36 @@ injected boundary (service or model), and the API spec naming the port-vs-domain
 split is what guarantees that placement (see [architecture](./architecture.md),
 Testing).
 
-### The `5-docs` step is a forcing function — for the _living_ docs
+### The Docs section is a forcing function — for the _living_ docs
 
 Docs IS a forcing function: it forces you to **think about documentation
 implications, plan them, and track what living docs will need updating** — so
 docs don't get silently dropped (the corner every project cuts under time
 pressure).
 
-Crucially: **`5-docs` is the doc _plan_, not the docs.** It is the strategy for
-the living documentation (READMEs, usage docs). The living docs are written
-_from_ it — on the other axis (§2). Keeping these separate is the whole point:
-the spec plans the docs; the README _is_ the doc.
+Crucially: **the Docs section is the doc _plan_, not the docs.** It is the
+strategy for the living documentation (READMEs, usage docs). The living docs are
+written _from_ it — on the living-docs axis (§2). Keeping these separate is the
+whole point: the spec plans the docs; the README _is_ the doc.
 
-**And it is upfront homework, not a trailing nicety.** The docs section is
+**And it is upfront homework, not a trailing nicety.** The Docs section is
 answered at spec time — _how is this taught? which existing living docs are
 affected, from the get-go?_ — and reviewed at the spec gate (§4), before
 implementation runs. Being last in the quintet is reading order, not scheduling:
-it is the step every project glosses over under pressure (observed compliance
+it is the section every project glosses over under pressure (observed compliance
 without enforcement: zero), which is exactly why it is a hard requirement of the
 spec, not a wish for later. Homework before play.
 
 ### On TDD and test ordering
 
-"Testing" in the spec sequence is a _thinking_ step, not strict TDD. Strict TDD
-with agents is workable — but only under tight supervision; its benefit is
-preventing tests that test wind. Unsupervised, agents cheat grossly at it.
+The Testing section is a _thinking_ exercise, not strict TDD. Strict TDD with
+agents is workable — but only under tight supervision; its benefit is preventing
+tests that test wind. Unsupervised, agents cheat grossly at it.
 
-We hold no strong opinion on test-first vs implementation-first with agents —
-fast agent iteration makes discovery during implementation common, and tests can
-grind the flow. Genuinely unsettled.
+Test ordering itself — red-first vs implementation-first — is out of the
+methodology's scope, for now. Not for lack of conviction (red-first: a test
+never seen failing proves nothing); testing tactics are simply not what we
+provide.
 
 Our _mechanical_ forcing function is elsewhere: **100% coverage through the
 public API** (see [architecture](./architecture.md), Testing). Note this
@@ -131,20 +132,33 @@ not the presence of examples.
 
 ---
 
-## 2. Two axes: history vs living docs
+## 2. Three axes: history, living docs, the future
 
-The organizing principle. A project needs two different things, and each **rots
-if you mix it with the other**:
+The organizing principle. A project needs three different things, and each
+**rots if you mix it with another**:
 
-| Axis                      | Indexed by | Lifecycle           | Answers                                                |
-| ------------------------- | ---------- | ------------------- | ------------------------------------------------------ |
-| **History** (`history/`)  | Time       | Append-only archive | _Why_ / _how did we get here_ — decisions, constraints |
-| **Living docs** (READMEs) | Location   | Always-current      | _What is it right now_ — the API you use today         |
+| Axis                                 | Indexed by                        | Lifecycle                        | Answers                                                |
+| ------------------------------------ | --------------------------------- | -------------------------------- | ------------------------------------------------------ |
+| **History** (`history/`)             | Time                              | Append-only archive              | _Why_ / _how did we get here_ — decisions, constraints |
+| **Living docs** (READMEs)            | Location                          | Always-current                   | _What is it right now_ — the API you use today         |
+| **Future** (PLAN boards + `future/`) | Priority (board), topic (payload) | **Gestating** — born as chapters | _What's intended next_ — intent, not yet knowledge     |
 
 - History rots if you keep it current → it becomes lies about the past.
 - READMEs rot if you make them historical → stale half-updates.
+- The future rots if it outlives its truth → a backlog of lies: shipped work
+  still listed, abandoned intent read as commitment.
 
-Refusing to mix them keeps both honest.
+Refusing to mix them keeps each honest.
+
+**The asymmetry to internalize: two axes hold durable knowledge; the future
+holds chapters in gestation.** History is _preserved_ (append-only), living docs
+are _maintained_ (always-current); the future is kept honest by neither —
+**nothing on it stays**. Every object is on its way to being born or being let
+go: a board card dissolves the moment its work starts, an unborn chapter
+graduates into history, a chapter's future is swept at consolidation (§3).
+Corollary: the future earns no third _system_ — everything on it is plan
+material, built from machinery already defined (the board is a role of PLAN, the
+payload is a chapter minus its date — §3, the board and unborn chapters).
 
 **Rule for agents:** history answers _why_, never _what-is_. Current state lives
 in READMEs; a frozen chapter's constraints may be stale **by design**. Never
@@ -162,7 +176,7 @@ error as reading history for what-is.
   _favorably_ informed by the chronology: the spec appearing and evolving
   alongside the code it documents. You don't dissolve that into one giant doc —
   that mixes concerns and loses the timeline.
-- **Consolidation lives on the OTHER axis** — the living docs. That is where
+- **Consolidation lives on the living-docs axis** — never here. That is where
   "current state" is distilled and maintained. History never tries to be
   current; READMEs never try to be historical.
 - Raw _scratch_ (a churning PLAN, WIP notes) gets cleaned up when the work is
@@ -352,14 +366,17 @@ its directory:
 
 - **`history/GOAL.md`** — the program's stable why, the goal that outlives every
   chapter.
-- **`history/PLAN.md`** — the roadmap scratch where the _next chapters_ stage.
-  The same mortal object as a chapter PLAN; only the terminal event differs. The
-  outermost chapter never consolidates, so the file persists — but **every item
-  in it is mortal**: the moment an item's work begins, a chapter is born and the
-  item dissolves into it (payload moves to the chapter's spec, the item
-  disappears). Items stay **thin** — what, why staged, rough order. Spec-grade
-  detail accumulating in an item is the smell that a chapter wants to be born.
-  This mortality is load-bearing: a PLAN allowed to hold work indefinitely is a
+- **`history/PLAN.md`** — the roadmap scratch where the _next chapters_ stage,
+  and the project's **board** (below). The same kind of object as a chapter
+  PLAN; only the terminal event differs. The outermost chapter never
+  consolidates, so the file persists — but **no item in it outlives its own
+  ripening**: the moment an item's work begins, a chapter is born and the item
+  dissolves into it (payload moves to the chapter's spec, the item disappears).
+  Items stay **thin** — what, why staged, rough order. Spec-grade detail
+  accumulating in an item is the smell that the item has outgrown its card: work
+  committed → a chapter is born; not committed → the payload materializes into
+  `future/` as an unborn chapter (below). Either way the line stays thin. This
+  turnover is load-bearing: a PLAN allowed to hold work indefinitely is a
   standing bypass of the entire system — everything lives in scratch, no
   chapters are born, no gates fire, history stays empty.
 - **`history/META.md`** — project-spanning methodology insights, same bar as
@@ -371,6 +388,78 @@ a scale the theory hadn't named. It also dissolved a misnamed doc: a
 "ground-rulings inbox" (rulings and staged work awaiting their home) is not a
 separate doc kind — it is the outermost PLAN.
 
+### The future: the board and unborn chapters
+
+The third axis (§2), and the last to get its designed home. Everything on it is
+plan material in gestation, so it earns no third system — the machinery is
+entirely the existing one: the board is a role of `PLAN.md`; the payload is a
+chapter minus its date. What was actually missing is one place in that
+machinery: a home for an item too fat for a PLAN line and too uncommitted for a
+chapter — one that can stay future a long time while collecting a goal, a
+proto-plan, research.
+
+Two pieces, and a hard separation between them: orchestration state lives on the
+board, all of it; payload lives in the tree, none of the state.
+
+- **The board is `PLAN.md`'s `## Future` section.** Its body is the staged queue
+  — ordered, top item = the next chapter to be born. Staged means _will do_,
+  nothing more: a card may carry a fully-specified unborn chapter or a bare name
+  with everything TBD. One marked subsection, **`### Ideas`**, is the capture
+  pool — maybes, unordered, the entry bar deliberately on the floor so a passing
+  thought costs nothing to keep. The structure mirrors the semantics: commitment
+  is a plan's default and goes unmarked; the maybes are the exception and carry
+  the label. **Position is priority**: inserting a staged card means deciding
+  what it beats. Everything else rides as annotation — `— blocked: <what>`, the
+  payload pointer, tags (below). Moves are commits, so the board's history is
+  `git log` on one file; graduation (below) takes a card off the board the
+  moment its work begins.
+- **`future/` holds the payload — an unborn chapter each.** A future item that
+  has collected material is a chapter that hasn't been born yet: same
+  materialization ladder, same quintet, same internal rules — minus the date.
+  `future/<topic>/` — a directory always, per the all-dirs rule (§3), its
+  contents picking their rung like any move: a single file to start, GOAL, PLAN,
+  research files as material accrues, growth in place. Nothing about ripeness,
+  stage, or priority is encoded in the tree — no status directories, no `draft`
+  suffixes. Observed in the field: file-tree backlogs rot precisely there —
+  state encoded in locations nobody moves, `ideas/` entries long shipped,
+  `.draft.md` twins outliving their graduated originals. Payload keyed by topic
+  has no state to go stale.
+
+**A card is one line**: what, why, a pointer to its payload once materialized,
+and optional **self-service tags** — size, area, depth (intended involvement:
+drive-by / feature / ownership) — a defined vocabulary so a contributor or an
+agent can pick work matching their bandwidth, experience, and commitment.
+Strictly opt-in: absence means unclassified, never wrong.
+
+**Graduation is a rename.** The moment work begins, the payload gains its date:
+`git mv history/future/<topic> history/<date>_<topic>` — unborn becomes born, in
+place, one motion; the card dissolves with it, as every PLAN item does when its
+work begins. Nothing is copied, so nothing is left behind to rot — the anti-rot
+is structural, not disciplinary. The all-dirs rule pays again here: graduation
+is _always_ a plain rename, never a file→dir conversion.
+
+The fractal holds. Any chapter may grow its own `future/` for ideas surfacing
+mid-work — capture is one new `future/<topic>/` with one file inside, no
+ceremony. **Consolidation sweeps it empty**: each item graduates into a step,
+hoists to the parent's `future/`, or dies with the scratch. A chapter closes
+with no `future/` left behind — the sweep is part of the existing consolidation
+motion (§2), when visibility on what became past and what remains future is
+total. This is also the review forcing function, such as it is: `captured:`
+dates stamped on each item keep age visible, and every birth and consolidation
+puts the neighbors in view.
+
+One invariant keeps board and tree honest, and it is mechanically checkable:
+**cards and `future/` entries are a bijection** — every entry has a card, every
+payload pointer resolves. That is the entire consistency surface.
+
+What this buys: a home for pre-commitment design capture — fat parked items stop
+bloating the PLAN or forcing premature chapter births; a capture ritual for
+mid-work ideas; graduation that leaves no corpse. What it doesn't: no scheduled
+review — staleness is visible and adjacency-swept, not enforced; a flat
+`future/` strains at scale exactly like the chapter list, with the same answer
+(filenames are the index until real lookup patterns emerge); the tag vocabulary
+only pays if cards actually carry it.
+
 ### Terminology
 
 - **Chapter** — a folder for one task/feature: `history/DATE_ISSUE_topic/`. The
@@ -379,6 +468,10 @@ separate doc kind — it is the outermost PLAN.
   `01_`, …); itself any level of the ladder.
 - **Section** — a spec part (`1-goals`, `2-api`, …) — embedded in `SPEC.md`
   (level 1), split into files (level 2), or carried inside steps (level 3).
+- **Board / card** — the orchestration role of a PLAN: sections as columns,
+  one-line items as cards, position as priority.
+- **Unborn chapter** — a future item's materialized payload in `future/`: a
+  chapter minus its date. Graduates by rename.
 
 ### Lifecycle & growth
 
@@ -391,6 +484,9 @@ separate doc kind — it is the outermost PLAN.
 - When a chapters directory gets unwieldy, move older ones to
   `history/archive/`. Filenames are the index — anything more structured is
   over-engineering until ~50 specs reveal real lookup patterns.
+- Reserved undated names at any chapter root: `GOAL.md`, `PLAN.md`, `SPEC.md`,
+  `META.md`, `future/`, `archive/`. The date prefix keeps chapters
+  collision-free; undated-vs-dated is also the future-vs-born discriminator.
 
 ---
 
@@ -510,7 +606,7 @@ loop machine-followably.
 **We combine established traditions, we don't invent.** Direct ancestors: TDD
 (Beck) — the canonical forcing function, lifted to spec level;
 Design-by-Contract (Meyer); Readme-Driven Development (Preston-Werner) — our
-docs step is this; Literate Programming (Knuth); ADRs; the Linux kernel /
+Docs section is this; Literate Programming (Knuth); ADRs; the Linux kernel /
 git.git workflow — plain text, meaningful commits, discipline, not tooling (our
 no-squash philosophy comes from here). Academic: Piskala (2026) names
 spec-anchored as the sweet spot and warns against over-specification; Seshia et
@@ -553,16 +649,23 @@ agents to verify deterministic properties is the wrong tool for the job).
 
 ## Open / unsettled (honest gaps, not omissions)
 
-- **Test vs implementation order** with agents (§1) — no conviction yet.
+- **Test vs implementation order** with agents (§1) — conviction exists
+  (red-first, on falsifiability grounds), a prescription doesn't; tactics out of
+  scope.
 - **README/living-doc structure** (§2) — sections not locked; this is the next
-  normalization target, and the weaker half of the two-axis model in practice
-  (the history axis is far more worked out than the living-docs axis).
+  normalization target, and the least worked-out axis in practice (history is
+  far ahead; the future model at least has a fresh design — below).
 - **When does scratch (PLAN) get cleaned, by whom** — "at consolidation" in
   principle; the cleanup-into-steps motion hasn't been practiced enough to
   prescribe.
 - **Research-step internal conventions** (§3) — the move kind is adopted; what a
   _good_ research step looks like inside (structure, exit criteria, how it hands
   off to the spec it feeds) is unpracticed.
+- **The future model** (§3, the board and unborn chapters) — fresh design,
+  unpracticed: the column names, the tag vocabulary (size / area / depth), and
+  the no-scheduled-review stance all await contact with real usage. Distinct and
+  still open: the flat `history/` dir straining at 250+ entries — mechanical fix
+  (year subdirs / index), undesigned.
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-source: docs/sdd.md §1 (step table, "On TDD and test ordering")
+source: docs/sdd.md §1 (section table, "On TDD and test ordering")
 ---
 
 # The Testing step — strategy, not catalog
@@ -12,9 +12,10 @@ decoupling: can't test without IoC.
 - A _thinking_ step, not strict TDD. Strict TDD with agents works only under
   tight supervision (its benefit: preventing tests that test wind);
   unsupervised, agents cheat grossly at it.
-- Test-first vs implementation-first with agents: **genuinely unsettled** — fast
-  agent iteration makes mid-implementation discovery common, and tests can grind
-  the flow. No strong opinion held; don't pretend one.
+- Test-first vs implementation-first: **out of scope for this methodology — it
+  imposes no tactic, and never present one as its rule.** A project or team is
+  free to adopt their own; follow theirs when stated. (Conviction exists —
+  red-first, falsifiability — but tactics aren't what this method provides.)
 - The _mechanical_ forcing function lives elsewhere: **100% coverage through the
   public API**
   ([arch testing-contract](../../deblob/knowledge/testing-contract.md)) — which

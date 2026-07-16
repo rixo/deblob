@@ -1,5 +1,5 @@
 ---
-source: docs/sdd.md §1, "The API step covers internal seams"
+source: docs/sdd.md §1, "The API section covers internal seams"
 ---
 
 # The API step — internal seams included
