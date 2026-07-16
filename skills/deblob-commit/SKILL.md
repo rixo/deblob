@@ -47,13 +47,17 @@ Docs:            living docs affected — when any
 - Body drops entirely only under a strict litmus: the subject fully states the
   why AND no section would carry content (`style(docs): prettier reflow`).
 
-## Granularity — no squash
+## Granularity — no squash, standalone
 
 Meaningful micro-commits, never squashed: each commit's WHY survives only
-unsquashed. Micro-commits keep rebases light and review granular. The stance
-binds **landed** history (past = merged): ironing an open arc's log — rebase,
-reorder, reword, fixup — is normal, even desirable. No-squash is never an excuse
-for sloppy commits.
+unsquashed. Micro-commits keep rebases light and review granular — and **each
+stands alone**: a commit strives for a full, functional repo state, docs in sync
+(the spec with its implementation, the plan update with the change that surfaced
+it). Aim, not absolute — living docs legitimately consolidate at arc close
+(below) — but small never means partial. The no-squash stance binds **landed**
+history (past = merged): ironing an open arc's log — rebase, reorder, reword,
+fixup — is normal, even desirable. No-squash is never an excuse for sloppy
+commits.
 
 ## The arc — the chapter lifecycle at commit scale
 
@@ -101,6 +105,7 @@ keeps them mechanically harvestable.
 | "nothing to say for API, drop the section" | Name the empties in one line. Silent absence reads as skipped, not considered.                         |
 | "breaking change — that's a NOTABLE"       | Breakage is an API fact + `!` in the subject. NOTABLE = queue-attention; run the litmus.               |
 | "`wip:` to open the branch, polish later"  | The MR prefills from the FIRST commit. Author the face at opening — or you owe a rebase before the MR. |
+| "cleaner as two commits: code, then docs"  | Each commit stands alone — full repo state, docs in sync. Split by change, never by file kind.         |
 
 ## Deeper
 

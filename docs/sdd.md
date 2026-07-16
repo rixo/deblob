@@ -541,11 +541,15 @@ to catch it. Tie the gate to this failure mode, or it decays into ritual.
 **No-squash / meaningful commits.** The commit log IS documentation — WHY
 matters as much as WHAT. Squashing destroys knowledge (the Linux kernel and
 git.git have known this for decades). Micro-commits keep rebases light and
-review granular. The stance binds **landed** history — the past is what's
-merged. An open arc's log is a working artifact: rebasing hard near the end
-(reorder, reword, fixup) is normal and desirable — no-squash is never an excuse
-for shipping a sloppy log. **A commit message is SDD at level 0** (§3): the
-quintet as compressed sections, carrying the spec for a contained change:
+review granular — and **each stands alone**: a commit strives for a full,
+functional repo state, docs in sync — the spec with its implementation, the plan
+update with the change that surfaced it. An aim, not an absolute (e.g. living
+docs legitimately consolidate when an arc closes — the arc, below); but small
+never means partial. The no-squash stance binds **landed** history — the past is
+what's merged. An open arc's log is a working artifact: rebasing hard near the
+end (reorder, reword, fixup) is normal and desirable — no-squash is never an
+excuse for shipping a sloppy log. **A commit message is SDD at level 0** (§3):
+the quintet as compressed sections, carrying the spec for a contained change:
 
 ```
 Goal:            why this change exists

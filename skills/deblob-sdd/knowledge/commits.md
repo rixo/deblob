@@ -6,9 +6,13 @@ source: docs/sdd.md §4, "Commits as the lower level"
 
 **No-squash / meaningful commits.** The commit log IS documentation — WHY as
 much as WHAT. Squashing destroys knowledge (Linux kernel and git.git have known
-for decades). Micro-commits keep rebases light and review granular. Binds
-**landed** history only (past = merged): ironing an open arc — rebase, reorder,
-reword — is normal, even desirable.
+for decades). Micro-commits keep rebases light and review granular — and each
+**stands alone**: a commit strives for a full, functional repo state, docs in
+sync (the spec with its implementation, the plan update with the change that
+surfaced it). Aim, not absolute — living docs legitimately consolidate at arc
+close (below); small never means partial. No-squash binds **landed** history
+only (past = merged): ironing an open arc — rebase, reorder, reword — is normal,
+even desirable.
 
 A commit message is the quintet, compressed:
 
