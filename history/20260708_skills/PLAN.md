@@ -8,8 +8,8 @@ SPECs; cleaned at chapter consolidation.
 - `00_deblob` — implemented (2026-07-08): SKILL.md + 5 cards + scenarios.
   Deviation note: L2b why-cards not materialized at first — then step 01
   materialized the layer corpus-wide as `skills/*/knowledge/` (supersedes the
-  on-demand trigger). Remaining gates: local plugin load (manual, rixo);
-  spot-runs S1–S3 (no-skill control vs with-skill).
+  on-demand trigger). Remaining gates — deferred (2026-07-17, rixo): local
+  plugin load (manual); spot-runs S1–S3 (no-skill control vs with-skill).
 - `01_knowledge-cards-adoption` — implemented (2026-07-08): opened with a
   contained research move (36 cards + INDEX), then adoption — the skills
   knowledge layer born (`skills/{deblob,deblob-sdd}/knowledge/`), frontmatter
@@ -35,12 +35,16 @@ SPECs; cleaned at chapter consolidation.
   set complete, manifest bumped 0.1.0; INDEX header note and README skills row
   updated. See its SPEC.
 
+- `07_arc-recursion` — implemented (2026-07-17): the arc landed in sdd §4 +
+  deblob-commit/commits/chapters surfaces; two gate corrections folded (face
+  mostly knowable at opening; no-squash binds landed history only). Same-day
+  follow-up ruling: standalone commits — each commit strives for a full,
+  functional repo state, docs in sync. See its SPEC. Dogfood gate pending: the
+  next real multi-commit arc runs the grammar end to end.
+
 ## Step queue (each dissolves into its step's SPEC when spec'd)
 
-- `07_arc-recursion` — spec'd (2026-07-16), awaiting spec gate (rixo): see
-  `07_arc-recursion/SPEC.md`. Folds in the GitLab first-commit correction
-  (2026-07-16, reverses the 2026-07-09 last-commit belief — the MR facade is the
-  opening commit's job).
+- (empty — chapter heads toward consolidation; carried notes below still open)
 
 ## Carried notes
 

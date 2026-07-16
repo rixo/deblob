@@ -9,9 +9,10 @@
 ## Future
 
 - **Skills** — chapter in flight: `history/20260708_skills/` (**chapter PLAN
-  carries the step queue and status — read it first when resuming**). Remaining:
-  07 arc-recursion (spec'd, awaiting spec gate); gates: local plugin load
-  (`claude --plugin-dir <repo>`) + spot-runs (manual, rixo).
+  carries the step queue and status — read it first when resuming**). Steps
+  00–07 landed; remaining: chapter consolidation + carried notes. Gates —
+  deferred (2026-07-17, rixo): local plugin load (`claude --plugin-dir <repo>`)
+  and spot-runs (manual).
 - **CLI v0** — service DAG, module cycles, dependency matrix by suffix,
   composition rules, `private/` boundary, barrel detection; dogfood against a
   production codebase. Opens with a research move (boundary-detection approach,
@@ -20,7 +21,7 @@
   `source:` stamps in `skills/*/knowledge|references/`; stamp-text ↔ heading
   matching rule to spec.
 - **Scaffold** — chapter `history/20260707_scaffold/` implemented; remaining:
-  manual plugin-load gate (rixo).
+  manual plugin-load gate — deferred (2026-07-17, rixo).
 - **Arch pass** — UI-zone formal holes (F1–F3) + accumulated doc touches →
   `future/arch-pass/` — blocked: svench taxonomy feeds the F1–F3 resolution.
 - **README/living-doc structure** — next normalization target (sdd open
