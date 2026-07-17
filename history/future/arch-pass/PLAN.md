@@ -37,3 +37,9 @@ Resolution material: `future/svench-flavor/` (taxonomy sketch).
   name-by-role ruling (2026-07-08, skills chapter step 02: bare role names,
   qualify only to disambiguate) — rename, then propagate to the arch cards
   mirroring them (layer-ports, crossing-services ref).
+- **Owned by the cli chapter, listed here for inventory completeness** (both
+  land with the cli layers detector step, 2026-07-17 rulings — see
+  `20260710_cli/` PLAN + violation catalog): (a) rule 4 purity-is-declared
+  clarification — prose reads permissive, ruled default-concrete; (b) rules 6/7
+  enumeration gains blob — "only assembly" covers it, the "not by …" list omits
+  it; ruled: composition/privacy seals bind blob as importer.

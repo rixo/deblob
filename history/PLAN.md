@@ -13,13 +13,12 @@
   00–07 landed; remaining: chapter consolidation + carried notes. Gates —
   deferred (2026-07-17, rixo): local plugin load (`claude --plugin-dir <repo>`)
   and spot-runs (manual).
-- **CLI v0** — service DAG, module cycles, dependency matrix by suffix,
-  composition rules, `private/` boundary, barrel detection; dogfood against a
-  production codebase. Opens with a research move (boundary-detection approach,
-  config shape, ts-morph vs madge/dpdm, output format — no design yet).
-  Companion: derived-view staleness check — diff `docs/` sections against
-  `source:` stamps in `skills/*/knowledge|references/`; stamp-text ↔ heading
-  matching rule to spec.
+- **CLI v0** — chapter in flight: `history/20260710_cli/` (chapter PLAN carries
+  decisions, step queue, engine research — read it first when resuming). Engine
+  ruled (oxc, 2026-07-17); next: step 01 extraction-core. Companion, ruled to
+  the `deblob docs` command family: derived-view staleness check — diff `docs/`
+  sections against `source:` stamps in `skills/*/knowledge|references/`;
+  stamp-text ↔ heading matching rule to spec.
 - **Scaffold** — chapter `history/20260707_scaffold/` implemented; remaining:
   manual plugin-load gate — deferred (2026-07-17, rixo).
 - **Arch pass** — UI-zone formal holes (F1–F3) + accumulated doc touches →
