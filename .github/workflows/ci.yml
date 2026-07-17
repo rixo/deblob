@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm --filter deblob typecheck
+      - run: pnpm --filter deblob test
+
+  # musl smoke: the napi platform matrix ships linux-*-musl bindings; the
+  # recurring downstream Alpine failures are package-manager artifacts, not
+  # missing support (see the engine capability matrix). This proves our
+  # extraction runs green on a musl libc.
+  alpine:
+    runs-on: ubuntu-latest
+    container: node:24-alpine
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install -g pnpm@10.12.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter deblob test
+
+  # wasm fallback: the wasm32-wasi bindings are platform-filtered optional
+  # deps — never auto-installed on real platforms. Install them explicitly
+  # (version read from our exact pins, no drift), remove the native
+  # bindings, and prove the whole suite stays green through WASI.
+  wasm-fallback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - name: Install wasm bindings at the pinned engine versions
+        run: |
+          PARSER_VERSION=$(node -p "require('./packages/deblob/package.json').dependencies['oxc-parser']")
+          RESOLVER_VERSION=$(node -p "require('./packages/deblob/package.json').dependencies['oxc-resolver']")
+          pnpm --filter deblob add -D "@oxc-parser/binding-wasm32-wasi@${PARSER_VERSION}" "@oxc-resolver/binding-wasm32-wasi@${RESOLVER_VERSION}"
+      - name: Remove native bindings
+        run:
+          rm -rf node_modules/.pnpm/@oxc-parser+binding-linux*
+          node_modules/.pnpm/@oxc-resolver+binding-linux*
+      - run: pnpm --filter deblob test

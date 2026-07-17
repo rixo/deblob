@@ -27,8 +27,8 @@ Success looks like:
 - The package's own code dogfoods the architecture: ports as type-only
   contracts, the oxc engine as an adapter, orchestration as a service, pure
   graph types as model.
-- CI is green on glibc and musl (wasm-fallback reachability proven by an Alpine
-  smoke job).
+- CI is green on glibc and musl (Alpine smoke job), and the wasm fallback is
+  proven correct under WASI (see the reachability finding in Implementation).
 
 Out of scope, explicitly: config file loading (`deblob.config.ts` parsing is a
 later step — extraction takes explicit inputs), any detector, any CLI surface.
@@ -73,11 +73,19 @@ imports/re-exports with per-specifier type-only flags, dynamic imports,
 external, or unresolved. The oxc adapter is the stock implementation; the
 contract must not leak oxc shapes (spans, napi types).
 
+Amended at implementation: each import record carries a `literal` flag — a
+non-literal dynamic-import expression (`import(expr)`, `require(expr)` alike) is
+unresolvable by construction and must surface as a diagnostic **without touching
+resolution**. Found red-first: the raw expression text can falsely resolve (a
+parameter named `path` hit the node builtin).
+
 ### Flavor port (`flavor.port.ts` — `FlavorResolver`)
 
-The naming-scheme axis as an interface: given a path, yield layer
-classification, service-root attribution, `private/` membership. Path-only
-decidable — no file contents. Stock implementation: `ts-suffixes-factories`.
+The naming-scheme axis as an interface: yield layer classification, service-root
+attribution, `private/` membership. Path-only decidable — no file contents — but
+**set-based** (amended at implementation): service-root discovery needs the
+sibling listing, so a flavor classifies the whole coverage set in one call
+rather than path by path. Stock implementation: `ts-suffixes-factories`.
 
 Stock classification rules (interpreting architecture.md — flag at review if any
 reading is off):
@@ -99,6 +107,13 @@ A custom flavor is a user-supplied implementation of this port (later wired via
 `deblob.config.ts`) — nothing in this step may assume the stock flavor beyond
 the assembly that instantiates it.
 
+Open, punted to the detector/config steps: `*.spec.ts` classification. Stock
+flavor lands spec files in blob (no layer suffix match); but blob importing a
+service will fire composition rules once detectors exist, and colocated specs
+legitimately import their subject. The arch says "test setup is assembly" —
+whether that means flavor-level classification, assembly designation via config,
+or a detector-level stance is undecided here.
+
 ### Graph build (service)
 
 Orchestration consuming both ports: coverage set in → parse every file → resolve
@@ -114,8 +129,10 @@ tests written failing first, commits land green.
 Case list (= the matrix's verified forms + classification):
 
 - `import type` statement; inline mixed `{ mk, type T }` (runtime edge,
-  specifier kinds preserved); `export type {} from`; `export * from`; dynamic
-  `import()`; `require()` — including a file with no `require` at all (prefilter
+  specifier kinds preserved); `export type {} from`; `export * from`;
+  side-effect `import "mod"`; dynamic `import()` — literal and non-literal
+  (diagnostic); `require()` — literal, non-literal (diagnostic), argument-less
+  (skipped: not an import), and a file with no `require` at all (prefilter
   negative path).
 - Resolution: tsconfig `paths` alias, `.js`→`.ts` via `extensionAlias`, package
   `exports` subpaths, `.mts`/`.cts` files, unresolvable specifier surfaced as
@@ -144,9 +161,16 @@ smoke job (proves the musl/wasm fallback path loads and extracts correctly).
   CLI step that ships a `bin`.
 - **CI**: new `.github/workflows/` job — pnpm install, root `lint`, package
   `typecheck` + `test`; second job in an Alpine (musl) container running the
-  extraction tests (wasm fallback reachable; known downstream failures are
-  package-manager artifacts, see matrix). `deblob check` self-run joins CI once
-  the binary exists (later step).
+  extraction tests (known downstream failures are package-manager artifacts, see
+  matrix). `deblob check` self-run joins CI once the binary exists (later step).
+  Wasm-reachability finding (at implementation): the wasm32-wasi bindings are
+  platform-filtered optional deps — package managers never auto-install them on
+  real platforms, so the fallback is NOT reachable by default; a third CI job
+  installs them explicitly (versions read from our pins) with natives removed
+  and runs the whole suite through WASI — proving fallback correctness, not
+  default reachability. Making it reachable at runtime for consumers stays an
+  option (explicit dep), rejected for now: weight for every consumer against a
+  package-manager-artifact failure mode.
 - **oxc pins**: exact versions (no ranges) for `oxc-parser`, `oxc-resolver`;
   `@oxc-project/types` in lockstep. Renovate/bump hygiene is manual until churn
   proves otherwise.
