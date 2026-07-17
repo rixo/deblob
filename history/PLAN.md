@@ -12,7 +12,9 @@
   carries the step queue and status — read it first when resuming**). Steps
   00–07 landed; remaining: chapter consolidation + carried notes. Gates —
   deferred (2026-07-17, rixo): local plugin load (`claude --plugin-dir <repo>`)
-  and spot-runs (manual).
+  and spot-runs (manual). Public install path validated (2026-07-17, rixo):
+  `npx skills add rixo/deblob` succeeded from another project — "skills
+  installable from the repo alone" evidenced.
 - **CLI v0** — chapter in flight: `history/20260710_cli/` (chapter PLAN carries
   decisions, step queue, engine research — read it first when resuming). Engine
   ruled (oxc, 2026-07-17); next: step 01 extraction-core. Companion, ruled to
