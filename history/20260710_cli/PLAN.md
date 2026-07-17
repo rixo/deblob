@@ -152,18 +152,19 @@ identity).
 
 ## Step queue (provisional)
 
-- `00_engine-research` — the research move: capability matrix in `research/`,
-  ruling made (oxc, see the engine decision). Remaining: write the step's record
-  (ruling + rationale formalized) when the chapter's steps start cutting — or
-  dissolve into 01's spec if a separate record adds nothing.
-- `01_extraction-core` — package scaffold made real (`packages/deblob` is
-  currently the name-reservation stub: no tsconfig, no vitest, no build —
-  scaffold = tsconfig, vitest + v8 coverage wired to the 100%-through-the-
-  public-API bar, exact-pinned oxc deps, CI job running `test` + `deblob check`
-  on itself once it exists) + import-graph extraction: type-only tagged edges,
-  resolution, `require()` prefilter walk; nodes classified through the Flavor
-  port at graph build (see the flavor decision). First red-green target (testing
-  strategy above). The CLI's own code dogfoods the quintet.
+- `00_engine-research` — dissolved into 01's SPEC (2026-07-17): the ruling +
+  rationale already live in the engine decision above and
+  `research/engine-capability-matrix.md`; a separate record added nothing.
+- `01_extraction-core` — **opened 2026-07-17**, spec:
+  [01_extraction-core/SPEC.md](./01_extraction-core/SPEC.md). Summary as queued:
+  package scaffold made real (`packages/deblob` is currently the
+  name-reservation stub: no tsconfig, no vitest, no build — scaffold = tsconfig,
+  vitest + v8 coverage wired to the 100%-through-the- public-API bar,
+  exact-pinned oxc deps, CI job running `test` + `deblob check` on itself once
+  it exists) + import-graph extraction: type-only tagged edges, resolution,
+  `require()` prefilter walk; nodes classified through the Flavor port at graph
+  build (see the flavor decision). First red-green target (testing strategy
+  above). The CLI's own code dogfoods the quintet.
 - `rule-number-resolution` (small) — the CLI cites rules by number; make numbers
   resolvable everywhere before the first detector emits them. CLI: the `explain`
   machinery — package ships doc excerpts + relevant knowledge cards,
