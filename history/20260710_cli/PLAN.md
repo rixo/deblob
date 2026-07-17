@@ -156,11 +156,14 @@ identity).
   ruling made (oxc, see the engine decision). Remaining: write the step's record
   (ruling + rationale formalized) when the chapter's steps start cutting — or
   dissolve into 01's spec if a separate record adds nothing.
-- `01_extraction-core` — package scaffold made real (`packages/deblob` currently
-  name-reservation stub) + import-graph extraction: type-only tagged edges,
+- `01_extraction-core` — package scaffold made real (`packages/deblob` is
+  currently the name-reservation stub: no tsconfig, no vitest, no build —
+  scaffold = tsconfig, vitest + v8 coverage wired to the 100%-through-the-
+  public-API bar, exact-pinned oxc deps, CI job running `test` + `deblob check`
+  on itself once it exists) + import-graph extraction: type-only tagged edges,
   resolution, `require()` prefilter walk; nodes classified through the Flavor
-  port at graph build (see the flavor decision). The CLI's own code dogfoods the
-  quintet.
+  port at graph build (see the flavor decision). First red-green target (testing
+  strategy above). The CLI's own code dogfoods the quintet.
 - `rule-number-resolution` (small) — the CLI cites rules by number; make numbers
   resolvable everywhere before the first detector emits them. CLI: the `explain`
   machinery — package ships doc excerpts + relevant knowledge cards,
@@ -197,6 +200,40 @@ coverage always whole-repo). Research material: grounded in the decisions above,
 proposals flagged inline, contract only once absorbed by a step SPEC. Each ends
 with an "Open" section — sweep those into the relevant step SPECs (notably:
 monorepo/single-config tension, rule-12 × type-only, cycle double-reporting).
+
+## Implementation strategy (settled 2026-07-17, rixo + Fable)
+
+- Fresh session per step; this PLAN is the resume point. Skills auto-load via
+  the committed symlink rig (`.claude/skills → .agents/skills → skills/`).
+- Main thread owns the load-bearing work: step SPECs, the two port contracts
+  (extraction, FlavorResolver), 01_extraction-core, integration, arbitration.
+- Fan-out subagents for the parallel-by-design work: the fixture fleet from the
+  violation catalog (~15 violations + 8 non-violations, one agent each), then
+  the detectors (pure functions over the classified graph, one agent per
+  detector, prompt = step SPEC + its catalog section + the relevant knowledge
+  cards — cards as crash courses, per the skills-chapter GOAL).
+- Fixtures land before detectors: red-first structurally — catalog → failing
+  fixtures → detector turns them green.
+- Review: fresh adversarial agent passes (cards in prompt) + rixo's diff gate
+  per commit, unchanged.
+- **Testing: real red-green TDD** (2026-07-17, rixo — project choice; the
+  methodology stays tactics-agnostic, this repo doesn't). Vitest. Three tiers,
+  all through the contract (the arch's own rules 15–16, dogfooded):
+  1. **Extraction core** — on-disk fixture mini-repos (tsconfig paths,
+     `.js`→`.ts`, mixed `{ mk, type T }` statements, `export type from`, dynamic
+     import, `require()`, exports subpaths — the matrix's verified forms are the
+     case list) → assert edge sets via the extraction port.
+  2. **Detectors** — pure functions: constructed classified-graph values in,
+     violation sets out; no IO, fast, the TDD sweet spot. Case list = the
+     violation catalog, non-violations included (must-stay-green half).
+  3. **CLI end-to-end** — run the binary on fixture repos; golden-file stdout
+     against the help-screens/output fiction + exit codes. The README-driven
+     docs become executable truth. Red-green flow: each step SPEC's Testing
+     section enumerates cases → tests written failing first → implementation
+     turns them green; rixo's per-commit gate is the tight supervision sdd says
+     agent-TDD needs. Commits land green (standalone-commit ruling: full
+     functional repo state) — red lives in the working tree, not the log.
+     Coverage bar: 100% through the public API, per the arch's testing rule.
 
 ## Rule coverage (folded 2026-07-17; numbers = architecture.md rule summary)
 
