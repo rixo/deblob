@@ -1,2 +1,3 @@
 **/__fixtures__/
+dist/
 pnpm-lock.yaml

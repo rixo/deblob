@@ -16,6 +16,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm --filter deblob typecheck
+      - run: pnpm --filter deblob build
       - run: pnpm --filter deblob test
 
   # musl smoke: the napi platform matrix ships linux-*-musl bindings; the

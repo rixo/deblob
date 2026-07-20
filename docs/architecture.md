@@ -631,62 +631,66 @@ tooling. Both are hard requirements.
 
 **Layer rules:**
 
-1. **Dependencies point inward** —
+1. <a id="rule-1"></a>**Dependencies point inward** —
    `model < ports < service, adapters < assembly`. Lateral (same layer) OK. See
    dependency matrix for the combined result with composition rules.
-2. **Layer is visible in the import path** — no `index.ts` indirection.
-3. **Layer purity is a chain property** — a file is only as pure as its
-   least-pure import. Layer labels are only valid if the full import chain
-   honours the same constraints. Partial extraction produces false guarantees.
-4. **Service cannot depend on concrete implementations** — `node:fs`, an HTTP
-   client, a database driver belong in adapters. A service depending on concrete
-   bypasses its ports and becomes untestable. (Pure, deterministic third-party
-   libraries are not "concrete" in this sense — they qualify as model-layer
-   code.)
-5. **Only assembly may import from blob** — blob has no layer constraint.
-   Everything else importing from it contaminates a layer that was supposed to
-   have guarantees.
+2. <a id="rule-2"></a>**Layer is visible in the import path** — no `index.ts`
+   indirection.
+3. <a id="rule-3"></a>**Layer purity is a chain property** — a file is only as
+   pure as its least-pure import. Layer labels are only valid if the full import
+   chain honours the same constraints. Partial extraction produces false
+   guarantees.
+4. <a id="rule-4"></a>**Service cannot depend on concrete implementations** —
+   `node:fs`, an HTTP client, a database driver belong in adapters. A service
+   depending on concrete bypasses its ports and becomes untestable. (Pure,
+   deterministic third-party libraries are not "concrete" in this sense — they
+   qualify as model-layer code.)
+5. <a id="rule-5"></a>**Only assembly may import from blob** — blob has no layer
+   constraint. Everything else importing from it contaminates a layer that was
+   supposed to have guarantees.
 
 **Composition rules:**
 
-6. **`.service.ts` can only be imported by assembly** — not by model, ports,
-   other service-layer code, or adapters.
-7. **`.adapter.ts` can only be imported by assembly** — not by model, ports,
-   service, or other adapters.
-8. **Composition rules govern runtime imports — type-only imports are exempt.**
-   Depending on a contract's shape is not depending on its implementation.
-   `import type { IconsServiceAPI } from '../icons/service'` is legal anywhere;
-   `import { createIconsService }` remains assembly-only. This also covers the
-   `SomeService["method"]` shorthand (see
+6. <a id="rule-6"></a>**`.service.ts` can only be imported by assembly** — not
+   by model, ports, other service-layer code, or adapters.
+7. <a id="rule-7"></a>**`.adapter.ts` can only be imported by assembly** — not
+   by model, ports, service, or other adapters.
+8. <a id="rule-8"></a>**Composition rules govern runtime imports — type-only
+   imports are exempt.** Depending on a contract's shape is not depending on its
+   implementation. `import type { IconsServiceAPI } from '../icons/service'` is
+   legal anywhere; `import { createIconsService }` remains assembly-only. This
+   also covers the `SomeService["method"]` shorthand (see
    [Port derivation](#port-derivation--the-dialect-trap)).
-9. **Composition rules apply to public composition units only** — within
-   `private/`, internal composition is unrestricted. `.service.ts` and
-   `.adapter.ts` may freely import from `private/` files of their own service.
-10. **Ports are types only** — no runtime code. Runtime code in a port file is a
-    sign the adapter hasn't been extracted yet.
-11. **One port, one interface** — if the service layer branches on which adapter
-    it got, the port isn't unified.
+9. <a id="rule-9"></a>**Composition rules apply to public composition units
+   only** — within `private/`, internal composition is unrestricted.
+   `.service.ts` and `.adapter.ts` may freely import from `private/` files of
+   their own service.
+10. <a id="rule-10"></a>**Ports are types only** — no runtime code. Runtime code
+    in a port file is a sign the adapter hasn't been extracted yet.
+11. <a id="rule-11"></a>**One port, one interface** — if the service layer
+    branches on which adapter it got, the port isn't unified.
 
 **Packaging rules:**
 
-12. **`private/` is the only visibility boundary** — nothing outside a service
-    may import from its `private/` directory.
-13. **No circular dependencies between services** — DAG, enforced by tooling in
-    CI.
-14. **No circular runtime dependencies between modules** — ESM circular imports
-    silently fail in production. Type-only circular references are not covered
-    by this rule.
+12. <a id="rule-12"></a>**`private/` is the only visibility boundary** — nothing
+    outside a service may import from its `private/` directory.
+13. <a id="rule-13"></a>**No circular dependencies between services** — DAG,
+    enforced by tooling in CI.
+14. <a id="rule-14"></a>**No circular runtime dependencies between modules** —
+    ESM circular imports silently fail in production. Type-only circular
+    references are not covered by this rule.
 
 **Testing rules:**
 
-15. **Tests go through the contract** — input via public API, assertions on
-    documented behavior, no implementation details.
-16. **Test setup is assembly** — same isolation rules apply, fixtures are
-    test-purpose adapters.
+15. <a id="rule-15"></a>**Tests go through the contract** — input via public
+    API, assertions on documented behavior, no implementation details.
+16. <a id="rule-16"></a>**Test setup is assembly** — same isolation rules apply,
+    fixtures are test-purpose adapters.
 
 **Service discipline:**
 
-17. **Service modules are stateless** — state lives in factory closures only.
+17. <a id="rule-17"></a>**Service modules are stateless** — state lives in
+    factory closures only.
 
 ---
 

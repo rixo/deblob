@@ -10,7 +10,8 @@
   },
   "type": "module",
   "files": [
-    "README.md"
+    "README.md",
+    "dist"
   ],
   "dependencies": {
     "@oxc-project/types": "0.140.0",
@@ -20,10 +21,15 @@
   "devDependencies": {
     "@types/node": "^24.3.0",
     "@vitest/coverage-v8": "^4.1.10",
+    "npm-run-all2": "^9.0.2",
     "typescript": "7.0.2",
     "vitest": "^4.1.10"
   },
   "scripts": {
+    "build": "run-s build:*",
+    "build:content": "node scripts/build-content.ts",
+    "build:ts": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm build",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

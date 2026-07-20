@@ -155,7 +155,7 @@ identity).
 - `00_engine-research` — dissolved into 01's SPEC (2026-07-17): the ruling +
   rationale already live in the engine decision above and
   `research/engine-capability-matrix.md`; a separate record added nothing.
-- `01_extraction-core` — **opened 2026-07-17**, spec:
+- `01_extraction-core` — **landed 2026-07-17**, spec:
   [01_extraction-core/SPEC.md](./01_extraction-core/SPEC.md). Summary as queued:
   package scaffold made real (`packages/deblob` is currently the
   name-reservation stub: no tsconfig, no vitest, no build — scaffold = tsconfig,
@@ -165,24 +165,10 @@ identity).
   `require()` prefilter walk; nodes classified through the Flavor port at graph
   build (see the flavor decision). First red-green target (testing strategy
   above). The CLI's own code dogfoods the quintet.
-- `rule-number-resolution` (small) — the CLI cites rules by number; make numbers
-  resolvable everywhere before the first detector emits them. CLI: the `explain`
-  machinery — package ships doc excerpts + relevant knowledge cards,
-  `deblob explain rule-4` serves them (see the explain decision). Docs: stable
-  `#rule-N` anchors in architecture.md § Summary so the canonical URLs land on
-  the exact rule. Skills: rule-range column in the `deblob` knowledge INDEX
-  rules table (dependency-matrix 1–5, composition-rules 6–11,
-  packaging-visibility 12, acyclic 13–14, testing 15–16) — an agent holding
-  "rule 4" resolves it from skills alone; today only docs resolve it (INDEX is
-  question-indexed, stamp ranges are en-dash grep-hostile). Touches skills +
-  docs from this chapter: the forcing function is the CLI's output design, so
-  the fix rides here (2026-07-17, rixo). Packaging note for
-  `01_extraction-core`: the npm package grows a content dir — the verbatim
-  `skills/deblob/knowledge/*.md` cards + doc excerpts, selected per the same
-  rule-range mapping (one mapping drives the INDEX column and the `explain`
-  lookup). Sync story with the repo sources is part of this step's spec, kin to
-  the `deblob docs` staleness family; card cross-links pointing outside the
-  shipped set need rewriting or shipping their targets (2026-07-17, rixo).
+- `02_rule-number-resolution` — **landed 2026-07-20**, spec:
+  [02_rule-number-resolution/SPEC.md](./02_rule-number-resolution/SPEC.md);
+  detail dissolved there (anchors, INDEX rule-range column, shipped content +
+  mapping, sync story).
 - Then detectors, each its own step: layers (matrix), private, barrels, ports,
   cycles/dag — `dag` last if the nesting arch touch lags.
 
@@ -257,6 +243,10 @@ doesn't check:
 
 ## Open questions
 
+- **`*.spec.ts` classification** (2026-07-17) — blob today; collides with
+  composition rules at `check layers` (our own specs import services). Stance
+  needed by that step's spec: flavor-level, config `assembly` globs, or detector
+  exemption.
 - **Dogfood target** — which production codebase, and what "clean" means there
   on day one. Structural note: blob being legal means a brownfield run isn't a
   wall of red — cycles are the only rules firing on unlabeled code;
@@ -283,6 +273,10 @@ doesn't check:
 
 ### Ideas
 
+- **Version-pinned rule URLs** (2026-07-20) — `canonicalRuleUrl` targets
+  `blob/main`; once published, a release's URLs should pin its own tag
+  (`blob/vX.Y.Z`) so shipped citations survive main drift. Wire at release step:
+  version from package.json, anchor-stability check per tag.
 - **Vite plugin driver** — dev-time violations, second driver validating the
   extraction port → [future/vite-plugin-driver/](./future/vite-plugin-driver/) —
   blocked: mechanical base + incremental/JSON refinements first.

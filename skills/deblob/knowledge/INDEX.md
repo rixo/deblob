@@ -23,13 +23,16 @@ cross-linked. Pick by the question you're holding.
 
 ## rules
 
-| Question                                     | Card                                            |
-| -------------------------------------------- | ----------------------------------------------- |
-| Who may import what?                         | [dependency-matrix](dependency-matrix.md)       |
-| Who may import composition units? type-only? | [composition-rules](composition-rules.md)       |
-| Visibility, `private/`, why no barrels?      | [packaging-visibility](packaging-visibility.md) |
-| Cycles — service DAG, module level?          | [acyclic](acyclic.md)                           |
-| Nested services/adapters — what's allowed?   | [nesting](nesting.md)                           |
+Rule numbers = architecture.md § Summary (`#rule-N` anchors); `deblob check`
+cites them.
+
+| Question                                     | Card                                            | Rules |
+| -------------------------------------------- | ----------------------------------------------- | ----- |
+| Who may import what?                         | [dependency-matrix](dependency-matrix.md)       | 1–5   |
+| Who may import composition units? type-only? | [composition-rules](composition-rules.md)       | 6–11  |
+| Visibility, `private/`, why no barrels?      | [packaging-visibility](packaging-visibility.md) | 12    |
+| Cycles — service DAG, module level?          | [acyclic](acyclic.md)                           | 13–14 |
+| Nested services/adapters — what's allowed?   | [nesting](nesting.md)                           | —     |
 
 ## lifecycle & patterns
 
@@ -44,12 +47,12 @@ cross-linked. Pick by the question you're holding.
 
 ## testing
 
-| Question                           | Card                                      |
-| ---------------------------------- | ----------------------------------------- |
-| What do tests exercise and assert? | [testing-contract](testing-contract.md)   |
-| Test at internal seams?            | [testing-seams](testing-seams.md)         |
-| Setup, fixtures, test factory?     | [testing-isolation](testing-isolation.md) |
-| Who are tests written for?         | [testing-reviewer](testing-reviewer.md)   |
+| Question                           | Card                                      | Rules |
+| ---------------------------------- | ----------------------------------------- | ----- |
+| What do tests exercise and assert? | [testing-contract](testing-contract.md)   | 15    |
+| Test at internal seams?            | [testing-seams](testing-seams.md)         | —     |
+| Setup, fixtures, test factory?     | [testing-isolation](testing-isolation.md) | 16    |
+| Who are tests written for?         | [testing-reviewer](testing-reviewer.md)   | —     |
 
 ## Implementation — the guide's flavor (TS/ESM)
 

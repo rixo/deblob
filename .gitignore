@@ -2,3 +2,4 @@ node_modules/
 !**/__fixtures__/*/node_modules/
 **/__fixtures__/*/node_modules/.svelte2tsx-language-server-files/
 coverage/
+dist/
