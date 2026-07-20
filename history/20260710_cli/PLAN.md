@@ -23,8 +23,8 @@ identity).
   governs its subtree; no inheritance machinery — configs never merge, no
   extends. Flavor axes: naming scheme (suffix vs directory-based), type-only
   exemption stance — default exempt per rule 8, config opt-out for stricter
-  flavors (stricter is always the legal direction; 2026-07-17, rixo).
-  Concrete-lib classification rides along. Stock flavor name:
+  flavors (config knobs may only tighten canon, never loosen it; 2026-07-17,
+  rixo). Concrete-lib classification rides along. Stock flavor name:
   **`ts-suffixes-factories`** (ruled 2026-07-17, rixo — replaces provisional
   `prime`, which carried status but zero information: name states the two
   identity axes, suffix naming + factory injection, prefixed `ts-` because
@@ -51,8 +51,11 @@ identity).
   one config line; the false negative of default-pure is a silent hole in the
   exact guarantee the tool exists to close. Rider for the layers detector step:
   architecture.md's prose reads permissive ("pure libs count as model code") —
-  one-line clarification touch, "purity is declared, not presumed", rides with
-  that step.
+  one-line clarification touch rides with that step. Wording bounded
+  (2026-07-20, rixo): practice-level, not canon — "in practice, purity should be
+  declared, not presumed" or similar; the arch stays theory, default-concrete is
+  the tool's implementation opinion, and the doc must not overreach into
+  mandating it.
 - **v0 output**: exit code + readable violations, each citing rule number + a
   resolvable why (error message as teaching channel — the fixing agent gets the
   why at failure point). JSON/SARIF = staged refinement, not v0.
@@ -139,6 +142,16 @@ identity).
   Caveats carried into step 01's spec: pre-1.0 churn (exact pin,
   `@oxc-project/types` lockstep), CJS `require()` absent from the module record
   forever (regex prefilter + AST walk).
+- **`*.spec.ts` = assembly, classified by the flavor** (2026-07-20, rixo —
+  "flavor is precisely intended to have opinions"): rule 16 makes
+  spec-as-assembly arch canon ("test setup is assembly, same isolation rules
+  apply"), so the classification lives in `ts-suffixes-factories`, not config or
+  detector exemption. Specs get assembly's rights (importing services — rule 6
+  stays quiet) and its obligations (`private/` still fires). Config `assembly`
+  globs remain the escape hatch for exotic test naming; detector exemption
+  rejected (contradicts rule 16, hides specs from rule 15's later tier). Exact
+  glob set (`*.spec.ts` only vs + `*.test.ts` vs `__tests__/`) decided at the
+  layers step spec.
 
 ## Closed questions
 
@@ -169,7 +182,11 @@ identity).
   [02_rule-number-resolution/SPEC.md](./02_rule-number-resolution/SPEC.md);
   detail dissolved there (anchors, INDEX rule-range column, shipped content +
   mapping, sync story).
-- Then detectors, each its own step: layers (matrix), private, barrels, ports,
+- `03_check-layers` — **opened 2026-07-20**, spec:
+  [03_check-layers/SPEC.md](./03_check-layers/SPEC.md); the matrix detector
+  (rules 1, 4, 5, 6, 7 with 8/9), violation model's first instance, the
+  spec-as-assembly flavor amendment, both ruled arch touches.
+- Then the remaining detectors, each its own step: private, barrels, ports,
   cycles/dag — `dag` last if the nesting arch touch lags.
 
 README-driven UX fiction banked (2026-07-17):
@@ -243,10 +260,6 @@ doesn't check:
 
 ## Open questions
 
-- **`*.spec.ts` classification** (2026-07-17) — blob today; collides with
-  composition rules at `check layers` (our own specs import services). Stance
-  needed by that step's spec: flavor-level, config `assembly` globs, or detector
-  exemption.
 - **Dogfood target** — which production codebase, and what "clean" means there
   on day one. Structural note: blob being legal means a brownfield run isn't a
   wall of red — cycles are the only rules firing on unlabeled code;
@@ -273,6 +286,12 @@ doesn't check:
 
 ### Ideas
 
+- **Preset/flavor classification boundary** (2026-07-21, at the 03 spec's
+  `.svelte` park) — a sveltekit preset saying `.svelte = assembly` IS
+  classification, i.e. flavor turf ("the preset will have flavor itself"): the
+  flavor-exclusive / presets-combinable orthogonality may not survive two
+  presets holding classification opinions. Renegotiate the boundary when presets
+  graduate — e.g. presets contribute classification hooks the flavor arbitrates.
 - **Version-pinned rule URLs** (2026-07-20) — `canonicalRuleUrl` targets
   `blob/main`; once published, a release's URLs should pin its own tag
   (`blob/vX.Y.Z`) so shipped citations survive main drift. Wire at release step:
@@ -290,11 +309,14 @@ doesn't check:
 - **Non-TS filetypes** (2026-07-11): `.jsx`/`.tsx` free (oxc parses natively).
   `.svelte`/`.vue` = per-filetype script _extractor_ in front of the parser port
   (file → script sources), Vite-transform-shaped, third-party-extensible;
-  fast-follow, not v0. v0 stance: `.svelte` = assembly-privileged for layer
-  rules (no need to look inside), but still a node in DAG/module-cycle graphs.
-  Template-level auto-imports (Nuxt etc.) = documented blind spot, not chased.
-  UI-zone taxonomy + F1–F3 arch findings: see board (arch-pass + svench-flavor
-  payloads, 2026-07-11).
+  fast-follow, not v0. Original v0 stance (`.svelte` = assembly-privileged for
+  layer rules) **superseded 2026-07-21** (rixo, at the 03 spec): framework-file
+  classification is preset/fast-follow territory, and the eventual stance is
+  open (entry-points-only privilege, possibly narrower) — v0 classifies
+  `.svelte` blob like any unsuffixed file; still a node in DAG/module-cycle
+  graphs. Template-level auto-imports (Nuxt etc.) = documented blind spot, not
+  chased. UI-zone taxonomy + F1–F3 arch findings: see board (arch-pass +
+  svench-flavor payloads, 2026-07-11).
 - Config schema published so agents can author `deblob.config.ts`.
 - oxc risk mitigations (exact version pin, `@oxc-project/types` lockstep,
   conditionNames/extensionAlias always set, wasm fallback reachable + Alpine
