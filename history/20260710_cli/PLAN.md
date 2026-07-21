@@ -207,14 +207,17 @@ identity).
   builtins/packages external), blob and assembly targets bind (closes the
   zero-priced laundering channel, rule 3), the 8-hint generalizes to every cell
   whose type variant is exempt, strict mode untouched.
-- Then the remaining detectors, each its own step: ports, cycles/dag — `dag`
-  last if the nesting arch touch lags. Carried into the ports step (2026-07-21,
-  at 03 review): a **runtime import edge from a port file is always a defect** —
-  types never need runtime bindings (`typeof` works through `import type`), so
-  the edge is a runtime re-export (rule 10), a side-effect import, or a missing
-  `type` keyword. `check layers` stays matrix-only (fires
-  ports→concrete/outward/blob, silent on ports→model/ports/pure-lib runtime);
-  rule the flat import-side firing and its citation at the ports step SPEC.
+- `07_check-ports` — **opened 2026-07-21**, spec:
+  [07_check-ports/SPEC.md](./07_check-ports/SPEC.md); rule 10 in three shapes —
+  runtime exports (the catalog line; new runtime-content extraction fact,
+  complement polarity: erasable set closed by the grammar, everything else
+  fires), the flat runtime-import rule (carried 03-review ruling, dissolved
+  there: target-blind, `[10]` plain, three-way remedy hint), and
+  runtime-import-of-port (ruled at spec: importer-blind, blob and assembly bind
+  — a runtime edge incident to a port on either end is a defect). `check layers`
+  stays matrix-only; overlap kept per 05 precedent.
+- Then `check dag` (rules 13, 14) — last if the nesting arch touch lags;
+  type-only asymmetry question waits there (open questions below).
 
 README-driven UX fiction banked (2026-07-17):
 [research/help-screens.md](./research/help-screens.md) (intended `--help` +
