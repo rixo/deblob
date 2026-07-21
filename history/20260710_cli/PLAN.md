@@ -187,10 +187,16 @@ identity).
   (rules 1, 4, 5, 6, 7 with 8/9), violation model's first instance, the
   spec-as-assembly flavor amendment, the three ruled arch touches (rule-4
   practice line, 6/7 enumerations gain blob, rule-5 blob→blob parenthetical).
-- Then the remaining detectors, each its own step: private, barrels, ports,
-  cycles/dag — `dag` last if the nesting arch touch lags. Carried into the ports
-  step (2026-07-21, at 03 review): a **runtime import edge from a port file is
-  always a defect** — types never need runtime bindings (`typeof` works through
+- `04_check-private` — **opened 2026-07-21**, spec:
+  [04_check-private/SPEC.md](./04_check-private/SPEC.md); rule 12 as boundary
+  operation over `private` path segments (owner = nearest service root, fractal,
+  outermost-violated reported), type-only imports bind (packaging rule — rule 8
+  exempts composition rules only), ownerless `private/` inert, proposed rule-12
+  arch parenthetical.
+- Then the remaining detectors, each its own step: barrels, ports, cycles/dag —
+  `dag` last if the nesting arch touch lags. Carried into the ports step
+  (2026-07-21, at 03 review): a **runtime import edge from a port file is always
+  a defect** — types never need runtime bindings (`typeof` works through
   `import type`), so the edge is a runtime re-export (rule 10), a side-effect
   import, or a missing `type` keyword. `check layers` stays matrix-only (fires
   ports→concrete/outward/blob, silent on ports→model/ports/pure-lib runtime);
@@ -287,7 +293,9 @@ doesn't check:
   exemption — type-only cross-service edges may count for the DAG
   (extraction-independence reasoning holds for types). Confirm intended
   asymmetry at `check dag` spec time; decide whether the flavor axis touches
-  only the matrix or the DAG too — possibly an arch clarification touch.
+  only the matrix or the DAG too — possibly an arch clarification touch. Rule
+  12's stance settled at the 04 spec (2026-07-21): packaging rule, binds every
+  edge kind — residual here is 13 vs 14 only.
 
 ## Future
 
