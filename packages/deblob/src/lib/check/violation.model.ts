@@ -81,5 +81,38 @@ export type BarrelsViolation = {
   shape: "barrel-file" | "index-import"
 }
 
+export type PortsViolation = {
+  check: "ports"
+  ruleset: Ruleset
+  /** Always cites 10 — rule 10 read whole; no hint variant. */
+  rules: readonly number[]
+  /**
+   * Attribution side: the port for `runtime-export` / `runtime-import`, the
+   * importer for `runtime-import-of-port`.
+   */
+  file: string
+  /** Grouping key; `null` = the `blob` bucket. */
+  serviceRoot: string | null
+} & (
+  | {
+      /** Runtime content in the port file itself — the message channel. */
+      shape: "runtime-export"
+      form: string
+      name: string | null
+      exported: boolean
+    }
+  | {
+      /** A runtime edge out of the port — target-blind. */
+      shape: "runtime-import"
+      target: EdgeTarget
+    }
+  | {
+      /** A runtime edge into the port — importer-blind. */
+      shape: "runtime-import-of-port"
+      target: EdgeTarget
+    }
+)
+
 /** The union grows one member per detector step. */
-export type Violation = LayersViolation | PrivateViolation | BarrelsViolation
+export type Violation =
+  LayersViolation | PrivateViolation | BarrelsViolation | PortsViolation

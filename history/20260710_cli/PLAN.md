@@ -207,7 +207,7 @@ identity).
   builtins/packages external), blob and assembly targets bind (closes the
   zero-priced laundering channel, rule 3), the 8-hint generalizes to every cell
   whose type variant is exempt, strict mode untouched.
-- `07_check-ports` — **opened 2026-07-21**, spec:
+- `07_check-ports` — **landed 2026-07-21**, spec:
   [07_check-ports/SPEC.md](./07_check-ports/SPEC.md); rule 10 in three shapes —
   runtime exports (the catalog line; new runtime-content extraction fact,
   complement polarity: erasable set closed by the grammar, everything else

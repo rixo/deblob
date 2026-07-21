@@ -53,6 +53,10 @@ const FORMS_FILES = [
   "src/externals.ts",
   "src/foo.model.ts",
   "src/imports-outside.ts",
+  "src/runtime-content.ts",
+  "src/types-only.ts",
+  "src/default-fn.ts",
+  "src/default-class.ts",
 ]
 
 const extractForms = () =>
@@ -353,6 +357,65 @@ describe("extractGraph over the forms fixture", () => {
       layer: "model",
     })
     expect(graph.modules.get("src/dep.ts")).toMatchObject({ layer: "blob" })
+  })
+
+  describe("runtime content — the fact rule 10 reads", () => {
+    it("collects every non-erasable top-level entry, statement order", () => {
+      const graph = extractForms()
+      expect(
+        graph.modules.get("src/runtime-content.ts")?.runtimeContent,
+      ).toEqual([
+        { form: "const", name: "SOME_MADE_UP_CONST", exported: true },
+        { form: "const", name: "a", exported: true },
+        { form: "const", name: "b", exported: true },
+        { form: "function", name: "helper", exported: true },
+        { form: "class", name: "Thing", exported: true },
+        { form: "enum", name: "Mode", exported: true },
+        // const enum is still a value binding — fires like a plain enum
+        { form: "enum", name: "ConstMode", exported: true },
+        { form: "namespace", name: "NS", exported: true },
+        { form: "const", name: "local", exported: false },
+        // destructuring declarator: no single name to carry
+        { form: "const", name: null, exported: false },
+        { form: "statement", name: null, exported: false },
+        { form: "default", name: null, exported: true },
+      ])
+    })
+
+    it("yields no entries for erasable forms — types, ambients, export clauses", () => {
+      const graph = extractForms()
+      expect(graph.modules.get("src/types-only.ts")?.runtimeContent).toEqual([])
+    })
+
+    it("carries a default-exported declaration's keyword, and its name where one exists", () => {
+      const graph = extractForms()
+      expect(graph.modules.get("src/default-fn.ts")?.runtimeContent).toEqual([
+        { form: "function", name: "makeThing", exported: true },
+      ])
+      // anonymous: the grammar gives no name to carry
+      expect(graph.modules.get("src/default-class.ts")?.runtimeContent).toEqual(
+        [{ form: "class", name: null, exported: true }],
+      )
+    })
+
+    it("never lists import or re-export statements — those are edge facts", () => {
+      const graph = extractForms()
+      expect(
+        graph.modules.get("src/export-named-from.ts")?.runtimeContent,
+      ).toEqual([])
+      expect(
+        graph.modules.get("src/local-reexport.ts")?.runtimeContent,
+      ).toEqual([])
+      // the side-effect import contributes nothing; only the declaration shows
+      expect(graph.modules.get("src/side-effect.ts")?.runtimeContent).toEqual([
+        { form: "const", name: "done", exported: true },
+      ])
+    })
+
+    it("claims nothing for an unparseable file kind", () => {
+      const graph = extractForms()
+      expect(graph.modules.get("src/widget.svelte")?.runtimeContent).toEqual([])
+    })
   })
 
   it("grants assembly through the designation matcher, on top of the flavor", () => {

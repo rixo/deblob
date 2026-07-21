@@ -670,7 +670,10 @@ tooling. Both are hard requirements.
    `.service.ts` and `.adapter.ts` may freely import from `private/` files of
    their own service.
 10. <a id="rule-10"></a>**Ports are types only** — no runtime code. Runtime code
-    in a port file is a sign the adapter hasn't been extracted yet.
+    in a port file is a sign the adapter hasn't been extracted yet. (And no
+    runtime edge touches a port in either direction: `typeof` works through
+    `import type`, so a runtime import from — or of — a port file is always a
+    runtime re-export, a side-effect import, or a missing `type` keyword.)
 11. <a id="rule-11"></a>**One port, one interface** — if the service layer
     branches on which adapter it got, the port isn't unified.
 

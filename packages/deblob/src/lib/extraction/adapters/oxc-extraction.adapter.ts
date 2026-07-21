@@ -4,6 +4,7 @@ import { dirname } from "node:path"
 import { parseSync } from "oxc-parser"
 import { ResolverFactory } from "oxc-resolver"
 
+import type { RuntimeEntry } from "../graph.model.ts"
 import type {
   ExtractionEngine,
   FileExtraction,
@@ -57,6 +58,93 @@ const collectRequires = (
     }
   }
   for (const value of Object.values(record)) collectRequires(value, source, out)
+}
+
+type AstNode = Record<string, unknown>
+
+const ERASABLE_DECLARATIONS = new Set([
+  "TSInterfaceDeclaration",
+  "TSTypeAliasDeclaration",
+])
+
+/** `name` of an Identifier id; `null` for patterns and absent ids. */
+const nameOf = (id: unknown): string | null => {
+  if (typeof id !== "object" || id === null) return null
+  const name = (id as AstNode)["name"]
+  return typeof name === "string" ? name : null
+}
+
+/**
+ * Entries for one declaration or plain statement. Erasable forms yield none —
+ * the erasable side is the listed one (interfaces, type aliases, ambient
+ * `declare`); everything else is runtime content, unknown syntax included.
+ */
+const declarationEntries = (
+  node: AstNode,
+  exported: boolean,
+): RuntimeEntry[] => {
+  const type = node["type"]
+  if (typeof type === "string" && ERASABLE_DECLARATIONS.has(type)) return []
+  if (node["declare"] === true) return []
+  switch (type) {
+    case "VariableDeclaration":
+      return (node["declarations"] as AstNode[]).map((declarator) => ({
+        form: node["kind"] as string,
+        name: nameOf(declarator["id"]),
+        exported,
+      }))
+    case "FunctionDeclaration":
+      return [{ form: "function", name: nameOf(node["id"]), exported }]
+    case "ClassDeclaration":
+      return [{ form: "class", name: nameOf(node["id"]), exported }]
+    case "TSEnumDeclaration":
+      // const enum included — still a value binding
+      return [{ form: "enum", name: nameOf(node["id"]), exported }]
+    case "TSModuleDeclaration":
+      return [{ form: "namespace", name: nameOf(node["id"]), exported }]
+    default:
+      return [{ form: "statement", name: null, exported }]
+  }
+}
+
+/**
+ * Non-erasable top-level entries, statement order. Import and re-export
+ * statements are edge facts — never listed here.
+ */
+const collectRuntimeContent = (program: AstNode): RuntimeEntry[] => {
+  const entries: RuntimeEntry[] = []
+  for (const statement of program["body"] as AstNode[]) {
+    switch (statement["type"]) {
+      case "ImportDeclaration":
+      case "ExportAllDeclaration":
+        continue
+      case "ExportNamedDeclaration": {
+        const declaration = statement["declaration"]
+        // sourced = re-export (edge fact); a bare clause re-exports or marks
+        // declarations already counted where they stand
+        if (statement["source"] != null || declaration == null) continue
+        entries.push(...declarationEntries(declaration as AstNode, true))
+        continue
+      }
+      case "ExportDefaultDeclaration": {
+        const declaration = statement["declaration"] as AstNode
+        switch (declaration["type"]) {
+          case "TSInterfaceDeclaration":
+            continue
+          case "FunctionDeclaration":
+          case "ClassDeclaration":
+            entries.push(...declarationEntries(declaration, true))
+            continue
+          default:
+            entries.push({ form: "default", name: null, exported: true })
+            continue
+        }
+      }
+      default:
+        entries.push(...declarationEntries(statement, false))
+    }
+  }
+  return entries
 }
 
 export const createOxcEngine = ({
@@ -182,7 +270,12 @@ export const createOxcEngine = ({
       }
     }
 
-    return { imports }
+    return {
+      imports,
+      runtimeContent: collectRuntimeContent(
+        result.program as unknown as AstNode,
+      ),
+    }
   }
 
   const resolve = (fromAbsolutePath: string, specifier: string): Resolution => {

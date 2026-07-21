@@ -4,7 +4,7 @@
  * not leak engine shapes (spans, napi types) through it.
  */
 
-import type { EdgeForm } from "../graph.model.ts"
+import type { EdgeForm, RuntimeEntry } from "../graph.model.ts"
 
 /** One import occurrence in a file, one entry per specifier reference. */
 export type ImportRecord = {
@@ -31,6 +31,12 @@ export type ImportRecord = {
 
 export type FileExtraction = {
   imports: readonly ImportRecord[]
+  /**
+   * Non-erasable top-level entries, statement order — the fact rule 10 reads.
+   * Erasable forms (`import type` / `export type`, interfaces, type aliases,
+   * ambient `declare`) and import/re-export statements are never listed.
+   */
+  runtimeContent: readonly RuntimeEntry[]
 }
 
 export type Resolution =

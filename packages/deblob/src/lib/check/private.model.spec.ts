@@ -36,6 +36,7 @@ const graph = (
         serviceRoot: spec.serviceRoot ?? null,
         isPrivate: spec.isPrivate ?? false,
         parsed: true,
+        runtimeContent: [],
       },
     ]),
   ),

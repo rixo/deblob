@@ -17,6 +17,18 @@ export type Layer =
  */
 export type FlavorLayer = Layer
 
+/**
+ * One non-erasable top-level entry of a module — the fact rule 10 reads. `form`
+ * is the declaration keyword as written (`const`, `function`, `enum`, …),
+ * `"default"` for `export default` expressions, `"statement"` for any other
+ * non-erasable statement; `name` is `null` where the grammar gives none.
+ */
+export type RuntimeEntry = {
+  form: string
+  name: string | null
+  exported: boolean
+}
+
 export type ModuleNode = {
   path: string
   layer: Layer
@@ -32,6 +44,12 @@ export type ModuleNode = {
    * the node is an edge target but contributes no outgoing edges.
    */
   parsed: boolean
+  /**
+   * Non-erasable top-level entries, statement order — empty for types-only
+   * files and for `parsed: false` nodes (no claim). Import and re-export
+   * statements are edge facts, never listed here.
+   */
+  runtimeContent: readonly RuntimeEntry[]
 }
 
 export type EdgeKind = "runtime" | "type"

@@ -73,6 +73,7 @@ export const createExtraction = ({
         serviceRoot: classification.serviceRoot,
         isPrivate: classification.isPrivate,
         parsed: extraction !== null,
+        runtimeContent: extraction ? extraction.runtimeContent : [],
       })
 
       if (!extraction) continue

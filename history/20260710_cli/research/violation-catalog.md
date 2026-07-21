@@ -193,6 +193,27 @@ ports  src/invoice/ports/renderer.ts
        an adapter or model (rule 10)
 ```
 
+**Runtime import in a port file (rule 10).** Target-blind, matrix-legal cells
+included — a port needs no runtime imports (`typeof` works through
+`import type`); the edge is a runtime re-export, a side-effect import, or a
+missing `type` keyword. Ruled at the 03 review, absorbed by the 07 SPEC.
+
+```
+ports  src/invoice/ports/renderer.ts
+       imports ../invoice.model.ts at runtime — a port needs no runtime
+       imports; add the type keyword or move the code (rule 10)
+```
+
+**Runtime import of a port file (rule 10).** Fires at the importer, whoever it
+is — a types-only file supplies no runtime binding. Importer-blind: blob and
+assembly bind. Ruled at the 07 spec.
+
+```
+ports  src/invoice/invoice.service.ts
+       imports ./ports/renderer.ts at runtime — a types-only file supplies
+       no runtime binding; add the type keyword (rule 10)
+```
+
 ## Explicit non-violations (the fixtures that must stay green)
 
 The catalog's other half — shapes that look wrong to naive tooling and must
@@ -201,8 +222,10 @@ never fire; each is a deliberate design point:
 - `import type` of a `.service.ts` / `.adapter.ts` anywhere (rule 8, default
   flavor) — including the inline `{ mk, type Thing }` mixed form's type
   specifiers.
-- Blob importing blob, model, or ports — blob is legal, only rules 6, 7, 12, 14
-  bind it as an importer.
+- Blob importing blob, model, or ports type-only — blob is legal, only rules 6,
+  7, 12, 14 bind it as an importer — plus, since the 07 spec, rule 10 as target:
+  a runtime edge into a port fires for every importer, blob included;
+  `import type` of a port stays green.
 - `.adapter.ts` / `.service.ts` importing their own service's `private/` (rule
   9).
 - Adapter importing concrete (`node:fs`, drivers) — that's its job.
