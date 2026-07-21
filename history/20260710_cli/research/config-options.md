@@ -7,8 +7,12 @@ package, prettier/eslint precedent; amended 2026-07-17),
 `flavor: 'ts-suffixes-factories'` (one name, preset dropped; stock flavor
 renamed from provisional `prime` 2026-07-17), `pureLibs` + default-concrete
 polarity, `include`/`exclude` + the full-scan coverage model, `typeOnlyExempt`
-(top-level key, 2026-07-17). Still proposal until a step SPEC absorbs it:
-`assembly` (incl. the rename), `--filter`/`--from`, `defineConfig` itself.
+(top-level key, 2026-07-17). Absorbed by
+[08_config/SPEC.md](../08_config/SPEC.md) (2026-07-21): `assembly` (name kept,
+default `[]`), `defineConfig`, the exact default lists (include `["**"]`,
+exclude baseline, extension gate), discovery/loading mechanics, the monorepo
+residuals, the granular-`pureLibs` deferral. Still proposal: `--filter`/`--from`
+(CLI step).
 
 ## The superset example
 
@@ -22,18 +26,18 @@ export default defineConfig({
   // flavor name or a custom FlavorResolver implementation.
   flavor: "ts-suffixes-factories",
 
-  // PROPOSAL — including the name: `assembly` (renamed from `entry`,
-  // which invited a graph-discovery reading; see the model below).
+  // RATIFIED (name + mechanism + default [], 08 spec 2026-07-21).
   // Designates which files wear the assembly hat — their row in the
-  // matrix, nothing else. Globs; many roots is the normal case.
+  // matrix, nothing else. Globs; many roots is the normal case. No
+  // default designation: privilege is declared, not presumed.
   assembly: ["src/main.ts"],
 
-  // RATIFIED (keys + full-scan coverage model; 2026-07-17, rixo).
-  // Extraction coverage. Defaults aim for zero-config on common
-  // layouts: include ~ source roots, exclude always contains
-  // node_modules, dist, build, coverage, .svelte-kit, .next, .nuxt —
-  // generated trees must never enter the graph. Exact default lists
-  // still open (below).
+  // RATIFIED (keys + full-scan coverage model 2026-07-17; exact
+  // defaults 08 spec 2026-07-21: include ["**"] — safe-default
+  // over-coverage — gated to source extensions; exclude appends to a
+  // non-removable baseline: node_modules, .git, dist, build,
+  // coverage, .svelte-kit, .next, .nuxt — generated trees must never
+  // enter the graph).
   include: ["src/**"],
   exclude: [],
 
@@ -240,18 +244,15 @@ coverage.
 
 ## Open (for the config/step specs)
 
-- Exact default include/exclude lists; interplay with tsconfig `include`/`files`
-  (mirror it? independent?).
-- The `entry`→`assembly` rename — ratify or find better (the key designates the
-  layer; a name that _is_ the layer name is the honest option on the table).
-- Monorepo — largely resolved by the project-level amendment (per-package
-  configs, each package its own deblob project). Residuals: workspace-root
-  ergonomics (one invocation discovering and running N projects?), and
-  cross-package workspace imports — package A importing workspace dep B is an
-  external leaf in A's run; classified via `pureLibs` like any package, or does
-  a sibling deblob project earn a distinct treatment?
+Swept into [08_config/SPEC.md](../08_config/SPEC.md) (2026-07-21): default lists
+(include `["**"]`, baseline, extension gate; tsconfig independent), the
+`assembly` name (ratified as-is, default `[]`), monorepo residuals
+(cross-package import = external leaf via `pureLibs`, no sibling special
+treatment in v0; workspace-root ergonomics → board, post-v0), and the
+granular-`pureLibs` deferral (string entries v0; `{ import, from }` stays the
+banked shape, graduating on first dogfood hit).
+
+Still open here:
+
 - `--filter` in `--json` output (staged): filter applied before or after
   serialization?
-- `pureLibs` granular form (see section above): ratify the `{ import, from }`
-  entry shape at the config step; decide whether subpath matching
-  (full-specifier `from`) graduates ahead of named-export granularity.

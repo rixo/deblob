@@ -1,9 +1,21 @@
 import { describe, expect, it } from "vitest"
 
-import { createTsSuffixesFactoriesFlavor } from "./ts-suffixes-factories-flavor.adapter.ts"
+import { STOCK_FLAVOR_NAME } from "../../config/config.model.ts"
+import {
+  STOCK_FLAVORS,
+  createTsSuffixesFactoriesFlavor,
+} from "./ts-suffixes-factories-flavor.adapter.ts"
 
 const classify = (files: string[]) =>
   createTsSuffixesFactoriesFlavor().classify(files)
+
+describe("stock flavor registry", () => {
+  it("yields this flavor under the stock name", () => {
+    const flavor = STOCK_FLAVORS[STOCK_FLAVOR_NAME]?.()
+    const result = flavor?.classify(["icons/icons.model.ts"])
+    expect(result?.get("icons/icons.model.ts")?.layer).toBe("model")
+  })
+})
 
 describe("ts-suffixes-factories flavor", () => {
   it("classifies each layer suffix to its layer", () => {

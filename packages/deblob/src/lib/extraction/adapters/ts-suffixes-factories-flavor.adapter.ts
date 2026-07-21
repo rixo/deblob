@@ -1,3 +1,4 @@
+import { STOCK_FLAVOR_NAME } from "../../config/config.model.ts"
 import type { FlavorLayer } from "../graph.model.ts"
 import type {
   FlavorClassification,
@@ -70,6 +71,16 @@ const nearestRootOf = (
     if (roots.has(dir)) return dir
     if (dir === ".") return null
   }
+}
+
+/**
+ * Stock flavor registry — name → factory, injected into `resolveConfig` by
+ * assembly (a flavor is an adapter; neither the model nor another adapter may
+ * import one). One entry today; a second stock flavor gets its own adapter
+ * file, and the map moves to whoever may import them both.
+ */
+export const STOCK_FLAVORS: Readonly<Record<string, () => FlavorResolver>> = {
+  [STOCK_FLAVOR_NAME]: () => createTsSuffixesFactoriesFlavor(),
 }
 
 export const createTsSuffixesFactoriesFlavor = (): FlavorResolver => ({

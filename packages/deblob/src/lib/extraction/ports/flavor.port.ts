@@ -15,6 +15,13 @@ export type FlavorClassification = {
 
 export interface FlavorResolver {
   /**
+   * The flavor's type-only stance — its default for the rule-8 exemption
+   * (absent = exempt, canon's letter). The config key overrides either way; the
+   * floor stays canon.
+   */
+  readonly typeOnlyExempt?: boolean
+
+  /**
    * Classify every file of the coverage set (paths relative to the project
    * root, POSIX-style). Total: every given path gets a classification — unknown
    * shapes land in `blob`, never an error, never a skip.

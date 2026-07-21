@@ -216,6 +216,19 @@ identity).
   runtime-import-of-port (ruled at spec: importer-blind, blob and assembly bind
   — a runtime edge incident to a port on either end is a defect). `check layers`
   stays matrix-only; overlap kept per 05 precedent.
+- `08_config` — **landed 2026-07-21**, spec:
+  [08_config/SPEC.md](./08_config/SPEC.md); the config surface made real —
+  sequenced ahead of `check dag` while the nesting arch touch lags (next
+  unblocked block; the runner step needs every value it produces). Key set
+  closed (six keys), native TS loading (engines ≥22.18, no loader dep),
+  nearest-wins discovery, coverage defaults ruled at spec (include `["**"]`
+  safe-default polarity, extension gate, non-removable exclude baseline),
+  `assembly` ratified (default `[]` — privilege declared, not presumed),
+  `typeOnlyExempt` precedence via a flavor-port field, config-as-data (no config
+  port — arch §Assembly literal), `ResolvedConfig` + coverage scan feeding
+  `extractGraph` untouched. Implementation finding worth the read: the matrix
+  forced the stock-flavor registry out of the model into assembly-injected
+  wiring — the tool's own rules shaping its API.
 - Then `check dag` (rules 13, 14) — last if the nesting arch touch lags;
   type-only asymmetry question waits there (open questions below).
 
@@ -299,10 +312,9 @@ doesn't check:
   candidate list (bijection, step numbering, 5-docs/PLAN hygiene,
   explain-content sync). Ruling deferred to that item's graduation, post-v0 —
   don't drift into it from `check` work.
-- Assembly identification mechanics — Rule 5 is undecidable until assembly is
-  identifiable; answered as proposal in `research/config-options.md`: the
-  `assembly` config key (renamed from `entry` — designation, not discovery;
-  privilege per-edge, never transitive). Ratify at config step spec.
+- Assembly identification mechanics — resolved (2026-07-21, 08 spec): the
+  `assembly` config key ratified — designation, not discovery; privilege
+  per-edge, never transitive; default `[]`.
 - **Type-only scope per rule family** (2026-07-17, surfaced by the exemption
   opt-out ruling): the arch reads asymmetric — the matrix exempts type edges to
   contract-shaped targets only (rule 8 per cell since 06; blob/assembly bind),
@@ -358,7 +370,9 @@ doesn't check:
   graphs. Template-level auto-imports (Nuxt etc.) = documented blind spot, not
   chased. UI-zone taxonomy + F1–F3 arch findings: see board (arch-pass +
   svench-flavor payloads, 2026-07-11).
-- Config schema published so agents can author `deblob.config.ts`.
+- Config schema published so agents can author `deblob.config.ts` — the types
+  half landed at 08 (`defineConfig` + `DeblobConfig` exported); prose docs ride
+  the CLI step with the runnable surface.
 - oxc risk mitigations (exact version pin, `@oxc-project/types` lockstep,
   conditionNames/extensionAlias always set, wasm fallback reachable + Alpine
   smoke test in CI — musl is natively supported, the known failures are
