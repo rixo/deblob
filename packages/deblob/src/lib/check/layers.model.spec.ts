@@ -42,6 +42,7 @@ const graph = (
     to,
     kind: kind ?? "runtime",
     form: "static",
+    reExport: false,
   })),
   unresolved: [],
 })

@@ -111,6 +111,7 @@ export const createOxcEngine = ({
           specifier,
           typeOnly: false,
           form: "static",
+          reExport: false,
           literal: true,
         })
         continue
@@ -120,6 +121,7 @@ export const createOxcEngine = ({
           specifier,
           typeOnly: entry.isType,
           form: "static",
+          reExport: false,
           literal: true,
         })
       }
@@ -132,6 +134,7 @@ export const createOxcEngine = ({
           specifier: entry.moduleRequest.value,
           typeOnly: entry.isType,
           form: "static",
+          reExport: true,
           literal: true,
         })
       }
@@ -152,12 +155,14 @@ export const createOxcEngine = ({
               specifier: literal[2] as string,
               typeOnly: false,
               form: "dynamic",
+              reExport: false,
               literal: true,
             }
           : {
               specifier: raw,
               typeOnly: false,
               form: "dynamic",
+              reExport: false,
               literal: false,
             },
       )
@@ -167,7 +172,13 @@ export const createOxcEngine = ({
       const requires: { specifier: string; literal: boolean }[] = []
       collectRequires(result.program, source, requires)
       for (const { specifier, literal } of requires) {
-        imports.push({ specifier, typeOnly: false, form: "require", literal })
+        imports.push({
+          specifier,
+          typeOnly: false,
+          form: "require",
+          reExport: false,
+          literal,
+        })
       }
     }
 

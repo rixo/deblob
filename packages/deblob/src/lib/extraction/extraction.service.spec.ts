@@ -40,6 +40,10 @@ const FORMS_FILES = [
   "src/two-statements.ts",
   "src/export-type-from.ts",
   "src/export-star.ts",
+  "src/export-named-from.ts",
+  "src/export-star-as.ts",
+  "src/import-and-reexport.ts",
+  "src/local-reexport.ts",
   "src/dynamic.ts",
   "src/requires.ts",
   "src/no-require.ts",
@@ -66,6 +70,7 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "module", path: "src/dep.ts" },
         kind: "runtime",
         form: "static",
+        reExport: false,
       },
     ])
   })
@@ -78,6 +83,7 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "module", path: "src/dep.ts" },
         kind: "type",
         form: "static",
+        reExport: false,
       },
     ])
   })
@@ -90,6 +96,7 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "module", path: "src/dep.ts" },
         kind: "runtime",
         form: "static",
+        reExport: false,
       },
     ])
   })
@@ -102,6 +109,7 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "module", path: "src/dep.ts" },
         kind: "runtime",
         form: "static",
+        reExport: false,
       },
     ])
   })
@@ -114,6 +122,7 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "module", path: "src/dep.ts" },
         kind: "type",
         form: "static",
+        reExport: true,
       },
     ])
   })
@@ -126,6 +135,59 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "module", path: "src/dep.ts" },
         kind: "runtime",
         form: "static",
+        reExport: true,
+      },
+    ])
+  })
+
+  it("yields a runtime re-export edge for `export { x } from`", () => {
+    const edges = edgesFrom(extractForms(), "src/export-named-from.ts")
+    expect(edges).toEqual([
+      {
+        from: "src/export-named-from.ts",
+        to: { type: "module", path: "src/dep.ts" },
+        kind: "runtime",
+        form: "static",
+        reExport: true,
+      },
+    ])
+  })
+
+  it("yields a runtime re-export edge for `export * as ns from`", () => {
+    const edges = edgesFrom(extractForms(), "src/export-star-as.ts")
+    expect(edges).toEqual([
+      {
+        from: "src/export-star-as.ts",
+        to: { type: "module", path: "src/dep.ts" },
+        kind: "runtime",
+        form: "static",
+        reExport: true,
+      },
+    ])
+  })
+
+  it("marks the indirect form `import { x } …; export { x }` as a re-export — the module record normalizes it", () => {
+    const edges = edgesFrom(extractForms(), "src/local-reexport.ts")
+    expect(edges).toEqual([
+      {
+        from: "src/local-reexport.ts",
+        to: { type: "module", path: "src/dep.ts" },
+        kind: "runtime",
+        form: "static",
+        reExport: true,
+      },
+    ])
+  })
+
+  it("merges a same-target import + re-export into one re-export edge", () => {
+    const edges = edgesFrom(extractForms(), "src/import-and-reexport.ts")
+    expect(edges).toEqual([
+      {
+        from: "src/import-and-reexport.ts",
+        to: { type: "module", path: "src/dep.ts" },
+        kind: "runtime",
+        form: "static",
+        reExport: true,
       },
     ])
   })
@@ -138,6 +200,7 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "module", path: "src/dep.ts" },
         kind: "runtime",
         form: "static",
+        reExport: false,
       },
     ])
   })
@@ -150,6 +213,7 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "module", path: "src/dep.ts" },
         kind: "runtime",
         form: "dynamic",
+        reExport: false,
       },
     ])
   })
@@ -183,6 +247,7 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "module", path: "src/dep.ts" },
         kind: "runtime",
         form: "require",
+        reExport: false,
       },
     ])
   })
@@ -195,6 +260,7 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "module", path: "src/dep.ts" },
         kind: "runtime",
         form: "static",
+        reExport: false,
       },
     ])
   })
@@ -224,6 +290,7 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "module", path: "src/widget.svelte" },
         kind: "runtime",
         form: "static",
+        reExport: false,
       },
     ])
   })
@@ -275,6 +342,7 @@ describe("extractGraph over the forms fixture", () => {
         to: { type: "external", specifier: "../outside.js", package: null },
         kind: "runtime",
         form: "static",
+        reExport: false,
       },
     ])
   })
@@ -316,6 +384,7 @@ describe("extractGraph over the resolution fixture", () => {
         to: { type: "module", path: "src/app/util.ts" },
         kind: "runtime",
         form: "static",
+        reExport: false,
       },
     ])
   })
@@ -328,6 +397,7 @@ describe("extractGraph over the resolution fixture", () => {
         to: { type: "module", path: "src/cjs.cts" },
         kind: "runtime",
         form: "static",
+        reExport: false,
       },
     ])
   })

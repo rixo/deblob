@@ -193,12 +193,32 @@ identity).
   outermost-violated reported), type-only imports bind (packaging rule — rule 8
   exempts composition rules only), ownerless `private/` inert, rule-12 arch
   parenthetical (type-only stance).
-- Then the remaining detectors, each its own step: barrels, ports, cycles/dag —
-  `dag` last if the nesting arch touch lags. Carried into the ports step
-  (2026-07-21, at 03 review): a **runtime import edge from a port file is always
-  a defect** — types never need runtime bindings (`typeof` works through
-  `import type`), so the edge is a runtime re-export (rule 10), a side-effect
-  import, or a missing `type` keyword. `check layers` stays matrix-only (fires
+- `05_check-barrels` — **landed 2026-07-21**, spec:
+  [05_check-barrels/SPEC.md](./05_check-barrels/SPEC.md); rule 2 both catalog
+  shapes (barrel-file at the index, index-import at the importer), kind-blind
+  (structure rule, 04 precedent), blob/assembly exemptions (blob-binding list +
+  entry designation), extraction gains the re-export fact behind the port;
+  check-layers overlap kept deliberately (composability, remedy divergence,
+  rule-2 residue — folding is a presentation concern).
+- Queued (2026-07-21, at 05 review): **rule-8 scope amendment** to landed 03 —
+  the ratified "runtime edges only" default is a global type-edge skip, but rule
+  8's own words scope the exemption to composition rules ("depending on a
+  contract's shape is not depending on its implementation"), and blob has no
+  contract. Amend `checkLayers` to per-cell exemption: type edges evaluated,
+  composition-unit targets (service/adapters) exempt by default, blob cells fire
+  rule 5 kind-blind — closes the zero-priced type channel (a model exporting
+  types built on blob types launders unratified shapes, rule 3). Rule-4 type
+  edges (`import type` of a concrete lib) are dialect-trap territory — rule them
+  in that step. Touches: 03 SPEC amendment, `checkLayers`, catalog rule-6 line's
+  "`import type` is legal" nuance, and 05 SPEC's overlap bullet (the type-only
+  residue claim shrinks; barrels residue left = model/ports barrels, remedy
+  divergence, attribution).
+- Then the remaining detectors, each its own step: ports, cycles/dag — `dag`
+  last if the nesting arch touch lags. Carried into the ports step (2026-07-21,
+  at 03 review): a **runtime import edge from a port file is always a defect** —
+  types never need runtime bindings (`typeof` works through `import type`), so
+  the edge is a runtime re-export (rule 10), a side-effect import, or a missing
+  `type` keyword. `check layers` stays matrix-only (fires
   ports→concrete/outward/blob, silent on ports→model/ports/pure-lib runtime);
   rule the flat import-side firing and its citation at the ports step SPEC.
 
@@ -311,6 +331,15 @@ doesn't check:
   `blob/main`; once published, a release's URLs should pin its own tag
   (`blob/vX.Y.Z`) so shipped citations survive main drift. Wire at release step:
   version from package.json, anchor-stability check per tag.
+- **Blob % beyond file count** (2026-07-21, at 05 review; metric ruled same day)
+  — file count weights a 5-line file like a 2000-line monster and rewards
+  splitting. Ruled: the canonical blob % is **by file size (~chars)** — one
+  number everywhere (stat-free in the bare command, no read needed), and the
+  comments-vs-code objection to size doesn't apply to blob: it is precisely
+  characterized as uncharacterized mass, all of it counts. LOC rejected for
+  uniformity (would need content reads or a second gross number). All the metric
+  must do is decrease when you move in the right direction. Wire at the
+  bare-command/metric step.
 - **Vite plugin driver** — dev-time violations, second driver validating the
   extraction port → [future/vite-plugin-driver/](./future/vite-plugin-driver/) —
   blocked: mechanical base + incremental/JSON refinements first.

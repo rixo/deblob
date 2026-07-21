@@ -122,10 +122,24 @@ export const createExtraction = ({
         const existing = edges.get(key)
         const kind = record.typeOnly ? "type" : "runtime"
         if (!existing) {
-          edges.set(key, { from: file, to: target, kind, form: record.form })
-        } else if (existing.kind === "type" && kind === "runtime") {
-          // one edge per (from, target); runtime wins
-          edges.set(key, { from: file, to: target, kind, form: record.form })
+          edges.set(key, {
+            from: file,
+            to: target,
+            kind,
+            form: record.form,
+            reExport: record.reExport,
+          })
+        } else {
+          // one edge per (from, target); runtime wins the kind merge, and
+          // reExport ORs across occurrences independently of it
+          const runtimeWins = existing.kind === "type" && kind === "runtime"
+          edges.set(key, {
+            from: file,
+            to: target,
+            kind: runtimeWins ? kind : existing.kind,
+            form: runtimeWins ? record.form : existing.form,
+            reExport: existing.reExport || record.reExport,
+          })
         }
       }
     }

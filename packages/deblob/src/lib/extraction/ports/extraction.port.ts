@@ -16,6 +16,11 @@ export type ImportRecord = {
   typeOnly: boolean
   form: EdgeForm
   /**
+   * True when this occurrence re-exports (`export ... from`, any form) — the
+   * fact rule 2 reads; plain imports never set it.
+   */
+  reExport: boolean
+  /**
    * False when `specifier` is a non-literal dynamic-import expression —
    * unresolvable by construction; it must surface as a diagnostic, never reach
    * resolution (raw expression text can falsely resolve, e.g. a parameter named

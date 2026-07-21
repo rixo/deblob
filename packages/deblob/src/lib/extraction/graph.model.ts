@@ -55,6 +55,11 @@ export type ImportEdge = {
   to: EdgeTarget
   kind: EdgeKind
   form: EdgeForm
+  /**
+   * True iff any contributing occurrence is a re-export (`export ... from`) —
+   * OR under the edge merge, independent of the runtime-wins kind merge.
+   */
+  reExport: boolean
 }
 
 /** A specifier that failed resolution — surfaced, never dropped. */

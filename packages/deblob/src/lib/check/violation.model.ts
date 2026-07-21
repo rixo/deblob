@@ -64,5 +64,22 @@ export type PrivateViolation = {
   owner: string
 }
 
+export type BarrelsViolation = {
+  check: "barrels"
+  ruleset: Ruleset
+  /** Always cites 2 — kind- and form-blind, no hint variant. */
+  rules: readonly number[]
+  /**
+   * Attribution side: the index for `barrel-file`, the importer for
+   * `index-import`.
+   */
+  file: string
+  /** Grouping key; `null` = the `blob` bucket. */
+  serviceRoot: string | null
+  /** The re-exported layered file / the index module. */
+  target: EdgeTarget
+  shape: "barrel-file" | "index-import"
+}
+
 /** The union grows one member per detector step. */
-export type Violation = LayersViolation | PrivateViolation
+export type Violation = LayersViolation | PrivateViolation | BarrelsViolation
