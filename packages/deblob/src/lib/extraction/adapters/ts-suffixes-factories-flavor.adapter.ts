@@ -21,6 +21,13 @@ const LAYER_BY_SUFFIX: Record<string, FlavorLayer> = {
 const LAYER_SUFFIX =
   /\.(model|port|service|adapter)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
 
+/**
+ * Rule 16 — test setup is assembly; test naming is this flavor's opinion (same
+ * extension set as layer suffixes). Closed carve-out: `__tests__/` and other
+ * directory conventions stay to the config's `assembly` escape hatch.
+ */
+const TEST_SUFFIX = /\.(?:spec|test)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
+
 /** Layer/visibility grouping dirs — filing, never service roots. */
 const GROUPING_DIRS = new Set([
   "model",
@@ -41,6 +48,7 @@ const baseOf = (dir: string): string => {
 }
 
 const layerOf = (path: string): FlavorLayer => {
+  if (TEST_SUFFIX.test(path)) return "assembly"
   const match = LAYER_SUFFIX.exec(path)
   if (!match) return "blob"
   // the regex alternation and the record keys are the same set

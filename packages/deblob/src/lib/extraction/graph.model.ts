@@ -10,10 +10,12 @@ export type Layer =
   "model" | "ports" | "service" | "adapters" | "assembly" | "blob"
 
 /**
- * What a flavor can say about a file. `assembly` is never inferred from naming
- * — it is granted by the caller's designation matcher.
+ * What a flavor can say about a file. Source naming never yields `assembly` —
+ * that is granted by the caller's designation matcher — but test naming does
+ * (rule 16: test setup is assembly, and opinions live in the flavor); the
+ * designation matcher still ORs on top for exotic naming.
  */
-export type FlavorLayer = Exclude<Layer, "assembly">
+export type FlavorLayer = Layer
 
 export type ModuleNode = {
   path: string

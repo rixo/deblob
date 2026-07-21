@@ -287,7 +287,7 @@ describe("extractGraph over the forms fixture", () => {
     expect(graph.modules.get("src/dep.ts")).toMatchObject({ layer: "blob" })
   })
 
-  it("grants assembly through the designation matcher, never from naming", () => {
+  it("grants assembly through the designation matcher, on top of the flavor", () => {
     const graph = extractFixture({
       fixture: "forms",
       files: FORMS_FILES,

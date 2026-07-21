@@ -644,17 +644,19 @@ tooling. Both are hard requirements.
    `node:fs`, an HTTP client, a database driver belong in adapters. A service
    depending on concrete bypasses its ports and becomes untestable. (Pure,
    deterministic third-party libraries are not "concrete" in this sense — they
-   qualify as model-layer code.)
+   qualify as model-layer code. In practice, purity should be declared, not
+   presumed.)
 5. <a id="rule-5"></a>**Only assembly may import from blob** — blob has no layer
    constraint. Everything else importing from it contaminates a layer that was
-   supposed to have guarantees.
+   supposed to have guarantees. (Blob importing blob is fine — only a layer that
+   makes a guarantee can break one, and blob and assembly claim none.)
 
 **Composition rules:**
 
 6. <a id="rule-6"></a>**`.service.ts` can only be imported by assembly** — not
-   by model, ports, other service-layer code, or adapters.
+   by model, ports, other service-layer code, adapters, or blob.
 7. <a id="rule-7"></a>**`.adapter.ts` can only be imported by assembly** — not
-   by model, ports, service, or other adapters.
+   by model, ports, service, other adapters, or blob.
 8. <a id="rule-8"></a>**Composition rules govern runtime imports — type-only
    imports are exempt.** Depending on a contract's shape is not depending on its
    implementation. `import type { IconsServiceAPI } from '../icons/service'` is

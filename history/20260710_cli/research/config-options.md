@@ -107,10 +107,18 @@ Notes, honest ones:
 
 - **This is why the key must take globs, not exact paths** — the walkthrough's
   open question, answered by the first real framework contact.
-- v0 already half-covers SvelteKit mechanically: `.svelte` files are
-  assembly-privileged for layer rules (carried note, 2026-07-11) — the
-  designation mostly matters for the `.ts` route files (`+page.ts`,
-  `+server.ts`).
+- The earlier read that v0 half-covers SvelteKit mechanically (`.svelte` =
+  assembly-privileged _by naming_, carried note 2026-07-11) is **superseded**
+  (2026-07-21, rixo, at the 03 spec): the flavor classifies `.svelte` blob in v0
+  — framework-file classification is preset/fast-follow territory. Config
+  designation still ORs on top: the globs above match the `.svelte` route files
+  too (`+*` is extensionless), and matched files classify assembly regardless of
+  extension. Blob is the fate of _undesignated_ `.svelte` only — ordinary
+  components — whose blob-% inflation on component-heavy repos is the accepted
+  honest v0 read. Remaining v0 caveat either way: no `.svelte` extractor yet
+  (`parsed: false`) — a designated route file is a correct assembly _node_, but
+  its own wiring edges stay unseen until the per-filetype extractors land
+  (fast-follow, carried note).
 - **The formal story is thinner than the mechanical one**: pages doing their own
   wiring is _distributed assembly_ — the F3 arch hole tracked in
   `future/arch-pass/`. The config can say "routes are assembly" today; what
@@ -143,6 +151,52 @@ Not v0: the SvelteKit section above shows the manual globs — presets are sugar
 over exactly that, added when the manual story has proven the defaults worth
 bundling. Resolves the former open question: FlavorResolver grows no
 `assembly()` hook — framework knowledge lives in presets, arch style in flavor.
+
+## `pureLibs` granularity (proposal, 2026-07-21, rixo)
+
+Second thoughts on binary on/off purity, banked at the 03 review: per-package
+declaration is v0's shipped form, but the complete form is already well defined
+— entries widen to:
+
+```ts
+// future shape, not v0 — string entries = whole package, unchanged
+pureLibs: [
+  "zod",
+  { import: ["merge", "cloneDeep"], from: "lodash" },
+  { import: "default", from: "classnames" },
+]
+```
+
+The object form mirrors the import statement it blesses
+(`import { merge } from "lodash"`) — the config teaches by shape, same logic as
+the `flavor` key.
+
+What it buys — mixed-purity packages, two distinct flavors:
+
+- **Subpath mixing** (`pkg/pure` vs `pkg/node`): the sharper hole, and silent
+  today — extraction's `packageNameOf` collapses `lodash/fp` → `lodash`, so
+  `"lodash"` blesses every subpath sight-unseen. Matching `from` against the
+  full specifier (not the collapsed package name) closes it.
+- **Named-export mixing** (one package, pure and impure exports): rarer but
+  real.
+
+Costs, honest ones:
+
+- Graph edges carry no imported binding names today — per-export purity needs
+  extraction to record bindings per edge (oxc yields them natively), and the
+  violation must cite the offending binding.
+- Semantics to rule: `import * as ns` touches everything ⇒ whole package must be
+  pure; side-effect imports; `from` matching (full specifier vs package name);
+  re-export chains.
+- The teaching channel thickens: "declare it in `pureLibs`" stops being one
+  line.
+
+Deferral is free, which is why this stays proposal: string entries remain valid
+forever (`string | { import, from }` union), binding data is additive to the
+graph model, and a `bindings` field on the violation is additive while
+JSON/SARIF output is unshipped. Graduate on the first dogfood hit of a real
+mixed lib — subpath matching plausibly graduates first, since its hole is
+already open.
 
 ## `check` filters (reporting scope)
 
@@ -198,3 +252,6 @@ coverage.
   a sibling deblob project earn a distinct treatment?
 - `--filter` in `--json` output (staged): filter applied before or after
   serialization?
+- `pureLibs` granular form (see section above): ratify the `{ import, from }`
+  entry shape at the config step; decide whether subpath matching
+  (full-specifier `from`) graduates ahead of named-export granularity.

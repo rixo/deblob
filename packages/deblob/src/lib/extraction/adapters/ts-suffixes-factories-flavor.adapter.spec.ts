@@ -45,7 +45,7 @@ describe("ts-suffixes-factories flavor", () => {
     expect(result.get("src/data.json")?.layer).toBe("blob")
   })
 
-  it("never yields assembly — designation is the caller's, not naming's", () => {
+  it("never yields assembly from source naming — designation is the caller's", () => {
     const result = classify(["src/main.assembly.ts", "src/assembly/wire.ts"])
     for (const [, classification] of result) {
       expect(classification.layer).not.toBe("assembly")
@@ -121,12 +121,50 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  it("classifies spec files as blob (test code carries no layer)", () => {
+  it("classifies test files as assembly — rule 16, the flavor's opinion", () => {
     const result = classify([
       "icons/icons.model.spec.ts",
+      "icons/loader.test.ts",
       "icons/icons.model.ts",
     ])
-    expect(result.get("icons/icons.model.spec.ts")?.layer).toBe("blob")
+    expect(result.get("icons/icons.model.spec.ts")?.layer).toBe("assembly")
+    expect(result.get("icons/loader.test.ts")?.layer).toBe("assembly")
     expect(result.get("icons/icons.model.spec.ts")?.serviceRoot).toBe("icons")
+  })
+
+  it("classifies test files as assembly inside grouping dirs too", () => {
+    const result = classify([
+      "icons/icons.service.ts",
+      "icons/ports/icon-source.spec.ts",
+      "icons/private/scoring.test.ts",
+    ])
+    expect(result.get("icons/ports/icon-source.spec.ts")).toEqual({
+      layer: "assembly",
+      serviceRoot: "icons",
+      isPrivate: false,
+    })
+    expect(result.get("icons/private/scoring.test.ts")).toEqual({
+      layer: "assembly",
+      serviceRoot: "icons",
+      isPrivate: true,
+    })
+  })
+
+  it("classifies test naming across the same extension set as layer suffixes", () => {
+    const result = classify(["a/x.spec.tsx", "a/y.test.mjs", "a/z.spec.cts"])
+    for (const [, classification] of result) {
+      expect(classification.layer).toBe("assembly")
+    }
+  })
+
+  it("does not let a test file mark a service root", () => {
+    const result = classify(["icons/icons.service.spec.ts", "icons/util.ts"])
+    expect(result.get("icons/util.ts")?.serviceRoot).toBe(null)
+  })
+
+  it("keeps .svelte and unknown suffixes blob — test naming is a closed carve-out", () => {
+    const result = classify(["src/widget.svelte", "src/foo.specs.ts"])
+    expect(result.get("src/widget.svelte")?.layer).toBe("blob")
+    expect(result.get("src/foo.specs.ts")?.layer).toBe("blob")
   })
 })

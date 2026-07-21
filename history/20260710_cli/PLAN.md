@@ -182,12 +182,19 @@ identity).
   [02_rule-number-resolution/SPEC.md](./02_rule-number-resolution/SPEC.md);
   detail dissolved there (anchors, INDEX rule-range column, shipped content +
   mapping, sync story).
-- `03_check-layers` — **opened 2026-07-20**, spec:
+- `03_check-layers` — **landed 2026-07-21**, spec:
   [03_check-layers/SPEC.md](./03_check-layers/SPEC.md); the matrix detector
   (rules 1, 4, 5, 6, 7 with 8/9), violation model's first instance, the
-  spec-as-assembly flavor amendment, both ruled arch touches.
+  spec-as-assembly flavor amendment, the three ruled arch touches (rule-4
+  practice line, 6/7 enumerations gain blob, rule-5 blob→blob parenthetical).
 - Then the remaining detectors, each its own step: private, barrels, ports,
-  cycles/dag — `dag` last if the nesting arch touch lags.
+  cycles/dag — `dag` last if the nesting arch touch lags. Carried into the ports
+  step (2026-07-21, at 03 review): a **runtime import edge from a port file is
+  always a defect** — types never need runtime bindings (`typeof` works through
+  `import type`), so the edge is a runtime re-export (rule 10), a side-effect
+  import, or a missing `type` keyword. `check layers` stays matrix-only (fires
+  ports→concrete/outward/blob, silent on ports→model/ports/pure-lib runtime);
+  rule the flat import-side firing and its citation at the ports step SPEC.
 
 README-driven UX fiction banked (2026-07-17):
 [research/help-screens.md](./research/help-screens.md) (intended `--help` +
