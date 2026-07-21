@@ -675,7 +675,9 @@ tooling. Both are hard requirements.
 **Packaging rules:**
 
 12. <a id="rule-12"></a>**`private/` is the only visibility boundary** — nothing
-    outside a service may import from its `private/` directory.
+    outside a service may import from its `private/` directory. (Type-only
+    imports included — visibility is ownership, not implementation coupling;
+    rule 8's exemption covers composition rules only.)
 13. <a id="rule-13"></a>**No circular dependencies between services** — DAG,
     enforced by tooling in CI.
 14. <a id="rule-14"></a>**No circular runtime dependencies between modules** —

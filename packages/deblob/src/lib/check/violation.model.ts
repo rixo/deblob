@@ -47,5 +47,22 @@ export type LayersViolation = {
     }
 )
 
+export type PrivateViolation = {
+  check: "private"
+  ruleset: Ruleset
+  /** Always cites 12 — packaging rule, no kind exemption, no hint variant. */
+  rules: readonly number[]
+  /** The offending importer. */
+  file: string
+  /** Grouping key; `null` = the `blob` bucket. */
+  serviceRoot: string | null
+  /** The offending edge's target. */
+  target: EdgeTarget
+  /** The crossed `private/` directory — the outermost violated boundary. */
+  boundary: string
+  /** The service root owning the boundary — rendering never re-derives it. */
+  owner: string
+}
+
 /** The union grows one member per detector step. */
-export type Violation = LayersViolation
+export type Violation = LayersViolation | PrivateViolation

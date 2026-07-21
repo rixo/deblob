@@ -187,12 +187,12 @@ identity).
   (rules 1, 4, 5, 6, 7 with 8/9), violation model's first instance, the
   spec-as-assembly flavor amendment, the three ruled arch touches (rule-4
   practice line, 6/7 enumerations gain blob, rule-5 blob→blob parenthetical).
-- `04_check-private` — **opened 2026-07-21**, spec:
+- `04_check-private` — **landed 2026-07-21**, spec:
   [04_check-private/SPEC.md](./04_check-private/SPEC.md); rule 12 as boundary
   operation over `private` path segments (owner = nearest service root, fractal,
   outermost-violated reported), type-only imports bind (packaging rule — rule 8
-  exempts composition rules only), ownerless `private/` inert, proposed rule-12
-  arch parenthetical.
+  exempts composition rules only), ownerless `private/` inert, rule-12 arch
+  parenthetical (type-only stance).
 - Then the remaining detectors, each its own step: barrels, ports, cycles/dag —
   `dag` last if the nesting arch touch lags. Carried into the ports step
   (2026-07-21, at 03 review): a **runtime import edge from a port file is always
