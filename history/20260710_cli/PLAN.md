@@ -200,19 +200,13 @@ identity).
   entry designation), extraction gains the re-export fact behind the port;
   check-layers overlap kept deliberately (composability, remedy divergence,
   rule-2 residue — folding is a presentation concern).
-- Queued (2026-07-21, at 05 review): **rule-8 scope amendment** to landed 03 —
-  the ratified "runtime edges only" default is a global type-edge skip, but rule
-  8's own words scope the exemption to composition rules ("depending on a
-  contract's shape is not depending on its implementation"), and blob has no
-  contract. Amend `checkLayers` to per-cell exemption: type edges evaluated,
-  composition-unit targets (service/adapters) exempt by default, blob cells fire
-  rule 5 kind-blind — closes the zero-priced type channel (a model exporting
-  types built on blob types launders unratified shapes, rule 3). Rule-4 type
-  edges (`import type` of a concrete lib) are dialect-trap territory — rule them
-  in that step. Touches: 03 SPEC amendment, `checkLayers`, catalog rule-6 line's
-  "`import type` is legal" nuance, and 05 SPEC's overlap bullet (the type-only
-  residue claim shrinks; barrels residue left = model/ports barrels, remedy
-  divergence, attribution).
+- `06_rule8-scope` — **landed 2026-07-21**, spec:
+  [06_rule8-scope/SPEC.md](./06_rule8-scope/SPEC.md); amendment to landed 03 —
+  rule 8 applied per cell instead of a global type-edge skip: the exemption
+  covers targets owning a contract shape (composition units in-set,
+  builtins/packages external), blob and assembly targets bind (closes the
+  zero-priced laundering channel, rule 3), the 8-hint generalizes to every cell
+  whose type variant is exempt, strict mode untouched.
 - Then the remaining detectors, each its own step: ports, cycles/dag — `dag`
   last if the nesting arch touch lags. Carried into the ports step (2026-07-21,
   at 03 review): a **runtime import edge from a port file is always a defect** —
@@ -307,15 +301,15 @@ doesn't check:
   `assembly` config key (renamed from `entry` — designation, not discovery;
   privilege per-edge, never transitive). Ratify at config step spec.
 - **Type-only scope per rule family** (2026-07-17, surfaced by the exemption
-  opt-out ruling): the arch reads asymmetric — the matrix "governs runtime
-  imports" (type-only exempt, rule 8), rule 14 is explicitly runtime-only, but
-  rule 13's service-DAG wording ("any file imports from any file") names no
-  exemption — type-only cross-service edges may count for the DAG
-  (extraction-independence reasoning holds for types). Confirm intended
-  asymmetry at `check dag` spec time; decide whether the flavor axis touches
-  only the matrix or the DAG too — possibly an arch clarification touch. Rule
-  12's stance settled at the 04 spec (2026-07-21): packaging rule, binds every
-  edge kind — residual here is 13 vs 14 only.
+  opt-out ruling): the arch reads asymmetric — the matrix exempts type edges to
+  contract-shaped targets only (rule 8 per cell since 06; blob/assembly bind),
+  rule 14 is explicitly runtime-only, but rule 13's service-DAG wording ("any
+  file imports from any file") names no exemption — type-only cross-service
+  edges may count for the DAG (extraction-independence reasoning holds for
+  types). Confirm intended asymmetry at `check dag` spec time; decide whether
+  the flavor axis touches only the matrix or the DAG too — possibly an arch
+  clarification touch. Rule 12's stance settled at the 04 spec (2026-07-21):
+  packaging rule, binds every edge kind — residual here is 13 vs 14 only.
 
 ## Future
 

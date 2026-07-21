@@ -93,15 +93,18 @@ layers  src/billing/invoice-client.service.ts
 
 **Runtime import of an `.adapter.ts` outside assembly (rule 7).** Same shape,
 adapters. Also covers adapter→adapter (absorb into one, or go through ports).
+`import type` is legal (rule 8), same as the service seal.
 
 ```
 layers  src/invoice/fs-store.adapter.ts
-        imports ../billing/stripe.adapter.ts — .adapter.ts is assembly-only
-        (rule 7)
+        imports ../billing/stripe.adapter.ts — .adapter.ts is assembly-only;
+        import type is fine (rules 7, 8)
 ```
 
 **Non-assembly imports blob (rule 5).** The layered world reaching into
-unextracted code — the label's guarantee would be false.
+unextracted code — the label's guarantee would be false. Type-only imports
+included (ruled at [06_rule8-scope](../06_rule8-scope/SPEC.md)): blob has no
+contract shape, so rule 8's exemption never reaches this cell.
 
 ```
 layers  src/invoice/pdf-render.service.ts

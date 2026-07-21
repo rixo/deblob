@@ -64,7 +64,7 @@ const outsideFile = (specifier: string): EdgeTarget => ({
 
 describe("checkLayers", () => {
   describe("model and ports stay pure and inward (rules 1, 4)", () => {
-    it("fires 1+4 when model imports a concrete builtin", () => {
+    it("fires 1+4 (8 hint) when model imports a concrete builtin", () => {
       const g = graph(
         {
           "invoice/model/totals.ts": { layer: "model", serviceRoot: "invoice" },
@@ -75,7 +75,7 @@ describe("checkLayers", () => {
         {
           check: "layers",
           ruleset: "arch",
-          rules: [1, 4],
+          rules: [1, 4, 8],
           file: "invoice/model/totals.ts",
           serviceRoot: "invoice",
           importerLayer: "model",
@@ -102,15 +102,14 @@ describe("checkLayers", () => {
           { from: "a/x.model.ts", to: mod("a/ports/p.ts") },
         ],
       )
-      const found = checkLayers(g)
-      expect(found).toHaveLength(4)
-      for (const violation of found) {
-        expect(violation).toMatchObject({
-          rules: [1],
-          shape: "matrix-cell",
-          importerLayer: "model",
-        })
-      }
+      // 8 hint rides composition-unit targets only — assembly and ports type
+      // variants bind too, so their citations stay plain
+      expect(checkLayers(g)).toEqual([
+        expect.objectContaining({ rules: [1, 8], targetClass: "service" }),
+        expect.objectContaining({ rules: [1, 8], targetClass: "adapters" }),
+        expect.objectContaining({ rules: [1], targetClass: "assembly" }),
+        expect.objectContaining({ rules: [1], targetClass: "ports" }),
+      ])
     })
 
     it("fires 1 when ports import outward", () => {
@@ -134,7 +133,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: [1],
+          rules: [1, 8],
           file: "invoice/ports/renderer.ts",
           shape: "matrix-cell",
           targetClass: "service",
@@ -142,14 +141,14 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires 1+4 when ports import a concrete builtin", () => {
+    it("fires 1+4 (8 hint) when ports import a concrete builtin", () => {
       const g = graph(
         { "a/ports/p.ts": { layer: "ports", serviceRoot: "a" } },
         [{ from: "a/ports/p.ts", to: lib("node:fs") }],
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: [1, 4],
+          rules: [1, 4, 8],
           shape: "matrix-cell",
           targetClass: "concrete",
         }),
@@ -158,7 +157,7 @@ describe("checkLayers", () => {
   })
 
   describe("service purity (rule 4)", () => {
-    it("fires 4 when service imports a concrete builtin", () => {
+    it("fires 4 (8 hint) when service imports a concrete builtin", () => {
       const g = graph(
         {
           "invoice/pdf-render.service.ts": {
@@ -170,7 +169,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: [4],
+          rules: [4, 8],
           file: "invoice/pdf-render.service.ts",
           shape: "matrix-cell",
           targetClass: "concrete",
@@ -178,7 +177,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires 1 when service imports an adapter", () => {
+    it("fires 1 (8 hint) when service imports an adapter", () => {
       const g = graph(
         {
           "invoice/pdf-render.service.ts": {
@@ -199,7 +198,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: [1],
+          rules: [1, 8],
           shape: "matrix-cell",
           targetClass: "adapters",
         }),
@@ -265,7 +264,7 @@ describe("checkLayers", () => {
     )
 
     it.each(["adapters", "blob"] as const)(
-      "fires 7 when %s runtime-imports an adapter file",
+      "fires 7 (8 hint) when %s runtime-imports an adapter file",
       (importerLayer) => {
         const g = graph(
           {
@@ -282,7 +281,7 @@ describe("checkLayers", () => {
         )
         expect(checkLayers(g)).toEqual([
           expect.objectContaining({
-            rules: [7],
+            rules: [7, 8],
             importerLayer,
             shape: "matrix-cell",
             targetClass: "adapters",
@@ -330,7 +329,7 @@ describe("checkLayers", () => {
         {
           check: "layers",
           ruleset: "arch",
-          rules: [4],
+          rules: [4, 8],
           file: "invoice/model/schedule.ts",
           serviceRoot: "invoice",
           importerLayer: "model",
@@ -346,7 +345,7 @@ describe("checkLayers", () => {
         [{ from: "a/a.service.ts", to: lib("axios") }],
       )
       expect(checkLayers(g)).toEqual([
-        expect.objectContaining({ rules: [4], shape: "unclassified-lib" }),
+        expect.objectContaining({ rules: [4, 8], shape: "unclassified-lib" }),
       ])
     })
 
@@ -391,7 +390,7 @@ describe("checkLayers", () => {
     })
   })
 
-  describe("rule 8 — type-only exemption and the strict opt-out", () => {
+  describe("rule 8 — per-cell type exemption and the strict opt-out", () => {
     it("ignores type-only imports of service and adapter files by default", () => {
       const g = graph(
         {
@@ -416,6 +415,86 @@ describe("checkLayers", () => {
         ],
       )
       expect(checkLayers(g)).toEqual([])
+    })
+
+    it("lets model type-import a service — rule 8's example, legal anywhere", () => {
+      const g = graph(
+        {
+          "a/x.model.ts": { layer: "model", serviceRoot: "a" },
+          "icons/icons.service.ts": { layer: "service", serviceRoot: "icons" },
+        },
+        [
+          {
+            from: "a/x.model.ts",
+            to: mod("icons/icons.service.ts"),
+            kind: "type",
+          },
+        ],
+      )
+      expect(checkLayers(g)).toEqual([])
+    })
+
+    it("ignores type-only imports of externals by default — published types are the contract", () => {
+      const g = graph(
+        {
+          "a/a.service.ts": { layer: "service", serviceRoot: "a" },
+          "a/x.model.ts": { layer: "model", serviceRoot: "a" },
+        },
+        [
+          { from: "a/a.service.ts", to: lib("node:fs"), kind: "type" },
+          { from: "a/x.model.ts", to: lib("luxon"), kind: "type" },
+        ],
+      )
+      expect(checkLayers(g)).toEqual([])
+    })
+
+    it.each(["model", "ports", "service", "adapters"] as const)(
+      "fires 5 when %s type-imports blob — no contract shape to depend on",
+      (importerLayer) => {
+        const g = graph(
+          {
+            "invoice/x.ts": { layer: importerLayer, serviceRoot: "invoice" },
+            "lib/helpers.ts": { layer: "blob" },
+          },
+          [{ from: "invoice/x.ts", to: mod("lib/helpers.ts"), kind: "type" }],
+        )
+        expect(checkLayers(g)).toEqual([
+          expect.objectContaining({
+            rules: [5],
+            importerLayer,
+            targetClass: "blob",
+          }),
+        ])
+      },
+    )
+
+    it("fires 1 when model type-imports assembly — wiring exports no contract", () => {
+      const g = graph(
+        {
+          "a/x.model.ts": { layer: "model", serviceRoot: "a" },
+          "main.spec.ts": { layer: "assembly" },
+        },
+        [{ from: "a/x.model.ts", to: mod("main.spec.ts"), kind: "type" }],
+      )
+      expect(checkLayers(g)).toEqual([
+        expect.objectContaining({ rules: [1], targetClass: "assembly" }),
+      ])
+    })
+
+    it("fires 1+4 when model type-imports a file outside the coverage set — not a package, no contract", () => {
+      const g = graph(
+        { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
+        [
+          {
+            from: "a/x.model.ts",
+            to: outsideFile("../../outside.ts"),
+            kind: "type",
+          },
+        ],
+      )
+      expect(checkLayers(g)).toEqual([
+        expect.objectContaining({ rules: [1, 4], targetClass: "concrete" }),
+      ])
     })
 
     it("pulls type edges into scope with typeOnlyExempt: false, citing 6 alone", () => {
@@ -451,6 +530,30 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g, { typeOnlyExempt: false })).toEqual([
         expect.objectContaining({ rules: [6] }),
+      ])
+    })
+
+    it("binds the exempt cells under typeOnlyExempt: false, plain citations", () => {
+      const g = graph(
+        {
+          "a/x.model.ts": { layer: "model", serviceRoot: "a" },
+          "icons/icons.service.ts": { layer: "service", serviceRoot: "icons" },
+          "a/a.service.ts": { layer: "service", serviceRoot: "a" },
+        },
+        [
+          {
+            from: "a/x.model.ts",
+            to: mod("icons/icons.service.ts"),
+            kind: "type",
+          },
+          { from: "a/a.service.ts", to: lib("node:fs"), kind: "type" },
+          { from: "a/x.model.ts", to: lib("luxon"), kind: "type" },
+        ],
+      )
+      expect(checkLayers(g, { typeOnlyExempt: false })).toEqual([
+        expect.objectContaining({ rules: [1], targetClass: "service" }),
+        expect.objectContaining({ rules: [4], targetClass: "concrete" }),
+        expect.objectContaining({ rules: [4], shape: "unclassified-lib" }),
       ])
     })
   })

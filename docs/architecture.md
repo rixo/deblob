@@ -649,7 +649,9 @@ tooling. Both are hard requirements.
 5. <a id="rule-5"></a>**Only assembly may import from blob** — blob has no layer
    constraint. Everything else importing from it contaminates a layer that was
    supposed to have guarantees. (Blob importing blob is fine — only a layer that
-   makes a guarantee can break one, and blob and assembly claim none.)
+   makes a guarantee can break one, and blob and assembly claim none. Type-only
+   imports included — blob has no contract shape to depend on; rule 8's
+   exemption covers composition rules only.)
 
 **Composition rules:**
 

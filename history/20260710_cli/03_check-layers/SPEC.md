@@ -56,7 +56,10 @@ render the catalog's lines, no prose inside:
 
 - Considers **runtime edges only** by default (rule 8); `typeOnlyExempt: false`
   in options pulls type edges into scope (the ruled strict opt-out — knobs may
-  only tighten canon, never loosen it).
+  only tighten canon, never loosen it). _Amended 2026-07-21 by
+  [06_rule8-scope](../06_rule8-scope/SPEC.md): the global type-edge skip
+  over-read rule 8 — the exemption is per cell (targets owning a contract
+  shape); type edges to blob and assembly bind._
 - Options carry the concrete-classification inputs (the catalog's design note,
   three sources in order): the shipped builtin baseline (Node builtins concrete
   save a small curated pure set), `pureLibs` from the caller, default-concrete

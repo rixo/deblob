@@ -86,7 +86,11 @@ config's `assembly` designation, see below).
     directly" is the fix that applies. Suppressing either side sometimes leaves
     the wrong guidance standing alone.
   - Rule 2 keeps residue layers never sees: barrels over model/ports (blob may
-    import those) and, under default rule 8, type-only index imports.
+    import those) and, under default rule 8, type-only index imports. _Corrected
+    2026-07-21 by [06_rule8-scope](../06_rule8-scope/SPEC.md): type-only index
+    imports now fire rule 5 too (blob target binds); the remaining rule-2
+    residue is model/ports barrels, remedy divergence, and root-cause
+    attribution at the index._
   - If duplicate findings ever hurt, folding is a presentation concern — the
     renderer may group findings per edge; detectors stay pure and complete.
 - **Dogfood consequence, noted not implemented**: when `packages/deblob` grows

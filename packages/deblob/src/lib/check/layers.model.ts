@@ -1,7 +1,9 @@
 /**
- * `check layers` — the dependency matrix by layer, runtime imports only by
- * default (rule 8). Pure: classified graph in, violation set out — no IO, no
- * formatting, no ordering.
+ * `check layers` — the dependency matrix by layer. Rule 8 applies per cell, not
+ * as a kind gate: a type-only edge is exempt iff its target owns a contract
+ * shape (composition units in-set, builtins/packages external); blob and
+ * assembly targets bind every kind. Pure: classified graph in, violation set
+ * out — no IO, no formatting, no ordering.
  */
 
 import type {
@@ -20,8 +22,9 @@ export type CheckLayersOptions = {
    */
   pureLibs?: readonly string[]
   /**
-   * Rule-8 stance: `true` (default) keeps type-only edges out of scope; `false`
-   * is the strict opt-out — knobs only tighten canon.
+   * Rule-8 stance: `true` (default) exempts type-only edges to targets owning a
+   * contract shape; `false` is the strict opt-out binding every kind — knobs
+   * only tighten canon.
    */
   typeOnlyExempt?: boolean
 }
@@ -37,6 +40,13 @@ const PURE_BUILTINS: ReadonlySet<string> = new Set([
 
 type NonAssembly = Exclude<Layer, "assembly">
 
+/**
+ * The in-set targets whose types are a contract (rule 8's "contract's shape"):
+ * the composition units. Blob's shape is its implementation and assembly is
+ * wiring — neither owns a contract, both bind type edges.
+ */
+const TYPE_EXEMPT_TARGETS: ReadonlySet<Layer> = new Set(["service", "adapters"])
+
 type ExternalClass = "pure" | "concrete" | "unclassified"
 
 const classifyExternal = (
@@ -51,15 +61,14 @@ const classifyExternal = (
 }
 
 /**
- * Rules cited for a forbidden module cell, `null` for a legal one. The rule-8
- * hint (6+8, "import type is fine") only holds while the exemption is active.
+ * Rules cited for a forbidden module cell, `null` for a legal one — base
+ * citations; the rule-8 hint ("import type is fine") is appended by the caller
+ * wherever the cell's type variant is exempt.
  */
 const moduleCellRules = (
   importer: NonAssembly,
   target: Layer,
-  typeOnlyExempt: boolean,
 ): readonly number[] | null => {
-  const serviceSeal = typeOnlyExempt ? [6, 8] : [6]
   switch (importer) {
     case "model":
       if (target === "model") return null
@@ -69,16 +78,16 @@ const moduleCellRules = (
       return target === "blob" ? [5] : [1]
     case "service":
       if (target === "model" || target === "ports") return null
-      if (target === "service") return serviceSeal
+      if (target === "service") return [6]
       return target === "blob" ? [5] : [1]
     case "adapters":
       if (target === "model" || target === "ports") return null
-      if (target === "service") return serviceSeal
+      if (target === "service") return [6]
       if (target === "adapters") return [7]
       return target === "blob" ? [5] : [1]
     case "blob":
       // blob binds under the composition seals only (rules 6, 7)
-      if (target === "service") return serviceSeal
+      if (target === "service") return [6]
       return target === "adapters" ? [7] : null
   }
 }
@@ -131,7 +140,7 @@ export const checkLayers = (
   const violations: LayersViolation[] = []
 
   for (const edge of graph.edges) {
-    if (typeOnlyExempt && edge.kind === "type") continue
+    const typeEdge = edge.kind === "type"
 
     const importer = moduleOf(graph, edge.from)
     const importerLayer = importer.layer
@@ -139,10 +148,15 @@ export const checkLayers = (
 
     if (edge.to.type === "module") {
       const target = moduleOf(graph, edge.to.path)
+      const cellExempt = typeOnlyExempt && TYPE_EXEMPT_TARGETS.has(target.layer)
+      if (typeEdge && cellExempt) continue
       if (isOwnPrivate(importer, target)) continue
-      const rules = moduleCellRules(importerLayer, target.layer, typeOnlyExempt)
-      if (rules)
-        violations.push(matrixCell(importer, edge, target.layer, rules))
+      const rules = moduleCellRules(importerLayer, target.layer)
+      if (rules) {
+        // the rule-8 hint: "import type is fine" — only where that is true
+        const cited = cellExempt ? [...rules, 8] : rules
+        violations.push(matrixCell(importer, edge, target.layer, cited))
+      }
       continue
     }
 
@@ -154,13 +168,17 @@ export const checkLayers = (
     ) {
       continue
     }
+    // a builtin's or package's published types are its contract; a resolved
+    // file outside the coverage set (package null) publishes nothing and binds
+    const externalExempt = typeOnlyExempt && edge.to.package !== null
+    if (typeEdge && externalExempt) continue
     const externalClass = classifyExternal(edge.to.package, pureLibs)
     if (externalClass === "pure") continue
     if (externalClass === "unclassified") {
       violations.push({
         check: "layers",
         ruleset: "arch",
-        rules: [4],
+        rules: externalExempt ? [4, 8] : [4],
         file: importer.path,
         serviceRoot: importer.serviceRoot,
         importerLayer,
@@ -170,7 +188,14 @@ export const checkLayers = (
       continue
     }
     const rules = importerLayer === "service" ? [4] : [1, 4]
-    violations.push(matrixCell(importer, edge, "concrete", rules))
+    violations.push(
+      matrixCell(
+        importer,
+        edge,
+        "concrete",
+        externalExempt ? [...rules, 8] : rules,
+      ),
+    )
   }
 
   return violations
