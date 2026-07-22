@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
 import { DEFAULT_INCLUDE, EXCLUDE_BASELINE } from "../config.model.ts"
-import { scanCoverage } from "./scan.adapter.ts"
+import { scanCoverage, statSizes } from "./scan.adapter.ts"
 
 const root = fileURLToPath(
   new URL("../__fixtures__/scan-tree", import.meta.url),
@@ -44,5 +44,16 @@ describe("scanCoverage", () => {
       "src/app.ts",
       "src/widget.svelte",
     ])
+  })
+})
+
+describe("statSizes", () => {
+  it("returns the byte size per covered file, paths preserved", async () => {
+    const files = await scan({ include: ["src/**"] })
+    const sizes = statSizes(root, files)
+    expect(sizes.map((entry) => entry.path)).toEqual([...files])
+    for (const entry of sizes) {
+      expect(entry.size).toBeGreaterThan(0)
+    }
   })
 })

@@ -6,10 +6,13 @@
  * never enter coverage.
  */
 
+import { statSync } from "node:fs"
+import { join } from "node:path"
+
 import { glob } from "tinyglobby"
 
 import { hasCoverageExtension } from "../config.model.ts"
-import type { ResolvedConfig } from "../config.model.ts"
+import type { ResolvedConfig } from "../config.service.ts"
 
 /** Root-relative POSIX paths, sorted — `extractGraph`'s `files` input. */
 export const scanCoverage = async (
@@ -23,3 +26,13 @@ export const scanCoverage = async (
   })
   return paths.filter(hasCoverageExtension).sort()
 }
+
+/**
+ * Byte size per covered file — the bare command's blob-% input. Stat only,
+ * never a content read: bare stays at glob speed.
+ */
+export const statSizes = (
+  root: string,
+  files: readonly string[],
+): { path: string; size: number }[] =>
+  files.map((path) => ({ path, size: statSync(join(root, path)).size }))

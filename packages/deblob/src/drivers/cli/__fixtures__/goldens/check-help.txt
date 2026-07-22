@@ -1,0 +1,21 @@
+Usage
+  deblob check              run all checks
+  deblob check layers       run only the named checks
+
+Options
+  --explain        append explanations of every rule that fired
+  --explain-only   print only those explanations, skip the violations
+
+All checks run over one shared import graph — naming several costs one
+extraction. A violation prints the file, the offending import, and the
+broken rule:
+
+  layers  src/invoice/pdf-render.service.ts
+    imports node:fs — the service layer cannot depend on concrete
+    implementations (rule 4)
+
+Type-only imports (import type / { type X }) are exempt from composition
+rules by default (rule 8) — a flavor axis: strict flavors opt out in
+deblob.config.ts. Unsuffixed files are blob: legal, unchecked except for
+cycles — labeling is adoption, not a prerequisite (rule 5 guards the
+boundary: only assembly may import blob).

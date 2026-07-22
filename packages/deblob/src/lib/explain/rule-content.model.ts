@@ -54,6 +54,41 @@ export const collectMdLinks = (markdown: string): string[] =>
     (match) => match[1] as string,
   )
 
+export type RuleSummary = { title: string; body: string }
+
+/**
+ * One rule's entry out of the shipped rules-summary excerpt: `title` from the
+ * bold span (trailing period dropped — the explain heading recases it), `body`
+ * the rest, whitespace collapsed, anchor tags and inline-link syntax stripped.
+ */
+export const ruleSummaryOf = (summaryMd: string, rule: number): RuleSummary => {
+  const lines = summaryMd.split("\n")
+  const anchor = `<a id="rule-${rule}"></a>`
+  const start = lines.findIndex((line) => line.includes(anchor))
+  if (start === -1) {
+    throw new Error(`rules summary has no anchor for rule ${rule}`)
+  }
+  const end = lines.findIndex(
+    (line, index) => index > start && /^\s*(?:\d+\. |\*\*)/.test(line),
+  )
+  const text = lines
+    .slice(start, end === -1 ? lines.length : end)
+    .join(" ")
+    .replace(/^\s*\d+\.\s*/, "")
+    .replace(anchor, "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim()
+  const match = /^\*\*(.+?)\*\*\s*(?:—\s*)?(.*)$/s.exec(text)
+  if (!match) {
+    throw new Error(`rule ${rule} summary entry has no bold title`)
+  }
+  return {
+    title: (match[1] as string).replace(/\.$/, "").trim(),
+    body: (match[2] as string).trim(),
+  }
+}
+
 /**
  * The § Summary section of architecture.md, verbatim — the per-rule text source
  * shipped as `content/docs/rules-summary.md`. Shared by the sync-content script

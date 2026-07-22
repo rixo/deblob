@@ -55,8 +55,11 @@ const classifyExternal = (
 ): ExternalClass => {
   // a resolved file outside the coverage set: ungoverned, undeclared ⇒ concrete
   if (pkg === null) return "concrete"
+  // pureLibs takes "package names and builtin specifiers" (ratified) — a
+  // declared builtin is pure like a declared package; undeclared builtins are
+  // enumerable and default concrete, never unclassified
   if (pkg.startsWith("node:"))
-    return PURE_BUILTINS.has(pkg) ? "pure" : "concrete"
+    return PURE_BUILTINS.has(pkg) || pureLibs.has(pkg) ? "pure" : "concrete"
   return pureLibs.has(pkg) ? "pure" : "unclassified"
 }
 

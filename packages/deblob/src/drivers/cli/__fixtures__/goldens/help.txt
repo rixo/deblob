@@ -1,0 +1,26 @@
+deblob — machine-checkable hexagonal architecture for TypeScript/ESM
+
+Usage
+  deblob                    project status + discovery
+  deblob check [what...]    run architecture checks (default: all)
+  deblob explain <topic>    explain a rule or check (rule-4, layers, ...)
+
+Checks
+  layers     dependency matrix by layer suffix; type-only imports exempt
+             by default (rules 1, 4-9)
+  private    private/ is sealed outside its service (rule 12)
+  barrels    the layer is visible in the import path — no index.ts
+             indirection (rule 2)
+  ports      port files are types only, no runtime exports (rule 10)
+
+Options
+  -c, --config <path>    config file (default: nearest deblob.config.ts)
+  --no-color             plain output (NO_COLOR is honored too)
+  -h, --help             show this help
+  -v, --version          print version
+
+Exit codes
+  0  clean    1  violations found    2  usage or config error
+
+deblob detects; it never moves code. Why each rule exists:
+https://github.com/rixo/deblob/blob/main/docs/architecture.md

@@ -2,20 +2,16 @@
  * Config loading — the one concrete tech here is the platform itself:
  * filesystem walk + native `import()` (Node strips types from `.ts` configs;
  * erasable syntax only). Not behind a port: config crosses into the core as
- * data, and reading it is assembly's job — this adapter is what assembly
- * calls.
+ * data, and reading it is assembly's job — assembly (CLI main) calls these and
+ * pipes the raw value through `resolveConfig` itself; the adapter never sees
+ * the resolution.
  */
 
 import { existsSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
-import {
-  ConfigError,
-  configImportErrorMessage,
-  resolveConfig,
-} from "../config.model.ts"
-import type { FlavorRegistry, ResolvedConfig } from "../config.model.ts"
+import { ConfigError, configImportErrorMessage } from "../config.model.ts"
 
 const CONFIG_FILENAMES = [
   "deblob.config.ts",
@@ -46,18 +42,21 @@ export const discoverConfig = (cwd: string): string | null => {
   }
 }
 
-export const loadConfig = async ({
-  cwd,
-  flavors,
-}: {
-  cwd: string
-  flavors: FlavorRegistry
-}): Promise<ResolvedConfig> => {
-  const configPath = discoverConfig(cwd)
-  if (configPath === null) {
-    return resolveConfig({}, { root: resolve(cwd), configPath: null, flavors })
+/** `-c/--config`: exact file, discovery walk skipped; missing = teaching error. */
+export const explicitConfigPath = (cwd: string, path: string): string => {
+  const configPath = resolve(cwd, path)
+  if (!existsSync(configPath)) {
+    throw new ConfigError(
+      `--config points at ${path}, which does not exist (resolved from ${cwd})`,
+    )
   }
+  return configPath
+}
 
+/** Native import of the config file; returns its default export, raw. */
+export const importConfigDefault = async (
+  configPath: string,
+): Promise<unknown> => {
   let module: Record<string, unknown>
   try {
     module = (await import(pathToFileURL(configPath).href)) as Record<
@@ -76,9 +75,5 @@ export const loadConfig = async ({
     )
   }
 
-  return resolveConfig(module["default"], {
-    root: dirname(configPath),
-    configPath,
-    flavors,
-  })
+  return module["default"]
 }

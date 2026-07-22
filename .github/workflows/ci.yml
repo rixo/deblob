@@ -18,6 +18,8 @@ jobs:
       - run: pnpm --filter deblob typecheck
       - run: pnpm --filter deblob build
       - run: pnpm --filter deblob test
+      # dogfood: the CLI gates its own architecture (01's promise, landed at 09)
+      - run: pnpm --filter deblob check
 
   # musl smoke: the napi platform matrix ships linux-*-musl bindings; the
   # recurring downstream Alpine failures are package-manager artifacts, not

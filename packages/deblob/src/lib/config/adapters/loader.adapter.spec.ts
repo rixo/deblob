@@ -1,13 +1,18 @@
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { afterAll, describe, expect, it } from "vitest"
 
 import type { FlavorResolver } from "../../extraction/ports/flavor.port.ts"
 import { ConfigError, STOCK_FLAVOR_NAME } from "../config.model.ts"
-import { discoverConfig, loadConfig } from "./loader.adapter.ts"
+import { resolveConfig } from "../config.service.ts"
+import {
+  discoverConfig,
+  explicitConfigPath,
+  importConfigDefault,
+} from "./loader.adapter.ts"
 
 const fixture = (name: string): string =>
   fileURLToPath(new URL(`../__fixtures__/${name}`, import.meta.url))
@@ -24,7 +29,18 @@ const fakeFlavor = (): FlavorResolver => ({
 
 const FLAVORS = { [STOCK_FLAVOR_NAME]: () => fakeFlavor() }
 
-const load = (cwd: string) => loadConfig({ cwd, flavors: FLAVORS })
+/** The assembly sequence (main's loadFor), composed here for the fixture cases. */
+const load = async (cwd: string) => {
+  const configPath = discoverConfig(cwd)
+  if (configPath === null) {
+    return resolveConfig({}, { root: cwd, configPath: null, flavors: FLAVORS })
+  }
+  return resolveConfig(await importConfigDefault(configPath), {
+    root: dirname(configPath),
+    configPath,
+    flavors: FLAVORS,
+  })
+}
 
 describe("discoverConfig", () => {
   it("finds the config in cwd", () => {
@@ -46,7 +62,25 @@ describe("discoverConfig", () => {
   })
 })
 
-describe("loadConfig", () => {
+describe("explicitConfigPath", () => {
+  it("resolves a relative path from cwd, absolute passed through", () => {
+    const absolute = join(fixture("walk"), "deblob.config.ts")
+    expect(
+      explicitConfigPath(fixture("walk/nested"), "../deblob.config.ts"),
+    ).toBe(absolute)
+    expect(explicitConfigPath(fixture("walk/nested/deeper"), absolute)).toBe(
+      absolute,
+    )
+  })
+
+  it("a missing explicit path is a teaching error, never a silent fallback", () => {
+    expect(() =>
+      explicitConfigPath(fixture("walk"), "SOME_MADE_UP_PATH.config.ts"),
+    ).toThrowError(/SOME_MADE_UP_PATH.*does not exist/s)
+  })
+})
+
+describe("importConfigDefault + the assembly sequence", () => {
   it("loads a .ts config natively and resolves it", async () => {
     const resolved = await load(fixture("walk"))
     expect(resolved.pureLibs).toEqual(["FAKE_ROOT_LIB"])

@@ -229,8 +229,20 @@ identity).
   `extractGraph` untouched. Implementation finding worth the read: the matrix
   forced the stock-flavor registry out of the model into assembly-injected
   wiring — the tool's own rules shaping its API.
-- Then `check dag` (rules 13, 14) — last if the nesting arch touch lags;
-  type-only asymmetry question waits there (open questions below).
+- `09_cli-runner` — **landed 2026-07-22**, spec:
+  [09_cli-runner/SPEC.md](./09_cli-runner/SPEC.md); the package runnable — bin
+  - parseArgs dispatch, bare status (size-weighted blob % wired, service count),
+    `check` rendering (fiction's grouped shape, exit codes 0/1/2 ratified),
+    `explain` (`rule-N` / bare `N` / check names, `--explain` /
+    `--explain-only`), help screens + violation listing golden-tested, CI
+    self-check green (01's promise). Dogfood found two real defects at first
+    run: the layers detector ignored `pureLibs` for builtin specifiers (the
+    ratified contract says "package names and builtin specifiers" — fixed), and
+    08's `config.model.ts` imported the flavor port — a rule-1 violation in our
+    own code; resolution split out as `config.service.ts`, assembly (main) owns
+    the load → resolve sequence, arch §Assembly literally.
+- Then `check dag` (rules 13, 14) — the last v0 step, still gated on the nesting
+  arch touch; type-only asymmetry question waits there (open questions below).
 
 README-driven UX fiction banked (2026-07-17):
 [research/help-screens.md](./research/help-screens.md) (intended `--help` +
@@ -347,8 +359,8 @@ doesn't check:
   comments-vs-code objection to size doesn't apply to blob: it is precisely
   characterized as uncharacterized mass, all of it counts. LOC rejected for
   uniformity (would need content reads or a second gross number). All the metric
-  must do is decrease when you move in the right direction. Wire at the
-  bare-command/metric step.
+  must do is decrease when you move in the right direction. Wired at 09 (bare
+  command, `blobPercentOf` — stat sizes, no content reads).
 - **Vite plugin driver** — dev-time violations, second driver validating the
   extraction port → [future/vite-plugin-driver/](./future/vite-plugin-driver/) —
   blocked: mechanical base + incremental/JSON refinements first.
@@ -371,8 +383,8 @@ doesn't check:
   chased. UI-zone taxonomy + F1–F3 arch findings: see board (arch-pass +
   svench-flavor payloads, 2026-07-11).
 - Config schema published so agents can author `deblob.config.ts` — the types
-  half landed at 08 (`defineConfig` + `DeblobConfig` exported); prose docs ride
-  the CLI step with the runnable surface.
+  half landed at 08 (`defineConfig` + `DeblobConfig` exported); the prose half
+  landed at 09 (package README, with the runnable surface). Done.
 - oxc risk mitigations (exact version pin, `@oxc-project/types` lockstep,
   conditionNames/extensionAlias always set, wasm fallback reachable + Alpine
   smoke test in CI — musl is natively supported, the known failures are

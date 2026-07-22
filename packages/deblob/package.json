@@ -12,6 +12,9 @@
   "engines": {
     "node": ">=22.18"
   },
+  "bin": {
+    "deblob": "./dist/drivers/cli/bin.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -41,6 +44,7 @@
     "build": "run-s build:*",
     "build:content": "node scripts/build-content.ts",
     "build:ts": "tsc -p tsconfig.build.json",
+    "check": "node src/drivers/cli/bin.ts check",
     "prepack": "pnpm build",
     "test": "vitest run --coverage",
     "test:watch": "vitest",

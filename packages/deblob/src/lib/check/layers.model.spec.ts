@@ -376,6 +376,17 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
+    it("a pureLibs-declared builtin is pure — builtin specifiers are ratified pureLibs entries", () => {
+      const g = graph(
+        { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
+        [{ from: "a/x.model.ts", to: lib("node:util") }],
+      )
+      expect(checkLayers(g)).toEqual([
+        expect.objectContaining({ rules: [1, 4, 8] }),
+      ])
+      expect(checkLayers(g, { pureLibs: ["node:util"] })).toEqual([])
+    })
+
     it("treats a resolved file outside the coverage set as concrete", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },

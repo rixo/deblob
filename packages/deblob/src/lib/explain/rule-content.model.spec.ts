@@ -9,6 +9,7 @@ import {
   canonicalRuleUrl,
   collectMdLinks,
   extractRulesSummary,
+  ruleSummaryOf,
 } from "./rule-content.model.ts"
 
 const repoRoot = fileURLToPath(new URL("../../../../..", import.meta.url))
@@ -58,6 +59,62 @@ describe("architecture.md anchors", () => {
     expect(extractRulesSummary("intro\n### Summary\n1. rule")).toBe(
       "### Summary\n1. rule",
     )
+  })
+})
+
+describe("ruleSummaryOf", () => {
+  const summary = [
+    "### Summary",
+    "",
+    "**Layer rules:**",
+    "",
+    '1. <a id="rule-1"></a>**Some made-up first rule** —',
+    "   body of the first rule, wrapped",
+    "   across lines.",
+    '2. <a id="rule-2"></a>**Title with trailing period inside bold.** Body',
+    "   with a [link label](#fragment) stripped to its text.",
+    "",
+    "**Another section:**",
+    "",
+    '3. <a id="rule-3"></a>**Last rule** — last body.',
+  ].join("\n")
+
+  it("splits title from body, joins the wrap, strips the anchor", () => {
+    expect(ruleSummaryOf(summary, 1)).toEqual({
+      title: "Some made-up first rule",
+      body: "body of the first rule, wrapped across lines.",
+    })
+  })
+
+  it("drops the title's trailing period and inline-link syntax", () => {
+    expect(ruleSummaryOf(summary, 2)).toEqual({
+      title: "Title with trailing period inside bold",
+      body: "Body with a link label stripped to its text.",
+    })
+  })
+
+  it("reads an entry ended by a section header or end of text", () => {
+    expect(ruleSummaryOf(summary, 3).body).toBe("last body.")
+  })
+
+  it("throws on a missing anchor", () => {
+    expect(() => ruleSummaryOf(summary, 9)).toThrow(/no anchor for rule 9/)
+  })
+
+  it("throws on an entry without a bold title", () => {
+    expect(() =>
+      ruleSummaryOf('5. <a id="rule-5"></a>no bold here', 5),
+    ).toThrow(/no bold title/)
+  })
+
+  it("parses every real rule out of the shipped excerpt", () => {
+    const real = extractRulesSummary(architectureMd())
+    for (let rule = 1; rule <= RULE_COUNT; rule += 1) {
+      const entry = ruleSummaryOf(real, rule)
+      expect(entry.title.length, `rule ${rule}`).toBeGreaterThan(0)
+      expect(entry.body.length, `rule ${rule}`).toBeGreaterThan(0)
+      expect(entry.body).not.toContain("<a id=")
+    }
   })
 })
 
