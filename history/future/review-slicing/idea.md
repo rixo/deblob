@@ -74,6 +74,25 @@ missions.
   e.g. step 10 remains one commit, same message). The review branches are
   discarded or kept as review record — ruled at graduation.
 
+## Graduation agenda (rulings for the chapter's opening)
+
+Run #1 ([dogfood-step10.md](./dogfood-step10.md)) done, verdict positive. To
+rule when the chapter opens, roughly in order:
+
+- Name: resolve the `deblob-review` collision (working alias
+  deblob-review-carbon).
+- Canon vs opt-in — ruled together with the board's pause-for-review sibling.
+- Recipe variant: run #1 proved the dirty-working-tree shape only; the
+  commit-range mountain is unproven — dogfood #2 is the chapter's testing gate.
+- Green-per-slice stance (run #1: not required; mid-chain red appeared only in
+  e2e goldens and resolved at the fixtures slice — no review harm observed).
+- Review-branch retention (run #1's branches kept as record pending the ruling).
+- Model tiering: Sonnet held all git surgery in run #1 — ratify as the skill's
+  default executor tier?
+- Subagent safety rules from the run log (delete only what you created,
+  write-protected backups, backups outside cleanable paths) → skill hard rules.
+- Authoring: agent-agnostic, prompt-optimized — per the house authoring laws.
+
 ## Relations
 
 - Kin: the board's "Pause-for-review-before-commit — canon candidate" idea —

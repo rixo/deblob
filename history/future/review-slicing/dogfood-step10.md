@@ -149,5 +149,10 @@ commits-accompany-not-split law). Expect many-to-few:
 
 ## Verdict
 
-(after the gate: did slicing beat whole-diff review? reviewer engagement, time,
-defects caught per slice, invariant checks passed?)
+Ruled 2026-07-23 (rixo, post-run): sliced review was a better, more engaging
+experience than whole-diff review — graduation to a skill is on. Evidence from
+the run: 6 missions, 4 substantive catches (a tooling review blocker, an
+arch-canon scoping, a captured-meaning inversion, a stale cross-ref); zero
+conflict markers reached the reviewer; invariants held end to end; final cut
+produced 2 standalone-green commits from 6 slices. Graduation agenda on the card
+(idea.md); board entry promoted to the staged queue same day.

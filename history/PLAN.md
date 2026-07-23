@@ -21,6 +21,12 @@
   the `deblob docs` command family: derived-view staleness check — diff `docs/`
   sections against `source:` stamps in `skills/*/knowledge|references/`;
   stamp-text ↔ heading matching rule to spec.
+- **Review-slicing skill** — dogfooded 2026-07-23 on step-10's own diff, verdict
+  positive (better, more engaging review — rixo). Graduation next, a fresh
+  session: chapter in the skills lineage; first ruling = name (the
+  `deblob-review` collision). Payload: `future/review-slicing/` (card with
+  graduation agenda + run log). Kin ruling at open: pause-for-review canon
+  candidate (Ideas below).
 - **Scaffold** — chapter `history/20260707_scaffold/` implemented; remaining:
   manual plugin-load gate — deferred (2026-07-17, rixo).
 - **Arch pass** — UI-zone formal holes (F1–F3) + accumulated doc touches →
@@ -40,16 +46,6 @@
 - **deblob-sdd trigger touch** (2026-07-23) — hook the skill on "future idea" /
   "capture idea" phrasing (description trigger line); rides with the skills
   chapter's remaining consolidation.
-- **Review slicing — mountain diff → focused review missions** (2026-07-23) —
-  agent slices a big mixed-concern diff into concern-focused commits (judgment
-  work), then replays them one by one on a `reviewed` branch, each left
-  uncommitted so the IDE shows one bounded mission at a time (slice message =
-  brief; index ritual intact per slice; slice-for-review ≠ slice-for-history —
-  final commits cut per the agreed plan). Pillar-1 economics (System-2
-  engagement is the scarce resource; slicing = zooming for diffs). Banked →
-  `future/review-slicing/` — dogfood candidate: the step-10 diff itself; kin:
-  pause-for-review canon candidate below; naming must resolve the existing
-  `deblob-review` skill collision.
 - **Graph-as-product — the certified skeleton as leverage** (2026-07-23) — the
   reframe: the arch was adopted to fight mess (defer decisions); the
   organization built to fight the mess is itself an asset — the enforcement
