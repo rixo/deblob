@@ -12,9 +12,9 @@ constraints, or CI says exactly which rule broke and why. Unlabeled code is
 ## Commands
 
 ```
-deblob                    project status + discovery
-deblob check [what...]    run architecture checks (default: all)
-deblob explain <topic>    explain a rule or check (rule-4, layers, ...)
+deblob                       project status + discovery
+deblob check [what...]       run architecture checks (default: all)
+deblob explain <topic...>    explain rules or checks (4, layers, ...)
 ```
 
 - **`deblob`** prints the inventory — file count, total size, blob %
@@ -27,15 +27,16 @@ deblob explain <topic>    explain a rule or check (rule-4, layers, ...)
   10). All run over one shared import graph. Exit codes: `0` clean, `1`
   violations found, `2` usage or config error.
 - **`deblob explain rule-4`** prints the rule's rationale and the shipped
-  knowledge card — offline, version-matched with the binary.
-  `deblob check --explain` appends the explanation of every rule that fired; a
-  CI log becomes self-teaching in one run.
+  knowledge card — offline, version-matched with the binary. Several topics at
+  once work too: the check footer prints the fired rules as a pasteable
+  `deblob explain 4 12 13`. `deblob check --explain` appends the explanation of
+  every rule that fired; a CI log becomes self-teaching in one run.
 
 Violations cite their rule and print the offending edge:
 
 ```
 src/invoice
-  pdf-render.service.ts
+  src/invoice/pdf-render.service.ts
     layers   imports node:fs — service layer cannot depend on concrete;
              import type is fine (rules 4, 8)
 ```

@@ -1,17 +1,17 @@
 src/billing
-  stripe.adapter.ts
+  src/billing/stripe.adapter.ts
     private  imports src/invoice/private/totals.model.ts — private/ is
              sealed outside its service (rule 12)
 
 src/invoice
-  index.ts
+  src/invoice/index.ts
     barrels  re-exports src/invoice/invoice.model.ts — no index.ts
              indirection; the layer must be visible in the import path
              (rule 2)
-  pdf-render.service.ts
+  src/invoice/pdf-render.service.ts
     layers   imports node:fs — service layer cannot depend on concrete;
              import type is fine (rules 4, 8)
-  renderer.port.ts
+  src/invoice/renderer.port.ts
     ports    exports const SOME_MADE_UP_DEFAULT — ports are types only;
              runtime belongs in an adapter or model (rule 10)
 
@@ -30,4 +30,4 @@ blob
            minified
 
 6 violations (2 dag, 1 layers, 1 private, 1 barrels, 1 ports) · 9 files · 7 edges
-why: deblob explain <rule> (2, 4, 8, 10, 12, 13, 14) · or rerun with --explain
+why: deblob explain 2 4 8 10 12 13 14 · or rerun with --explain

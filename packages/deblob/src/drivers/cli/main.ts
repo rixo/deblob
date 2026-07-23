@@ -9,7 +9,7 @@
  */
 
 import { readFileSync } from "node:fs"
-import { dirname, relative, resolve } from "node:path"
+import { dirname, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { checkBarrels } from "../../lib/check/barrels.model.ts"
@@ -184,6 +184,15 @@ const runStatus = async (io: MainIo, parsed: ParsedCli, colors: Colors) => {
   return 0
 }
 
+/**
+ * Graph paths are config-root-relative; the terminal resolves clicks from cwd.
+ * This is the hop between the two — `""` when they coincide (the common run).
+ */
+const pathPrefixOf = (cwd: string, root: string): string => {
+  const hop = relative(resolve(cwd), root)
+  return hop === "" ? "" : `${hop.split(sep).join("/")}/`
+}
+
 const runCheck = async (
   io: MainIo,
   parsed: ParsedCli,
@@ -213,7 +222,12 @@ const runCheck = async (
   )
   const stats = { files: graph.modules.size, edges: graph.edges.length }
 
-  const listing = renderCheckResults(violations, stats, colors)
+  const listing = renderCheckResults(
+    violations,
+    stats,
+    colors,
+    pathPrefixOf(io.cwd, config.root),
+  )
   const firedRules = [...new Set(violations.flatMap((v) => v.rules))].sort(
     (a, b) => a - b,
   )
@@ -262,10 +276,16 @@ export const main = async (io: MainIo): Promise<number> => {
     case "check":
       return runCheck(io, parsed, action, colors)
     case "explain": {
-      const rules = rulesForTopic(action.topic)
-      if (rules === null) {
+      const rules = new Set<number>()
+      const unknown = action.topics.filter((topic) => {
+        const topicRules = rulesForTopic(topic)
+        if (topicRules === null) return true
+        for (const rule of topicRules) rules.add(rule)
+        return false
+      })
+      if (unknown.length > 0) {
         io.stderr.write(
-          `unknown topic "${action.topic}" — a rule (rule-4 or plain 4) or a check name: ${KNOWN_CHECKS.join(", ")}\n`,
+          `unknown ${unknown.length === 1 ? "topic" : "topics"} ${unknown.map((topic) => `"${topic}"`).join(", ")} — rules (rule-4 or plain 4) or check names: ${KNOWN_CHECKS.join(", ")}\n`,
         )
         return 2
       }
@@ -273,7 +293,7 @@ export const main = async (io: MainIo): Promise<number> => {
         renderExplain(
           readExplainEntries({
             contentRoot: CONTENT_ROOT,
-            rules,
+            rules: [...rules].sort((a, b) => a - b),
           }),
           colors,
         ),

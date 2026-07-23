@@ -97,6 +97,15 @@ describe("deblob check", () => {
     )
   })
 
+  it("run below the config root: paths print cwd-relative, ctrl+clickable", async () => {
+    const { code, out } = await run(["check"], {
+      cwd: `${violatingDir}/src`,
+    })
+    expect(code).toBe(1)
+    expect(out).toContain("  ../src/billing/stripe.adapter.ts")
+    expect(out).toContain("imports ../src/invoice/private/totals.model.ts")
+  })
+
   it("named subset runs only those checks", async () => {
     const { code, out } = await run(["check", "ports"])
     expect(code).toBe(1)
@@ -121,6 +130,25 @@ describe("deblob check", () => {
     expect(out).toContain("rule 14 —")
     expect(out).toContain("card: acyclic")
     expect(out).toContain("card: acyclic — shown above")
+  })
+
+  it("explain swallows the footer's whole rule list in one run", async () => {
+    const { code, out } = await run(["explain", "2", "10", "barrels"])
+    expect(code).toBe(0)
+    expect(out).toContain("rule 2 —")
+    expect(out).toContain("rule 10 —")
+  })
+
+  it("unknown topics among several: exit 2, every offender named", async () => {
+    const { code, err } = await run([
+      "explain",
+      "4",
+      "SOME_MADE_UP_TOPIC",
+      "rule-999",
+    ])
+    expect(code).toBe(2)
+    expect(err).toContain('"SOME_MADE_UP_TOPIC"')
+    expect(err).toContain('"rule-999"')
   })
 
   it("clean repo: one summary line, exit 0", async () => {

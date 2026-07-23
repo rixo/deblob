@@ -49,6 +49,31 @@ const formatCount = (count: number): string =>
 const plural = (count: number, noun: string): string =>
   `${formatCount(count)} ${noun}${count === 1 ? "" : "s"}`
 
+/**
+ * A rule citation is one token — `(rule 5)` split across a wrap orphans the
+ * number, and `grep "rule 5"` on the output stops matching. Merges the split
+ * words back: `rule`/`rules` (with or without the paren) swallows the numbers
+ * that follow, riding their commas.
+ */
+const mergeCiteTokens = (words: readonly string[]): string[] => {
+  const merged: string[] = []
+  for (let index = 0; index < words.length; index += 1) {
+    let word = words[index] as string
+    if (/^\(?rules?$/.test(word)) {
+      while (
+        index + 1 < words.length &&
+        /^\d+[,;.)]*$/.test(words[index + 1] as string)
+      ) {
+        index += 1
+        word += ` ${words[index] as string}`
+        if (!(words[index] as string).endsWith(",")) break
+      }
+    }
+    merged.push(word)
+  }
+  return merged
+}
+
 /** Greedy word wrap; continuation lines get the hanging indent. */
 const wrap = (
   first: string,
@@ -57,7 +82,7 @@ const wrap = (
 ): string[] => {
   const lines: string[] = []
   let line = first
-  for (const word of text.split(" ")) {
+  for (const word of mergeCiteTokens(text.split(" "))) {
     const candidate =
       line === first || line === hang ? line + word : `${line} ${word}`
     if (candidate.length > WIDTH && line !== first && line !== hang) {
@@ -71,14 +96,14 @@ const wrap = (
   return lines
 }
 
-const targetLabel = (target: EdgeTarget): string =>
-  target.type === "module" ? target.path : target.specifier
+const targetLabel = (target: EdgeTarget, prefix: string): string =>
+  target.type === "module" ? prefix + target.path : target.specifier
 
 const ruleCite = (rules: readonly number[]): string =>
   rules.length === 1 ? `rule ${rules[0]}` : `rules ${rules.join(", ")}`
 
-const layersMessage = (violation: LayersViolation): string => {
-  const target = targetLabel(violation.target)
+const layersMessage = (violation: LayersViolation, prefix: string): string => {
+  const target = targetLabel(violation.target, prefix)
   if (violation.shape === "unclassified-lib") {
     return `imports ${target} — unclassified third-party in a pure layer; declare it in pureLibs if it qualifies`
   }
@@ -106,7 +131,7 @@ const layersMessage = (violation: LayersViolation): string => {
   return `imports ${target} — ${importerLayer} may not import ${violation.targetClass}${hint}`
 }
 
-const portsMessage = (violation: PortsViolation): string => {
+const portsMessage = (violation: PortsViolation, prefix: string): string => {
   if (violation.shape === "runtime-export") {
     const { form, name, exported } = violation
     const label = name === null ? form : `${form} ${name}`
@@ -116,24 +141,24 @@ const portsMessage = (violation: PortsViolation): string => {
         : `${exported ? "exports" : "contains"} ${label}`
     return `${lead} — ports are types only; runtime belongs in an adapter or model`
   }
-  const target = targetLabel(violation.target)
+  const target = targetLabel(violation.target, prefix)
   return violation.shape === "runtime-import"
     ? `imports ${target} at runtime — a port needs no runtime imports; add the type keyword or move the code`
     : `imports ${target} at runtime — a types-only file supplies no runtime binding; add the type keyword`
 }
 
-const messageOf = (violation: FileViolation): string => {
+const messageOf = (violation: FileViolation, prefix: string): string => {
   switch (violation.check) {
     case "layers":
-      return layersMessage(violation)
+      return layersMessage(violation, prefix)
     case "private":
-      return `imports ${targetLabel(violation.target)} — private/ is sealed outside its service`
+      return `imports ${targetLabel(violation.target, prefix)} — private/ is sealed outside its service`
     case "barrels":
       return violation.shape === "barrel-file"
-        ? `re-exports ${targetLabel(violation.target)} — no index.ts indirection; the layer must be visible in the import path`
-        : `imports ${targetLabel(violation.target)} — import the layered file directly`
+        ? `re-exports ${targetLabel(violation.target, prefix)} — no index.ts indirection; the layer must be visible in the import path`
+        : `imports ${targetLabel(violation.target, prefix)} — import the layered file directly`
     case "ports":
-      return portsMessage(violation)
+      return portsMessage(violation, prefix)
   }
 }
 
@@ -155,7 +180,11 @@ const cycleHead = (nodes: readonly string[]): string =>
  * carrying edges (service cycles), the remedy line, and an entanglement note
  * when the SCC exceeds the witness.
  */
-const dagBlock = (violation: DagViolation, colors: Colors): string[] => {
+const dagBlock = (
+  violation: DagViolation,
+  colors: Colors,
+  prefix: string,
+): string[] => {
   const lines: string[] = []
   const push = (text: string) => {
     lines.push(...wrap(DAG_CONTINUATION, text, DAG_CONTINUATION))
@@ -165,7 +194,7 @@ const dagBlock = (violation: DagViolation, colors: Colors): string[] => {
   const tag = "dag".padEnd(TAG_FIELD)
   const [head, ...headRest] = wrap(
     `  ${tag}`,
-    cycleHead(witness),
+    cycleHead(witness.map((node) => prefix + node)),
     DAG_CONTINUATION,
   )
   lines.push((head as string).replace(tag, colors.accent(tag)), ...headRest)
@@ -173,7 +202,7 @@ const dagBlock = (violation: DagViolation, colors: Colors): string[] => {
     for (const hop of violation.hops) {
       const flags = `${hop.typeOnly ? " (type-only)" : ""}${hop.wiring ? " (wiring)" : ""}`
       push(
-        `${baseOf(hop.from)} → ${baseOf(hop.to)} (${hop.via.from} → ${hop.via.to})${flags}`,
+        `${baseOf(hop.from)} → ${baseOf(hop.to)} (${prefix}${hop.via.from} → ${prefix}${hop.via.to})${flags}`,
       )
     }
     const wiring = violation.hops.some((hop) => hop.wiring)
@@ -223,12 +252,15 @@ const summaryLine = (
  * blocks in their bucket — `cross-service` after the named services, `blob`
  * last (findings on unlabeled files, the flagship term on first contact) — then
  * summary and one footer hint to the teaching channel. Fully deterministic —
- * goldens and CI diffs stay stable.
+ * goldens and CI diffs stay stable. Every path prints whole under `pathPrefix`
+ * (the runner's cwd → config-root hop, `""` when they coincide) so terminal
+ * ctrl+click resolves from where the user ran the command.
  */
 export const renderCheckResults = (
   violations: readonly Violation[],
   stats: GraphStats,
   colors: Colors,
+  pathPrefix: string = "",
 ): string => {
   const lines: string[] = []
 
@@ -270,15 +302,12 @@ export const renderCheckResults = (
     const files = services.get(root)
     if (files === undefined) return
     for (const file of [...files.keys()].sort()) {
-      const label =
-        root !== null && file.startsWith(`${root}/`)
-          ? file.slice(root.length + 1)
-          : file
-      lines.push(`  ${label}`)
+      // whole path, not basename — the line is a ctrl+click target
+      lines.push(`  ${pathPrefix}${file}`)
       const sorted = (files.get(file) as FileViolation[])
         .map((violation) => ({
           violation,
-          message: `${messageOf(violation)} (${ruleCite(violation.rules)})`,
+          message: `${messageOf(violation, pathPrefix)} (${ruleCite(violation.rules)})`,
         }))
         // check name, then rendered message — full output determinism
         .map((entry) => ({
@@ -308,10 +337,10 @@ export const renderCheckResults = (
   ].sort()
 
   for (const root of named) {
-    lines.push(colors.strong(root))
+    lines.push(colors.strong(pathPrefix + root))
     pushFileGroups(root)
     for (const violation of dagOrder(dagByService.get(root) ?? [])) {
-      lines.push(...dagBlock(violation, colors))
+      lines.push(...dagBlock(violation, colors, pathPrefix))
     }
     lines.push("")
   }
@@ -319,7 +348,7 @@ export const renderCheckResults = (
   if (dagCross.length > 0) {
     lines.push(colors.strong("cross-service"))
     for (const violation of dagOrder(dagCross)) {
-      lines.push(...dagBlock(violation, colors))
+      lines.push(...dagBlock(violation, colors, pathPrefix))
     }
     lines.push("")
   }
@@ -328,7 +357,7 @@ export const renderCheckResults = (
     lines.push(colors.strong("blob"))
     pushFileGroups(null)
     for (const violation of dagOrder(dagBlob)) {
-      lines.push(...dagBlock(violation, colors))
+      lines.push(...dagBlock(violation, colors, pathPrefix))
     }
     lines.push("")
   }
@@ -341,7 +370,8 @@ export const renderCheckResults = (
     )
     lines.push(
       colors.dim(
-        `why: deblob explain <rule> (${rules.join(", ")}) · or rerun with --explain`,
+        // pasteable as-is — the observed reflex is copying the whole list
+        `why: deblob explain ${rules.join(" ")} · or rerun with --explain`,
       ),
     )
   }
@@ -407,10 +437,10 @@ export const renderBareStatus = (status: BareStatus, colors: Colors): string =>
           "",
         ]),
     "Commands",
-    "  deblob check [what...]   run architecture checks",
-    `                           (${KNOWN_CHECKS.join(" · ")})`,
-    "  deblob explain <topic>   explain a rule or check",
-    "  deblob --help            full help",
+    "  deblob check [what...]      run architecture checks",
+    `                              (${KNOWN_CHECKS.join(" · ")})`,
+    "  deblob explain <topic...>   explain rules or checks",
+    "  deblob --help               full help",
     "",
   ].join("\n")
 
@@ -418,7 +448,7 @@ export const renderBareStatus = (status: BareStatus, colors: Colors): string =>
 const wrapPlain = (text: string): string[] => {
   const lines: string[] = []
   let line = ""
-  for (const word of text.split(" ")) {
+  for (const word of mergeCiteTokens(text.split(" "))) {
     const candidate = line === "" ? word : `${line} ${word}`
     if (candidate.length > WIDTH && line !== "") {
       lines.push(line)
@@ -469,9 +499,9 @@ export const renderExplain = (
 export const HELP = `deblob — machine-checkable hexagonal architecture for TypeScript/ESM
 
 Usage
-  deblob                    project status + discovery
-  deblob check [what...]    run architecture checks (default: all)
-  deblob explain <topic>    explain a rule or check (rule-4, layers, ...)
+  deblob                       project status + discovery
+  deblob check [what...]       run architecture checks (default: all)
+  deblob explain <topic...>    explain rules or checks (4, layers, ...)
 
 Checks
   dag        service dependencies form a DAG; no module-level runtime

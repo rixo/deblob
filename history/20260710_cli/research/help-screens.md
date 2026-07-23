@@ -26,9 +26,9 @@ count.
 deblob — machine-checkable hexagonal architecture for TypeScript/ESM
 
 Usage
-  deblob                    project status + discovery
-  deblob check [what...]    run architecture checks (default: all)
-  deblob explain <topic>    explain a rule or check (rule-4, layers, ...)
+  deblob                       project status + discovery
+  deblob check [what...]       run architecture checks (default: all)
+  deblob explain <topic...>    explain rules or checks (4, layers, ...)
 
 Checks
   dag        service dependencies form a DAG; no module-level runtime
@@ -79,10 +79,10 @@ deblob 0.1.0 · deblob.config.ts (flavor: ts-suffixes-factories)
   3 services
 
 Commands
-  deblob check [what...]   run architecture checks
-                           (dag · layers · private · barrels · ports)
-  deblob explain <topic>   explain a rule or check
-  deblob --help            full help
+  deblob check [what...]      run architecture checks
+                              (dag · layers · private · barrels · ports)
+  deblob explain <topic...>   explain rules or checks
+  deblob --help               full help
 ```
 
 Notes (ruled 2026-07-17, rixo — resolves the former bare-command open question):
@@ -154,8 +154,10 @@ full text:
 https://github.com/rixo/deblob/blob/main/docs/architecture.md#rule-4
 ```
 
-- Topics: `rule-N` and check names (`deblob explain layers` = the rules that
-  check enforces).
+- Topics: `rule-N`, bare `N`, and check names (`deblob explain layers` = the
+  rules that check enforces); several at once union their rules (2026-07-23,
+  rixo — observed reflex: pasting the check footer's whole fired list), shared
+  cards still print once.
 - Output = doc excerpt + the relevant knowledge card + canonical URL — the
   no-skill CI agent gets the card-grade crash course by running one command; the
   human in a CI log gets the URL.
@@ -176,12 +178,12 @@ single service (cross-service cycles, blob-file cycles) get their own bucket:
 ```
 $ deblob check
 src/invoice
-  pdf-render.service.ts
+  src/invoice/pdf-render.service.ts
     layers   imports node:fs — service layer cannot depend on concrete
              (rule 4)
 
 src/billing
-  stripe.adapter.ts
+  src/billing/stripe.adapter.ts
     private  imports src/invoice/private/totals.ts — private/ is sealed
              outside its service (rule 12)
 
@@ -192,16 +194,21 @@ cross-service
            services must form a DAG (rule 13); see the sharing progression
 
 3 violations (1 layers, 1 private, 1 dag) · 214 files · 380 edges
-why: deblob explain <rule> (4, 12, 13) · or rerun with --explain
+why: deblob explain 4 12 13 · or rerun with --explain
 ```
 
 Notes:
 
+- File lines print the whole path under the service header, not a basename, and
+  every printed path is cwd-relative (ruled 2026-07-23, rixo): the line is a
+  ctrl+click target in a terminal, and the terminal resolves from where the
+  command ran — when cwd sits below the config root, paths gain the `../` hop.
 - Every violation = location, offending edge, rule number; the why is one footer
-  hint away (`deblob explain <rule>` / `--explain`) — per-line pointers were
-  repetitive noise (ratified; anchor→explain 2026-07-17, footer refinement same
-  day). The error output stays the teaching channel; `check --explain` makes a
-  CI log self-teaching in one run.
+  hint away — and the footer prints the fired list as a pasteable command
+  (`deblob explain 4 12 13`, 2026-07-23) — per-line pointers were repetitive
+  noise (ratified; anchor→explain 2026-07-17, footer refinement same day). The
+  error output stays the teaching channel; `check --explain` makes a CI log
+  self-teaching in one run.
 - **Proposal**: cycle violations print the full edge pair (both directions, with
   the files carrying each edge) — a cycle named without its edges is
   undebuggable.

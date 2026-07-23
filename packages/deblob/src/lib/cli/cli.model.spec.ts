@@ -37,9 +37,12 @@ describe("parseCli", () => {
       })
     })
 
-    it("explain takes exactly one topic", () => {
+    it("explain takes one or many topics — the check footer is pasteable", () => {
       expect(parseCli(["explain", "rule-4"])).toMatchObject({
-        action: { command: "explain", topic: "rule-4" },
+        action: { command: "explain", topics: ["rule-4"] },
+      })
+      expect(parseCli(["explain", "2", "5", "ports"])).toMatchObject({
+        action: { command: "explain", topics: ["2", "5", "ports"] },
       })
     })
   })
@@ -116,9 +119,8 @@ describe("parseCli", () => {
       expect(errorOf(["--some-made-up-flag"])).toContain("--some-made-up-flag")
     })
 
-    it("explain without a topic, or with several, is a usage error", () => {
+    it("explain without a topic is a usage error", () => {
       expect(errorOf(["explain"])).toContain("topic")
-      expect(errorOf(["explain", "rule-4", "rule-5"])).toContain("one topic")
     })
 
     it("--explain outside check is a usage error", () => {

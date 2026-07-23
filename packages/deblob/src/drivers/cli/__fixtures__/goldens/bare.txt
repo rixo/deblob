@@ -4,7 +4,7 @@ deblob 0.0.1 · deblob.config.ts (flavor: ts-suffixes-factories)
   2 services
 
 Commands
-  deblob check [what...]   run architecture checks
-                           (dag · layers · private · barrels · ports)
-  deblob explain <topic>   explain a rule or check
-  deblob --help            full help
+  deblob check [what...]      run architecture checks
+                              (dag · layers · private · barrels · ports)
+  deblob explain <topic...>   explain rules or checks
+  deblob --help               full help

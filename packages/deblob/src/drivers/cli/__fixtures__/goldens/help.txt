@@ -1,9 +1,9 @@
 deblob — machine-checkable hexagonal architecture for TypeScript/ESM
 
 Usage
-  deblob                    project status + discovery
-  deblob check [what...]    run architecture checks (default: all)
-  deblob explain <topic>    explain a rule or check (rule-4, layers, ...)
+  deblob                       project status + discovery
+  deblob check [what...]       run architecture checks (default: all)
+  deblob explain <topic...>    explain rules or checks (4, layers, ...)
 
 Checks
   dag        service dependencies form a DAG; no module-level runtime

@@ -87,20 +87,56 @@ describe("renderCheckResults", () => {
     expect(output).toBe(
       [
         "src/billing",
-        "  stripe.adapter.ts",
+        "  src/billing/stripe.adapter.ts",
         "    private  imports src/invoice/private/totals.ts — private/ is sealed",
         "             outside its service (rule 12)",
         "",
         "src/invoice",
-        "  pdf-render.service.ts",
+        "  src/invoice/pdf-render.service.ts",
         "    layers   imports node:fs — service layer cannot depend on concrete",
         "             (rule 4)",
         "",
         "2 violations (1 layers, 1 private) · 214 files · 380 edges",
-        "why: deblob explain <rule> (4, 12) · or rerun with --explain",
+        "why: deblob explain 4 12 · or rerun with --explain",
         "",
       ].join("\n"),
     )
+  })
+
+  it("rule citations never split across wrapped lines", () => {
+    // slide the citation over the wrap boundary — no orphaned "(rule" / "8)"
+    for (let pad = 0; pad <= 60; pad += 1) {
+      const target = {
+        type: "module",
+        path: `src/invoice/${"x".repeat(pad)}.model.ts`,
+      } as const
+      const output = renderCheckResults(
+        [
+          layersViolation({ rules: [5], target }),
+          layersViolation({ rules: [6, 8], target }),
+        ],
+        STATS,
+        NO_COLORS,
+      )
+      for (const line of output.split("\n")) {
+        expect(line).not.toMatch(/\(?rules?$/)
+        expect(line).not.toMatch(/^\s*\d+[,)]/)
+      }
+    }
+  })
+
+  it("pathPrefix lands on every module path, never on package specifiers", () => {
+    const output = renderCheckResults(
+      [layersViolation(), privateViolation()],
+      STATS,
+      NO_COLORS,
+      "../../",
+    )
+    expect(output).toContain("../../src/billing\n")
+    expect(output).toContain("  ../../src/billing/stripe.adapter.ts")
+    expect(output).toContain("imports ../../src/invoice/private/totals.ts")
+    // a package specifier is not a path — no prefix
+    expect(output).toContain("imports node:fs —")
   })
 
   it("a clean run is one summary line, no footer", () => {
@@ -415,7 +451,7 @@ describe("renderCheckResults", () => {
           "           progression",
           "",
           "1 violation (1 dag) · 214 files · 380 edges",
-          "why: deblob explain <rule> (13) · or rerun with --explain",
+          "why: deblob explain 13 · or rerun with --explain",
           "",
         ].join("\n"),
       )
@@ -573,10 +609,10 @@ describe("bare status", () => {
         "  3 services",
         "",
         "Commands",
-        "  deblob check [what...]   run architecture checks",
-        "                           (dag · layers · private · barrels · ports)",
-        "  deblob explain <topic>   explain a rule or check",
-        "  deblob --help            full help",
+        "  deblob check [what...]      run architecture checks",
+        "                              (dag · layers · private · barrels · ports)",
+        "  deblob explain <topic...>   explain rules or checks",
+        "  deblob --help               full help",
         "",
       ].join("\n"),
     )
@@ -700,7 +736,7 @@ describe("colors", () => {
 describe("help screens", () => {
   it("main help: commands, checks, options, exit codes, the no-autofix line", () => {
     expect(HELP).toContain("deblob check [what...]")
-    expect(HELP).toContain("deblob explain <topic>")
+    expect(HELP).toContain("deblob explain <topic...>")
     expect(HELP).toContain("-c, --config <path>")
     expect(HELP).toContain("--no-color")
     expect(HELP).toContain(

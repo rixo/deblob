@@ -44,7 +44,7 @@ export type CliAction =
       explain: boolean
       explainOnly: boolean
     }
-  | { command: "explain"; topic: string }
+  | { command: "explain"; topics: readonly string[] }
 
 export type ParsedCli = {
   /** Explicit config path (`-c`); `null` = discovery walk. */
@@ -165,15 +165,10 @@ export const parseCli = (argv: readonly string[]): ParsedCli | UsageError => {
     if (topics.length === 0) {
       return {
         error:
-          "explain needs a topic — a rule (rule-4) or a check name (layers)",
+          "explain needs a topic — rules (rule-4, or plain numbers as the check footer prints them) or check names (layers)",
       }
     }
-    if (topics.length > 1) {
-      return {
-        error: `explain takes one topic — got ${topics.join(", ")}`,
-      }
-    }
-    return withAction({ command: "explain", topic: topics[0] as string })
+    return withAction({ command: "explain", topics })
   }
 
   return {
