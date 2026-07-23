@@ -46,8 +46,10 @@ code no layer has been ruled for yet, owned as debt. It shrinks as extraction
 proceeds. The architecture doesn't require a greenfield start; it reveals itself
 in existing code under the pressure of testing.
 
-In use across several production codebases — design-system packages, web apps,
-CLI tooling — at varying degrees of maturity and completeness.
+Distilled from production practice, at varying degrees of maturity and
+completeness: two brownfield codebases under months of daily use (design-system
+packages, a web app), a workbench app adopting it as it grows toward a complete
+application, and this repo's own CLI tooling, which checks itself with it.
 
 This document uses naming conventions (e.g., `.model.ts`, `.service.ts`
 suffixes) for illustration. These conventions are one valid implementation of
@@ -65,9 +67,8 @@ contracts is a hexagon. The term is used sparingly in this document, when the
 inside/outside boundary and port connections are the point.
 
 **Service** is the primary unit of this architecture. It sits at the
-intersection of three independent concerns — three bounded contexts in DDD
-terms, each giving the word "service" a different meaning, each with its own
-rules:
+intersection of three independent concerns, each giving the word "service" a
+different meaning, each with its own rules:
 
 - **Isolation** (hexagonal) — a service contains one or more hexagons
   (composition units, adapters). Each hexagon has inside/outside, ports,
