@@ -11,13 +11,14 @@ a contract until a step SPEC absorbs it.
 (`packages/deblob/src/drivers/cli/__fixtures__/goldens/`), which are the truth
 now; this file stays as the design record. Deltas ratified at 09: exit codes
 0/1/2, the stats trailer, and the no-autofix footer (all three proposals below);
-`dag` lines absent from the shipped screens until the dag step lands; `--config`
-default text reads "nearest deblob.config.ts" (discovery walk, 08); `--no-color`
-listed in Options (color/TTY ruling made visible); explain topics also accept a
-bare rule number (`deblob explain 4` — the check footer cites bare numbers); the
-bare headline carries the total covered size (`38 files · 215kb · 0% blob`,
-ruled at review 2026-07-22) so blob % visibly reads as computed out of file
-size, not file count.
+`dag` lines absent from the shipped screens until the dag step lands (landed
+2026-07-22, step 10 — the screens carry them now); `--config` default text reads
+"nearest deblob.config.ts" (discovery walk, 08); `--no-color` listed in Options
+(color/TTY ruling made visible); explain topics also accept a bare rule number
+(`deblob explain 4` — the check footer cites bare numbers); the bare headline
+carries the total covered size (`38 files · 215kb · 0% blob`, ruled at review
+2026-07-22) so blob % visibly reads as computed out of file size, not file
+count.
 
 ## `deblob --help`
 

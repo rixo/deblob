@@ -161,7 +161,8 @@ identity).
   mechanical path→service mapping (nearest ancestor service root + config
   override). One real dependency: **nesting DAG edge attribution** needs the
   "nesting DAG implications" arch touch, tracked in `future/arch-pass/` — blocks
-  `check dag` only.
+  `check dag` only. Gate lifted at the 10 spec (2026-07-22): the touch rides
+  with that step as the §Nesting direction law.
 
 ## Step queue (provisional)
 
@@ -241,8 +242,23 @@ identity).
     08's `config.model.ts` imported the flavor port — a rule-1 violation in our
     own code; resolution split out as `config.service.ts`, assembly (main) owns
     the load → resolve sequence, arch §Assembly literally.
-- Then `check dag` (rules 13, 14) — the last v0 step, still gated on the nesting
-  arch touch; type-only asymmetry question waits there (open questions below).
+- `10_check-dag` — **landed 2026-07-22**, spec:
+  [10_check-dag/SPEC.md](./10_check-dag/SPEC.md); the last v0 detector — rules
+  13 + 14 as one-finding-per-SCC with deterministic witness cycles, rule 13 over
+  every import kind (the trap paragraph's own reading — closes the
+  type-only-scope question, ratified at review), no assembly exemption (ruled
+  2026-07-22, rixo, killing a drafted exclusion: assembly whose wiring would
+  close a service cycle is misplaced — outside the service tree or its own
+  service; unit specs wire fixture adapters, rule 16's own words), 13/14 overlap
+  kept (type-fix divergence), the gating nesting arch touch rides here as the
+  §Nesting direction law. Dogfood found two real rule-13 cycles in our own code
+  at first run (09 precedent): cli ⇄ explain (`ExplainEntry` lived in the
+  renderer — moved to explain's model) and config ⇄ extraction
+  (`STOCK_FLAVOR_NAME` lived in config's model — moved to
+  `extraction/stock-flavor.model.ts`, the flavor owns its name). The `(wiring)`
+  hop flag amended at implementation: all inducing edges assembly-origin, not
+  the carrying edge (spec files sort early — a mixed hop must not carry the
+  placement remedy). With this, v0's check surface is complete.
 
 README-driven UX fiction banked (2026-07-17):
 [research/help-screens.md](./research/help-screens.md) (intended `--help` +
@@ -337,6 +353,11 @@ doesn't check:
   the flavor axis touches only the matrix or the DAG too — possibly an arch
   clarification touch. Rule 12's stance settled at the 04 spec (2026-07-21):
   packaging rule, binds every edge kind — residual here is 13 vs 14 only.
+  **Resolved at the 10 spec (2026-07-22, ratified at review)**: asymmetry
+  intended — 13 counts every kind (the trap paragraph already treats the
+  adapter→port type leg as a DAG edge; extraction independence holds for types),
+  14 runtime-only by its own letter; flavor/`typeOnlyExempt` touches neither.
+  Arch touch making it explicit rides with 10.
 
 ## Future
 

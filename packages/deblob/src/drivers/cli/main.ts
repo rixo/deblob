@@ -13,6 +13,7 @@ import { dirname, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { checkBarrels } from "../../lib/check/barrels.model.ts"
+import { checkDag } from "../../lib/check/dag.model.ts"
 import { checkLayers } from "../../lib/check/layers.model.ts"
 import { checkPorts } from "../../lib/check/ports.model.ts"
 import { checkPrivate } from "../../lib/check/private.model.ts"
@@ -89,6 +90,7 @@ const DETECTORS: Record<
   CheckName,
   (graph: ImportGraph, config: ResolvedConfig) => Violation[]
 > = {
+  dag: (graph) => checkDag(graph),
   layers: (graph, config) =>
     checkLayers(graph, {
       pureLibs: config.pureLibs,

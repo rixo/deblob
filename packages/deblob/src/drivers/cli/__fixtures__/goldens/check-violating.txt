@@ -15,5 +15,19 @@ src/invoice
     ports    exports const SOME_MADE_UP_DEFAULT — ports are types only;
              runtime belongs in an adapter or model (rule 10)
 
-4 violations (1 layers, 1 private, 1 barrels, 1 ports) · 6 files · 4 edges
-why: deblob explain <rule> (2, 4, 8, 10, 12) · or rerun with --explain
+cross-service
+  dag      src/billing ⇄ src/invoice
+           billing → invoice (src/billing/stripe.adapter.ts →
+           src/invoice/private/totals.model.ts)
+           invoice → billing (src/invoice/invoice.model.ts →
+           src/billing/billing.model.ts) (type-only)
+           services must form a DAG (rule 13); see the sharing
+           progression
+
+blob
+  dag      src/lib/client.ts ⇄ src/lib/fetchers.ts
+           runtime module cycle (rule 14) — works in dev, silently fails
+           minified
+
+6 violations (2 dag, 1 layers, 1 private, 1 barrels, 1 ports) · 9 files · 7 edges
+why: deblob explain <rule> (2, 4, 8, 10, 12, 13, 14) · or rerun with --explain

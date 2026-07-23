@@ -7,6 +7,18 @@
  * repo layout so verbatim copies keep their relative cross-links resolvable.
  */
 
+/** One shipped knowledge card, resolved for printing. */
+export type ExplainCard = { slug: string; text: string }
+
+/** One rule's teaching bundle — what `deblob explain` renders. */
+export type ExplainEntry = {
+  rule: number
+  title: string
+  body: string
+  cards: readonly ExplainCard[]
+  url: string
+}
+
 const card = (name: string): string => `skills/deblob/knowledge/${name}.md`
 
 export const RULE_COUNT = 17

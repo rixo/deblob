@@ -6,6 +6,8 @@ Usage
   deblob explain <topic>    explain a rule or check (rule-4, layers, ...)
 
 Checks
+  dag        service dependencies form a DAG; no module-level runtime
+             cycles (rules 13, 14)
   layers     dependency matrix by layer suffix; type-only imports exempt
              by default (rules 1, 4-9)
   private    private/ is sealed outside its service (rule 12)

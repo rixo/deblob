@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
-import type { ExplainEntry } from "../../cli/render.model.ts"
+import type { ExplainEntry } from "../rule-content.model.ts"
 import {
   RULE_CARDS,
   canonicalRuleUrl,

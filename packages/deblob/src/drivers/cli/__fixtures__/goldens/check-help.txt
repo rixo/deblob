@@ -1,6 +1,6 @@
 Usage
   deblob check              run all checks
-  deblob check layers       run only the named checks
+  deblob check dag layers   run only the named checks
 
 Options
   --explain        append explanations of every rule that fired

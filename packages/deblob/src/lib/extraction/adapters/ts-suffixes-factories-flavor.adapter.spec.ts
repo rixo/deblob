@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { STOCK_FLAVOR_NAME } from "../../config/config.model.ts"
+import { STOCK_FLAVOR_NAME } from "../stock-flavor.model.ts"
 import {
   STOCK_FLAVORS,
   createTsSuffixesFactoriesFlavor,

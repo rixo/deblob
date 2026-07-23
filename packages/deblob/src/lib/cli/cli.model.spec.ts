@@ -107,8 +107,8 @@ describe("parseCli", () => {
     })
 
     it("unknown check names the known set", () => {
-      const message = errorOf(["check", "dag"])
-      expect(message).toContain("dag")
+      const message = errorOf(["check", "SOME_MADE_UP_CHECK"])
+      expect(message).toContain("SOME_MADE_UP_CHECK")
       for (const check of KNOWN_CHECKS) expect(message).toContain(check)
     })
 
@@ -153,7 +153,6 @@ describe("rulesForTopic", () => {
     expect(rulesForTopic(`rule-${RULE_COUNT + 1}`)).toBeNull()
     expect(rulesForTopic("0")).toBeNull()
     expect(rulesForTopic("rule-04")).toBeNull()
-    expect(rulesForTopic("dag")).toBeNull()
     expect(rulesForTopic("SOME_MADE_UP_TOPIC")).toBeNull()
   })
 })
@@ -161,6 +160,7 @@ describe("rulesForTopic", () => {
 describe("CHECK_RULES", () => {
   it("pins the detector↔rule map, every rule in range", () => {
     expect(CHECK_RULES).toEqual({
+      dag: [13, 14],
       layers: [1, 4, 5, 6, 7, 8, 9],
       private: [12],
       barrels: [2],

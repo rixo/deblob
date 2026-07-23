@@ -20,8 +20,6 @@ export const asConfigError = (error: unknown): ConfigError => {
   throw error
 }
 
-export const STOCK_FLAVOR_NAME = "ts-suffixes-factories"
-
 export const DEFAULT_INCLUDE: readonly string[] = ["**"]
 
 /**

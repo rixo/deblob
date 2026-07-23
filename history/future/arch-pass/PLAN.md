@@ -28,7 +28,9 @@ Resolution material: `future/svench-flavor/` (taxonomy sketch).
 - `XxxService` (not `XxxServiceAPI`) in examples.
 - Store pattern reality check — zero `.store.ts` in practice: role, not file
   kind.
-- Nesting DAG implications spelled out — direction law (nested-adapter edges
+- **Landed 2026-07-22** (cli chapter, step 10_check-dag: direction law in
+  §Nesting; kind asymmetry + wiring-placement line in the acyclic section):
+  Nesting DAG implications spelled out — direction law (nested-adapter edges
   point up via the port; parent stays import-blind to its children; only the
   cycle trap is documented today). Rule 10 stands as written: ports are types
   only — an earlier softening idea was a misreading, since reverted in the

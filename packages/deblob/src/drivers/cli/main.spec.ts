@@ -76,9 +76,9 @@ describe("usage errors — exit 2, teaching message on stderr", () => {
   })
 
   it("unknown check", async () => {
-    const { code, err } = await run(["check", "dag"])
+    const { code, err } = await run(["check", "SOME_MADE_UP_CHECK"])
     expect(code).toBe(2)
-    expect(err).toContain('unknown check "dag"')
+    expect(err).toContain('unknown check "SOME_MADE_UP_CHECK"')
   })
 
   it("unknown explain topic", async () => {
@@ -102,6 +102,25 @@ describe("deblob check", () => {
     expect(code).toBe(1)
     expect(out).toContain("ports")
     expect(out).not.toContain("private/ is sealed")
+  })
+
+  it("check dag alone reports both cycle shapes", async () => {
+    const { code, out } = await run(["check", "dag"])
+    expect(code).toBe(1)
+    expect(out).toContain("cross-service")
+    expect(out).toContain("src/billing ⇄ src/invoice")
+    expect(out).toContain("(type-only)")
+    expect(out).toContain("runtime module cycle (rule 14)")
+    expect(out).not.toContain("private/ is sealed")
+  })
+
+  it("explain dag prints rules 13 and 14, shared card once", async () => {
+    const { code, out } = await run(["explain", "dag"])
+    expect(code).toBe(0)
+    expect(out).toContain("rule 13 —")
+    expect(out).toContain("rule 14 —")
+    expect(out).toContain("card: acyclic")
+    expect(out).toContain("card: acyclic — shown above")
   })
 
   it("clean repo: one summary line, exit 0", async () => {

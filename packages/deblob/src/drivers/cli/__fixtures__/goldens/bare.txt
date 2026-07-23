@@ -1,10 +1,10 @@
 deblob 0.0.1 · deblob.config.ts (flavor: ts-suffixes-factories)
 
-  6 files · 1kb · 6% blob
+  9 files · 1kb · 25% blob
   2 services
 
 Commands
   deblob check [what...]   run architecture checks
-                           (layers · private · barrels · ports)
+                           (dag · layers · private · barrels · ports)
   deblob explain <topic>   explain a rule or check
   deblob --help            full help

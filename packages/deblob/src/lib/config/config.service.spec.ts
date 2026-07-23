@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest"
 
 import type { FlavorResolver } from "../extraction/ports/flavor.port.ts"
+import { STOCK_FLAVOR_NAME } from "../extraction/stock-flavor.model.ts"
 import {
   ConfigError,
   DEFAULT_INCLUDE,
   EXCLUDE_BASELINE,
-  STOCK_FLAVOR_NAME,
 } from "./config.model.ts"
 import type { FlavorRegistry } from "./config.service.ts"
 import { defineConfig, resolveConfig } from "./config.service.ts"

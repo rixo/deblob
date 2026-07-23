@@ -113,6 +113,55 @@ export type PortsViolation = {
     }
 )
 
+/**
+ * Where a cycle finding lands in the grouped output — cycles have no single
+ * `file`/`serviceRoot` pair, so the bucket is carried explicitly.
+ */
+export type DagGroup =
+  | { kind: "service"; root: string }
+  | { kind: "cross-service" }
+  | { kind: "blob" }
+
+/** One witness hop of a service cycle, with its quoted carrying edge. */
+export type ServiceHop = {
+  from: string
+  to: string
+  /** The carrying module edge — lexicographically smallest inducing (from, to). */
+  via: { from: string; to: string }
+  /** Every inducing edge is type-only — no runtime import to hunt for. */
+  typeOnly: boolean
+  /** Every inducing edge originates in assembly — the fix is placement. */
+  wiring: boolean
+}
+
+export type DagViolation = {
+  check: "dag"
+  ruleset: Ruleset
+  /** 13 for service cycles, 14 for module cycles. */
+  rules: readonly number[]
+  group: DagGroup
+  /** The full SCC, sorted — the witness may be a shorter loop through it. */
+  members: readonly string[]
+} & (
+  | {
+      /** A cycle in the service DAG — every import kind counts. */
+      shape: "service-cycle"
+      /** Witness cycle in order, first = smallest member; hops close the loop. */
+      services: readonly string[]
+      hops: readonly ServiceHop[]
+    }
+  | {
+      /** A runtime module cycle — type-only edges are not an ESM hazard. */
+      shape: "module-cycle"
+      /** Witness cycle in order, first = smallest; a self-import is one file. */
+      files: readonly string[]
+    }
+)
+
 /** The union grows one member per detector step. */
 export type Violation =
-  LayersViolation | PrivateViolation | BarrelsViolation | PortsViolation
+  | LayersViolation
+  | PrivateViolation
+  | BarrelsViolation
+  | PortsViolation
+  | DagViolation

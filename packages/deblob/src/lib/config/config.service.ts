@@ -13,11 +13,11 @@
 import picomatch from "picomatch"
 
 import type { FlavorResolver } from "../extraction/ports/flavor.port.ts"
+import { STOCK_FLAVOR_NAME } from "../extraction/stock-flavor.model.ts"
 import {
   ConfigError,
   DEFAULT_INCLUDE,
   EXCLUDE_BASELINE,
-  STOCK_FLAVOR_NAME,
 } from "./config.model.ts"
 
 /** All optional; defaults documented on each key. */

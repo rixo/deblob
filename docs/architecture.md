@@ -519,6 +519,15 @@ port from `icons`.
 `icons/service/` are internal structure of the `icons` service, not independent
 services. They are part of `icons` and can access `icons/private/`.
 
+**The direction law.** A nested adapter's edges point up: it type-imports the
+port it implements and, at most, model code of the service it adapts for. The
+parent stays import-blind to its children — instantiation and injection are
+assembly's job, wherever assembly lives. Since the child already points up, any
+parent import of the child's files closes a service-level cycle (rule 13). The
+blindness is scoped to that upward relation: a nested child with no upward edges
+— a component the parent composes — may be imported freely. The child's role
+picks the direction; what rule 13 enforces is one direction per pair.
+
 **Common trap:** importing from your own adapter's model or service-layer code.
 Since the adapter depends on the parent service (it implements the parent's
 port), the parent depending back on the adapter — even on its model — creates a
@@ -606,8 +615,14 @@ any file in B also imports from any file in A — regardless of which layers are
 involved — that's a cycle. The fact that A.model → B.model and B.service →
 A.model touch different layers doesn't matter: services A and B are mutually
 dependent, and neither can be extracted, moved, or reasoned about independently.
-When a cycle threatens, the sharing progression applies (see
-[Sharing](#sharing)).
+Every import kind counts at this level, `import type` included: A referencing
+B's types means A cannot build without B's sources — extraction independence
+holds for types. (The module level below is runtime-only; the asymmetry is
+deliberate.) When a cycle threatens, the sharing progression applies (see
+[Sharing](#sharing)). In practice, wiring placement matters too: assembly whose
+wiring would close a service cycle is misplaced — composition belongs outside
+the service tree (like a root `main.ts`) or in its own service, and in tests,
+fixtures are test-purpose adapters, not the real nested ones.
 
 **Module level (sanity).** Circular runtime dependencies between files — even
 within the same service — are forbidden. They're not architecturally significant
@@ -684,7 +699,8 @@ tooling. Both are hard requirements.
     imports included — visibility is ownership, not implementation coupling;
     rule 8's exemption covers composition rules only.)
 13. <a id="rule-13"></a>**No circular dependencies between services** — DAG,
-    enforced by tooling in CI.
+    enforced by tooling in CI. (Every import kind counts, type-only included —
+    extraction independence holds for types; rule 14 is the runtime-only one.)
 14. <a id="rule-14"></a>**No circular runtime dependencies between modules** —
     ESM circular imports silently fail in production. Type-only circular
     references are not covered by this rule.

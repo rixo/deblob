@@ -21,10 +21,11 @@ deblob explain <topic>    explain a rule or check (rule-4, layers, ...)
   (size-weighted, hence the size in the headline), and service count — plus
   where to go next. Informational by contract: always exits 0, so a stray run
   can never fail a build.
-- **`deblob check`** is the gate. Checks in v0: `layers` (dependency matrix,
-  rules 1, 4–9), `private` (rule 12), `barrels` (rule 2), `ports` (rule 10). All
-  run over one shared import graph. Exit codes: `0` clean, `1` violations found,
-  `2` usage or config error.
+- **`deblob check`** is the gate. Checks in v0: `dag` (service cycles over every
+  import kind, runtime module cycles — rules 13, 14), `layers` (dependency
+  matrix, rules 1, 4–9), `private` (rule 12), `barrels` (rule 2), `ports` (rule
+  10). All run over one shared import graph. Exit codes: `0` clean, `1`
+  violations found, `2` usage or config error.
 - **`deblob explain rule-4`** prints the rule's rationale and the shipped
   knowledge card — offline, version-matched with the binary.
   `deblob check --explain` appends the explanation of every rule that fired; a
@@ -40,7 +41,7 @@ src/invoice
 ```
 
 Not in v0, on purpose: autofix (never — a value boundary, not a deferral),
-`check dag` (rules 13–14, next), `--json`/`--sarif` (staged refinement).
+`--json`/`--sarif` (staged refinement).
 
 ## Configuration
 

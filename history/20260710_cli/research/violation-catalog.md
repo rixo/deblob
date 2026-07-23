@@ -44,6 +44,16 @@ dag  src/lib/utils/fetchers.ts ⇄ src/lib/api/client.ts
      runtime module cycle (rule 14) — works in dev, silently fails minified
 ```
 
+Absorbed by [10_check-dag/SPEC.md](../10_check-dag/SPEC.md) (landed 2026-07-22),
+rulings recorded there: one finding per SCC (full membership plus a
+deterministic shortest witness — the N-node "one violation" intent confirmed, no
+cap needed); rule 13 counts every import kind (type-only included), rule 14
+stays runtime-only; hop markers `(type-only)` (all inducing edges type) and
+`(wiring)` (all inducing edges assembly-origin — the remedy becomes placement:
+fixture adapter, or wiring outside the service tree); buckets: service cycles →
+`cross-service`, module cycles → owning service, `blob` when all files unowned,
+`cross-service` when spanning.
+
 ## check layers
 
 The dependency matrix by suffix, runtime imports only (rule 8 exemption on by
@@ -242,11 +252,13 @@ never fire; each is a deliberate design point:
   too?
 - Rule 12 × type-only: does the private/ seal bind `import type` (rule 8 exempts
   composition rules only — lean yes, it binds)?
-- Rule-13 cycles double-reporting rule 14 (a service cycle is usually also a
-  file cycle): suppress the module-level echo when the service-level finding
-  covers the same edges?
-- N-node cycle reporting: full path as one violation (shown) — confirm, and cap
-  path length in output?
+- Rule-13 cycles double-reporting rule 14 — resolved at the 10 spec
+  (2026-07-22): keep both, no suppression. Distinct guarantees (`import type`
+  cures 14 and leaves 13 standing), and suppression is unsound — a runtime cycle
+  routed through an unowned file has no covering service finding.
+- N-node cycle reporting — resolved at the 10 spec (2026-07-22): one finding per
+  SCC with a deterministic shortest witness; no cap (the witness bounds the path
+  by construction).
 - Rule 3 (chain purity): fully derived from the above or worth its own violation
   type at the first impure link? (coverage table says "maybe" for v0.)
 - **Arch touch — rules 6/7 enumeration omits blob** (2026-07-17, rixo probing):

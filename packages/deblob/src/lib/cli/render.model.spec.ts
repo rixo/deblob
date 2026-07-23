@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type {
   BarrelsViolation,
+  DagViolation,
   LayersViolation,
   PortsViolation,
   PrivateViolation,
@@ -350,10 +351,207 @@ describe("renderCheckResults", () => {
       ).toContain("a types-only file supplies no runtime binding")
     })
   })
+
+  describe("dag blocks", () => {
+    const serviceCycle = (
+      overrides: Partial<DagViolation> = {},
+    ): DagViolation =>
+      ({
+        check: "dag",
+        ruleset: "arch",
+        rules: [13],
+        group: { kind: "cross-service" },
+        members: ["src/billing", "src/orders"],
+        shape: "service-cycle",
+        services: ["src/billing", "src/orders"],
+        hops: [
+          {
+            from: "src/billing",
+            to: "src/orders",
+            via: {
+              from: "src/billing/refund.service.ts",
+              to: "src/orders/model/order.ts",
+            },
+            typeOnly: false,
+            wiring: false,
+          },
+          {
+            from: "src/orders",
+            to: "src/billing",
+            via: {
+              from: "src/orders/checkout.service.ts",
+              to: "src/billing/ports/payment.ts",
+            },
+            typeOnly: false,
+            wiring: false,
+          },
+        ],
+        ...overrides,
+      }) as DagViolation
+
+    const moduleCycle = (overrides: Partial<DagViolation> = {}): DagViolation =>
+      ({
+        check: "dag",
+        ruleset: "arch",
+        rules: [14],
+        group: { kind: "blob" },
+        members: ["src/lib/api/client.ts", "src/lib/utils/fetchers.ts"],
+        shape: "module-cycle",
+        files: ["src/lib/api/client.ts", "src/lib/utils/fetchers.ts"],
+        ...overrides,
+      }) as DagViolation
+
+    it("renders the fiction's cross-service block with quoted carrying edges", () => {
+      const output = renderCheckResults([serviceCycle()], STATS, NO_COLORS)
+      expect(output).toBe(
+        [
+          "cross-service",
+          "  dag      src/billing ⇄ src/orders",
+          "           billing → orders (src/billing/refund.service.ts →",
+          "           src/orders/model/order.ts)",
+          "           orders → billing (src/orders/checkout.service.ts →",
+          "           src/billing/ports/payment.ts)",
+          "           services must form a DAG (rule 13); see the sharing",
+          "           progression",
+          "",
+          "1 violation (1 dag) · 214 files · 380 edges",
+          "why: deblob explain <rule> (13) · or rerun with --explain",
+          "",
+        ].join("\n"),
+      )
+    })
+
+    it("orders blocks in a bucket by rule, then membership", () => {
+      const output = renderCheckResults(
+        [
+          moduleCycle({
+            group: { kind: "cross-service" },
+          } as Partial<DagViolation>),
+          serviceCycle(),
+        ],
+        STATS,
+        NO_COLORS,
+      )
+      expect(output.indexOf("src/billing ⇄ src/orders")).toBeLessThan(
+        output.indexOf("src/lib/api/client.ts ⇄"),
+      )
+      // either input order — the sort, not the input, decides
+      const reversed = renderCheckResults(
+        [
+          serviceCycle(),
+          moduleCycle({
+            group: { kind: "cross-service" },
+          } as Partial<DagViolation>),
+        ],
+        STATS,
+        NO_COLORS,
+      )
+      expect(reversed).toBe(output)
+    })
+
+    it("renders the module cycle in the blob bucket, last", () => {
+      const output = renderCheckResults(
+        [moduleCycle(), serviceCycle()],
+        STATS,
+        NO_COLORS,
+      )
+      const lines = output.split("\n")
+      expect(lines.indexOf("cross-service")).toBeLessThan(lines.indexOf("blob"))
+      expect(output).toContain(
+        "  dag      src/lib/api/client.ts ⇄ src/lib/utils/fetchers.ts",
+      )
+      expect(output).toContain(
+        "runtime module cycle (rule 14) — works in dev, silently fails",
+      )
+    })
+
+    it("marks type-only and wiring hops, and extends the remedy for wiring", () => {
+      const output = renderCheckResults(
+        [
+          serviceCycle({
+            hops: [
+              {
+                from: "src/billing",
+                to: "src/orders",
+                via: {
+                  from: "src/billing/billing.service.spec.ts",
+                  to: "src/orders/orders.adapter.ts",
+                },
+                typeOnly: false,
+                wiring: true,
+              },
+              {
+                from: "src/orders",
+                to: "src/billing",
+                via: {
+                  from: "src/orders/orders.adapter.ts",
+                  to: "src/billing/ports/payment.ts",
+                },
+                typeOnly: true,
+                wiring: false,
+              },
+            ],
+          } as Partial<DagViolation>),
+        ],
+        STATS,
+        NO_COLORS,
+      )
+      expect(output).toContain("src/orders/orders.adapter.ts) (wiring)")
+      expect(output).toContain("src/billing/ports/payment.ts) (type-only)")
+      expect(output).toContain("(wiring): use a fixture adapter, or move the")
+      expect(output).toContain("wiring outside the service tree")
+    })
+
+    it("renders a longer witness as an arrow chain and notes entanglement", () => {
+      const output = renderCheckResults(
+        [
+          serviceCycle({
+            // rootless service dirs: the hop label falls back to the whole root
+            members: ["a", "b", "c"],
+            services: ["a", "b"],
+            hops: [
+              {
+                from: "a",
+                to: "b",
+                via: { from: "a/a.service.ts", to: "b/b.model.ts" },
+                typeOnly: false,
+                wiring: false,
+              },
+              {
+                from: "b",
+                to: "a",
+                via: { from: "b/b.service.ts", to: "a/a.model.ts" },
+                typeOnly: false,
+                wiring: false,
+              },
+            ],
+          } as Partial<DagViolation>),
+          moduleCycle({
+            group: { kind: "service", root: "src/a" },
+            members: ["src/a/one.ts", "src/a/three.ts", "src/a/two.ts"],
+            files: ["src/a/one.ts", "src/a/two.ts", "src/a/three.ts"],
+          } as Partial<DagViolation>),
+        ],
+        STATS,
+        NO_COLORS,
+      )
+      expect(output).toContain(
+        "  dag      src/a/one.ts → src/a/two.ts → src/a/three.ts →",
+      )
+      expect(output).toContain(
+        "entangled with 1 more — break this cycle and rerun",
+      )
+      // the in-service module cycle lands under its service header
+      const lines = output.split("\n")
+      expect(lines.indexOf("src/a")).toBeLessThan(
+        lines.indexOf("cross-service"),
+      )
+    })
+  })
 })
 
 describe("bare status", () => {
-  it("renders the fiction's block, dag-free command hint", () => {
+  it("renders the fiction's block with the full check-list hint", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
@@ -376,7 +574,7 @@ describe("bare status", () => {
         "",
         "Commands",
         "  deblob check [what...]   run architecture checks",
-        "                           (layers · private · barrels · ports)",
+        "                           (dag · layers · private · barrels · ports)",
         "  deblob explain <topic>   explain a rule or check",
         "  deblob --help            full help",
         "",
@@ -517,8 +715,8 @@ describe("help screens", () => {
     expect(CHECK_HELP).toContain("one shared import graph")
   })
 
-  it("no help screen mentions dag until its step lands", () => {
-    expect(HELP).not.toMatch(/\bdag\b/)
-    expect(CHECK_HELP).not.toMatch(/\bdag\b/)
+  it("both help screens carry dag — the fiction's full check list", () => {
+    expect(HELP).toContain("dag        service dependencies form a DAG")
+    expect(CHECK_HELP).toContain("deblob check dag layers")
   })
 })

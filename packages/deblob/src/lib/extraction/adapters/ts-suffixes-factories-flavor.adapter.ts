@@ -1,4 +1,4 @@
-import { STOCK_FLAVOR_NAME } from "../../config/config.model.ts"
+import { STOCK_FLAVOR_NAME } from "../stock-flavor.model.ts"
 import type { FlavorLayer } from "../graph.model.ts"
 import type {
   FlavorClassification,

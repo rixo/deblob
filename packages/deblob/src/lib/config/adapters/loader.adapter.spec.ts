@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url"
 import { afterAll, describe, expect, it } from "vitest"
 
 import type { FlavorResolver } from "../../extraction/ports/flavor.port.ts"
-import { ConfigError, STOCK_FLAVOR_NAME } from "../config.model.ts"
+import { STOCK_FLAVOR_NAME } from "../../extraction/stock-flavor.model.ts"
+import { ConfigError } from "../config.model.ts"
 import { resolveConfig } from "../config.service.ts"
 import {
   discoverConfig,
