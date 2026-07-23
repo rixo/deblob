@@ -23,6 +23,43 @@ Inward protection stands solid (nothing inner imports UI; UI wiring services =
 assembly hat) — the holes are all about the UI zone's internal structure.
 Resolution material: `future/svench-flavor/` (taxonomy sketch).
 
+## Nesting-packaging patterns commentary
+
+Banked 2026-07-22 →
+[research/nesting-packaging.md](research/nesting-packaging.md) (replete by
+design — pre-written docs; sorting is this chapter's job). Executes the
+outermost-PLAN idea "packaging dimension of nesting". Carries: legal patterns
+progression, the sink invariant (kernel = role), facades split by effect, the
+containment-semantics refutation (super-root collapse, ancestor-hub laundering,
+kernel-re-derivation), Martin/Lakos reconciliation, §Nesting wording nits, and
+one open flavor question (`private/`-merger as opt-in containment). Feeds
+§Nesting + a future patterns doc (how-to genre — see the Diátaxis-audit idea on
+the outermost board).
+
+## Rule-why touches — 13 and 6/7
+
+(2026-07-22/23, from the rule-13 raison-d'être discussion — material and the
+full-read audit behind it in
+[research/nesting-packaging.md](research/nesting-packaging.md) §15–16. Scope
+deliberately narrow: the sweep judged the other rules' one-line whys
+proportionate — 2/12's full sections exist because those rules are
+counter-intuitive house choices, not a bar for the rest. No doc-wide rationale
+mandate. Both touches are _connections_ of rationale canon already states — zero
+new claims.)
+
+- **Rule 13 (§acyclic)**: canon states the value level elsewhere, unconnected —
+  "the architecture's whole point — that internals are free to move" (§
+  internal-seam testing) and "each can be moved independently" (§Sharing).
+  Connect it at the rule: rule 13 is that whole-point sentence at package scale
+  — refactorability is evolvability, a DAG-clean graph keeps every move's blast
+  radius bounded; cycle = symptom of a misplaced fact, repair = move it to its
+  owner. Extraction framing stays; §15 is source material, not copy; wording
+  judged at touch time, rixo gates.
+- **Rules 6/7**: justified circularly on the page ("composition unit — must be
+  composed by assembly"). The rationale is substantial one section away (§IoC:
+  central control, visible wiring, code splitting, testability) — attach with a
+  cross-ref sentence, not new argument.
+
 ## Accumulated doc touches
 
 - `XxxService` (not `XxxServiceAPI`) in examples.

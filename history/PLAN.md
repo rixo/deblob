@@ -30,6 +30,35 @@
 
 ### Ideas
 
+- **Sales speech — old pots, new balances** (2026-07-23) — the pitch precised:
+  principles constant (nature/physics unchanged — old pots credited), balances
+  moved, hence different decisions in accord with old principles for new
+  objectives; pillars as decision guides (attention economics: the 100%-bar
+  decoded as code-fully-represented-in-tests → reviewing tests ≈ reviewing
+  code, + review slicing; locality: the graph navigator — name candidate
+  archonaute) → `future/sales-speech/`.
+- **deblob-sdd trigger touch** (2026-07-23) — hook the skill on "future idea" /
+  "capture idea" phrasing (description trigger line); rides with the skills
+  chapter's remaining consolidation.
+- **Review slicing — mountain diff → focused review missions** (2026-07-23) —
+  agent slices a big mixed-concern diff into concern-focused commits (judgment
+  work), then replays them one by one on a `reviewed` branch, each left
+  uncommitted so the IDE shows one bounded mission at a time (slice message =
+  brief; index ritual intact per slice; slice-for-review ≠ slice-for-history —
+  final commits cut per the agreed plan). Pillar-1 economics (System-2
+  engagement is the scarce resource; slicing = zooming for diffs). Banked →
+  `future/review-slicing/` — dogfood candidate: the step-10 diff itself; kin:
+  pause-for-review canon candidate below; naming must resolve the existing
+  `deblob-review` skill collision.
+- **Graph-as-product — the certified skeleton as leverage** (2026-07-23) — the
+  reframe: the arch was adopted to fight mess (defer decisions); the
+  organization built to fight the mess is itself an asset — the enforcement
+  tool's exhaust is a certified, queryable architecture database (roles with
+  guaranteed properties, typed edges, user names attached; the map cannot lie —
+  CI-checked against the territory). Discovery + work organization, agent food;
+  type-system precedent (act 2 = language server for architecture). Idea +
+  honest ledger banked → `future/graph-as-product/` — blocked: mechanical base
+  first (JSON output, `deblob status` are the substrate).
 - **Svench flavor guide** — second implementation guide, proves "several valid
   guides, one foundation"; taxonomy sketch banked → `future/svench-flavor/` —
   blocked: factory-injection guide stabilizes first.
@@ -41,10 +70,18 @@
   reviewer's reviewed-files tracker). Personal workflow but SDD spirit — the
   gates exist to make humans actually review. Rule canon vs opt-in (and how)
   eventually.
-- **RESEARCH: the packaging dimension of nesting** — any service must be
-  splittable into a real package at any time; "a service _contains_ child
-  services" has unexplored implications, probably hard negative rules. Research
-  move when picked up; feeds architecture Packaging + Nesting.
+- **RESEARCH: the packaging dimension of nesting** — **done 2026-07-22** (live
+  discussion, cli step 10 era); note banked →
+  `future/arch-pass/research/nesting-packaging.md`. Verdict: dir-semantics +
+  explicit sinks is the unique sound point (containment variants proven
+  unsound); dissolves into arch-pass.
+- **Redaction audit — Diátaxis pass over the docs corpus** (2026-07-22) — map
+  `docs/` + README + explain cards to the four quadrants
+  (tutorial/how-to/reference/explanation), fix worst mode-mixing
+  (architecture.md fuses explanation+reference); how-to genre hosts the future
+  patterns doc. Scope edge: `history/` excluded (decision-record genre, sdd.md
+  governs); machine-optimized skills/cards keep their form. Authorities:
+  diataxis.fr, Google dev-docs style guide, Write the Docs.
 - **Skill-trigger hook** — plugin hook injecting "deblob rules apply" on
   layer-suffix path hits — blocked: only if spot-runs show description-based
   recall failing (sdd §6: escalate when discipline fails).
