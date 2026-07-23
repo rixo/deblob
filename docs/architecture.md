@@ -236,12 +236,13 @@ dependencies (same layer) are allowed.
 
 Layers, from innermost to outermost:
 
-- **Model** (`.model.ts`) — domain knowledge. Pure, stateless, no dependencies
-  beyond model. The most constrained, the most valuable.
+- **Model** (`.model.ts`) — domain knowledge. Abstract: no dependencies beyond
+  model, no ambient environment access, stateless modules. The most constrained,
+  the most valuable.
 - **Ports** (`.port.ts`) — type-only contracts at the hexagonal boundary. No
   runtime code. Adapters implement them; service code depends on them.
-- **Service** (`.service.ts`) — decisions. Orchestration, use cases, closure
-  state. Composition unit — must be composed by assembly.
+- **Service** (`.service.ts`) — decisions. Orchestration, use cases, injected
+  dependencies. Composition unit — must be composed by assembly.
 - **Adapters** (`.adapter.ts`) — port implementations for a specific technology.
   Can depend on concrete external systems. Composition unit — must be composed
   by assembly.
@@ -260,13 +261,28 @@ constraints of its host layer). The reverse is never acceptable.
 
 ### Model — knowledge
 
-Types, pure functions, constants, core business logic. **The most valuable
-code.** The model layer is _what the service knows_ — computations,
-transformations, validations, domain types. Pure expertise, independent of any
-orchestration context.
+Types, pure functions, constants, self-contained factories, core business logic.
+**The most valuable code.** The model layer is _what the service knows_ —
+computations, transformations, validations, domain types. Pure expertise,
+independent of any orchestration context.
 
-- Stateless — no side effects, no closures over mutable state
-- Depends on nothing outside the model layer (see [dependency rules](#rules))
+The bar is abstractness — the opposite of rule 4's "concrete", not of
+"implemented". Model code lives in the domain of ideas: values, types,
+knowledge. Contact with the world outside the computation — I/O, time,
+randomness, platform — is what makes code concrete:
+
+- Depends on nothing outside the model layer (see [dependency rules](#rules)) —
+  no ports, no concrete imports
+- No ambient environment access — time, randomness, `globalThis` are inputs
+  passed by the caller, not discoveries
+- Modules are stateless (rule 17) — no module-level mutable state, exported or
+  not: no top-level `let`, no unfrozen collections, nothing a closure could
+  capture at module scope; state lives inside factories, and instances are
+  created by callers, never exported
+- Factories with closure state are model code when they depend on nothing —
+  domain machines, entities, dependency-free reactive stores. The moment a
+  factory takes a port or a service, it is a composition unit and belongs in the
+  service layer
 - Everything else is plumbing you can rewire; model is the investment you
   protect
 
@@ -280,9 +296,9 @@ parsing utility, a schema validator — acceptable model dependencies as long as
 they are side-effect-free and deterministic. Anything with I/O, ambient state,
 or environment access is concrete (Rule 4) and belongs behind a port.
 
-Model code is all pure functions with no dependencies — so easy to test that it
-would be a shame not to have 100% unit test coverage, especially in the AI era
-where generating tests for pure functions is essentially free.
+Model code is pure functions and self-contained factories with no dependencies —
+testable in isolation with plain values, no mocks, no setup. 100% unit coverage
+is the expectation for this layer; these are the cheapest tests to write.
 
 A service with only a model layer is valid. No service layer, no ports, no
 adapters — just types and pure functions. The architecture doesn't prescribe
@@ -540,11 +556,11 @@ because developers stumble on it.
 Logic often starts in the service layer, embedded in a use case. When you
 extract it to model, you make a commitment: this knowledge stands on its own, it
 has value independent of the use case it currently serves. In the service layer,
-a function can use closure state and orchestration context. In model, it becomes
-context-free: pure input, pure output, independently testable, independently
-reusable. Not everything should be extracted — the signal is: could this
-function be useful to a consumer who doesn't care about the use case it was born
-in?
+a function can use orchestration context and injected dependencies. In model, it
+becomes context-free: everything it needs arrives through its arguments or lives
+in state it owns — independently testable, independently reusable. Not
+everything should be extracted — the signal is: could this function be useful to
+a consumer who doesn't care about the use case it was born in?
 
 The corollary: premature extraction has costs. As long as logic lives private in
 the service layer (closure-scoped, not exported), it's an implementation detail
@@ -713,10 +729,11 @@ tooling. Both are hard requirements.
 16. <a id="rule-16"></a>**Test setup is assembly** — same isolation rules apply,
     fixtures are test-purpose adapters.
 
-**Service discipline:**
+**Module discipline:**
 
-17. <a id="rule-17"></a>**Service modules are stateless** — state lives in
-    factory closures only.
+17. <a id="rule-17"></a>**Modules are stateless** — state lives in factory
+    closures only; instances are created by callers, never imported. Assembly,
+    whose job is instantiation, is the exception.
 
 ---
 
@@ -844,9 +861,10 @@ Default argument values — harmful in production service factories (see
 Test bundles don't need code splitting, and the defaults provide the nominal
 case out of the box.
 
-The test factory pattern applies to any factory that takes dependencies. Pure
-model functions don't need a test factory — they take arguments and return
-values, test them directly.
+The test factory pattern applies wherever construction is worth centralizing:
+factories with dependencies foremost, but a factory taking many plain arguments
+benefits the same way — defaults, per-test overrides. A plain function is tested
+directly.
 
 Agents are strongly encouraged to use this pattern systematically, even when the
 test file seems small enough not to need it:
@@ -1074,10 +1092,13 @@ violation; it's its nature.
 
 ### Store — reactive state
 
-A service whose state is reactive. Consumers observe state changes rather than
-polling. Relevant in web apps where UI needs to reflect changing data. See
-companion implementation guide for conventions (context resolution,
-`useMyService` / `getMyServiceContext` patterns).
+A unit whose state is reactive. Consumers observe state changes rather than
+polling. Classification follows dependencies, not reactivity: a store wired to
+ports or services is a service; a dependency-free reactive store is model — a
+domain machine like any other self-contained factory. Relevant in web apps where
+UI needs to reflect changing data. See companion implementation guide for
+conventions (context resolution, `useMyService` / `getMyServiceContext`
+patterns).
 
 ### Kernel
 
@@ -1143,7 +1164,14 @@ enough, it becomes its own hexagon with its own internal structure.
   technical type. Shared kernel and anti-corruption layer (we say "boundary" to
   avoid collision with our layer terminology) concepts for managing
   cross-service model dependencies. Ubiquitous language as a constraint
-  mechanism.
+  mechanism. Strategic patterns only: the tactical catalog is not used as such —
+  entities appear as self-contained factories in the model layer, invariants as
+  types and pure functions, repositories as ports.
+- **Functional domain modeling** (Wlaschin; Bernhardt's functional core /
+  imperative shell) — domain behavior as functions over domain types, I/O at the
+  edges. The model layer relaxes strict purity to admit self-contained state:
+  the bar is abstractness — no injection, no environment — not referential
+  transparency.
 - **SOLID** — especially Single Responsibility (one service, one capability) and
   Dependency Inversion (depend on abstractions, not concretions).
 - **Onion Architecture** (Palermo) — concentric dependency rings, domain at the

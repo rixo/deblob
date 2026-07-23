@@ -25,4 +25,6 @@ its scenario is about. Default argument values — harmful in production factori
 readability (a test's overrides announce its intent), assembly noise out of test
 bodies, compounding LOC savings.
 
-Pure model functions need no factory — plain arguments in, values out.
+The pattern applies wherever construction is worth centralizing: factories with
+dependencies foremost, but a factory taking many plain arguments benefits the
+same way — defaults, per-test overrides. A plain function is tested directly.

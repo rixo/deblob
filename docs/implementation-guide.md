@@ -28,15 +28,15 @@ program, not a component tree.
 
 **The suffix is load-bearing. Always suffix.**
 
-| Suffix         | Layer    | Declares                                       |
-| -------------- | -------- | ---------------------------------------------- |
-| `*.model.ts`   | model    | pure — no side effects, no outer-layer imports |
-| `*.port.ts`    | ports    | types only, boundary contract                  |
-| `*.service.ts` | service  | composition unit — assembly-only import        |
-| `*.adapter.ts` | adapters | port implementation — assembly-only import     |
-| `*.context.ts` | assembly | context wiring (web/UI runtimes)               |
-| `*.spec.ts`    | test     | unit test, colocated with its subject          |
-| `*.e2e.ts`     | test     | end-to-end test, lives outside `src/`          |
+| Suffix         | Layer    | Declares                                                                |
+| -------------- | -------- | ----------------------------------------------------------------------- |
+| `*.model.ts`   | model    | abstract — no outer-layer imports, no ambient access, stateless modules |
+| `*.port.ts`    | ports    | types only, boundary contract                                           |
+| `*.service.ts` | service  | composition unit — assembly-only import                                 |
+| `*.adapter.ts` | adapters | port implementation — assembly-only import                              |
+| `*.context.ts` | assembly | context wiring (web/UI runtimes)                                        |
+| `*.spec.ts`    | test     | unit test, colocated with its subject                                   |
+| `*.e2e.ts`     | test     | end-to-end test, lives outside `src/`                                   |
 
 - The theory allows the bare layer filename (`icons/model.ts`) as a degenerate
   case; this flavor opts not to use it — the suffixed form even when a service

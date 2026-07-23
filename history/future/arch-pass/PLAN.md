@@ -36,6 +36,26 @@ one open flavor question (`private/`-merger as opt-in containment). Feeds
 §Nesting + a future patterns doc (how-to genre — see the Diátaxis-audit idea on
 the outermost board).
 
+## Model bar: abstractness, not purity
+
+**Landed 2026-07-24** as its own one-commit chapter →
+[20260724_model-abstractness/SPEC.md](../../20260724_model-abstractness/SPEC.md)
+(ruling, landed wording, swept ripples, pre-commit tribunal). Residue extracted
+here as the two Ideas below.
+
+### Ideas (from the model-abstractness landing)
+
+- **`check state` detector** — rule 17 is now AST-decidable: top-level
+  `let`/`var`, module-root mutable collections (write-detection, or `const` +
+  `ReadonlyMap`/`Readonly` annotation — `Object.freeze` is a no-op on Map/Set
+  internals), exported live instances; ambient access (`Date.now`,
+  `Math.random`, `globalThis`) is callable-name detectable, no import to see.
+  Earns its place through its own future card.
+- **`.pure.ts` strict-flavor sublayer** — a flavor could add a
+  referentially-transparent row below model with a tighter matrix line (knobs
+  only tighten canon — legal without touching anything). Repairs the lost "model
+  = RT" reviewer shortcut for teams that want it. Idea only, not pursued.
+
 ## Rule-why touches — 13 and 6/7
 
 (2026-07-22/23, from the rule-13 raison-d'être discussion — material and the
