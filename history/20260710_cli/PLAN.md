@@ -58,18 +58,21 @@ Housekeeping: stash `model-abstractness draft edits` obsolete — droppable.
 **Cut (2026-07-24, ruled at session end):** 0.0.2 — first working publish,
 replacing the name-reservation stub. Gate passed: tarball smoke green (pack →
 install in scratch project → bare/check/explain all functional). Merged to main
-(ff), tagged v0.0.2; `blob/main` rule URLs valid from the merge. Remaining 0.1.0
-items unchanged: tag-pinned URLs, Alpine gate audit, README storefront, cut
-ceremony.
+(ff), tagged v0.0.2; `blob/main` rule URLs valid from the merge. At the cut, the
+Alpine gate turned out to have never run — the lefthook prepare execs git,
+absent from the container; fixed in the follow-up commit (apk git before
+checkout for a real clone, safe.directory; a LEFTHOOK=0 attempt died on the way
+— lefthook 2.x ignores it for install), gate green before the tag: the musl
+smoke genuinely executes. Remaining 0.1.0 items: tag-pinned URLs, README
+storefront, cut ceremony.
 
 **Next session — v0.1.0 roadmap (standing):** dogfood closed (targets T/M =
-optional deepening); remaining, in order — release-prep step: version-pinned
-rule URLs (Ideas item), `npm pack` tarball smoke in scratch project, metadata
-("under construction" description dies), oxc mitigation audit (Alpine gate in
-ci.yml — verify it actually runs) · README storefront pass (no-overselling
-audit; testimonial material in hand) · cut: merge-to-main timing, tag, version
-stance (0.1.0 vs 0.0.x — dogfood verdict now in), publish channel. Out of 0.1.0:
-JSON/SARIF, status, vite driver, presets, docs family.
+optional deepening); done at the 0.0.2 cut: tarball smoke, metadata, Alpine gate
+(verified green 2026-07-24), merge + tag + publish. Remaining — version-pinned
+rule URLs (Ideas item) · README storefront pass (no-overselling audit;
+testimonial material in hand) · 0.1.0 cut ceremony (version stance: dogfood
+verdict in). Out of 0.1.0: JSON/SARIF, status, vite driver, presets, docs
+family.
 
 Chapter scratch. Opened from the 2026-07-10 evening session (decisions + engine
 research below), recovered from stash and formally opened 2026-07-17, folded

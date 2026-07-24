@@ -29,7 +29,15 @@ jobs:
     runs-on: ubuntu-latest
     container: node:24-alpine
     steps:
+      # the container ships no git; the root prepare (lefthook install)
+      # execs it, and it must come before checkout so the action produces a
+      # real clone (with .git) instead of a REST download. LEFTHOOK=0 was
+      # tried first and is ignored by lefthook 2.x install.
+      - run: apk add --no-cache git
       - uses: actions/checkout@v4
+      # container user vs workspace owner — git refuses "dubious ownership"
+      # without this, and the lefthook prepare runs git
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: npm install -g pnpm@10.12.1
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter deblob test
