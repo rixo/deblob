@@ -456,6 +456,16 @@ doesn't check:
   uniformity (would need content reads or a second gross number). All the metric
   must do is decrease when you move in the right direction. Wired at 09 (bare
   command, `blobPercentOf` — stat sizes, no content reads).
+- **Guided deblobbing** (2026-07-24, theory session) — the CLI walks an agent
+  from 100% blob: least-resistance progression (seam → service → ports → model),
+  what-if overlay, seam-scoring facts, coverage reader + provenance stamps,
+  audience detection (`DEBLOB_AGENT` / markers / CI, configurable
+  `detectAudience`), per-audience defaults + agent orientation bare, stateless
+  next-action footers, coverage-as-pillar decomposition (% half runner-native,
+  through-API half = rule 15, per-layer view = deblob's), connectors demoted to
+  point-don't-run at most. Elaborates the parked CLI↔agent hop →
+  [future/guided-deblobbing/](./future/guided-deblobbing/) — blocked: post-v0,
+  status-family kin.
 - **Vite plugin driver** — dev-time violations, second driver validating the
   extraction port → [future/vite-plugin-driver/](./future/vite-plugin-driver/) —
   blocked: mechanical base + incremental/JSON refinements first.
