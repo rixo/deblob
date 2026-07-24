@@ -121,7 +121,8 @@ form:
   the point of implementation, not only in the preamble. A fold over the domain,
   not a list of its known members.
 - **Treat any measured count as evidence the set is open-ended** — never as a
-  target to enumerate.
+  target to enumerate. The exemption is a count fixed by definition — a closed
+  union the compiler owns — where exhaustive enumeration is correct.
 - **Have a test assert the openness** — an input carrying an unseen case still
   passes; a re-enumeration fails the gate by its shape.
 

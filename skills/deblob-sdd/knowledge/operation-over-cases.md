@@ -18,7 +18,8 @@ form:
   the point of implementation, not only in the preamble. A fold over the domain,
   not a list of its known members.
 - **Any measured count is evidence the set is open-ended** — never a target to
-  enumerate.
+  enumerate. The exemption is a count fixed by definition — a closed union the
+  compiler owns — where exhaustive enumeration is correct.
 - **A test asserts the openness** — an input carrying an unseen case still
   passes; a re-enumeration fails the gate by its shape.
 

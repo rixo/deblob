@@ -35,9 +35,15 @@ scope:
 | [docs/sdd.md](./docs/sdd.md)                                   | The workflow: spec-driven development, three axes (history / living docs / future), review gates                                                                                                                                                                                                                                                                                                                                                            |
 | [history/](./history/)                                         | This project's own chapters — dogfooding the methodology: [GOAL](./history/GOAL.md), rolling [PLAN](./history/PLAN.md), [META](./history/META.md)                                                                                                                                                                                                                                                                                                           |
 
-Planned alongside the skills: a CLI that machine-checks the mechanical rules
-(dependency DAG, layer matrix, composition, visibility) in CI — skills carry
-judgment, tooling carries determinism.
+The skills install from the repo alone — `npx skills add rixo/deblob` — or load
+as a local plugin. Skill descriptions carry the triggers, but for deterministic
+recall add one line per surface to your agent's instruction file (CLAUDE.md,
+AGENTS.md, or equivalent): "load the deblob skill before writing code in
+layer-suffixed files" — and likewise per skill.
+
+Alongside the skills: the [deblob CLI](./packages/deblob/) (npm, early 0.0.x)
+machine-checks the mechanical rules (dependency DAG, layer matrix, composition,
+visibility) in CI — skills carry judgment, tooling carries determinism.
 
 ## Status
 
@@ -45,5 +51,5 @@ Early and experimental. Nothing is settled; names, layout, and claims will move.
 
 ## Licence
 
-© 2026 rixo. Docs licensed under [CC BY 4.0](./LICENSE). Code (when it lands)
-will carry its own permissive licence.
+© 2026 rixo. Docs licensed under [CC BY 4.0](./LICENSE). Code (the
+[CLI package](./packages/deblob/)) is MIT.

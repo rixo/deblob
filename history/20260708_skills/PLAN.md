@@ -1,7 +1,11 @@
 # Chapter PLAN — skills
 
-Scratch: the step queue and each future step's input material. Refines into step
-SPECs; cleaned at chapter consolidation.
+Consolidated 2026-07-24: all steps landed (00–07, status below), carried notes
+resolved (dispositions below). The chapter's remaining life is two rixo-manual
+gates, deferred standing (2026-07-17, rixo) and tracked on the outermost board:
+local plugin load (`claude --plugin-dir <repo>`) and per-skill spot-runs
+(with-skill vs no-skill baseline on RED-list scenarios). Public install path
+validated 2026-07-17: `npx skills add rixo/deblob` from another project.
 
 ## Status
 
@@ -42,26 +46,19 @@ SPECs; cleaned at chapter consolidation.
   functional repo state, docs in sync. See its SPEC. Dogfood gate pending: the
   next real multi-commit arc runs the grammar end to end.
 
-## Step queue (each dissolves into its step's SPEC when spec'd)
+## Carried notes — resolved at consolidation (2026-07-24)
 
-- (empty — chapter heads toward consolidation; carried notes below still open)
-
-## Carried notes
-
-- **Open micro-question** (2026-07-09, step 06 review): the deblob-sdd skill
-  unpacks "measured count" into defined-vs-measured (closed union → exhaustive
-  enumeration is correct); sdd §1 + operation-over-cases card carry only the
-  word "measured". Mirror the exemption sentence into both? (recommended,
-  unruled — rixo).
-- **Install sections removed from SKILL.md bodies** (2026-07-09, reverses the
-  step-00 "installation prescription" ruling): skill bodies follow authoritative
-  skill-authoring practice (frontmatter trigger + task instructions, nothing
-  else) and stay agent-agnostic — no CLAUDE.md mentions in shipping content. The
-  deterministic-trigger line ("load the skill before X") still wants a home in
-  README/plugin docs, phrased agent-agnostic (CLAUDE.md / AGENTS.md /
-  equivalent) — pending, chapter exit.
-- Enforcement design for `5-docs` and PLAN hygiene lands somewhere in this
-  chapter and/or the CLI (prescriptions already in sdd).
-- Exit per skill: with-skill spot-runs pass on scenarios drawn from its RED list
-  where the no-skill baseline fails (harness item in root PLAN — downscoped to
-  manual).
+- **Measured-count mirror** (2026-07-09, step 06 review; recommended, unruled —
+  ratified at the consolidation review): the defined-vs-measured exemption
+  sentence (closed union → exhaustive enumeration is correct) mirrored into sdd
+  §1 and the operation-over-cases card, which carried only the word "measured".
+- **Deterministic-trigger line** (2026-07-09, reverses the step-00 "installation
+  prescription" ruling — skill bodies stay authoritative-practice-only and
+  agent-agnostic): landed in the README at consolidation, agent-agnostic
+  phrasing (CLAUDE.md / AGENTS.md / equivalent), alongside the validated install
+  path.
+- **Enforcement design for `5-docs` / PLAN hygiene**: dissolved 2026-07-17 into
+  the CLI chapter's `future/docs-family/` payload (staleness seed + candidate
+  list); ruling at that item's graduation, post-v0.
+- **Per-skill spot-run exit**: the deferred manual gate in the header — outlives
+  consolidation, tracked on the outermost board.

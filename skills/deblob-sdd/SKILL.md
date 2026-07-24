@@ -3,9 +3,9 @@ name: deblob-sdd
 description:
   Use when planning, structuring, or recording work — writing or amending
   SPEC/GOAL/PLAN files, opening a chapter or step, capturing or staging future
-  work (backlog, ideas, the PLAN board, future/) — in a repository with a
-  history/ directory of dated chapters and quintet-section specs
-  (Goal/API/Testing/Implementation/Docs).
+  work ("capture this idea", "future idea", backlog, the PLAN board, future/) —
+  in a repository with a history/ directory of dated chapters and
+  quintet-section specs (Goal/API/Testing/Implementation/Docs).
 ---
 
 # deblob-sdd — specs and the history axis

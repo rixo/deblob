@@ -8,13 +8,13 @@
 
 ## Future
 
-- **Skills** — chapter in flight: `history/20260708_skills/` (**chapter PLAN
-  carries the step queue and status — read it first when resuming**). Steps
-  00–07 landed; remaining: chapter consolidation + carried notes. Gates —
-  deferred (2026-07-17, rixo): local plugin load (`claude --plugin-dir <repo>`)
-  and spot-runs (manual). Public install path validated (2026-07-17, rixo):
-  `npx skills add rixo/deblob` succeeded from another project — "skills
-  installable from the repo alone" evidenced.
+- **Skills gates** — chapter `history/20260708_skills/` consolidated
+  (2026-07-24); what remains is the two deferred manual gates (2026-07-17,
+  rixo): local plugin load (`claude --plugin-dir <repo>`) and per-skill
+  spot-runs (with-skill vs no-skill baseline on RED-list scenarios). Public
+  install path validated (2026-07-17, rixo): `npx skills add rixo/deblob`
+  succeeded from another project — "skills installable from the repo alone"
+  evidenced.
 - **CLI v0** — chapter in flight: `history/20260710_cli/` (chapter PLAN carries
   decisions, step queue, engine research — read it first when resuming). Engine
   ruled (oxc, 2026-07-17); next: step 01 extraction-core. Companion, ruled to
@@ -43,9 +43,6 @@
   decoded as code-fully-represented-in-tests → reviewing tests ≈ reviewing
   code, + review slicing; locality: the graph navigator — name candidate
   archonaute) → `future/sales-speech/`.
-- **deblob-sdd trigger touch** (2026-07-23) — hook the skill on "future idea" /
-  "capture idea" phrasing (description trigger line); rides with the skills
-  chapter's remaining consolidation.
 - **Graph-as-product — the certified skeleton as leverage** (2026-07-23) — the
   reframe: the arch was adopted to fight mess (defer decisions); the
   organization built to fight the mess is itself an asset — the enforcement
