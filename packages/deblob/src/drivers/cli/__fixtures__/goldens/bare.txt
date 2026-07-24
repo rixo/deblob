@@ -1,4 +1,4 @@
-deblob 0.0.1 · deblob.config.ts (flavor: ts-suffixes-factories)
+deblob 0.0.2 · deblob.config.ts (flavor: ts-suffixes-factories)
 
   9 files · 1kb · 25% blob
   2 services

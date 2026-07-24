@@ -1,7 +1,7 @@
 {
   "name": "deblob",
-  "version": "0.0.1",
-  "description": "Home of the deblob CLI — under construction. Machine-checkable hexagonal architecture for TypeScript/ESM.",
+  "version": "0.0.2",
+  "description": "Machine-checkable hexagonal architecture for TypeScript/ESM. CLI: check (dag, layers, private, barrels, ports) and explain.",
   "license": "MIT",
   "author": "rixo",
   "repository": {

@@ -55,6 +55,13 @@ if it recurs: anti-skip nudge / first-run `--explain`; explain opt-out rejected
 
 Housekeeping: stash `model-abstractness draft edits` obsolete — droppable.
 
+**Cut (2026-07-24, ruled at session end):** 0.0.2 — first working publish,
+replacing the name-reservation stub. Gate passed: tarball smoke green (pack →
+install in scratch project → bare/check/explain all functional). Merged to main
+(ff), tagged v0.0.2; `blob/main` rule URLs valid from the merge. Remaining 0.1.0
+items unchanged: tag-pinned URLs, Alpine gate audit, README storefront, cut
+ceremony.
+
 **Next session — v0.1.0 roadmap (standing):** dogfood closed (targets T/M =
 optional deepening); remaining, in order — release-prep step: version-pinned
 rule URLs (Ideas item), `npm pack` tarball smoke in scratch project, metadata
