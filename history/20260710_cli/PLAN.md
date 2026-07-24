@@ -69,10 +69,11 @@ until the feature set and maturity feel satisfying — or consumer pressure
 becomes the channel and minor denotes breaking changes; 0.1.0 is the
 channel-opening cut, not the next milestone. Remaining ruled work, rides 0.0.x
 cuts as ready — version-pinned rule URLs (Ideas item) · README storefront pass
-(no-overselling audit; testimonial material in hand) · MIT LICENSE text file
-into the package (2026-07-24: package.json declares MIT, tarball ships no
-licence file). Still out of scope until demanded: JSON/SARIF, status, vite
-driver, presets, docs family.
+(no-overselling audit; testimonial material in hand). MIT LICENSE text file into
+the package: landed 2026-07-25 (`packages/deblob/LICENSE`, npm auto-includes —
+tarball verified; code MIT, docs stay CC BY 4.0 per the root README split).
+Still out of scope until demanded: JSON/SARIF, status, vite driver, presets,
+docs family.
 
 Chapter scratch. Opened from the 2026-07-10 evening session (decisions + engine
 research below), recovered from stash and formally opened 2026-07-17, folded
