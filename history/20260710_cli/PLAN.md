@@ -66,13 +66,17 @@ checkout for a real clone, safe.directory; a LEFTHOOK=0 attempt died on the way
 smoke genuinely executes. Remaining 0.1.0 items: tag-pinned URLs, README
 storefront, cut ceremony.
 
-**Next session — v0.1.0 roadmap (standing):** dogfood closed (targets T/M =
+**Next sessions — release roadmap (standing):** dogfood closed (targets T/M =
 optional deepening); done at the 0.0.2 cut: tarball smoke, metadata, Alpine gate
-(verified green 2026-07-24), merge + tag + publish. Remaining — version-pinned
-rule URLs (Ideas item) · README storefront pass (no-overselling audit;
-testimonial material in hand) · 0.1.0 cut ceremony (version stance: dogfood
-verdict in). Out of 0.1.0: JSON/SARIF, status, vite driver, presets, docs
-family.
+(verified green 2026-07-24), merge + tag + publish. **Version stance pivoted
+(2026-07-24, rixo, supersedes the 0.1.0 ceremony item):** keep cutting 0.0.x
+until the feature set and maturity feel satisfying — or consumer pressure
+(adoption in real projects) demands version structure first. At that switch, 0.x
+becomes the channel and minor denotes breaking changes; 0.1.0 is the
+channel-opening cut, not the next milestone. Remaining ruled work, rides 0.0.x
+cuts as ready — version-pinned rule URLs (Ideas item) · README storefront pass
+(no-overselling audit; testimonial material in hand). Still out of scope until
+demanded: JSON/SARIF, status, vite driver, presets, docs family.
 
 Chapter scratch. Opened from the 2026-07-10 evening session (decisions + engine
 research below), recovered from stash and formally opened 2026-07-17, folded
