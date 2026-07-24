@@ -36,6 +36,13 @@
 
 ### Ideas
 
+- **Arc delimiters in commit subjects — `chapter(...)` / `close(...)`**
+  (2026-07-24) — mark an arc's first and last commits with paired subject
+  markers; ties to the first-commit-becomes-MR-description rule (the opening
+  commit already authors the arc's public face — the marker makes the role
+  mechanical); nestable like parentheses, so walking a git log exposes arcs
+  within arcs as balanced delimiters. Open at graduation: fit with the
+  Conventional Commits `type(scope)` grammar the log already speaks.
 - **Sales speech — old pots, new balances** (2026-07-23) — the pitch precised:
   principles constant (nature/physics unchanged — old pots credited), balances
   moved, hence different decisions in accord with old principles for new
