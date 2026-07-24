@@ -15,12 +15,15 @@
   install path validated (2026-07-17, rixo): `npx skills add rixo/deblob`
   succeeded from another project — "skills installable from the repo alone"
   evidenced.
-- **CLI v0** — chapter in flight: `history/20260710_cli/` (chapter PLAN carries
-  decisions, step queue, engine research — read it first when resuming). Engine
-  ruled (oxc, 2026-07-17); next: step 01 extraction-core. Companion, ruled to
-  the `deblob docs` command family: derived-view staleness check — diff `docs/`
-  sections against `source:` stamps in `skills/*/knowledge|references/`;
-  stamp-text ↔ heading matching rule to spec.
+- **CLI 0.0.x** — chapter in flight: `history/20260710_cli/` (chapter PLAN
+  carries decisions, status, the standing release roadmap — read it first when
+  resuming). v0 check surface complete (steps 01–10), 0.0.2 published
+  2026-07-24; version stance: 0.0.x until maturity or adoption pressure, 0.1.0 =
+  the channel switch (minor = breaking thereafter). Next ruled work rides 0.0.x
+  cuts: version-pinned rule URLs, README storefront pass, package LICENSE file.
+  Companion, ruled to the `deblob docs` command family: derived-view staleness
+  check — diff `docs/` sections against `source:` stamps in
+  `skills/*/knowledge|references/`; stamp-text ↔ heading matching rule to spec.
 - **Review-slicing skill** — dogfooded 2026-07-23 on step-10's own diff, verdict
   positive (better, more engaging review — rixo). Graduation next, a fresh
   session: chapter in the skills lineage; first ruling = name (the

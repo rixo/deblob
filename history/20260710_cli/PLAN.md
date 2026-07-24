@@ -1,10 +1,6 @@
 # Chapter PLAN — cli
 
-## RESUME HERE (2026-07-24 session end — delete once absorbed)
-
-Prior state: step 10 landed + pushed (41dd5a5, night bank a4215b8,
-review-slicing verdict 9e149c3, all public); v0 check surface complete;
-review-slicing graduation staged on the outermost board.
+## Session record — 2026-07-23/24 (dogfood arc + 0.0.2 cut)
 
 **Dogfood arc CLOSED (2026-07-23/24), full loop, on the partner monorepo's app
 A** (anonymous by rule — no client identifiers committed in this repo, ever).
@@ -53,8 +49,6 @@ per-finding explain citation rejected (per-line pointers stay dead); direction
 if it recurs: anti-skip nudge / first-run `--explain`; explain opt-out rejected
 (noise tax on humans). Watch for recurrence at targets T/M.
 
-Housekeeping: stash `model-abstractness draft edits` obsolete — droppable.
-
 **Cut (2026-07-24, ruled at session end):** 0.0.2 — first working publish,
 replacing the name-reservation stub. Gate passed: tarball smoke green (pack →
 install in scratch project → bare/check/explain all functional). Merged to main
@@ -63,8 +57,8 @@ Alpine gate turned out to have never run — the lefthook prepare execs git,
 absent from the container; fixed in the follow-up commit (apk git before
 checkout for a real clone, safe.directory; a LEFTHOOK=0 attempt died on the way
 — lefthook 2.x ignores it for install), gate green before the tag: the musl
-smoke genuinely executes. Remaining 0.1.0 items: tag-pinned URLs, README
-storefront, cut ceremony.
+smoke genuinely executes. Remaining release work: the standing roadmap below
+(0.1.0-as-milestone superseded by the version-stance pivot).
 
 **Next sessions — release roadmap (standing):** dogfood closed (targets T/M =
 optional deepening); done at the 0.0.2 cut: tarball smoke, metadata, Alpine gate
