@@ -1,5 +1,69 @@
 # Chapter PLAN — cli
 
+## RESUME HERE (2026-07-24 session end — delete once absorbed)
+
+Prior state: step 10 landed + pushed (41dd5a5, night bank a4215b8,
+review-slicing verdict 9e149c3, all public); v0 check surface complete;
+review-slicing graduation staged on the outermost board.
+
+**Dogfood arc CLOSED (2026-07-23/24), full loop, on the partner monorepo's app
+A** (anonymous by rule — no client identifiers committed in this repo, ever).
+Configless probe: 20 violations · 49% blob · exit 1, zero deblob defects —
+wiring-cycle rule fired in the wild, unsuffixed-in-`adapters/` caught as rule 5
+(suffix = sole classification carrier). Minimal config
+(`assembly: ["src/cli.ts"]` only — the two suspected "export barrels" turned out
+internal-only, so all 7 barrel hits were real signal): 15 violations, blob %
+49→28 (the CLI file alone was a fifth of the codebase by size). Then an external
+Sonnet agent fixed all 15 from checker output + explain — no solution ever
+supplied by a human, one Socratic push needed (precision below): **0 violations,
+their 350 tests green, independent fresh-agent review found zero defects** —
+proper kernel extraction on the DAG cycle (after a duplicated-logic first
+attempt, corrected under questioning — see below), rule-5 fix via port split,
+barrels deleted with call sites rewritten, no config cheating, net −60 lines.
+Testimonial: recommends for agent-in-loop teams ("rules cite real reasoning,
+explain actually explains"); NOT yet for human-only teams (vocabulary tax) —
+honest, README material. Their fixes sit uncommitted on a dogfood branch in
+their repo (their call). Remaining ranked targets: package T (structurally
+richest — all suffixes, `private/`, tsconfig-alias resolver stress), package M
+(big/diluted). Precision on "no human re-teaching": one push was needed — the
+duplicated-logic DAG fix stood until rixo asked questions about deblob
+(questions only, never the solution); the docs held the answer the agent then
+found. 14/15 unaided; the 15th needed Socratic pressure, not teaching.
+
+**Dogfood-driven deblob work, landed this session (local, unpushed):**
+
+- 639a1c0 `feat(cli)` — three field-contact UX fixes: violation paths print
+  whole + cwd-relative (ctrl+click targets), `explain` takes many topics + the
+  footer prints the fired list as a pasteable command (observed agent reflex,
+  verbatim), rule citations wrap unbreakably.
+- 4a3be54 `docs(architecture)` — adoption boast → checkable provenance, and the
+  "three bounded contexts in DDD terms" credential strike (external review
+  caught the overselling — while sitting inside one of the claimed codebases).
+- 51acd00 `docs(architecture)!` — **model bar is abstractness, not purity**: own
+  one-commit chapter, `history/20260724_model-abstractness/SPEC.md` (ruling,
+  landed wording, ripple sweep, five-challenge tribunal). Rule 17 now
+  all-modules ("Modules are stateless", anchor/number unchanged). Arch-pass
+  board holds the extracted residue Ideas: `check state` detector, `.pure.ts`
+  sublayer.
+
+Data point, no action (ruled 2026-07-24): the fixing agent skipped a remediation
+doc reference it knew how to resolve (ran on the keyword, duplicated logic,
+corrected only under human questioning). Not dag-specific — sampling. Inline
+per-finding explain citation rejected (per-line pointers stay dead); direction
+if it recurs: anti-skip nudge / first-run `--explain`; explain opt-out rejected
+(noise tax on humans). Watch for recurrence at targets T/M.
+
+Housekeeping: stash `model-abstractness draft edits` obsolete — droppable.
+
+**Next session — v0.1.0 roadmap (standing):** dogfood closed (targets T/M =
+optional deepening); remaining, in order — release-prep step: version-pinned
+rule URLs (Ideas item), `npm pack` tarball smoke in scratch project, metadata
+("under construction" description dies), oxc mitigation audit (Alpine gate in
+ci.yml — verify it actually runs) · README storefront pass (no-overselling
+audit; testimonial material in hand) · cut: merge-to-main timing, tag, version
+stance (0.1.0 vs 0.0.x — dogfood verdict now in), publish channel. Out of 0.1.0:
+JSON/SARIF, status, vite driver, presets, docs family.
+
 Chapter scratch. Opened from the 2026-07-10 evening session (decisions + engine
 research below), recovered from stash and formally opened 2026-07-17, folded
 with that day's blind re-draft. Refines into step SPECs as steps open. Chapter
