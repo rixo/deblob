@@ -88,8 +88,11 @@
 - **Skill-trigger hook** — plugin hook injecting "deblob rules apply" on
   layer-suffix path hits — blocked: only if spot-runs show description-based
   recall failing (sdd §6: escalate when discipline fails).
-- **Flavor naming** — rule a name for the factory-injection flavor (or bless the
-  provisional one) before the second flavor guide makes ambiguity expensive.
+- **Flavor naming** — closed 2026-07-25 (rixo): `ts-suffixes-factories` (ruled
+  2026-07-17, cli chapter) blessed as the guide's title; guide intro, root
+  README and the flavor card now carry the name. A `ts-su-fa` compression was
+  rejected — the name's job is stating the two identity axes, truncation would
+  regress it to `prime`-grade opacity.
 - **Coverage tooling note** — how transitive-100% on test utils is actually
   measured; → implementation guide §8 once the recipe exists.
 - **Flat `history/` at scale** — 250+ entries strain a flat dir; mechanical fix

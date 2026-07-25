@@ -503,4 +503,5 @@ doesn't check:
   stock flavor ruled `ts-suffixes-factories` (see decisions; replaces
   provisional `prime`). Strong candidate to also become the guide's ratified
   title (it mirrors the GOAL's "TypeScript/ESM factory-injection" phrasing);
-  blessing the guide title is the residual board ruling — cheap now.
+  blessing the guide title is the residual board ruling — cheap now. Done
+  2026-07-25 (rixo): title blessed, board item closed.

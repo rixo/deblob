@@ -5,11 +5,12 @@ source: docs/implementation-guide.md (intro)
 # The guide's flavor — what "always" means here
 
 The architecture states principles and leaves room for several valid
-materializations. The implementation guide picks one — **this flavor**: suffixed
-filenames, `create*` factories, explicit composition roots. Home turf: Node
-CLIs, build tooling, libraries — anywhere assembly is a program, not a component
-tree. (The flavor has no settled name; these cards call it "this flavor" — the
-guide is its definition.)
+materializations. The implementation guide picks one —
+**`ts-suffixes-factories`**: suffixed filenames, `create*` factories, explicit
+composition roots. Home turf: Node CLIs, build tooling, libraries — anywhere
+assembly is a program, not a component tree. (The name is the deblob CLI's stock
+flavor and default — `flavor: 'ts-suffixes-factories'` in `deblob.config.ts`;
+the guide is its definition.)
 
 - Where this flavor says "always", that is _the flavor's_ choice, not a claim
   that the theory forbids alternatives. Other flavors of the same foundation

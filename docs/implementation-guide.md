@@ -1,4 +1,4 @@
-# Implementation Guide — TypeScript / ESM, factory-injection flavor
+# Implementation Guide — the ts-suffixes-factories flavor
 
 **Status**: draft, distilled from production practice (two brownfield codebases,
 ~7 months of daily use). Conventions below are observed-and-settled unless
@@ -17,10 +17,13 @@ conventions, platform patterns for one flavor. The **why** lives in the
 architecture doc; this guide assumes it. Other flavors of the same foundation
 exist (e.g. a Svelte-context-composition flavor where files are named
 `service.ts`/`context.ts` and the directory supplies the domain name, and
-composition happens through the component tree); this document describes the
-**factory-injection** flavor: suffixed filenames, `create*` factories, explicit
-composition roots. Node CLIs, build tooling, libraries — anywhere assembly is a
-program, not a component tree.
+composition happens through the component tree); this document describes
+**`ts-suffixes-factories`**, the factory-injection flavor: suffixed filenames,
+`create*` factories, explicit composition roots. Node CLIs, build tooling,
+libraries — anywhere assembly is a program, not a component tree. The name
+states the flavor's two identity axes — suffix naming (§1) and factory injection
+(§2, §6) — and is the deblob CLI's stock flavor:
+`flavor: 'ts-suffixes-factories'` in `deblob.config.ts` (also its default).
 
 ---
 
