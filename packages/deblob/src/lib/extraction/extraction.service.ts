@@ -84,6 +84,7 @@ export const createExtraction = ({
             from: file,
             specifier: record.specifier,
             reason: "non-literal import expression",
+            literal: false,
           })
           continue
         }
@@ -95,6 +96,7 @@ export const createExtraction = ({
             from: file,
             specifier: record.specifier,
             reason: resolution.reason,
+            literal: true,
           })
           continue
         }

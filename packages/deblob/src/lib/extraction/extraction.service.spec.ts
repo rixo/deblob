@@ -239,6 +239,7 @@ describe("extractGraph over the forms fixture", () => {
         from: "src/requires.ts",
         specifier: "name",
         reason: "non-literal import expression",
+        literal: false,
       },
     ])
   })
@@ -279,6 +280,8 @@ describe("extractGraph over the forms fixture", () => {
     expect(diagnostics[0]).toMatchObject({
       from: "src/unresolvable.ts",
       specifier: "./missing.js",
+      // resolver-failed literal — the fatal class (exit 2), unlike non-literal
+      literal: true,
     })
   })
 
@@ -458,6 +461,29 @@ describe("extractGraph over the resolution fixture", () => {
       {
         from: "src/esm.mts",
         to: { type: "module", path: "src/cjs.cts" },
+        kind: "runtime",
+        form: "static",
+        reExport: false,
+      },
+    ])
+  })
+
+  it("resolves a config alias to the in-set module — bundler-only aliases teach the resolver", () => {
+    const root = fixtureRoot("resolution")
+    const extraction = createExtraction({
+      engine: createOxcEngine({
+        alias: { "some-made-up-alias": [`${root}src/app`] },
+      }),
+      flavor: createTsSuffixesFactoriesFlavor(),
+    })
+    const graph = extraction.extractGraph({
+      root,
+      files: [...RESOLUTION_FILES, "src/uses-made-up-alias.ts"],
+    })
+    expect(edgesFrom(graph, "src/uses-made-up-alias.ts")).toEqual([
+      {
+        from: "src/uses-made-up-alias.ts",
+        to: { type: "module", path: "src/app/util.ts" },
         kind: "runtime",
         form: "static",
         reExport: false,

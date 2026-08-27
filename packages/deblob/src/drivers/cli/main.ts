@@ -33,6 +33,7 @@ import {
   renderBareStatus,
   renderCheckResults,
   renderExplain,
+  renderUnresolved,
   sizeStatsOf,
 } from "../../lib/cli/render.model.ts"
 import type { Colors } from "../../lib/cli/render.model.ts"
@@ -43,6 +44,7 @@ import {
   discoverConfig,
   explicitConfigPath,
   importConfigDefault,
+  tsconfigPathOf,
 } from "../../lib/config/adapters/loader.adapter.ts"
 import {
   scanCoverage,
@@ -202,8 +204,10 @@ const runCheck = async (
   colors: Colors,
 ): Promise<number> => {
   let config: ResolvedConfig
+  let tsconfigPath: string | null
   try {
     config = await loadFor(io, parsed)
+    tsconfigPath = tsconfigPathOf(config)
   } catch (error) {
     io.stderr.write(`${asConfigError(error).message}\n`)
     return 2
@@ -211,7 +215,10 @@ const runCheck = async (
 
   const files = await scanCoverage(config)
   const { extractGraph } = createExtraction({
-    engine: createOxcEngine(),
+    engine: createOxcEngine({
+      ...(tsconfigPath === null ? {} : { tsconfigPath }),
+      alias: config.alias,
+    }),
     flavor: config.flavor,
   })
   const graph = extractGraph({
@@ -261,6 +268,17 @@ const runCheck = async (
     io.stdout.write(
       explanations === "" ? listing : `${listing}\n${explanations}`,
     )
+  }
+  const fatalUnresolved = graph.unresolved.filter((entry) => entry.literal)
+  if (fatalUnresolved.length > 0) {
+    io.stderr.write(
+      renderUnresolved(
+        fatalUnresolved,
+        colors,
+        pathPrefixOf(io.cwd, config.root),
+      ),
+    )
+    return 2
   }
   return violations.length > 0 ? 1 : 0
 }

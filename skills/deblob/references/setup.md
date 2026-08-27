@@ -52,7 +52,10 @@ export default defineConfig({
 })
 ```
 
-Full key reference: the installed package's own README
+Resolution follows `tsconfig.json` at the project root (`paths` aliases);
+bundler-only aliases go in the `alias` key. An unresolvable import fails `check`
+with exit 2 — the graph would be incomplete, so the run refuses to certify. Full
+key reference: the installed package's own README
 (`node_modules/deblob/README.md`).
 
 ## Monorepos
@@ -88,9 +91,9 @@ exists.
 - Workspace siblings classify like any third-party: pure ones go in `pureLibs`
   (trusted, not verified), effectful ones go behind a port.
 - The external-treatment premise assumes imports go through the package
-  boundary. Deep imports into sibling source (`@scope/lib/src/…`, ts-paths
-  aliases) resolve outside the run root and vanish from every graph — fence them
-  with lint if your repo allows them at all.
+  boundary. Deep imports into sibling source (`@scope/lib/src/…`) resolve
+  outside the run root and become external leaves — fence them with lint if your
+  repo allows them at all.
 
 ## CI
 

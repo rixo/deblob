@@ -122,6 +122,53 @@ describe("resolveConfig — validation", () => {
   })
 })
 
+describe("resolveConfig — tsconfig & alias", () => {
+  it("defaults: tsconfig undefined (discover at root), alias empty", () => {
+    const resolved = resolve({})
+    expect(resolved.tsconfig).toBeUndefined()
+    expect(resolved.alias).toEqual({})
+  })
+
+  it("resolves a declared tsconfig path against the root", () => {
+    expect(resolve({ tsconfig: "./tsconfig.base.json" }).tsconfig).toBe(
+      "/fixture-root/tsconfig.base.json",
+    )
+  })
+
+  it("passes tsconfig: false through — discovery disabled", () => {
+    expect(resolve({ tsconfig: false }).tsconfig).toBe(false)
+  })
+
+  it("rejects non-string non-false tsconfig values", () => {
+    for (const value of [true, 42, {}]) {
+      expect(() => resolve({ tsconfig: value })).toThrowError(/"tsconfig"/)
+    }
+  })
+
+  it("normalizes alias: every value an array, path-like entries absolute", () => {
+    const resolved = resolve({
+      alias: {
+        "some-made-up-alias": "./src/some-made-up-dir",
+        "other-made-up-alias": ["some-made-up-pkg", "./other-made-up-dir"],
+      },
+    })
+    expect(resolved.alias).toEqual({
+      "some-made-up-alias": ["/fixture-root/src/some-made-up-dir"],
+      "other-made-up-alias": [
+        "some-made-up-pkg",
+        "/fixture-root/other-made-up-dir",
+      ],
+    })
+  })
+
+  it("rejects malformed alias shapes, naming the offender", () => {
+    expect(() => resolve({ alias: ["nope"] })).toThrowError(/"alias"/)
+    expect(() => resolve({ alias: { "some-made-up-alias": 42 } })).toThrowError(
+      /"some-made-up-alias"/,
+    )
+  })
+})
+
 describe("resolveConfig — flavor", () => {
   it("resolves a registry name to its instance", () => {
     const resolved = resolve({ flavor: STOCK_FLAVOR_NAME })

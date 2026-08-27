@@ -53,6 +53,29 @@ export const explicitConfigPath = (cwd: string, path: string): string => {
   return configPath
 }
 
+/**
+ * The tsconfig feeding resolution — a filesystem fact, resolved here, not in
+ * the pure config service. Explicit path must exist (declared means
+ * load-bearing), `false` disables, `undefined` discovers `tsconfig.json` at the
+ * config root. `null` = the resolver runs tsconfig-less.
+ */
+export const tsconfigPathOf = (config: {
+  root: string
+  tsconfig: string | false | undefined
+}): string | null => {
+  if (config.tsconfig === false) return null
+  if (typeof config.tsconfig === "string") {
+    if (!existsSync(config.tsconfig)) {
+      throw new ConfigError(
+        `config key "tsconfig" points at ${config.tsconfig}, which does not exist`,
+      )
+    }
+    return config.tsconfig
+  }
+  const fallback = join(config.root, "tsconfig.json")
+  return existsSync(fallback) ? fallback : null
+}
+
 /** Native import of the config file; returns its default export, raw. */
 export const importConfigDefault = async (
   configPath: string,

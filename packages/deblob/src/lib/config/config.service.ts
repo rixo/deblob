@@ -10,6 +10,8 @@
  * another adapter may import one.
  */
 
+import { resolve } from "node:path"
+
 import picomatch from "picomatch"
 
 import type { FlavorResolver } from "../extraction/ports/flavor.port.ts"
@@ -57,6 +59,19 @@ export type DeblobConfig = {
    * exemption. Default comes from the flavor (absent = `true`, canon).
    */
   typeOnlyExempt?: boolean
+  /**
+   * The tsconfig feeding resolution (`paths` aliases) — path relative to the
+   * config file's directory. Default: `tsconfig.json` at the config root when
+   * present. `false` disables discovery. A declared path that does not exist
+   * fails loud — declared means load-bearing.
+   */
+  tsconfig?: string | false
+  /**
+   * Resolver aliases living outside tsconfig (bundler config). Value: target
+   * specifier or path (`.`-prefixed paths resolve against the config root),
+   * string or array. Teaches resolution — never suppresses failures.
+   */
+  alias?: Readonly<Record<string, string | readonly string[]>>
 }
 
 /** Identity — the typing channel for `deblob.config.ts` authors. */
@@ -78,6 +93,14 @@ export type ResolvedConfig = {
   exclude: readonly string[]
   pureLibs: readonly string[]
   typeOnlyExempt: boolean
+  /**
+   * Declared tsconfig: absolute path, `false` = disabled, `undefined` =
+   * discover `tsconfig.json` at the root (existence is a filesystem fact — the
+   * loader adapter's job, not this service's).
+   */
+  tsconfig: string | false | undefined
+  /** Normalized: every value an array, path-like entries absolute. */
+  alias: Readonly<Record<string, readonly string[]>>
 }
 
 /** Stock flavors, name → factory — injected by assembly (flavors are adapters). */
@@ -90,6 +113,8 @@ const KNOWN_KEYS = [
   "exclude",
   "pureLibs",
   "typeOnlyExempt",
+  "tsconfig",
+  "alias",
 ] as const
 
 const isStringArray = (value: unknown): value is readonly string[] =>
@@ -107,6 +132,45 @@ const stringArrayKey = (
     )
   }
   return value
+}
+
+const tsconfigOf = (
+  value: unknown,
+  root: string,
+): string | false | undefined => {
+  if (value === undefined || value === false) return value
+  if (typeof value === "string") return resolve(root, value)
+  throw new ConfigError(
+    `config key "tsconfig" must be a path string or false (there is no true — presence of the default file already opts in)`,
+  )
+}
+
+const aliasOf = (
+  value: unknown,
+  root: string,
+): Readonly<Record<string, readonly string[]>> => {
+  if (value === undefined) return {}
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new ConfigError(
+      `config key "alias" must be an object mapping alias → target specifier(s)`,
+    )
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, target]) => {
+      const targets = typeof target === "string" ? [target] : target
+      if (!isStringArray(targets)) {
+        throw new ConfigError(
+          `config key "alias": "${key}" must map to a string or an array of strings`,
+        )
+      }
+      return [
+        key,
+        targets.map((entry) =>
+          entry.startsWith(".") ? resolve(root, entry) : entry,
+        ),
+      ] as const
+    }),
+  )
 }
 
 const flavorOf = (
@@ -200,5 +264,7 @@ export const resolveConfig = (
     exclude,
     pureLibs,
     typeOnlyExempt,
+    tsconfig: tsconfigOf(record["tsconfig"], context.root),
+    alias: aliasOf(record["alias"], context.root),
   }
 }

@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -13,6 +13,7 @@ import {
   discoverConfig,
   explicitConfigPath,
   importConfigDefault,
+  tsconfigPathOf,
 } from "./loader.adapter.ts"
 
 const fixture = (name: string): string =>
@@ -78,6 +79,51 @@ describe("explicitConfigPath", () => {
     expect(() =>
       explicitConfigPath(fixture("walk"), "SOME_MADE_UP_PATH.config.ts"),
     ).toThrowError(/SOME_MADE_UP_PATH.*does not exist/s)
+  })
+})
+
+describe("tsconfigPathOf", () => {
+  const roots: string[] = []
+  const makeRoot = async (withTsconfig: boolean): Promise<string> => {
+    const root = await mkdtemp(join(tmpdir(), "deblob-tsconfig-"))
+    roots.push(root)
+    if (withTsconfig) await writeFile(join(root, "tsconfig.json"), "{}\n")
+    return root
+  }
+  afterAll(() =>
+    Promise.all(
+      roots.map((root) => rm(root, { recursive: true, force: true })),
+    ),
+  )
+
+  it("discovers tsconfig.json at the root when undeclared", async () => {
+    const root = await makeRoot(true)
+    expect(tsconfigPathOf({ root, tsconfig: undefined })).toBe(
+      join(root, "tsconfig.json"),
+    )
+  })
+
+  it("yields null when undeclared and the root has none", async () => {
+    const root = await makeRoot(false)
+    expect(tsconfigPathOf({ root, tsconfig: undefined })).toBeNull()
+  })
+
+  it("false disables discovery even when the file exists", async () => {
+    const root = await makeRoot(true)
+    expect(tsconfigPathOf({ root, tsconfig: false })).toBeNull()
+  })
+
+  it("returns a declared path that exists", async () => {
+    const root = await makeRoot(true)
+    const declared = join(root, "tsconfig.json")
+    expect(tsconfigPathOf({ root, tsconfig: declared })).toBe(declared)
+  })
+
+  it("a declared-but-missing path is a teaching error — declared means load-bearing", async () => {
+    const root = await makeRoot(false)
+    expect(() =>
+      tsconfigPathOf({ root, tsconfig: join(root, "tsconfig.json") }),
+    ).toThrowError(/"tsconfig".*does not exist/s)
   })
 })
 

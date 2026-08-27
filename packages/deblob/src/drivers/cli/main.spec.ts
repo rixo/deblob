@@ -15,6 +15,8 @@ const packageRoot = here("../../..")
 const violatingDir = here("__fixtures__/violating")
 const cleanDir = here("__fixtures__/clean")
 const brokenConfigDir = here("../../lib/config/__fixtures__/throws")
+const aliasedDir = here("__fixtures__/aliased")
+const unresolvableDir = here("__fixtures__/unresolvable")
 
 type RunResult = { code: number; out: string; err: string }
 
@@ -157,6 +159,23 @@ describe("deblob check", () => {
     expect(out).toMatch(
       /^0 violations · \d+ files · \d+kb · \d+% blob · \d+ edges\n$/,
     )
+  })
+
+  it("aliased repo: tsconfig paths + config alias both land edges — violations prove them", async () => {
+    const { code, out } = await run(["check"], { cwd: aliasedDir })
+    expect(code).toBe(1)
+    // resolved module paths in the messages = the aliases became in-set edges
+    expect(out).toContain("imports src/lib/some-made-up.service.ts")
+    expect(out).toContain("imports src/lib/other-made-up.service.ts")
+  })
+
+  it("unresolvable literal import: exit 2, stderr teaches, listing still prints", async () => {
+    const { code, out, err } = await run(["check"], { cwd: unresolvableDir })
+    expect(code).toBe(2)
+    expect(out).toContain("0 violations")
+    expect(err).toContain("resolution failed")
+    expect(err).toContain("some-made-up-missing-package")
+    expect(err).toContain('config key "alias"')
   })
 
   it("broken config: teaching error on stderr, exit 2", async () => {

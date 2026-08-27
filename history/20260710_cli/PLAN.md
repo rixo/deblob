@@ -338,6 +338,16 @@ identity).
   hop flag amended at implementation: all inducing edges assembly-origin, not
   the carrying edge (spec files sort early — a mixed hop must not carry the
   placement remedy). With this, v0's check surface is complete.
+- `11_resolution-integrity` — **open 2026-08-27**, spec:
+  [11_resolution-integrity/SPEC.md](./11_resolution-integrity/SPEC.md);
+  field-found at first external dogfood: tsconfig `paths` aliases invisible
+  (edge-less, check green). Two defects: oxc-resolver `tsconfig: "auto"`
+  resolves no paths (explicit `configFile` does — probed, pinned), and
+  `graph.unresolved` was write-only (port demanded a diagnostic, nobody read
+  it). Ruling: green check implies complete graph — fatal unresolved → exit 2
+  (config-error class, not violation: the fault may be the run's world),
+  non-literal dynamic imports informational, `tsconfig` + `alias` config keys
+  (teach the resolver, never suppress — 08's no-baseline stance).
 
 README-driven UX fiction banked (2026-07-17):
 [research/help-screens.md](./research/help-screens.md) (intended `--help` +

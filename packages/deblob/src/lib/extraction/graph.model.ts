@@ -85,6 +85,13 @@ export type UnresolvedImport = {
   from: string
   specifier: string
   reason: string
+  /**
+   * True = literal specifier the resolver failed on — a provably missing edge;
+   * the graph is incomplete and a check run must not certify (exit 2). False =
+   * non-literal dynamic-import expression — unresolvable by construction,
+   * informational only.
+   */
+  literal: boolean
 }
 
 export type ImportGraph = {

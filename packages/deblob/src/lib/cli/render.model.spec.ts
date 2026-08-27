@@ -17,6 +17,7 @@ import {
   renderBareStatus,
   renderCheckResults,
   renderExplain,
+  renderUnresolved,
   sizeStatsOf,
 } from "./render.model.ts"
 
@@ -670,6 +671,37 @@ describe("bare status", () => {
       ]),
     ).toEqual({ totalBytes: 1000, blobPercent: 90 })
     expect(sizeStatsOf([])).toEqual({ totalBytes: 0, blobPercent: 0 })
+  })
+})
+
+describe("renderUnresolved", () => {
+  it("names each import, cites the incompleteness, teaches the remedies", () => {
+    const output = renderUnresolved(
+      [
+        {
+          from: "src/some-made-up.model.ts",
+          specifier: "$made-up-alias/thing.service.ts",
+          reason: "Cannot find module '$made-up-alias/thing.service.ts'",
+          literal: true,
+        },
+      ],
+      NO_COLORS,
+      "",
+    )
+    expect(output).toContain("resolution failed — 1 import did not resolve")
+    expect(output).toContain("  src/some-made-up.model.ts")
+    expect(output).toContain("$made-up-alias/thing.service.ts — Cannot find")
+    expect(output).toContain('config key "tsconfig"')
+    expect(output).toContain('config key "alias"')
+  })
+
+  it("prints importer paths under the runner's prefix, ctrl+clickable", () => {
+    const output = renderUnresolved(
+      [{ from: "src/a.model.ts", specifier: "x", reason: "r", literal: true }],
+      NO_COLORS,
+      "../",
+    )
+    expect(output).toContain("  ../src/a.model.ts")
   })
 })
 

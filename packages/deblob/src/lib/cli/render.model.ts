@@ -5,7 +5,7 @@
  * binary.
  */
 
-import type { EdgeTarget } from "../extraction/graph.model.ts"
+import type { EdgeTarget, UnresolvedImport } from "../extraction/graph.model.ts"
 import type {
   DagViolation,
   LayersViolation,
@@ -382,6 +382,35 @@ export const renderCheckResults = (
     )
   }
 
+  return `${lines.join("\n")}\n`
+}
+
+/**
+ * Resolver-failed literal imports — each one a provably missing edge, so the
+ * graph is incomplete and the run must not certify. Stderr channel, exit 2
+ * (config-error class: the fault may be the run's world — unwired tsconfig,
+ * missing install, bundler-only alias — never provably the code).
+ */
+export const renderUnresolved = (
+  unresolved: readonly UnresolvedImport[],
+  colors: Colors,
+  pathPrefix: string,
+): string => {
+  const lines: string[] = [
+    colors.strong(
+      `resolution failed — ${plural(unresolved.length, "import")} did not resolve; the graph is incomplete, results cannot be certified`,
+    ),
+  ]
+  for (const entry of unresolved) {
+    lines.push(`  ${pathPrefix}${entry.from}`)
+    lines.push(...wrap("    ", `${entry.specifier} — ${entry.reason}`, "    "))
+  }
+  lines.push(
+    "",
+    ...wrapPlain(
+      `remedies: point config key "tsconfig" at the tsconfig carrying your paths aliases (default: tsconfig.json at the config root), install the missing package, or declare bundler-only aliases via config key "alias".`,
+    ),
+  )
   return `${lines.join("\n")}\n`
 }
 

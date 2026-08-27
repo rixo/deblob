@@ -149,7 +149,11 @@ const collectRuntimeContent = (program: AstNode): RuntimeEntry[] => {
 
 export const createOxcEngine = ({
   tsconfigPath,
-}: { tsconfigPath?: string } = {}): ExtractionEngine => {
+  alias,
+}: {
+  tsconfigPath?: string
+  alias?: Readonly<Record<string, readonly string[]>>
+} = {}): ExtractionEngine => {
   // JS-oriented defaults silently misresolve TS — conditionNames and
   // extensionAlias are always set, never left to the resolver's defaults.
   const resolver = new ResolverFactory({
@@ -172,9 +176,20 @@ export const createOxcEngine = ({
       ".cjs": [".cts", ".cjs"],
     },
     builtinModules: true,
-    tsconfig: tsconfigPath
-      ? { configFile: tsconfigPath, references: "auto" }
-      : "auto",
+    // never `tsconfig: "auto"` — probed nonfunctional for paths mapping
+    // (11.24.2, 2026-08-27): a knob that silently resolves nothing is worse
+    // than none. Explicit configFile (wired from deblob's own root/config by
+    // assembly) or tsconfig-less.
+    ...(tsconfigPath
+      ? { tsconfig: { configFile: tsconfigPath, references: "auto" as const } }
+      : {}),
+    ...(alias
+      ? {
+          alias: Object.fromEntries(
+            Object.entries(alias).map(([key, targets]) => [key, [...targets]]),
+          ),
+        }
+      : {}),
   })
 
   const extract = (absolutePath: string): FileExtraction | null => {
