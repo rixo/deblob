@@ -3,8 +3,7 @@
 ## Session record — 2026-07-23/24 (dogfood arc + 0.0.2 cut)
 
 **Dogfood arc CLOSED (2026-07-23/24), full loop, on the partner monorepo's app
-A** (anonymous by rule — no client identifiers committed in this repo, ever).
-Configless probe: 20 violations · 49% blob · exit 1, zero deblob defects —
+A**. Configless probe: 20 violations · 49% blob · exit 1, zero deblob defects —
 wiring-cycle rule fired in the wild, unsuffixed-in-`adapters/` caught as rule 5
 (suffix = sole classification carrier). Minimal config
 (`assembly: ["src/cli.ts"]` only — the two suspected "export barrels" turned out
@@ -348,6 +347,18 @@ identity).
   (config-error class, not violation: the fault may be the run's world),
   non-literal dynamic imports informational, `tsconfig` + `alias` config keys
   (teach the resolver, never suppress — 08's no-baseline stance).
+- `12_virtual-modules` — **open 2026-08-27**, spec:
+  [12_virtual-modules/SPEC.md](./12_virtual-modules/SPEC.md); field-found at the
+  second external dogfood, hours after 11 landed: vite-plugin virtual specifiers
+  (`$theme/config`, `$theme:…tail`) have no file target — `alias` cannot map
+  them, `pureLibs` correctly does not bypass resolution, so 11's exit 2 walls
+  the repo with nothing declarable. Ruling: a `virtual` config key of specifier
+  **patterns** (the tail set is open — operation over cases); a match
+  short-circuits resolution into an external leaf (`virtual: true`), never a
+  failure. Concrete by default (a generated theme config is not pure); the
+  leaf's purity identity is the matched pattern, so `pureLibs` ratifies it
+  verbatim like a package name — no new matching semantics. Declares what the
+  thing is, never mutes the failure: unmatched specifiers still exit 2.
 
 README-driven UX fiction banked (2026-07-17):
 [research/help-screens.md](./research/help-screens.md) (intended `--help` +
