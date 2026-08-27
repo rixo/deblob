@@ -87,6 +87,8 @@ another service.
 - Errors → [handling-failure](references/handling-failure.md)
 - Tests → [writing-tests](references/writing-tests.md)
 - Import legality lookup → [rules](references/rules.md)
+- Setting deblob up in a repo (CLI install, config, monorepos, CI) →
+  [setup](references/setup.md)
 
 Link grammar: an imperative "read X" is part of the procedure. Anything under a
 `## Deeper` section is optional — per judgment, for non-clear-cut calls. Deeper

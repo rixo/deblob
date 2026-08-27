@@ -36,10 +36,8 @@ scope:
 | [history/](./history/)                                         | This project's own chapters — dogfooding the methodology: [GOAL](./history/GOAL.md), rolling [PLAN](./history/PLAN.md), [META](./history/META.md)                                                                                                                                                                                                                                                                                                           |
 
 The skills install from the repo alone — `npx skills add rixo/deblob` — or load
-as a local plugin. Skill descriptions carry the triggers, but for deterministic
-recall add one line per surface to your agent's instruction file (CLAUDE.md,
-AGENTS.md, or equivalent): "load the deblob skill before writing code in
-layer-suffixed files" — and likewise per skill.
+as a local plugin. Skill descriptions carry the triggers; explicit invocation
+(`/deblob`) covers the rest.
 
 Alongside the skills: the [deblob CLI](./packages/deblob/) (npm, early 0.0.x)
 machine-checks the mechanical rules (dependency DAG, layer matrix, composition,
