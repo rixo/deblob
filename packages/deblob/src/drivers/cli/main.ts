@@ -29,11 +29,11 @@ import {
   CHECK_HELP,
   HELP,
   NO_COLORS,
-  blobPercentOf,
   provenanceOf,
   renderBareStatus,
   renderCheckResults,
   renderExplain,
+  sizeStatsOf,
 } from "../../lib/cli/render.model.ts"
 import type { Colors } from "../../lib/cli/render.model.ts"
 import { asConfigError } from "../../lib/config/config.model.ts"
@@ -52,7 +52,10 @@ import { readExplainEntries } from "../../lib/explain/adapters/content.adapter.t
 import { createOxcEngine } from "../../lib/extraction/adapters/oxc-extraction.adapter.ts"
 import { STOCK_FLAVORS } from "../../lib/extraction/adapters/ts-suffixes-factories-flavor.adapter.ts"
 import { createExtraction } from "../../lib/extraction/extraction.service.ts"
-import type { ImportGraph } from "../../lib/extraction/graph.model.ts"
+import type {
+  ImportGraph,
+  ModuleNode,
+} from "../../lib/extraction/graph.model.ts"
 import type { FlavorClassification } from "../../lib/extraction/ports/flavor.port.ts"
 
 const VERSION = (
@@ -171,8 +174,7 @@ const runStatus = async (io: MainIo, parsed: ParsedCli, colors: Colors) => {
         ),
         stats: {
           fileCount: files.length,
-          totalBytes: sizes.reduce((sum, entry) => sum + entry.size, 0),
-          blobPercent: blobPercentOf(
+          ...sizeStatsOf(
             sizes.map(({ path, size }) => ({ size, blob: isBlob(path) })),
           ),
           serviceCount: serviceRoots.size,
@@ -220,7 +222,18 @@ const runCheck = async (
   const violations = action.checks.flatMap((check) =>
     DETECTORS[check](graph, config),
   )
-  const stats = { files: graph.modules.size, edges: graph.edges.length }
+  const sizes = statSizes(config.root, files)
+  const stats = {
+    files: graph.modules.size,
+    edges: graph.edges.length,
+    ...sizeStatsOf(
+      sizes.map(({ path, size }) => ({
+        size,
+        // every covered file is a graph node — extraction's contract
+        blob: (graph.modules.get(path) as ModuleNode).layer === "blob",
+      })),
+    ),
+  }
 
   const listing = renderCheckResults(
     violations,

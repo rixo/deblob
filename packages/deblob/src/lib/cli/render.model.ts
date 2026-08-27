@@ -230,13 +230,19 @@ const dagBlock = (
   return lines
 }
 
-export type GraphStats = { files: number; edges: number }
+export type GraphStats = {
+  files: number
+  edges: number
+  /** Total covered bytes — shown so blob % reads as size-computed. */
+  totalBytes: number
+  blobPercent: number
+}
 
 const summaryLine = (
   violations: readonly Violation[],
   stats: GraphStats,
 ): string => {
-  const trailer = `${plural(stats.files, "file")} · ${plural(stats.edges, "edge")}`
+  const trailer = `${plural(stats.files, "file")} · ${formatSize(stats.totalBytes)} · ${stats.blobPercent}% blob · ${plural(stats.edges, "edge")}`
   if (violations.length === 0) return `0 violations · ${trailer}`
   const counts = KNOWN_CHECKS.flatMap((check) => {
     const count = violations.filter(
@@ -397,7 +403,7 @@ export const formatSize = (bytes: number): string => {
 }
 
 /** Size-weighted blob share — blob is uncharacterized mass, all of it counts. */
-export const blobPercentOf = (
+const blobPercentOf = (
   entries: readonly { size: number; blob: boolean }[],
 ): number => {
   const total = entries.reduce((sum, entry) => sum + entry.size, 0)
@@ -408,6 +414,17 @@ export const blobPercentOf = (
   )
   return Math.round((blob / total) * 100)
 }
+
+/**
+ * Both size headlines in one fold — total covered bytes + blob % — so every
+ * command computes them the same way.
+ */
+export const sizeStatsOf = (
+  entries: readonly { size: number; blob: boolean }[],
+): { totalBytes: number; blobPercent: number } => ({
+  totalBytes: entries.reduce((sum, entry) => sum + entry.size, 0),
+  blobPercent: blobPercentOf(entries),
+})
 
 export type BareStatus = {
   version: string

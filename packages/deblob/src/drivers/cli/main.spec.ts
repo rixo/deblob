@@ -154,7 +154,9 @@ describe("deblob check", () => {
   it("clean repo: one summary line, exit 0", async () => {
     const { code, out } = await run(["check"], { cwd: cleanDir })
     expect(code).toBe(0)
-    expect(out).toMatch(/^0 violations · \d+ files · \d+ edges\n$/)
+    expect(out).toMatch(
+      /^0 violations · \d+ files · \d+kb · \d+% blob · \d+ edges\n$/,
+    )
   })
 
   it("broken config: teaching error on stderr, exit 2", async () => {
@@ -184,9 +186,13 @@ describe("deblob check", () => {
 
   it("--explain on a clean repo adds nothing", async () => {
     const { out } = await run(["check", "--explain"], { cwd: cleanDir })
-    expect(out).toMatch(/^0 violations · \d+ files · \d+ edges\n$/)
+    expect(out).toMatch(
+      /^0 violations · \d+ files · \d+kb · \d+% blob · \d+ edges\n$/,
+    )
     const only = await run(["check", "--explain-only"], { cwd: cleanDir })
-    expect(only.out).toMatch(/^0 violations · \d+ files · \d+ edges\n$/)
+    expect(only.out).toMatch(
+      /^0 violations · \d+ files · \d+kb · \d+% blob · \d+ edges\n$/,
+    )
   })
 
   it("-c runs an explicit config from anywhere", async () => {

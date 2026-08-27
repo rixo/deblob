@@ -12,12 +12,12 @@ import {
   CHECK_HELP,
   HELP,
   NO_COLORS,
-  blobPercentOf,
   formatSize,
   provenanceOf,
   renderBareStatus,
   renderCheckResults,
   renderExplain,
+  sizeStatsOf,
 } from "./render.model.ts"
 
 const layersViolation = (
@@ -75,7 +75,12 @@ const portsViolation = (
     ...overrides,
   }) as PortsViolation
 
-const STATS = { files: 214, edges: 380 }
+const STATS = {
+  files: 214,
+  edges: 380,
+  totalBytes: 218 * 1024,
+  blobPercent: 25,
+}
 
 describe("renderCheckResults", () => {
   it("renders the fiction's grouped listing: service → file → tagged lines", () => {
@@ -96,7 +101,7 @@ describe("renderCheckResults", () => {
         "    layers   imports node:fs — service layer cannot depend on concrete",
         "             (rule 4)",
         "",
-        "2 violations (1 layers, 1 private) · 214 files · 380 edges",
+        "2 violations (1 layers, 1 private) · 214 files · 218kb · 25% blob · 380 edges",
         "why: deblob explain 4 12 · or rerun with --explain",
         "",
       ].join("\n"),
@@ -141,7 +146,7 @@ describe("renderCheckResults", () => {
 
   it("a clean run is one summary line, no footer", () => {
     expect(renderCheckResults([], STATS, NO_COLORS)).toBe(
-      "0 violations · 214 files · 380 edges\n",
+      "0 violations · 214 files · 218kb · 25% blob · 380 edges\n",
     )
   })
 
@@ -450,7 +455,7 @@ describe("renderCheckResults", () => {
           "           services must form a DAG (rule 13); see the sharing",
           "           progression",
           "",
-          "1 violation (1 dag) · 214 files · 380 edges",
+          "1 violation (1 dag) · 214 files · 218kb · 25% blob · 380 edges",
           "why: deblob explain 13 · or rerun with --explain",
           "",
         ].join("\n"),
@@ -657,14 +662,14 @@ describe("bare status", () => {
     expect(output).toContain("Commands")
   })
 
-  it("blobPercentOf weighs by size and survives an empty set", () => {
+  it("sizeStatsOf folds total bytes + size-weighted blob %, survives an empty set", () => {
     expect(
-      blobPercentOf([
+      sizeStatsOf([
         { size: 900, blob: true },
         { size: 100, blob: false },
       ]),
-    ).toBe(90)
-    expect(blobPercentOf([])).toBe(0)
+    ).toEqual({ totalBytes: 1000, blobPercent: 90 })
+    expect(sizeStatsOf([])).toEqual({ totalBytes: 0, blobPercent: 0 })
   })
 })
 
