@@ -55,6 +55,7 @@ const lib = (specifier: string): EdgeTarget => ({
   type: "external",
   specifier,
   package: specifier,
+  declared: false,
 })
 
 describe("checkDag", () => {

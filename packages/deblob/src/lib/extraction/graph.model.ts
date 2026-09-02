@@ -61,10 +61,19 @@ export type EdgeTarget =
       type: "external"
       specifier: string
       /**
-       * Bare-specifier package name (`zod`, `node:path`) — `null` when the leaf
+       * The leaf's purity identity, what `pureLibs` entries match: the
+       * bare-specifier package name (`zod`, `node:path`), or for a declared
+       * external the pattern that matched (`$theme:**`) — `null` when the leaf
        * is a file outside the coverage set.
        */
       package: string | null
+      /**
+       * True for a specifier matched by a declared `external` pattern: the
+       * environment provides it, nothing on disk to resolve — a leaf known by
+       * declaration, never by resolution. False for packages, builtins,
+       * out-of-coverage files.
+       */
+      declared: boolean
     }
 
 /** One edge per (from, target); `runtime` wins over `type` when both occur. */

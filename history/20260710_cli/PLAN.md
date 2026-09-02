@@ -337,7 +337,7 @@ identity).
   hop flag amended at implementation: all inducing edges assembly-origin, not
   the carrying edge (spec files sort early — a mixed hop must not carry the
   placement remedy). With this, v0's check surface is complete.
-- `11_resolution-integrity` — **open 2026-08-27**, spec:
+- `11_resolution-integrity` — **landed 2026-08-27**, spec:
   [11_resolution-integrity/SPEC.md](./11_resolution-integrity/SPEC.md);
   field-found at first external dogfood: tsconfig `paths` aliases invisible
   (edge-less, check green). Two defects: oxc-resolver `tsconfig: "auto"`
@@ -347,18 +347,23 @@ identity).
   (config-error class, not violation: the fault may be the run's world),
   non-literal dynamic imports informational, `tsconfig` + `alias` config keys
   (teach the resolver, never suppress — 08's no-baseline stance).
-- `12_virtual-modules` — **open 2026-08-27**, spec:
-  [12_virtual-modules/SPEC.md](./12_virtual-modules/SPEC.md); field-found at the
-  second external dogfood, hours after 11 landed: vite-plugin virtual specifiers
-  (`$theme/config`, `$theme:…tail`) have no file target — `alias` cannot map
-  them, `pureLibs` correctly does not bypass resolution, so 11's exit 2 walls
-  the repo with nothing declarable. Ruling: a `virtual` config key of specifier
-  **patterns** (the tail set is open — operation over cases); a match
-  short-circuits resolution into an external leaf (`virtual: true`), never a
-  failure. Concrete by default (a generated theme config is not pure); the
-  leaf's purity identity is the matched pattern, so `pureLibs` ratifies it
-  verbatim like a package name — no new matching semantics. Declares what the
-  thing is, never mutes the failure: unmatched specifiers still exit 2.
+- `12_declared-externals` — **landed 2026-08-28**, spec:
+  [12_declared-externals/SPEC.md](./12_declared-externals/SPEC.md); field-found
+  at the second external dogfood, hours after 11 landed: vite-plugin virtual
+  specifiers (`$theme/config`, `$theme:…tail`) have no file target — `alias`
+  cannot map them, `pureLibs` correctly does not bypass resolution, so 11's exit
+  2 walls the repo with nothing declarable. Opened as "virtual modules",
+  reframed at implementation (rixo): the tree, not the forest — the general
+  problem is every specifier the environment provides with nothing on disk
+  (bundler virtual, runtime-provided, `npm:`/URL), one category, bundlers' own
+  word for it. Ruling: an `external` config key of specifier **patterns** (the
+  set is open — operation over cases; own two-wildcard matcher, not picomatch —
+  `$theme:**` must cross `/`, field-measured papercut); a match short-circuits
+  resolution into an external leaf (`declared: true`), never a failure. Concrete
+  by default; the leaf's purity identity is the matched pattern, so `pureLibs`
+  ratifies it verbatim like a package name — no new matching semantics. Declares
+  what the thing is, never mutes the failure: unmatched specifiers still exit 2.
+  No wildcard guard — a tool does what it is told.
 
 README-driven UX fiction banked (2026-07-17):
 [research/help-screens.md](./research/help-screens.md) (intended `--help` +
@@ -463,6 +468,13 @@ doesn't check:
 
 ### Ideas
 
+- **`conditions` — resolver conditions** (2026-08-28, at the 12 reframe) — a
+  package whose `exports` map only answers under a bundler condition (`browser`,
+  `svelte`, `worker`) fails resolution today, and the honest lane is missing:
+  `external` works but lies (the resolver _could_ be taught). Belongs to the
+  `tsconfig`/`alias` family — oxc-resolver `conditionNames`, one config key,
+  root-relative to nothing. Wait for a field hit before building; README says
+  out loud that `external` is the workaround meanwhile.
 - **Preset/flavor classification boundary** (2026-07-21, at the 03 spec's
   `.svelte` park) — a sveltekit preset saying `.svelte = assembly` IS
   classification, i.e. flavor turf ("the preset will have flavor itself"): the

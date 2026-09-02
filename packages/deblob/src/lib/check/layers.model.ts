@@ -7,6 +7,7 @@
  */
 
 import type {
+  EdgeTarget,
   ImportEdge,
   ImportGraph,
   Layer,
@@ -50,11 +51,17 @@ const TYPE_EXEMPT_TARGETS: ReadonlySet<Layer> = new Set(["service", "adapters"])
 type ExternalClass = "pure" | "concrete" | "unclassified"
 
 const classifyExternal = (
-  pkg: string | null,
+  target: Extract<EdgeTarget, { type: "external" }>,
   pureLibs: ReadonlySet<string>,
 ): ExternalClass => {
+  const pkg = target.package
   // a resolved file outside the coverage set: ungoverned, undeclared ⇒ concrete
   if (pkg === null) return "concrete"
+  // a declared external: the user already said what it is (a module the
+  // environment provides); its identity is the matched pattern, and purity
+  // is the one open question — concrete unless the pattern is a pureLibs
+  // entry, never unclassified
+  if (target.declared) return pureLibs.has(pkg) ? "pure" : "concrete"
   // pureLibs takes "package names and builtin specifiers" (ratified) — a
   // declared builtin is pure like a declared package; undeclared builtins are
   // enumerable and default concrete, never unclassified
@@ -175,7 +182,7 @@ export const checkLayers = (
     // file outside the coverage set (package null) publishes nothing and binds
     const externalExempt = typeOnlyExempt && edge.to.package !== null
     if (typeEdge && externalExempt) continue
-    const externalClass = classifyExternal(edge.to.package, pureLibs)
+    const externalClass = classifyExternal(edge.to, pureLibs)
     if (externalClass === "pure") continue
     if (externalClass === "unclassified") {
       violations.push({

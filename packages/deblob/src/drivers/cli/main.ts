@@ -225,6 +225,7 @@ const runCheck = async (
     root: config.root,
     files,
     isAssembly: config.isAssembly,
+    external: config.external,
   })
   const violations = action.checks.flatMap((check) =>
     DETECTORS[check](graph, config),

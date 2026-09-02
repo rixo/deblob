@@ -53,7 +53,11 @@ export default defineConfig({
 ```
 
 Resolution follows `tsconfig.json` at the project root (`paths` aliases);
-bundler-only aliases go in the `alias` key. An unresolvable import fails `check`
+bundler-only aliases go in the `alias` key; modules the environment provides
+with nothing on disk (`$theme/config` from a vite plugin, `cloudflare:workers`)
+go in `external` as specifier patterns — not path globs: `**` crosses `/`
+(`$theme:**` = the namespace), `*` does not; a declared external is concrete
+unless its pattern is also in `pureLibs`. An unresolvable import fails `check`
 with exit 2 — the graph would be incomplete, so the run refuses to certify. Full
 key reference: the installed package's own README
 (`node_modules/deblob/README.md`).

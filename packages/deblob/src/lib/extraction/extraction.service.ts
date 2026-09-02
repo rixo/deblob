@@ -39,6 +39,7 @@ export const createExtraction = ({
     root,
     files,
     isAssembly,
+    external,
   }: {
     root: string
     /** Coverage set: paths relative to `root`, POSIX-style. */
@@ -49,12 +50,62 @@ export const createExtraction = ({
      * for exotic naming; absent = the flavor's word is final.
      */
     isAssembly?: (path: string) => boolean
+    /**
+     * Declared externals — returns the matching declared pattern, or `null`. A
+     * hit is a leaf known by declaration (the environment provides it, nothing
+     * on disk) and never reaches the resolver; the pattern becomes the leaf's
+     * purity identity. Absent = nothing is declared.
+     */
+    external?: (specifier: string) => string | null
   }): ImportGraph => {
     const classifications = flavor.classify(files)
     const fileSet = new Set(files)
     const modules = new Map<string, ModuleNode>()
     const edges = new Map<string, ImportEdge>()
     const unresolved: UnresolvedImport[] = []
+
+    /** Where a literal specifier lands: a target, or the resolver's reason. */
+    const targetOf = (
+      fromAbsolutePath: string,
+      specifier: string,
+    ): { target: EdgeTarget } | { reason: string } => {
+      const pattern = external?.(specifier) ?? null
+      if (pattern !== null) {
+        return {
+          target: {
+            type: "external",
+            specifier,
+            package: pattern,
+            declared: true,
+          },
+        }
+      }
+      const resolution = engine.resolve(fromAbsolutePath, specifier)
+      if (resolution.kind === "unresolved") return { reason: resolution.reason }
+      if (resolution.kind === "builtin") {
+        // package carries the resolver's normalized name (`path` →
+        // `node:path`) so downstream classification matches one form
+        return {
+          target: {
+            type: "external",
+            specifier,
+            package: resolution.specifier,
+            declared: false,
+          },
+        }
+      }
+      const path = toPosix(relative(root, resolution.path))
+      return {
+        target: fileSet.has(path)
+          ? { type: "module", path }
+          : {
+              type: "external",
+              specifier,
+              package: packageNameOf(specifier),
+              declared: false,
+            },
+      }
+    }
 
     for (const file of files) {
       const classification = classifications.get(file)
@@ -89,37 +140,17 @@ export const createExtraction = ({
           continue
         }
 
-        const resolution = engine.resolve(absolutePath, record.specifier)
-
-        if (resolution.kind === "unresolved") {
+        const outcome = targetOf(absolutePath, record.specifier)
+        if ("reason" in outcome) {
           unresolved.push({
             from: file,
             specifier: record.specifier,
-            reason: resolution.reason,
+            reason: outcome.reason,
             literal: true,
           })
           continue
         }
-
-        let target: EdgeTarget
-        if (resolution.kind === "builtin") {
-          // package carries the resolver's normalized name (`path` →
-          // `node:path`) so downstream classification matches one form
-          target = {
-            type: "external",
-            specifier: record.specifier,
-            package: resolution.specifier,
-          }
-        } else {
-          const path = toPosix(relative(root, resolution.path))
-          target = fileSet.has(path)
-            ? { type: "module", path }
-            : {
-                type: "external",
-                specifier: record.specifier,
-                package: packageNameOf(record.specifier),
-              }
-        }
+        const { target } = outcome
 
         const key = `${file}\0${targetKey(target)}`
         const existing = edges.get(key)

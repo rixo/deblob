@@ -5,6 +5,7 @@ import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import { createTsSuffixesFactoriesFlavor } from "./adapters/ts-suffixes-factories-flavor.adapter.ts"
 import { createExtraction } from "./extraction.service.ts"
 import type { ImportEdge, ImportGraph } from "./graph.model.ts"
+import type { ExtractionEngine } from "./ports/extraction.port.ts"
 
 const fixtureRoot = (name: string) =>
   fileURLToPath(new URL(`./__fixtures__/${name}/`, import.meta.url))
@@ -310,27 +311,32 @@ describe("extractGraph over the forms fixture", () => {
       type: "external",
       specifier: "node:path",
       package: "node:path",
+      declared: false,
     })
     // unprefixed builtin: package is the resolver's normalized name
     expect(targets).toContainEqual({
       type: "external",
       specifier: "path",
       package: "node:path",
+      declared: false,
     })
     expect(targets).toContainEqual({
       type: "external",
       specifier: "somepkg",
       package: "somepkg",
+      declared: false,
     })
     expect(targets).toContainEqual({
       type: "external",
       specifier: "somepkg/thing",
       package: "somepkg",
+      declared: false,
     })
     expect(targets).toContainEqual({
       type: "external",
       specifier: "@scope/pkg",
       package: "@scope/pkg",
+      declared: false,
     })
   })
 
@@ -346,7 +352,12 @@ describe("extractGraph over the forms fixture", () => {
     expect(edges).toEqual([
       {
         from: "src/imports-outside.ts",
-        to: { type: "external", specifier: "../outside.js", package: null },
+        to: {
+          type: "external",
+          specifier: "../outside.js",
+          package: null,
+          declared: false,
+        },
         kind: "runtime",
         form: "static",
         reExport: false,
@@ -489,6 +500,133 @@ describe("extractGraph over the resolution fixture", () => {
         reExport: false,
       },
     ])
+  })
+})
+
+describe("extractGraph — declared external specifiers", () => {
+  /**
+   * In-memory engine: files carry literal imports only; every resolution fails
+   * and is recorded — a declared hit must never reach `resolve`.
+   */
+  type FakeImport = string | { specifier: string; typeOnly: boolean }
+  type FakeFiles = Record<string, readonly FakeImport[]>
+
+  const fakeEngine = (imports: FakeFiles) => {
+    const resolved: string[] = []
+    const engine: ExtractionEngine = {
+      extract: (absolutePath) => {
+        const file = Object.keys(imports).find((name) =>
+          absolutePath.endsWith(name),
+        )
+        if (!file) return null
+        return {
+          imports: (imports[file] as readonly FakeImport[]).map((entry) => {
+            const { specifier, typeOnly } =
+              typeof entry === "string"
+                ? { specifier: entry, typeOnly: false }
+                : entry
+            return {
+              specifier,
+              typeOnly,
+              form: "static" as const,
+              reExport: false,
+              literal: true,
+            }
+          }),
+          runtimeContent: [],
+        }
+      },
+      resolve: (_from, specifier) => {
+        resolved.push(specifier)
+        return { kind: "unresolved", reason: "fake: nothing resolves" }
+      },
+    }
+    return { engine, resolved }
+  }
+
+  const extractDeclared = (
+    imports: FakeFiles,
+    external?: (specifier: string) => string | null,
+  ) => {
+    const { engine, resolved } = fakeEngine(imports)
+    const graph = createExtraction({
+      engine,
+      flavor: createTsSuffixesFactoriesFlavor(),
+    }).extractGraph({
+      root: "/made-up-root",
+      files: Object.keys(imports),
+      ...(external ? { external } : {}),
+    })
+    return { graph, resolved }
+  }
+
+  const themeMatcher = (specifier: string): string | null =>
+    specifier.startsWith("$theme:") ? "$theme:*" : null
+
+  it("turns a matched specifier into a declared external leaf, bypassing the resolver", () => {
+    const { graph, resolved } = extractDeclared(
+      { "src/a.model.ts": ["$theme:config.scss"] },
+      themeMatcher,
+    )
+    expect(graph.edges).toEqual([
+      {
+        from: "src/a.model.ts",
+        to: {
+          type: "external",
+          specifier: "$theme:config.scss",
+          package: "$theme:*",
+          declared: true,
+        },
+        kind: "runtime",
+        form: "static",
+        reExport: false,
+      },
+    ])
+    expect(graph.unresolved).toEqual([])
+    expect(resolved).toEqual([])
+  })
+
+  it("leaves an unmatched specifier to the resolver — unresolved as before", () => {
+    const { graph, resolved } = extractDeclared(
+      { "src/a.model.ts": ["$other:config.scss"] },
+      themeMatcher,
+    )
+    expect(graph.edges).toEqual([])
+    expect(graph.unresolved).toMatchObject([
+      { specifier: "$other:config.scss", literal: true },
+    ])
+    expect(resolved).toEqual(["$other:config.scss"])
+  })
+
+  it("without a matcher nothing is declared external", () => {
+    const { graph } = extractDeclared({ "src/a.model.ts": ["$theme:x.scss"] })
+    expect(graph.edges).toEqual([])
+    expect(graph.unresolved).toHaveLength(1)
+  })
+
+  it("lands a tail no fixture or list names — the set is open (tripwire)", () => {
+    const { graph } = extractDeclared(
+      { "src/a.model.ts": ["$theme:zz-unseen-tail.scss"] },
+      themeMatcher,
+    )
+    expect(graph.edges[0]?.to).toMatchObject({
+      declared: true,
+      specifier: "$theme:zz-unseen-tail.scss",
+    })
+  })
+
+  it("merges type + runtime occurrences into one runtime edge, like every external", () => {
+    const { graph } = extractDeclared(
+      {
+        "src/a.model.ts": [
+          { specifier: "$theme:x.scss", typeOnly: true },
+          { specifier: "$theme:x.scss", typeOnly: false },
+        ],
+      },
+      themeMatcher,
+    )
+    expect(graph.edges).toHaveLength(1)
+    expect(graph.edges[0]).toMatchObject({ kind: "runtime" })
   })
 })
 

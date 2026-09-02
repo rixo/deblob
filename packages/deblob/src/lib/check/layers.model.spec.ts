@@ -54,6 +54,7 @@ const lib = (specifier: string): EdgeTarget => ({
   type: "external",
   specifier,
   package: specifier,
+  declared: false,
 })
 
 /** A resolved file outside the coverage set — no package name. */
@@ -61,6 +62,15 @@ const outsideFile = (specifier: string): EdgeTarget => ({
   type: "external",
   specifier,
   package: null,
+  declared: false,
+})
+
+/** A declared external — purity identity is the pattern that matched. */
+const declaredLeaf = (specifier: string, pattern: string): EdgeTarget => ({
+  type: "external",
+  specifier,
+  package: pattern,
+  declared: true,
 })
 
 describe("checkLayers", () => {
@@ -398,6 +408,79 @@ describe("checkLayers", () => {
           shape: "matrix-cell",
           targetClass: "concrete",
         }),
+      ])
+    })
+  })
+
+  describe("declared externals — concrete by default, pureLibs by pattern", () => {
+    const leaf = declaredLeaf("$made-up:tokens.scss", "$made-up:*")
+
+    it("fires 1+4 (8 hint) from model — a matrix cell, never unclassified", () => {
+      const g = graph(
+        { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
+        [{ from: "a/x.model.ts", to: leaf }],
+      )
+      expect(checkLayers(g)).toEqual([
+        {
+          check: "layers",
+          ruleset: "arch",
+          rules: [1, 4, 8],
+          file: "a/x.model.ts",
+          serviceRoot: "a",
+          importerLayer: "model",
+          target: leaf,
+          shape: "matrix-cell",
+          targetClass: "concrete",
+        },
+      ])
+    })
+
+    it("fires 4 (8 hint) from service", () => {
+      const g = graph(
+        { "a/a.service.ts": { layer: "service", serviceRoot: "a" } },
+        [{ from: "a/a.service.ts", to: leaf }],
+      )
+      expect(checkLayers(g)).toEqual([
+        expect.objectContaining({ rules: [4, 8], targetClass: "concrete" }),
+      ])
+    })
+
+    it("stays green from adapters, blob, and assembly", () => {
+      const g = graph(
+        {
+          "a/x.adapter.ts": { layer: "adapters", serviceRoot: "a" },
+          "a/x.ts": { layer: "blob", serviceRoot: "a" },
+          "main.ts": { layer: "assembly" },
+        },
+        [
+          { from: "a/x.adapter.ts", to: leaf },
+          { from: "a/x.ts", to: leaf },
+          { from: "main.ts", to: leaf },
+        ],
+      )
+      expect(checkLayers(g)).toEqual([])
+    })
+
+    it("stays green when the matched pattern is a pureLibs entry — verbatim, like a package name", () => {
+      const g = graph(
+        { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
+        [{ from: "a/x.model.ts", to: leaf }],
+      )
+      expect(checkLayers(g, { pureLibs: ["$made-up:*"] })).toEqual([])
+      // the specifier itself is not the identity — the pattern is
+      expect(
+        checkLayers(g, { pureLibs: ["$made-up:tokens.scss"] }),
+      ).toHaveLength(1)
+    })
+
+    it("exempts type-only imports by default — declared typings are the contract; strict mode binds", () => {
+      const g = graph(
+        { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
+        [{ from: "a/x.model.ts", to: leaf, kind: "type" }],
+      )
+      expect(checkLayers(g)).toEqual([])
+      expect(checkLayers(g, { typeOnlyExempt: false })).toEqual([
+        expect.objectContaining({ rules: [1, 4], targetClass: "concrete" }),
       ])
     })
   })

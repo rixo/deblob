@@ -17,6 +17,7 @@ const cleanDir = here("__fixtures__/clean")
 const brokenConfigDir = here("../../lib/config/__fixtures__/throws")
 const aliasedDir = here("__fixtures__/aliased")
 const unresolvableDir = here("__fixtures__/unresolvable")
+const externalDir = here("__fixtures__/external")
 
 type RunResult = { code: number; out: string; err: string }
 
@@ -176,6 +177,16 @@ describe("deblob check", () => {
     expect(err).toContain("resolution failed")
     expect(err).toContain("some-made-up-missing-package")
     expect(err).toContain('config key "alias"')
+    expect(err).toContain('config key "external"')
+  })
+
+  it("external repo: declared patterns land leaves (no unresolved), pureLibs ratifies by pattern", async () => {
+    const { code, out, err } = await run(["check"], { cwd: externalDir })
+    expect(err).toBe("")
+    expect(code).toBe(1)
+    // the pure-declared namespace stays silent; the other fires as concrete
+    expect(out).toContain("imports $made-up/config (declared)")
+    expect(out).not.toContain("$made-up:tokens.scss")
   })
 
   it("broken config: teaching error on stderr, exit 2", async () => {

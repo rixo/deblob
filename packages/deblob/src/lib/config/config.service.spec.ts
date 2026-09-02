@@ -169,6 +169,52 @@ describe("resolveConfig — tsconfig & alias", () => {
   })
 })
 
+describe("resolveConfig — external specifier patterns", () => {
+  it("defaults to a matcher that matches nothing", () => {
+    expect(resolve({}).external("$made-up/config")).toBeNull()
+  })
+
+  it("returns the first declared pattern matching the raw specifier", () => {
+    const { external } = resolve({
+      external: ["$made-up/**", "$made-up:*", "$made-up/assets:*"],
+    })
+    expect(external("$made-up/config")).toBe("$made-up/**")
+    expect(external("$made-up/deep/er/config")).toBe("$made-up/**")
+    expect(external("$made-up:tokens.scss")).toBe("$made-up:*")
+    // the hybrid form: first match in declaration order wins
+    expect(external("$made-up/assets:icon-sprites.hmr")).toBe("$made-up/**")
+    expect(external("$other/config")).toBeNull()
+    expect(external("./made-up/config")).toBeNull()
+  })
+
+  it("`**` crosses `/` even glued to a prefix — specifiers are not paths (field papercut)", () => {
+    const { external } = resolve({ external: ["$a:**"] })
+    expect(external("$a:x.scss")).toBe("$a:**")
+    expect(external("$a:x/y/z.scss")).toBe("$a:**")
+    expect(external("$a:")).toBe("$a:**")
+  })
+
+  it("`*` stays within a segment; `.` and other regex characters stay literal", () => {
+    const { external } = resolve({ external: ["$a:*.scss", "$b/*"] })
+    expect(external("$a:x.scss")).toBe("$a:*.scss")
+    expect(external("$a:x/y.scss")).toBeNull()
+    expect(external("$a:xXscss")).toBeNull()
+    expect(external("$b/x")).toBe("$b/*")
+    expect(external("$b/x/y")).toBeNull()
+    // `/**` is not optional: the bare namespace root is its own entry
+    expect(resolve({ external: ["$c/**"] }).external("$c")).toBeNull()
+  })
+
+  it("rejects non-array and non-string entries, naming the key", () => {
+    expect(() => resolve({ external: "$made-up/**" })).toThrowError(
+      /"external".*array of strings/s,
+    )
+    expect(() => resolve({ external: [42] })).toThrowError(
+      /"external".*array of strings/s,
+    )
+  })
+})
+
 describe("resolveConfig — flavor", () => {
   it("resolves a registry name to its instance", () => {
     const resolved = resolve({ flavor: STOCK_FLAVOR_NAME })

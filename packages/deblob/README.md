@@ -61,18 +61,19 @@ export default defineConfig({
 })
 ```
 
-The eight keys, all optional:
+The nine keys, all optional:
 
-| Key              | Default                   | Meaning                                                                                                                          |
-| ---------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `flavor`         | `"ts-suffixes-factories"` | Architecture style — a stock name, or a custom `FlavorResolver` exported from the config                                         |
-| `assembly`       | `[]`                      | Globs designating composition roots — privilege is declared, not presumed                                                        |
-| `include`        | `["**"]`                  | Coverage globs; under-coverage is a silent hole, so the default covers everything                                                |
-| `exclude`        | `[]`                      | Appended to a non-removable baseline (`node_modules`, `dist`, …); never replaces it                                              |
-| `pureLibs`       | `[]`                      | Rule-4 allowlist: package names and builtin specifiers ratified as pure                                                          |
-| `typeOnlyExempt` | flavor's stance (`true`)  | `false` = strict: type-only imports lose their rule-8 exemption; knobs only tighten canon                                        |
-| `tsconfig`       | `tsconfig.json` at root   | The tsconfig feeding resolution (`paths` aliases); a path, or `false` to disable — a declared path that doesn't exist fails loud |
-| `alias`          | `{}`                      | Resolver aliases living outside tsconfig (bundler config); teaches resolution, never suppresses failures                         |
+| Key              | Default                   | Meaning                                                                                                                             |
+| ---------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `flavor`         | `"ts-suffixes-factories"` | Architecture style — a stock name, or a custom `FlavorResolver` exported from the config                                            |
+| `assembly`       | `[]`                      | Globs designating composition roots — privilege is declared, not presumed                                                           |
+| `include`        | `["**"]`                  | Coverage globs; under-coverage is a silent hole, so the default covers everything                                                   |
+| `exclude`        | `[]`                      | Appended to a non-removable baseline (`node_modules`, `dist`, …); never replaces it                                                 |
+| `pureLibs`       | `[]`                      | Rule-4 allowlist: package names, builtin specifiers, and declared `external` patterns ratified as pure                              |
+| `typeOnlyExempt` | flavor's stance (`true`)  | `false` = strict: type-only imports lose their rule-8 exemption; knobs only tighten canon                                           |
+| `tsconfig`       | `tsconfig.json` at root   | The tsconfig feeding resolution (`paths` aliases); a path, or `false` to disable — a declared path that doesn't exist fails loud    |
+| `alias`          | `{}`                      | Resolver aliases living outside tsconfig (bundler config); teaches resolution, never suppresses failures                            |
+| `external`       | `[]`                      | Specifier patterns the environment provides with nothing on disk (`$theme:**`, `cloudflare:*`) — matches are leaves, never resolved |
 
 Discovery walks upward from cwd; the nearest config wins and its directory
 becomes the project root. No merging, no inheritance. `-c/--config <path>`
@@ -85,10 +86,22 @@ be a silent hole.
 
 An import that fails to resolve fails the run: `check` exits `2` — not `1`,
 because the fault may be the run's world (unwired tsconfig, missing install,
-bundler-only alias) rather than the code — and lists each offender with the
-remedies. A green check thereby certifies a complete graph. Non-literal dynamic
-imports (`import(expr)`) are exempt: unresolvable by construction, never a
-missing edge.
+bundler-only alias, environment-provided module) rather than the code — and
+lists each offender with the remedies. A green check thereby certifies a
+complete graph. Non-literal dynamic imports (`import(expr)`) are exempt:
+unresolvable by construction, never a missing edge.
+
+A module the environment provides with nothing on disk — a vite plugin serving
+`$theme/config`, a runtime exposing `cloudflare:workers`, a `npm:` or URL
+specifier — is declared, not aliased: `external` holds patterns over the
+specifier as written, and a match is a known leaf. Resolvable packages need no
+entry. A declared external counts concrete by default; to ratify it pure, list
+the same pattern in `pureLibs` — the pattern is the leaf's identity, matched
+verbatim like a package name. Patterns are not path globs (a specifier is one
+string): `**` matches any characters, `/` included — `$theme:**` is the whole
+namespace — and `*` matches anything but `/`. Not covered yet: teaching the
+resolver a bundler `exports` condition (`browser`, `svelte`); until a
+`conditions` key exists, `external` is the workaround.
 
 ## Why each rule exists
 

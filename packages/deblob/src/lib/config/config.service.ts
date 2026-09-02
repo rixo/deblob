@@ -72,6 +72,19 @@ export type DeblobConfig = {
    * string or array. Teaches resolution — never suppresses failures.
    */
   alias?: Readonly<Record<string, string | readonly string[]>>
+  /**
+   * Declared externals — specifiers the environment provides with nothing on
+   * disk to resolve: bundler virtual modules (`$theme:**`), runtime-provided
+   * modules (`cloudflare:*`), URL/`npm:` specifiers. Patterns over the raw
+   * specifier as written, never a path. Two wildcards, glued anywhere: `**` =
+   * any characters, `/` included; `*` = any characters but `/`; a specifier is
+   * one string, so `$theme:**` means the whole namespace. A match is a leaf
+   * known by declaration: never resolved, never a failure. Resolvable packages
+   * need no entry. Concrete by default; the matched pattern is the leaf's
+   * identity, so listing the same pattern in `pureLibs` ratifies it pure.
+   * Default: `[]`.
+   */
+  external?: readonly string[]
 }
 
 /** Identity — the typing channel for `deblob.config.ts` authors. */
@@ -101,6 +114,11 @@ export type ResolvedConfig = {
   tsconfig: string | false | undefined
   /** Normalized: every value an array, path-like entries absolute. */
   alias: Readonly<Record<string, readonly string[]>>
+  /**
+   * Compiled `external` matcher: the first declared pattern matching the raw
+   * specifier, `null` for none.
+   */
+  external: (specifier: string) => string | null
 }
 
 /** Stock flavors, name → factory — injected by assembly (flavors are adapters). */
@@ -115,6 +133,7 @@ const KNOWN_KEYS = [
   "typeOnlyExempt",
   "tsconfig",
   "alias",
+  "external",
 ] as const
 
 const isStringArray = (value: unknown): value is readonly string[] =>
@@ -122,7 +141,7 @@ const isStringArray = (value: unknown): value is readonly string[] =>
 
 const stringArrayKey = (
   raw: Record<string, unknown>,
-  key: "assembly" | "include" | "exclude" | "pureLibs",
+  key: "assembly" | "include" | "exclude" | "pureLibs" | "external",
 ): readonly string[] | undefined => {
   const value = raw[key]
   if (value === undefined) return undefined
@@ -132,6 +151,37 @@ const stringArrayKey = (
     )
   }
   return value
+}
+
+/**
+ * Specifier pattern → anchored regex. Not picomatch: its `**` only crosses `/`
+ * as a whole path segment, so `$theme:**` silently degrades to `$theme:*` and
+ * misses `$theme:a/b.scss` (field-measured). A specifier is one string, not a
+ * path — here `**` is any run of characters and `*` any run without `/`.
+ */
+const specifierPattern = (pattern: string): RegExp =>
+  new RegExp(
+    `^${pattern
+      .split("**")
+      .map((piece) =>
+        piece
+          .split("*")
+          .map((literal) => literal.replace(/[.+?^${}()|[\]\\/]/g, "\\$&"))
+          .join("[^/]*"),
+      )
+      .join(".*")}$`,
+  )
+
+/** First declared pattern matching the specifier, declaration order. */
+const externalMatcherOf = (
+  patterns: readonly string[],
+): ((specifier: string) => string | null) => {
+  const compiled = patterns.map((pattern) => {
+    const regex = specifierPattern(pattern)
+    return [pattern, (specifier: string) => regex.test(specifier)] as const
+  })
+  return (specifier) =>
+    compiled.find(([, matches]) => matches(specifier))?.[0] ?? null
 }
 
 const tsconfigOf = (
@@ -266,5 +316,6 @@ export const resolveConfig = (
     typeOnlyExempt,
     tsconfig: tsconfigOf(record["tsconfig"], context.root),
     alias: aliasOf(record["alias"], context.root),
+    external: externalMatcherOf(stringArrayKey(record, "external") ?? []),
   }
 }

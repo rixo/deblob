@@ -30,7 +30,12 @@ const layersViolation = (
   file: "src/invoice/pdf-render.service.ts",
   serviceRoot: "src/invoice",
   importerLayer: "service",
-  target: { type: "external", specifier: "node:fs", package: "node:fs" },
+  target: {
+    type: "external",
+    specifier: "node:fs",
+    package: "node:fs",
+    declared: false,
+  },
   shape: "matrix-cell",
   targetClass: "concrete",
   ...overrides,
@@ -329,11 +334,27 @@ describe("renderCheckResults", () => {
             type: "external",
             specifier: "some-made-up-lib",
             package: "some-made-up-lib",
+            declared: false,
           },
         } as Partial<LayersViolation>),
       )
       expect(output).toContain("unclassified third-party in a pure layer")
       expect(output).toContain("pureLibs")
+    })
+
+    it("marks a declared external leaf so the cell reads as declared, not a resolver accident", () => {
+      const output = message(
+        layersViolation({
+          rules: [4, 8],
+          target: {
+            type: "external",
+            specifier: "$made-up:tokens.scss",
+            package: "$made-up:*",
+            declared: true,
+          },
+        }),
+      )
+      expect(output).toContain("imports $made-up:tokens.scss (declared)")
     })
 
     it("barrel shapes: re-export at the index, direct-import remedy at the importer", () => {
@@ -693,6 +714,7 @@ describe("renderUnresolved", () => {
     expect(output).toContain("$made-up-alias/thing.service.ts — Cannot find")
     expect(output).toContain('config key "tsconfig"')
     expect(output).toContain('config key "alias"')
+    expect(output).toContain('config key "external"')
   })
 
   it("prints importer paths under the runner's prefix, ctrl+clickable", () => {

@@ -97,7 +97,12 @@ const wrap = (
 }
 
 const targetLabel = (target: EdgeTarget, prefix: string): string =>
-  target.type === "module" ? prefix + target.path : target.specifier
+  target.type === "module"
+    ? prefix + target.path
+    : // a declared external leaf reads as declared, not as a resolver accident
+      target.declared
+      ? `${target.specifier} (declared)`
+      : target.specifier
 
 const ruleCite = (rules: readonly number[]): string =>
   rules.length === 1 ? `rule ${rules[0]}` : `rules ${rules.join(", ")}`
@@ -408,7 +413,7 @@ export const renderUnresolved = (
   lines.push(
     "",
     ...wrapPlain(
-      `remedies: point config key "tsconfig" at the tsconfig carrying your paths aliases (default: tsconfig.json at the config root), install the missing package, or declare bundler-only aliases via config key "alias".`,
+      `remedies: point config key "tsconfig" at the tsconfig carrying your paths aliases (default: tsconfig.json at the config root), install the missing package, declare bundler-only aliases via config key "alias", or declare environment-provided modules (bundler virtual modules, runtime-provided modules — nothing on disk) via config key "external".`,
     ),
   )
   return `${lines.join("\n")}\n`
