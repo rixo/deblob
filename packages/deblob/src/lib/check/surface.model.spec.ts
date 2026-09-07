@@ -162,10 +162,14 @@ describe("checkSurface", () => {
       unverified: [
         {
           subpath: "./checkout.service",
-          target: "dist/stripe.adapter.js",
-          mapped: "src/stripe.adapter",
-          mirror: { root: "dist", source: "src" },
-          candidates: [],
+          targets: [
+            {
+              target: "dist/stripe.adapter.js",
+              mapped: "src/stripe.adapter",
+              mirror: { root: "dist", source: "src" },
+              candidates: [],
+            },
+          ],
         },
       ],
     })
@@ -229,19 +233,23 @@ describe("checkSurface", () => {
     expect(checkSurface(g, s, options)).toEqual({
       violations: [],
       unverified: [
+        // one entry for the subpath, every target that missed listed
         {
           subpath: "./legacy",
-          target: "build/legacy/index.js",
-          mapped: "build/legacy/index",
-          mirror: null,
-          candidates: [],
-        },
-        {
-          subpath: "./legacy",
-          target: "lib/legacy.ts",
-          mapped: "lib/legacy",
-          mirror: null,
-          candidates: [],
+          targets: [
+            {
+              target: "build/legacy/index.js",
+              mapped: "build/legacy/index",
+              mirror: null,
+              candidates: [],
+            },
+            {
+              target: "lib/legacy.ts",
+              mapped: "lib/legacy",
+              mirror: null,
+              candidates: [],
+            },
+          ],
         },
       ],
     })
@@ -273,9 +281,14 @@ describe("checkSurface", () => {
       checkSurface(twins, surface({ "./x": ["dist/x.js"] }), options)
         .unverified,
     ).toEqual([
-      expect.objectContaining({
-        candidates: ["src/x.d.ts", "src/x.d.mts"],
-      }),
+      {
+        subpath: "./x",
+        targets: [
+          expect.objectContaining({
+            candidates: ["src/x.d.ts", "src/x.d.mts"],
+          }),
+        ],
+      },
     ])
   })
 
@@ -286,10 +299,15 @@ describe("checkSurface", () => {
     })
     const s = surface({ ".": ["dist/index.js"] })
     expect(checkSurface(g, s, options).unverified).toEqual([
-      expect.objectContaining({
-        mapped: "src/index",
-        candidates: ["src/index.ts", "src/index.js"],
-      }),
+      {
+        subpath: ".",
+        targets: [
+          expect.objectContaining({
+            mapped: "src/index",
+            candidates: ["src/index.ts", "src/index.js"],
+          }),
+        ],
+      },
     ])
   })
 
@@ -297,7 +315,12 @@ describe("checkSurface", () => {
     const g = graph({ "src/index.ts": { layer: "blob" } })
     const s = surface({ ".": ["dist/index.js"] })
     expect(checkSurface(g, s, { ...options, mirror: {} }).unverified).toEqual([
-      expect.objectContaining({ target: "dist/index.js", mirror: null }),
+      {
+        subpath: ".",
+        targets: [
+          expect.objectContaining({ target: "dist/index.js", mirror: null }),
+        ],
+      },
     ])
   })
 
@@ -457,21 +480,73 @@ describe("checkSurface", () => {
         unverified: [
           {
             subpath: "./*",
-            target: "dist/*.js",
-            mapped: "src/*",
-            mirror: { root: "dist", source: "src" },
-            candidates: [],
+            targets: [
+              {
+                target: "dist/*.js",
+                mapped: "src/*",
+                mirror: { root: "dist", source: "src" },
+                candidates: [],
+              },
+            ],
           },
           // under no mirror root: the pattern is looked up as itself
           {
             subpath: "./out/*",
-            target: "out/*.js",
-            mapped: "out/*",
-            mirror: null,
-            candidates: [],
+            targets: [
+              {
+                target: "out/*.js",
+                mapped: "out/*",
+                mirror: null,
+                candidates: [],
+              },
+            ],
           },
         ],
       })
+    })
+
+    it("a pattern key is one claim too — its declarations expanding verifies it, a bundled twin missing is not reported", () => {
+      // the hybrid build: tsc declarations mirror src/, the runtime entry is a
+      // rollup bundle under no honest mirror
+      const g = graph({
+        "src/api.ts": { layer: "blob" },
+        "src/checkout.service.ts": { layer: "service", serviceRoot: "src" },
+      })
+      const s = surface({ "./*": ["dist/lib/*.js", "dist/types/*.d.ts"] })
+      const report = checkSurface(g, s, {
+        ...options,
+        mirror: { "dist/types": "src" },
+      })
+      expect(report.unverified).toEqual([])
+      // the concrete subpaths wear the target that reached them
+      expect(report.violations).toEqual([])
+      const laundering = surface({
+        "./*": ["dist/lib/*.js", "dist/types/*.d.ts"],
+      })
+      const g2 = graph(
+        {
+          "src/api.ts": { layer: "blob" },
+          "src/checkout.service.ts": { layer: "service", serviceRoot: "src" },
+        },
+        [
+          {
+            from: "src/api.ts",
+            to: mod("src/checkout.service.ts"),
+            reExport: true,
+          },
+        ],
+      )
+      expect(
+        checkSurface(g2, laundering, {
+          ...options,
+          mirror: { "dist/types": "src" },
+        }).violations,
+      ).toEqual([
+        expect.objectContaining({
+          subpath: "./api",
+          exported: "dist/types/api.d.ts",
+        }),
+      ])
     })
 
     it("a pattern key disclosed whole is retracted, not unverified — even when it matches nothing", () => {
@@ -509,7 +584,10 @@ describe("checkSurface", () => {
       expect(checkSurface(g, s, options)).toEqual({
         violations: [],
         unverified: [
-          expect.objectContaining({ subpath: "./x/*", mapped: "src/x/*" }),
+          {
+            subpath: "./x/*",
+            targets: [expect.objectContaining({ mapped: "src/x/*" })],
+          },
         ],
       })
       // the key's own trailer is part of the claim: every bound stem is
@@ -745,16 +823,20 @@ describe("checkSurface", () => {
       unverified: [
         {
           subpath: ".",
-          target: "dist/index.js",
-          mapped: "src/index",
-          mirror: { root: "dist", source: "src" },
-          candidates: [],
+          targets: [
+            {
+              target: "dist/index.js",
+              mapped: "src/index",
+              mirror: { root: "dist", source: "src" },
+              candidates: [],
+            },
+          ],
         },
       ],
     })
   })
 
-  it("checks every target of a subpath once — conditions collapse, duplicates dedupe", () => {
+  it("a subpath is one claim — conditions reaching the same module are judged once, wearing the first target", () => {
     const g = graph({
       "src/stripe.adapter.ts": { layer: "adapters", serviceRoot: "src" },
     })
@@ -773,7 +855,58 @@ describe("checkSurface", () => {
     }
     expect(checkSurface(g, s, options).violations).toEqual([
       expect.objectContaining({ exported: "dist/stripe.adapter.js" }),
-      expect.objectContaining({ exported: "dist/stripe.adapter.d.ts" }),
+    ])
+  })
+
+  it("the hybrid build — one reaching target verifies the subpath; the bundled twin under no mirror is not unverified", () => {
+    const g = graph({
+      "src/stripe.adapter.ts": { layer: "adapters", serviceRoot: "src" },
+      "src/totals.model.ts": { layer: "model", serviceRoot: "src" },
+    })
+    const s = surface({
+      "./totals.model": ["dist/lib/totals.js", "dist/types/totals.model.d.ts"],
+      "./checkout.service": [
+        "dist/lib/checkout.js",
+        "dist/types/stripe.adapter.d.ts",
+      ],
+    })
+    const report = checkSurface(g, s, {
+      ...options,
+      mirror: { "dist/types": "src" },
+    })
+    expect(report.unverified).toEqual([])
+    // judged through the declarations, and the finding says so
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        subpath: "./checkout.service",
+        exported: "dist/types/stripe.adapter.d.ts",
+        shape: "claim-mismatch",
+      }),
+    ])
+  })
+
+  it("every target missing is the unverified case — the entry lists them all", () => {
+    const g = graph({ "src/index.ts": { layer: "blob" } })
+    const s = surface({
+      "./thing": ["dist/lib/thing.js", "dist/types/thing.d.ts"],
+    })
+    expect(
+      checkSurface(g, s, { ...options, mirror: { "dist/types": "src" } })
+        .unverified,
+    ).toEqual([
+      {
+        subpath: "./thing",
+        targets: [
+          expect.objectContaining({
+            target: "dist/lib/thing.js",
+            mirror: null,
+          }),
+          expect.objectContaining({
+            target: "dist/types/thing.d.ts",
+            mapped: "src/thing",
+          }),
+        ],
+      },
     ])
   })
 

@@ -51,9 +51,8 @@ export type CheckSurfaceOptions = {
   disclosed: (subpath: string) => boolean
 }
 
-/** An exports entry the graph could not reach — a claim the run cannot certify. */
-export type UnverifiedEntry = {
-  subpath: string
+/** One module target of a subpath the graph could not reach, and why. */
+export type UnverifiedTarget = {
   /** The exports target as written, `./` stripped. */
   target: string
   /** The extensionless path the lookup tried. */
@@ -65,6 +64,17 @@ export type UnverifiedEntry = {
    * ambiguous (`src/x.ts` beside `src/x.js`): the mirror cannot pick.
    */
   candidates: readonly string[]
+}
+
+/**
+ * An exports subpath the graph could not reach through any of its module
+ * targets — a claim the run cannot certify. A subpath is one claim: one
+ * reaching target (the declarations of a hybrid build, say) verifies it, so an
+ * entry lists every target only when every target missed.
+ */
+export type UnverifiedEntry = {
+  subpath: string
+  targets: readonly UnverifiedTarget[]
 }
 
 export type SurfaceReport = {
@@ -121,7 +131,7 @@ export const checkSurface = (
 
   // longest mirror root prefixing the target wins
   const roots = Object.keys(mirror).sort((a, b) => b.length - a.length)
-  const mirrorOf = (target: string): UnverifiedEntry["mirror"] => {
+  const mirrorOf = (target: string): UnverifiedTarget["mirror"] => {
     const root = roots.find((r) => target === r || target.startsWith(`${r}/`))
     return root === undefined ? null : { root, source: mirror[root] as string }
   }
@@ -132,7 +142,7 @@ export const checkSurface = (
    */
   const mirrored = (
     target: string,
-  ): { through: UnverifiedEntry["mirror"]; mapped: string } => {
+  ): { through: UnverifiedTarget["mirror"]; mapped: string } => {
     const through = mirrorOf(target)
     const mapped = stripExtension(
       through === null
@@ -144,9 +154,8 @@ export const checkSurface = (
 
   /** The covered module an exports target reaches, or why it reaches none. */
   const reach = (
-    subpath: string,
     target: string,
-  ): { path: string } | { unverified: UnverifiedEntry } => {
+  ): { path: string } | { unverified: UnverifiedTarget } => {
     const { through, mapped } = mirrored(target)
     const hits = byStem.get(mapped) ?? []
     // a declaration file describes its sibling module, it is not a second
@@ -158,15 +167,7 @@ export const checkSurface = (
       modules.length === 1 ? modules[0] : hits.length === 1 ? hits[0] : null
     return picked !== undefined && picked !== null
       ? { path: picked }
-      : {
-          unverified: {
-            subpath,
-            target,
-            mapped,
-            mirror: through,
-            candidates: hits,
-          },
-        }
+      : { unverified: { target, mapped, mirror: through, candidates: hits } }
   }
 
   // re-export adjacency, in-coverage only — the closure never parses outward
@@ -226,7 +227,7 @@ export const checkSurface = (
     target: string,
   ):
     | { entries: { subpath: string; target: string }[] }
-    | { unverified: UnverifiedEntry } => {
+    | { unverified: UnverifiedTarget } => {
     const { through, mapped } = mirrored(target)
     const star = mapped.indexOf("*")
     const base = mapped.slice(0, star)
@@ -250,15 +251,7 @@ export const checkSurface = (
     }
     return entries.length > 0
       ? { entries }
-      : {
-          unverified: {
-            subpath,
-            target,
-            mapped,
-            mirror: through,
-            candidates: [],
-          },
-        }
+      : { unverified: { target, mapped, mirror: through, candidates: [] } }
   }
 
   /** The verdict on one concrete entry reaching a covered module. */
@@ -319,31 +312,59 @@ export const checkSurface = (
     // `**` disclosure never expands, so it cannot land unverified for matching
     // nothing (a literal key is caught here too, before any lookup)
     if (disclosed(subpath)) continue
-    for (const target of [...new Set(targets)]) {
-      // package.json, stylesheets: not modules, nothing to say either way —
-      // except a target ending in the star (`./dist/*`): the consumer supplies
-      // the extension, the verdict is the same whichever it is
-      if (moduleExtensionOf(target) === undefined && !target.endsWith("*")) {
-        continue
-      }
-      let entries = [{ subpath, target }]
+    // package.json, stylesheets: not modules, nothing to say either way —
+    // except a target ending in the star (`./dist/*`): the consumer supplies
+    // the extension, the verdict is the same whichever it is
+    const moduleTargets = [...new Set(targets)].filter(
+      (target) =>
+        moduleExtensionOf(target) !== undefined || target.endsWith("*"),
+    )
+    // concrete subpath → its module targets (a literal key is its own concrete
+    // subpath; a pattern key contributes what each pattern target expands to);
+    // a pattern target expanding to nothing is a miss for the key itself
+    const concrete = new Map<string, string[]>()
+    const keyMisses: UnverifiedTarget[] = []
+    for (const target of moduleTargets) {
       if (subpath.includes("*") && target.includes("*")) {
         const expanded = expand(subpath, target)
         if ("unverified" in expanded) {
-          unverified.push(expanded.unverified)
+          keyMisses.push(expanded.unverified)
           continue
         }
-        entries = expanded.entries
-      }
-      for (const entry of entries) {
-        if (disclosed(entry.subpath)) continue
-        const reached = reach(entry.subpath, entry.target)
-        if ("unverified" in reached) {
-          unverified.push(reached.unverified)
-          continue
+        for (const entry of expanded.entries) {
+          concrete.set(entry.subpath, [
+            ...(concrete.get(entry.subpath) ?? []),
+            entry.target,
+          ])
         }
-        judge(entry.subpath, entry.target, reached.path)
+      } else {
+        concrete.set(subpath, [...(concrete.get(subpath) ?? []), target])
       }
+    }
+    if (concrete.size === 0 && keyMisses.length > 0) {
+      unverified.push({ subpath, targets: keyMisses })
+    }
+    // one verdict per concrete subpath: judged once per module any of its
+    // targets reaches (conditions are one claim in several build forms — the
+    // first target reaching a module names it); unverified only when every
+    // target missed
+    for (const [entrySubpath, entryTargets] of concrete) {
+      if (disclosed(entrySubpath)) continue
+      const reached = new Map<string, string>()
+      const misses: UnverifiedTarget[] = []
+      for (const target of entryTargets) {
+        const result = reach(target)
+        if ("unverified" in result) {
+          misses.push(result.unverified)
+        } else if (!reached.has(result.path)) {
+          reached.set(result.path, target)
+        }
+      }
+      if (reached.size === 0) {
+        unverified.push({ subpath: entrySubpath, targets: misses })
+        continue
+      }
+      for (const [path, target] of reached) judge(entrySubpath, target, path)
     }
   }
 

@@ -5,7 +5,10 @@
  * binary.
  */
 
-import type { UnverifiedEntry } from "../check/surface.model.ts"
+import type {
+  UnverifiedEntry,
+  UnverifiedTarget,
+} from "../check/surface.model.ts"
 import type { EdgeTarget, UnresolvedImport } from "../extraction/graph.model.ts"
 import type {
   DagViolation,
@@ -441,10 +444,12 @@ export const renderUnresolved = (
 }
 
 /**
- * Exports entries the surface check could not reach — claims the run cannot
- * certify. Not violations (no rule was broken): the twin of the resolution
- * block, stderr, exit 2, until each entry is mapped through the build mirror or
- * disclosed in the manifest's `blob`.
+ * Exports subpaths the surface check could not reach through any of their
+ * module targets — claims the run cannot certify. Not violations (no rule was
+ * broken): the twin of the resolution block, stderr, exit 2, until each entry
+ * is mapped through the build mirror or disclosed in the manifest's `blob`. One
+ * block per subpath: its targets on one line, one reason when they all missed
+ * the same way, else each target's own.
  */
 export const renderUnverified = (
   unverified: readonly UnverifiedEntry[],
@@ -456,19 +461,30 @@ export const renderUnverified = (
       `surface unverified — ${plural(unverified.length, "entry", "entries")} could not be reached; the claim cannot be certified`,
     ),
   ]
-  for (const entry of unverified) {
+  const reasonOf = (target: UnverifiedTarget): string => {
     const where =
-      entry.mirror === null
+      target.mirror === null
         ? "under no build mirror root"
-        : `mirrors ${entry.mirror.root} → ${entry.mirror.source}`
+        : `mirrors ${target.mirror.root} → ${target.mirror.source}`
     const found =
-      entry.candidates.length === 0
-        ? entry.mirror === null
+      target.candidates.length === 0
+        ? target.mirror === null
           ? "not a covered module"
-          : `no covered module at ${pathPrefix}${entry.mapped}`
-        : `${plural(entry.candidates.length, "covered module")} at ${pathPrefix}${entry.mapped} (${entry.candidates.map((candidate) => pathPrefix + candidate).join(", ")}), the mirror cannot pick one`
-    const reason = `${where}, ${found}`
-    lines.push(`  ${pathPrefix}${entry.target}`)
+          : `no covered module at ${pathPrefix}${target.mapped}`
+        : `${plural(target.candidates.length, "covered module")} at ${pathPrefix}${target.mapped} (${target.candidates.map((candidate) => pathPrefix + candidate).join(", ")}), the mirror cannot pick one`
+    return `${where}, ${found}`
+  }
+  for (const entry of unverified) {
+    const reasons = entry.targets.map(reasonOf)
+    const shared = reasons.every((reason) => reason === reasons[0])
+    const reason = shared
+      ? (reasons[0] as string)
+      : entry.targets
+          .map((target, i) => `${pathPrefix}${target.target}: ${reasons[i]}`)
+          .join("; ")
+    lines.push(
+      `  ${entry.targets.map((target) => pathPrefix + target.target).join(", ")}`,
+    )
     lines.push(
       ...wrap("    ", `exported as "${entry.subpath}" — ${reason}`, "    "),
     )

@@ -117,10 +117,23 @@ assembly.
   (`"./*": "./dist/*.js"`) expand over source the way Node resolves them. The
   mirror is your promise that the build is one-to-one, never measured — a
   bundled package sets `build: false` and lists source targets or discloses. An
-  entry the mirror cannot reach exits 2; the stderr block names the remedies.
-  Disclosing — `"deblob": { "blob": ["."] }` — retracts the claim for that
-  subpath: unlabeled abroad, as with no field. The bare root `.` claims nothing;
+  entry the mirror cannot reach exits 2; the stderr block names the remedies. A
+  subpath is one claim across its conditions: one reaching target verifies it (a
+  hybrid build's `.d.ts` under the mirror covers its bundled `.js`). Disclosing
+  — `"deblob": { "blob": ["."] }` — retracts the claim for that subpath:
+  unlabeled abroad, as with no field. `blob` means "not claimed", no more:
+  markdown or asset subpaths belong there too. The bare root `.` claims nothing;
   a fat root barrel is a blob surface, never a service.
+
+- **Entry points are normal.** A composition root that imports services and
+  adapters, wires them, and exports its own API passes `surface` as is: the
+  check follows re-export edges only. What fires is a subpath re-exporting a
+  service or adapter unlabeled (`export * from "./report.service"` under
+  `./cli`). Three honest exits: put the layer on the subpath
+  (`./report.service`), compose instead of re-exporting, or disclose the subpath
+  in `blob` — the last is not a confession, it is the same statement the bare
+  root makes: this entry is a grab-bag, consumers get no layer for it. A CLI's
+  `blob` list often reads as its inventory of entry points.
 
 - **Consumer side** — nothing to configure. Workspaces (pnpm/npm/yarn)
   materialize siblings as node_modules symlinks and the resolver follows them;

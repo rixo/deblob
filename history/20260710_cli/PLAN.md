@@ -468,6 +468,19 @@ doesn't check:
 
 ### Ideas
 
+- **A word for generated output — "no source to check" is not "I decline to
+  claim"** (2026-09-07, at the 0.0.4 trial) — a package whose surface is built
+  from a manifest (`dist/js/*`, no `src/` twin, ever) can only disclose
+  wholesale: `blob: ["./*"]` makes the field vacuous, and dropping the field
+  says the same thing abroad. That is the right outcome when the outputs are
+  unsuffixed — nothing is claimed, nothing needs a gate — so today's answer is
+  "no field". The gap opens when generated outputs carry suffixes and want
+  identity abroad (`./icons.model` generated, claimed model): that is an
+  unverified producer claim, which nothing certifies at home — the same lane as
+  `build.entries` for renamed or bundled entries and the stamp-travels manifest.
+  If a word ever ships it must say "claimed on my word, not my gate" and the
+  block must not treat it as a miss; a non-strict knob in disguise, so it waits
+  for a generated package that wants suffixed subpaths.
 - **Directory-form subpaths on the surface — `./checkout/service` claims
   service** (2026-09-04, at the 13 review) — the field claims "the stock naming
   rule holds on my surface", and today that rule is suffix-only:

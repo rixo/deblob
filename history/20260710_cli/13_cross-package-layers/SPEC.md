@@ -91,6 +91,23 @@ claim honest is the producer's gate; drift in a stale published package is the
 same risk as a stale semver, said in one README sentence rather than sold as
 safety by construction.
 
+Ruled at the 0.0.4 trial (2026-09-07, rixo; feedback from the guinea-pig
+monorepo's agent running the built HEAD against four packages) — **a subpath is
+one claim**. Zero-config parity held byte for byte, and the two rule-2 findings
+were the tool working as designed (an adapter exported under an unsuffixed
+subpath; a re-export barrel fronting a service, `assembly` not silencing it).
+What did not hold was the unverified lane on a hybrid build: tsc declarations
+mirror `src/` while the runtime entry is a rollup bundle under no honest root,
+so the types condition reached source and was judged, and the bundled twin still
+landed in the block, exit 2 — the producer's only exit was disclosing a subpath
+the run had just verified. The first cut verified every condition target on its
+own; a subpath is one claim in several build forms, so it is verified through
+any module target the graph reaches and unverified only when none does. The
+block groups by subpath (it listed one entry per condition, doubling every
+count). Same trial, captured rather than built: a word for generated output with
+no source behind it, and the odd feel of disclosing markdown assets under `blob`
+— a PLAN card and a setup sentence.
+
 ## Goal
 
 A cross-package import edge carries the target's layer when the target declares
@@ -176,12 +193,17 @@ Concretely:
   bundled package has no honest mirror and declares `build: false`, at which
   point every built entry is unverified until listed with source targets or
   disclosed (verifying the promise against a build on disk is a captured idea,
-  `--verify-build`). An entry not disclosed in `blob` that the graph cannot
-  reach — under no mirror root, mapped to nothing covered, source left out of
-  `include` — is **unverified**: not a violation, an uncertifiable run; reported
-  in the resolution-failure lane (stderr block, remedies naming `build` and
-  `deblob.blob`, exit 2) after the real violations. This mechanically kills the
-  laundering game — a package cannot claim a clean surface while exporting a
+  `--verify-build`). A subpath is **one claim** whatever its conditions: it is
+  verified through any module target the graph reaches (the tsc declarations of
+  a hybrid build verify a subpath whose runtime entry is a bundle under no root
+  — ruled at the 0.0.4 trial), judged once per reached module, wearing the first
+  target that reached it. A subpath not disclosed in `blob` that the graph
+  reaches through none of its targets — under no mirror root, mapped to nothing
+  covered, source left out of `include` — is **unverified**: not a violation, an
+  uncertifiable run; reported in the resolution-failure lane (stderr block, one
+  entry per subpath listing every target that missed, remedies naming `build`
+  and `deblob.blob`, exit 2) after the real violations. This mechanically kills
+  the laundering game — a package cannot claim a clean surface while exporting a
   mislabeled grab-bag, and cannot skip the verification by exporting its build —
   and catches honest drift after refactors, a moved source file whose built path
   the exports map still names included.
@@ -228,26 +250,31 @@ above is a check on _facts_, not a nanny on config).
   `ConfigError`. Producer-side config, never in the field: consumers never look
   at the resolved file, and the field carries claims, not how they are checked.
 - `checkSurface(graph, surface, { classifyEntry, mirror, disclosed })` returns
-  `{ violations, unverified }` — `unverified` entries carry the subpath, the
-  target, the extensionless path the lookup tried (`mapped`), and the mirror
-  that produced it (`mirror: { root, source } | null` — null when the target sat
-  under no root and was looked up as itself), and the covered modules found at
-  `mapped` (`candidates` — empty when none, two or more when the stem is
-  ambiguous). A declaration file at a stem describes its sibling module and is
-  not a second source: `src/x.d.ts` beside `src/x.js` reaches the `.js` (the
-  `.d.ts` stays its own covered node for the other checks); alone, the
-  declaration is the module (a types-only entry). Two non-declaration files at
-  one stem (`src/x.ts` beside `src/x.js`) are the ambiguity the mirror never
-  settles: the block names them and the remedy is `exclude` on the twin — an
-  explicit entries map is the captured escape. Non-module targets (extension not
-  in the module set nor its built counterparts — `.js`/`.mjs`/`.cjs`/`.jsx`,
-  `.ts`/`.mts`/`.cts`/`.tsx`, `.d.ts` and its variants) are skipped before any
-  of this. A violation reached through the mirror cites the **source** file
-  (`file` = the reached node — the fix site, clickable), and its message names
-  the built target it is exported as. A violation reached through a pattern
-  carries the concrete subpath and concrete target (`subpath: "./api"`,
-  `exported: "dist/api.js"`) — the pattern itself never appears in a violation,
-  only in an unverified entry when it matched nothing.
+  `{ violations, unverified }` — one `unverified` entry per subpath the graph
+  reached through none of its module targets, carrying the subpath and its
+  `targets`, each with the target as written, the extensionless path the lookup
+  tried (`mapped`), the mirror that produced it
+  (`mirror: { root, source } | null` — null when the target sat under no root
+  and was looked up as itself), and the covered modules found at `mapped`
+  (`candidates` — empty when none, two or more when the stem is ambiguous). A
+  pattern key expanding through none of its targets is one entry as itself; a
+  pattern key expanding through any target contributes its concrete subpaths and
+  nothing for the targets that did not. A declaration file at a stem describes
+  its sibling module and is not a second source: `src/x.d.ts` beside `src/x.js`
+  reaches the `.js` (the `.d.ts` stays its own covered node for the other
+  checks); alone, the declaration is the module (a types-only entry). Two
+  non-declaration files at one stem (`src/x.ts` beside `src/x.js`) are the
+  ambiguity the mirror never settles: the block names them and the remedy is
+  `exclude` on the twin — an explicit entries map is the captured escape.
+  Non-module targets (extension not in the module set nor its built counterparts
+  — `.js`/`.mjs`/`.cjs`/`.jsx`, `.ts`/`.mts`/`.cts`/`.tsx`, `.d.ts` and its
+  variants) are skipped before any of this. A violation reached through the
+  mirror cites the **source** file (`file` = the reached node — the fix site,
+  clickable), and its message names the built target it is exported as. A
+  violation reached through a pattern carries the concrete subpath and concrete
+  target (`subpath: "./api"`, `exported: "dist/api.js"`) — the pattern itself
+  never appears in a violation, only in an unverified entry when it matched
+  nothing.
 - `FlavorResolver` gains optional
   `classifyEntry(subpath: string): FlavorLayer | null` — the naming rule over an
   extensionless exports subpath tail. Stock flavor implements suffix matching
@@ -295,13 +322,17 @@ above is a check on _facts_, not a nanny on config).
   `(as dist/index.js)` after the subpath. The unverified block:
 
   ```
-  surface unverified — 2 entries could not be reached; the claim cannot be certified
+  surface unverified — 5 entries could not be reached; the claim cannot be certified
     dist/index.js
       exported as "." — mirrors dist → src, no covered module at src/index
     build/legacy/index.js
       exported as "./legacy" — under no build mirror root, not a covered module
     dist/x.js
       exported as "./x" — mirrors dist → src, 2 covered modules at src/x (src/x.ts, src/x.js), the mirror cannot pick one
+    dist/themes.d.ts, dist/themes.js
+      exported as "./themes" — mirrors dist → src, no covered module at src/themes
+    dist/lib/thing.js, dist/types/thing.d.ts
+      exported as "./thing" — dist/lib/thing.js: under no build mirror root, not a covered module; dist/types/thing.d.ts: mirrors dist/types → src, no covered module at src/thing
 
   remedies: name the output root your exports map points at via config key "build" (default "dist", mirroring src/ one-to-one; a record maps several roots), widen config key "include" if the source is there but uncovered (or "exclude" a twin when two covered modules share a path — src/x.ts beside src/x.js), or disclose the entry in package.json — "deblob": { "blob": ["./legacy"] } — which retracts the claim for that subpath: consumers see it unlabeled.
   ```
@@ -369,6 +400,14 @@ above is a check on _facts_, not a nanny on config).
   row the in-set matrix allows, and a model importing a crossed `ports` entry
   fires rule 1 — `pureLibs` cannot silence it (the crossed cell never reaches
   the trichotomy).
+- One claim per subpath (0.0.4 trial pins): two conditions reaching one module
+  yield one finding wearing the first target; the hybrid build — declarations
+  under a mirror beside a bundled entry under none — is verified through the
+  declarations, no unverified entry, the finding names the `.d.ts`; a pattern
+  key with one expanding target and one not is verified through the expanding
+  one; every target missing is the unverified case, and the entry lists them
+  all. Rendering: one block per subpath, targets on one line, one reason when
+  they all missed the same way, target-prefixed reasons otherwise.
 - Unverified: a target under no mirror root, a mapped path no module covers, a
   source target outside `include` — each reported with its reason; violations
   still print; exit 2; both blocks print when resolution also failed. The golden

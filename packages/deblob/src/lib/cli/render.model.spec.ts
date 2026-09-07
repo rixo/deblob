@@ -812,17 +812,25 @@ describe("renderUnverified", () => {
       [
         {
           subpath: ".",
-          target: "dist/index.js",
-          mapped: "src/index",
-          mirror: { root: "dist", source: "src" },
-          candidates: [],
+          targets: [
+            {
+              target: "dist/index.js",
+              mapped: "src/index",
+              mirror: { root: "dist", source: "src" },
+              candidates: [],
+            },
+          ],
         },
         {
           subpath: "./legacy",
-          target: "build/legacy/index.js",
-          mapped: "build/legacy/index",
-          mirror: null,
-          candidates: [],
+          targets: [
+            {
+              target: "build/legacy/index.js",
+              mapped: "build/legacy/index",
+              mirror: null,
+              candidates: [],
+            },
+          ],
         },
       ],
       NO_COLORS,
@@ -852,10 +860,14 @@ describe("renderUnverified", () => {
       [
         {
           subpath: "./x",
-          target: "dist/x.js",
-          mapped: "src/x",
-          mirror: { root: "dist", source: "src" },
-          candidates: ["src/x.ts", "src/x.js"],
+          targets: [
+            {
+              target: "dist/x.js",
+              mapped: "src/x",
+              mirror: { root: "dist", source: "src" },
+              candidates: ["src/x.ts", "src/x.js"],
+            },
+          ],
         },
       ],
       NO_COLORS,
@@ -872,10 +884,14 @@ describe("renderUnverified", () => {
       [
         {
           subpath: "./x",
-          target: "dist/x.js",
-          mapped: "src/x",
-          mirror: { root: "dist", source: "src" },
-          candidates: [],
+          targets: [
+            {
+              target: "dist/x.js",
+              mapped: "src/x",
+              mirror: { root: "dist", source: "src" },
+              candidates: [],
+            },
+          ],
         },
       ],
       NO_COLORS,
@@ -885,6 +901,71 @@ describe("renderUnverified", () => {
     expect(output).toContain("  ../dist/x.js\n")
     expect(output.replace(/\n */g, " ")).toContain(
       "no covered module at ../src/x",
+    )
+  })
+
+  it("one block per subpath — its targets on one line, one reason when they all missed the same way", () => {
+    const output = renderUnverified(
+      [
+        {
+          subpath: "./made-up",
+          targets: [
+            {
+              target: "dist/made-up.d.ts",
+              mapped: "src/made-up",
+              mirror: { root: "dist", source: "src" },
+              candidates: [],
+            },
+            {
+              target: "dist/made-up.js",
+              mapped: "src/made-up",
+              mirror: { root: "dist", source: "src" },
+              candidates: [],
+            },
+          ],
+        },
+      ],
+      NO_COLORS,
+      "",
+    )
+    expect(output).toContain("1 entry could not be reached")
+    expect(output).toContain("  dist/made-up.d.ts, dist/made-up.js\n")
+    expect(output.replace(/\n */g, " ")).toContain(
+      'exported as "./made-up" — mirrors dist → src, no covered module at src/made-up',
+    )
+    // the reason is said once — not once per target
+    expect(output.match(/no covered module/g)).toHaveLength(1)
+  })
+
+  it("targets that missed differently each carry their own reason, target-prefixed", () => {
+    const output = renderUnverified(
+      [
+        {
+          subpath: "./bundled-thing",
+          targets: [
+            {
+              target: "dist/lib/bundled-thing.js",
+              mapped: "dist/lib/bundled-thing",
+              mirror: null,
+              candidates: [],
+            },
+            {
+              target: "dist/types/bundled-thing.d.ts",
+              mapped: "src/bundled-thing",
+              mirror: { root: "dist/types", source: "src" },
+              candidates: [],
+            },
+          ],
+        },
+      ],
+      NO_COLORS,
+      "../",
+    )
+    expect(output).toContain(
+      "  ../dist/lib/bundled-thing.js, ../dist/types/bundled-thing.d.ts\n",
+    )
+    expect(output.replace(/\n */g, " ")).toContain(
+      'exported as "./bundled-thing" — ../dist/lib/bundled-thing.js: under no build mirror root, not a covered module; ../dist/types/bundled-thing.d.ts: mirrors dist/types → src, no covered module at ../src/bundled-thing',
     )
   })
 })
