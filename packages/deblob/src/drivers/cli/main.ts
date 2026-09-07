@@ -9,7 +9,7 @@
  */
 
 import { readFileSync } from "node:fs"
-import { dirname, relative, resolve, sep } from "node:path"
+import { dirname, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { checkBarrels } from "../../lib/check/barrels.model.ts"
@@ -17,6 +17,11 @@ import { checkDag } from "../../lib/check/dag.model.ts"
 import { checkLayers } from "../../lib/check/layers.model.ts"
 import { checkPorts } from "../../lib/check/ports.model.ts"
 import { checkPrivate } from "../../lib/check/private.model.ts"
+import { checkSurface } from "../../lib/check/surface.model.ts"
+import type {
+  PackageSurface,
+  SurfaceReport,
+} from "../../lib/check/surface.model.ts"
 import type { Violation } from "../../lib/check/violation.model.ts"
 import type { CheckName, ParsedCli } from "../../lib/cli/cli.model.ts"
 import {
@@ -34,6 +39,7 @@ import {
   renderCheckResults,
   renderExplain,
   renderUnresolved,
+  renderUnverified,
   sizeStatsOf,
 } from "../../lib/cli/render.model.ts"
 import type { Colors } from "../../lib/cli/render.model.ts"
@@ -44,6 +50,7 @@ import {
   discoverConfig,
   explicitConfigPath,
   importConfigDefault,
+  readPackageSurface,
   tsconfigPathOf,
 } from "../../lib/config/adapters/loader.adapter.ts"
 import {
@@ -52,8 +59,13 @@ import {
 } from "../../lib/config/adapters/scan.adapter.ts"
 import { readExplainEntries } from "../../lib/explain/adapters/content.adapter.ts"
 import { createOxcEngine } from "../../lib/extraction/adapters/oxc-extraction.adapter.ts"
-import { STOCK_FLAVORS } from "../../lib/extraction/adapters/ts-suffixes-factories-flavor.adapter.ts"
+import { createPackageMetaReader } from "../../lib/extraction/adapters/package-meta.adapter.ts"
+import {
+  classifyStockEntry,
+  STOCK_FLAVORS,
+} from "../../lib/extraction/adapters/ts-suffixes-factories-flavor.adapter.ts"
 import { createExtraction } from "../../lib/extraction/extraction.service.ts"
+import { specifierMatcher } from "../../lib/extraction/graph.model.ts"
 import type {
   ImportGraph,
   ModuleNode,
@@ -92,7 +104,7 @@ const colorsFor = (io: MainIo, noColor: boolean): Colors => {
 }
 
 const DETECTORS: Record<
-  CheckName,
+  Exclude<CheckName, "surface">,
   (graph: ImportGraph, config: ResolvedConfig) => Violation[]
 > = {
   dag: (graph) => checkDag(graph),
@@ -105,6 +117,22 @@ const DETECTORS: Record<
   barrels: (graph) => checkBarrels(graph),
   ports: (graph) => checkPorts(graph),
 }
+
+/**
+ * `surface` stands apart: it reports unverified entries next to violations —
+ * claims the run cannot certify, the exit-2 lane. No field, no claim, no check
+ * — a null surface yields nothing (additive).
+ */
+const runSurface = (
+  graph: ImportGraph,
+  config: ResolvedConfig,
+  surface: PackageSurface | null,
+): SurfaceReport =>
+  checkSurface(graph, surface, {
+    classifyEntry: classifyStockEntry,
+    mirror: config.mirror,
+    disclosed: specifierMatcher(surface?.blob ?? []),
+  })
 
 /**
  * The load → resolve sequence — assembly's own job (arch §Assembly: read
@@ -205,30 +233,43 @@ const runCheck = async (
 ): Promise<number> => {
   let config: ResolvedConfig
   let tsconfigPath: string | null
+  let surface: PackageSurface | null
   try {
     config = await loadFor(io, parsed)
     tsconfigPath = tsconfigPathOf(config)
+    surface = readPackageSurface(config.root)
   } catch (error) {
     io.stderr.write(`${asConfigError(error).message}\n`)
     return 2
   }
 
   const files = await scanCoverage(config)
-  const { extractGraph } = createExtraction({
-    engine: createOxcEngine({
-      ...(tsconfigPath === null ? {} : { tsconfigPath }),
-      alias: config.alias,
-    }),
-    flavor: config.flavor,
+  const engine = createOxcEngine({
+    ...(tsconfigPath === null ? {} : { tsconfigPath }),
+    alias: config.alias,
+  })
+  const { extractGraph } = createExtraction({ engine, flavor: config.flavor })
+  const packageMeta = createPackageMetaReader({
+    resolve: engine.resolve,
+    anchor: join(config.root, "package.json"),
+    classifyEntry: classifyStockEntry,
   })
   const graph = extractGraph({
     root: config.root,
     files,
     isAssembly: config.isAssembly,
     external: config.external,
+    // the consumer patch wins over producer fields — reviewer of record
+    externalLayerOf: (specifier) =>
+      config.externalLayers(specifier) ?? packageMeta.layerOf(specifier),
   })
+  const surfaceReport = action.checks.includes("surface")
+    ? runSurface(graph, config, surface)
+    : { violations: [], unverified: [] }
   const violations = action.checks.flatMap((check) =>
-    DETECTORS[check](graph, config),
+    check === "surface"
+      ? surfaceReport.violations
+      : DETECTORS[check](graph, config),
   )
   const sizes = statSizes(config.root, files)
   const stats = {
@@ -270,15 +311,16 @@ const runCheck = async (
       explanations === "" ? listing : `${listing}\n${explanations}`,
     )
   }
+  // the uncertifiable lanes — both print when both apply, exit 2
+  const prefix = pathPrefixOf(io.cwd, config.root)
   const fatalUnresolved = graph.unresolved.filter((entry) => entry.literal)
   if (fatalUnresolved.length > 0) {
-    io.stderr.write(
-      renderUnresolved(
-        fatalUnresolved,
-        colors,
-        pathPrefixOf(io.cwd, config.root),
-      ),
-    )
+    io.stderr.write(renderUnresolved(fatalUnresolved, colors, prefix))
+  }
+  if (surfaceReport.unverified.length > 0) {
+    io.stderr.write(renderUnverified(surfaceReport.unverified, colors, prefix))
+  }
+  if (fatalUnresolved.length > 0 || surfaceReport.unverified.length > 0) {
     return 2
   }
   return violations.length > 0 ? 1 : 0

@@ -1,0 +1,9 @@
+{
+  "name": "@fixture/unverified",
+  "deblob": {},
+  "exports": {
+    ".": "./build/index.js",
+    "./package.json": "./package.json",
+    "./theme.css": "./theme.css"
+  }
+}

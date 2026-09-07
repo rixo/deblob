@@ -1,0 +1,9 @@
+{
+  "name": "@fixture/declaring",
+  "deblob": {},
+  "exports": {
+    ".": "./src/index.ts",
+    "./totals.model": "./src/stripe.adapter.ts",
+    "./stripe.adapter": "./src/stripe.adapter.ts"
+  }
+}

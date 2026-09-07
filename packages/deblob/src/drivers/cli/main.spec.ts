@@ -18,6 +18,13 @@ const brokenConfigDir = here("../../lib/config/__fixtures__/throws")
 const aliasedDir = here("__fixtures__/aliased")
 const unresolvableDir = here("__fixtures__/unresolvable")
 const externalDir = here("__fixtures__/external")
+const awareDir = here("__fixtures__/aware")
+const legacyDir = here("__fixtures__/aware/vendor/legacy")
+const declaringDir = here("__fixtures__/declaring")
+const fieldNewerDir = here("__fixtures__/field-newer")
+const builtDir = here("__fixtures__/built")
+const patternedDir = here("__fixtures__/patterned")
+const unverifiedDir = here("__fixtures__/unverified")
 
 type RunResult = { code: number; out: string; err: string }
 
@@ -187,6 +194,125 @@ describe("deblob check", () => {
     // the pure-declared namespace stays silent; the other fires as concrete
     expect(out).toContain("imports $made-up/config (declared)")
     expect(out).not.toContain("$made-up:tokens.scss")
+  })
+
+  it("aware sibling: the crossed service identity seals to assembly, the crossed model is pure — trust is the dependency model", async () => {
+    const { code, out, err } = await run(["check"], { cwd: awareDir })
+    expect(err).toBe("")
+    expect(code).toBe(1)
+    // the service entry fires from the consumer's service…
+    expect(out).toContain("src/consumer.service.ts")
+    expect(out).toContain("imports @fixture/billing/checkout.service")
+    expect(out).toContain("assembly-only; import type is fine (rules 6, 8)")
+    // …not from assembly; the model entry is green with no pureLibs line, and
+    // the disclosed adapter of the other sibling is unlabeled — no rule-7 seal
+    expect(out).not.toContain("totals.model")
+    expect(out).not.toContain("gateway.adapter")
+    expect(out).toContain("1 violation (1 layers)")
+  })
+
+  it("externalLayers: blob revokes a sibling's model claim — back to unlabeled, rule 4 fires", async () => {
+    const { code, out } = await run(
+      ["check", "layers", "-c", "revoked.config.ts"],
+      { cwd: awareDir },
+    )
+    expect(code).toBe(1)
+    expect(out.replace(/\n +/g, " ")).toContain(
+      "imports @fixture/billing/totals.model — unclassified third-party in a pure layer",
+    )
+    expect(out).toContain("2 violations (2 layers)")
+  })
+
+  it("disclosing package at home: the laundering root listed in blob goes green — confessed, not hidden", async () => {
+    const { code, out, err } = await run(["check"], { cwd: legacyDir })
+    expect(err).toBe("")
+    expect(code).toBe(0)
+    expect(out).not.toContain("surface")
+  })
+
+  it("externalLayers patch wins over the producer field — reviewer of record", async () => {
+    const { code, out } = await run(
+      ["check", "layers", "-c", "patched.config.ts"],
+      { cwd: awareDir },
+    )
+    expect(code).toBe(1)
+    // assembly-crossed, not service-crossed: the patch reclassified the entry
+    expect(out).toContain(
+      "imports @fixture/billing/checkout.service — service may not",
+    )
+    expect(out).toContain("import assembly (rule 1)")
+  })
+
+  it("declaring package: surface verifies the exports claims at the producer's own gate", async () => {
+    const { code, out, err } = await run(["check"], { cwd: declaringDir })
+    expect(err).toBe("")
+    expect(code).toBe(1)
+    // the lying subpath: claims model, fronts the adapter file
+    expect(out).toContain('is exported as "./totals.model"')
+    expect(out).toContain("the entry claims model,")
+    expect(out).toContain("the file is adapters")
+    // the laundering shape: designated-assembly entry re-exporting the adapter
+    expect(out).toContain(
+      'is exported as "." — an unlabeled entry fronting adapters',
+    )
+    // the truthful subpath stays silent
+    expect(out).toContain("2 violations (2 surface)")
+  })
+
+  it("a field key this version cannot honor: exit 2, loud at home, never silent", async () => {
+    const { code, out, err } = await run(["check"], { cwd: fieldNewerDir })
+    expect(code).toBe(2)
+    expect(out).toBe("")
+    expect(err).toContain('"flavor"')
+    expect(err).toContain('honors "blob" only')
+  })
+
+  it("built package: the default mirror reaches source through dist — the laundering root fires citing the source, wearing its built name", async () => {
+    const { code, out, err } = await run(["check"], { cwd: builtDir })
+    expect(err).toBe("")
+    expect(code).toBe(1)
+    expect(out).toContain("src/index.ts")
+    expect(out.replace(/\n +/g, " ")).toContain(
+      'is exported as "." (as dist/index.js) — an unlabeled entry fronting service (src/checkout.service.ts)',
+    )
+    // the suffixed subpaths reach their sources and match; package.json is
+    // not a module target
+    expect(out).toContain("1 violation (1 surface)")
+  })
+
+  it("pattern export: the star expands over src/ through the mirror — the unlabeled concrete subpath fires, the suffixed ones match", async () => {
+    const { code, out, err } = await run(["check"], { cwd: patternedDir })
+    expect(err).toBe("")
+    expect(code).toBe(1)
+    expect(out).toContain("src/api.ts")
+    expect(out.replace(/\n +/g, " ")).toContain(
+      'is exported as "./api" (as dist/api.js) — an unlabeled entry fronting service (src/checkout.service.ts)',
+    )
+    expect(out).toContain("1 violation (1 surface)")
+  })
+
+  it("unverified surface: an entry under no mirror root cannot be certified — stderr block, exit 2, until mapped", async () => {
+    const { code, out, err } = await run(["check"], { cwd: unverifiedDir })
+    expect(code).toBe(2)
+    expect(out).not.toContain("surface")
+    expect(err).toContain(
+      "surface unverified — 1 entry could not be reached; the claim cannot be certified",
+    )
+    expect(err).toContain("build/index.js")
+    expect(err.replace(/\n */g, " ")).toContain(
+      'exported as "." — under no build mirror root, not a covered module',
+    )
+    expect(err.replace(/\n */g, " ")).toContain('config key "build"')
+    expect(err.replace(/\n */g, " ")).toContain('"deblob": { "blob": ["."] }')
+    // the non-module targets never appear
+    expect(err).not.toContain("theme.css")
+    expect(err).not.toContain("package.json\n")
+
+    const mapped = await run(["check", "-c", "mirrored.config.ts"], {
+      cwd: unverifiedDir,
+    })
+    expect(mapped.err).toBe("")
+    expect(mapped.code).toBe(0)
   })
 
   it("broken config: teaching error on stderr, exit 2", async () => {

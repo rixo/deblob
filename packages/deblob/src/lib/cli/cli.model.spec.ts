@@ -167,6 +167,7 @@ describe("CHECK_RULES", () => {
       private: [12],
       barrels: [2],
       ports: [10],
+      surface: [2, 3],
     })
     for (const rules of Object.values(CHECK_RULES)) {
       for (const rule of rules) {

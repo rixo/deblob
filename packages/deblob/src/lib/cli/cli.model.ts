@@ -9,13 +9,14 @@ import { parseArgs } from "node:util"
 
 import { RULE_COUNT } from "../explain/rule-content.model.ts"
 
-/** V0 checks, help order = run order. */
+/** Checks, help order = run order. */
 export const KNOWN_CHECKS = [
   "dag",
   "layers",
   "private",
   "barrels",
   "ports",
+  "surface",
 ] as const
 
 export type CheckName = (typeof KNOWN_CHECKS)[number]
@@ -31,6 +32,7 @@ export const CHECK_RULES: Readonly<Record<CheckName, readonly number[]>> = {
   private: [12],
   barrels: [2],
   ports: [10],
+  surface: [2, 3],
 }
 
 export type CliAction =

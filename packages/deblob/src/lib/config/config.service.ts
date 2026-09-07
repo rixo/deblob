@@ -14,6 +14,8 @@ import { resolve } from "node:path"
 
 import picomatch from "picomatch"
 
+import type { Layer } from "../extraction/graph.model.ts"
+import { LAYERS, specifierPattern } from "../extraction/graph.model.ts"
 import type { FlavorResolver } from "../extraction/ports/flavor.port.ts"
 import { STOCK_FLAVOR_NAME } from "../extraction/stock-flavor.model.ts"
 import {
@@ -85,6 +87,26 @@ export type DeblobConfig = {
    * Default: `[]`.
    */
   external?: readonly string[]
+  /**
+   * Consumer patch for cross-package layer identity: specifier pattern → layer,
+   * same two-wildcard patterns as `external`, first declaration-order match
+   * wins. Wins over a producer's `deblob` field (the consumer is the reviewer
+   * of record for their own run) — `blob` is the revoke: the target is back to
+   * unlabeled and the `pureLibs` trichotomy decides. Default: `{}`.
+   */
+  externalLayers?: Readonly<Record<string, Layer>>
+  /**
+   * The build mirror feeding `check surface`: which output directory mirrors
+   * `src/` one-to-one, so an exports target under it (`dist/index.js`) reaches
+   * its source module (`src/index.ts`) — extensions stripped, exact match only.
+   * A string names the output root (`"dist"`, `"build"`); the full form maps
+   * several roots to their source roots (`{ mirror: { "dist/esm": "src",
+   * "dist/cjs": "src" } }`), longest root winning. `false` declares no mirror.
+   * An exports target the mirror cannot reach is an unverified claim: exit 2
+   * until mapped or disclosed in the manifest's `deblob.blob`. Default:
+   * `"dist"`.
+   */
+  build?: string | false | { mirror: Readonly<Record<string, string>> }
 }
 
 /** Identity — the typing channel for `deblob.config.ts` authors. */
@@ -119,6 +141,16 @@ export type ResolvedConfig = {
    * specifier, `null` for none.
    */
   external: (specifier: string) => string | null
+  /**
+   * Compiled `externalLayers` matcher: the layer of the first declared pattern
+   * matching the raw specifier, `null` for none.
+   */
+  externalLayers: (specifier: string) => Layer | null
+  /**
+   * Normalized build mirror: output root → source root, both root-relative
+   * without trailing slash; `{}` = no mirror.
+   */
+  mirror: Readonly<Record<string, string>>
 }
 
 /** Stock flavors, name → factory — injected by assembly (flavors are adapters). */
@@ -134,7 +166,11 @@ const KNOWN_KEYS = [
   "tsconfig",
   "alias",
   "external",
+  "externalLayers",
+  "build",
 ] as const
+
+const DEFAULT_MIRROR: Readonly<Record<string, string>> = { dist: "src" }
 
 const isStringArray = (value: unknown): value is readonly string[] =>
   Array.isArray(value) && value.every((entry) => typeof entry === "string")
@@ -153,25 +189,6 @@ const stringArrayKey = (
   return value
 }
 
-/**
- * Specifier pattern → anchored regex. Not picomatch: its `**` only crosses `/`
- * as a whole path segment, so `$theme:**` silently degrades to `$theme:*` and
- * misses `$theme:a/b.scss` (field-measured). A specifier is one string, not a
- * path — here `**` is any run of characters and `*` any run without `/`.
- */
-const specifierPattern = (pattern: string): RegExp =>
-  new RegExp(
-    `^${pattern
-      .split("**")
-      .map((piece) =>
-        piece
-          .split("*")
-          .map((literal) => literal.replace(/[.+?^${}()|[\]\\/]/g, "\\$&"))
-          .join("[^/]*"),
-      )
-      .join(".*")}$`,
-  )
-
 /** First declared pattern matching the specifier, declaration order. */
 const externalMatcherOf = (
   patterns: readonly string[],
@@ -182,6 +199,78 @@ const externalMatcherOf = (
   })
   return (specifier) =>
     compiled.find(([, matches]) => matches(specifier))?.[0] ?? null
+}
+
+/** `externalLayers` validated and compiled — declaration order, first wins. */
+const externalLayersOf = (
+  value: unknown,
+): ((specifier: string) => Layer | null) => {
+  if (value === undefined) return () => null
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new ConfigError(
+      `config key "externalLayers" must be an object mapping specifier pattern → layer name`,
+    )
+  }
+  const compiled = Object.entries(value as Record<string, unknown>).map(
+    ([pattern, layer]) => {
+      if (!(LAYERS as readonly unknown[]).includes(layer)) {
+        throw new ConfigError(
+          `config key "externalLayers": "${pattern}" maps to ${JSON.stringify(layer)} — layers: ${LAYERS.join(", ")}`,
+        )
+      }
+      const regex = specifierPattern(pattern)
+      return [layer as Layer, (s: string) => regex.test(s)] as const
+    },
+  )
+  return (specifier) =>
+    compiled.find(([, matches]) => matches(specifier))?.[0] ?? null
+}
+
+/** A root-relative directory: no scheme, no leading `/` or `.`, no `..` hop. */
+const isRootRelativeDir = (value: unknown): value is string =>
+  typeof value === "string" &&
+  value !== "" &&
+  !value.startsWith("/") &&
+  !value.startsWith(".") &&
+  value.split("/").every((segment) => segment !== "" && segment !== "..")
+
+const mirrorEntry = (root: unknown, source: unknown): [string, string] => {
+  for (const dir of [root, source]) {
+    if (!isRootRelativeDir(dir)) {
+      throw new ConfigError(
+        `config key "build": mirror roots are root-relative directories — ${JSON.stringify(dir)} is not`,
+      )
+    }
+  }
+  return [root as string, source as string]
+}
+
+/** `build` validated and normalized to the mirror record. */
+const mirrorOf = (value: unknown): Readonly<Record<string, string>> => {
+  if (value === undefined) return DEFAULT_MIRROR
+  if (value === false) return {}
+  if (typeof value === "string") {
+    return Object.fromEntries([mirrorEntry(value, "src")])
+  }
+  const mirror =
+    typeof value === "object" && value !== null && !Array.isArray(value)
+      ? (value as { mirror?: unknown }).mirror
+      : undefined
+  if (
+    typeof mirror !== "object" ||
+    mirror === null ||
+    Array.isArray(mirror) ||
+    Object.keys(value as object).some((key) => key !== "mirror")
+  ) {
+    throw new ConfigError(
+      `config key "build" must be an output directory ("dist"), false, or { mirror: { "<output dir>": "<source dir>" } } — got ${JSON.stringify(value)}`,
+    )
+  }
+  return Object.fromEntries(
+    Object.entries(mirror as Record<string, unknown>).map(([root, source]) =>
+      mirrorEntry(root, source),
+    ),
+  )
 }
 
 const tsconfigOf = (
@@ -317,5 +406,7 @@ export const resolveConfig = (
     tsconfig: tsconfigOf(record["tsconfig"], context.root),
     alias: aliasOf(record["alias"], context.root),
     external: externalMatcherOf(stringArrayKey(record, "external") ?? []),
+    externalLayers: externalLayersOf(record["externalLayers"]),
+    mirror: mirrorOf(record["build"]),
   }
 }

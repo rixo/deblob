@@ -74,6 +74,25 @@ const nearestRootOf = (
 }
 
 /**
+ * The stock naming rule over an exports subpath or specifier tail — the
+ * cross-package half of the flavor (`classifyEntry`): extensionless suffix
+ * matching on the tail segment. `./checkout.service`, `checkout.service.js`,
+ * `nested/checkout.service.d.ts` all say service; an unsuffixed tail (the bare
+ * root included) claims nothing. Exported by name so assembly can wire the
+ * boundary lookup without holding a resolver instance.
+ */
+export const classifyStockEntry = (subpath: string): FlavorLayer | null => {
+  const tail = subpath.slice(subpath.lastIndexOf("/") + 1)
+  const extensionless = tail
+    .replace(/\.d\.(?:ts|mts|cts)$/, "")
+    .replace(/\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/, "")
+  const dot = extensionless.lastIndexOf(".")
+  if (dot === -1) return null
+  // the record keys are the suffix set — one lookup, no second list to drift
+  return LAYER_BY_SUFFIX[extensionless.slice(dot + 1)] ?? null
+}
+
+/**
  * Stock flavor registry — name → factory, injected into `resolveConfig` by
  * assembly (a flavor is an adapter; neither the model nor another adapter may
  * import one). One entry today; a second stock flavor gets its own adapter
@@ -84,6 +103,7 @@ export const STOCK_FLAVORS: Readonly<Record<string, () => FlavorResolver>> = {
 }
 
 export const createTsSuffixesFactoriesFlavor = (): FlavorResolver => ({
+  classifyEntry: classifyStockEntry,
   classify: (files) => {
     const roots = new Set<string>()
     for (const file of files) {

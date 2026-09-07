@@ -5,11 +5,13 @@
  * binary.
  */
 
+import type { UnverifiedEntry } from "../check/surface.model.ts"
 import type { EdgeTarget, UnresolvedImport } from "../extraction/graph.model.ts"
 import type {
   DagViolation,
   LayersViolation,
   PortsViolation,
+  SurfaceViolation,
   Violation,
 } from "../check/violation.model.ts"
 import type { ExplainEntry } from "../explain/rule-content.model.ts"
@@ -46,8 +48,8 @@ export const ANSI_COLORS: Colors = {
 const formatCount = (count: number): string =>
   count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 
-const plural = (count: number, noun: string): string =>
-  `${formatCount(count)} ${noun}${count === 1 ? "" : "s"}`
+const plural = (count: number, noun: string, many = `${noun}s`): string =>
+  `${formatCount(count)} ${count === 1 ? noun : many}`
 
 /**
  * A rule citation is one token — `(rule 5)` split across a wrap orphans the
@@ -152,6 +154,23 @@ const portsMessage = (violation: PortsViolation, prefix: string): string => {
     : `imports ${target} at runtime — a types-only file supplies no runtime binding; add the type keyword`
 }
 
+const surfaceMessage = (
+  violation: SurfaceViolation,
+  prefix: string,
+): string => {
+  // reached through the build mirror: name the built target the source wears
+  const as =
+    violation.exported === violation.file
+      ? ""
+      : ` (as ${prefix}${violation.exported})`
+  const lead = `is exported as "${violation.subpath}"${as}`
+  return violation.shape === "claim-mismatch"
+    ? `${lead} — the entry claims ${violation.claimed}, the file is ${violation.actual}; a declared surface must match the facts`
+    : violation.fronts === violation.file
+      ? `${lead} — an unlabeled entry over ${violation.frontLayer}; the layer must be visible in the surface`
+      : `${lead} — an unlabeled entry fronting ${violation.frontLayer} (${prefix}${violation.fronts}); the layer must be visible in the surface`
+}
+
 const messageOf = (violation: FileViolation, prefix: string): string => {
   switch (violation.check) {
     case "layers":
@@ -164,6 +183,8 @@ const messageOf = (violation: FileViolation, prefix: string): string => {
         : `imports ${targetLabel(violation.target, prefix)} — import the layered file directly`
     case "ports":
       return portsMessage(violation, prefix)
+    case "surface":
+      return surfaceMessage(violation, prefix)
   }
 }
 
@@ -419,6 +440,51 @@ export const renderUnresolved = (
   return `${lines.join("\n")}\n`
 }
 
+/**
+ * Exports entries the surface check could not reach — claims the run cannot
+ * certify. Not violations (no rule was broken): the twin of the resolution
+ * block, stderr, exit 2, until each entry is mapped through the build mirror or
+ * disclosed in the manifest's `blob`.
+ */
+export const renderUnverified = (
+  unverified: readonly UnverifiedEntry[],
+  colors: Colors,
+  pathPrefix: string,
+): string => {
+  const lines: string[] = [
+    colors.strong(
+      `surface unverified — ${plural(unverified.length, "entry", "entries")} could not be reached; the claim cannot be certified`,
+    ),
+  ]
+  for (const entry of unverified) {
+    const where =
+      entry.mirror === null
+        ? "under no build mirror root"
+        : `mirrors ${entry.mirror.root} → ${entry.mirror.source}`
+    const found =
+      entry.candidates.length === 0
+        ? entry.mirror === null
+          ? "not a covered module"
+          : `no covered module at ${pathPrefix}${entry.mapped}`
+        : `${plural(entry.candidates.length, "covered module")} at ${pathPrefix}${entry.mapped} (${entry.candidates.map((candidate) => pathPrefix + candidate).join(", ")}), the mirror cannot pick one`
+    const reason = `${where}, ${found}`
+    lines.push(`  ${pathPrefix}${entry.target}`)
+    lines.push(
+      ...wrap("    ", `exported as "${entry.subpath}" — ${reason}`, "    "),
+    )
+  }
+  // called with at least one entry — assembly's contract; the first one is
+  // the remedy's worked example
+  const example = (unverified[0] as UnverifiedEntry).subpath
+  lines.push(
+    "",
+    ...wrapPlain(
+      `remedies: name the output root your exports map points at via config key "build" (default "dist", mirroring src/ one-to-one; a record maps several roots), widen config key "include" if the source is there but uncovered (or "exclude" a twin when two covered modules share a path — src/x.ts beside src/x.js), or disclose the entry in package.json — "deblob": { "blob": ["${example}"] } — which retracts the claim for that subpath: consumers see it unlabeled.`,
+    ),
+  )
+  return `${lines.join("\n")}\n`
+}
+
 /** `deblob.config.ts (flavor: ts-suffixes-factories)` / `no config (defaults)` */
 export const provenanceOf = (
   configPath: string | null,
@@ -563,6 +629,8 @@ Checks
   barrels    the layer is visible in the import path — no index.ts
              indirection (rule 2)
   ports      port files are types only, no runtime exports (rule 10)
+  surface    the exports map matches the layers it fronts — only for
+             packages declaring "deblob": {} in package.json (rules 2, 3)
 
 Options
   -c, --config <path>    config file (default: nearest deblob.config.ts)

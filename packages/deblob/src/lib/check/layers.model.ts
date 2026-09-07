@@ -2,8 +2,10 @@
  * `check layers` — the dependency matrix by layer. Rule 8 applies per cell, not
  * as a kind gate: a type-only edge is exempt iff its target owns a contract
  * shape (composition units in-set, builtins/packages external); blob and
- * assembly targets bind every kind. Pure: classified graph in, violation set
- * out — no IO, no formatting, no ordering.
+ * assembly targets bind every kind. An external leaf carrying a layer (a
+ * sibling package's declared subpath) enters the same matrix as a target of
+ * that layer; only an unlabeled external falls to the purity trichotomy. Pure:
+ * classified graph in, violation set out — no IO, no formatting, no ordering.
  */
 
 import type {
@@ -166,6 +168,25 @@ export const checkLayers = (
         // the rule-8 hint: "import type is fine" — only where that is true
         const cited = cellExempt ? [...rules, 8] : rules
         violations.push(matrixCell(importer, edge, target.layer, cited))
+      }
+      continue
+    }
+
+    // matrix crossing — an external leaf carrying a layer routes through the
+    // in-set cell for that target layer, every importer row (blob stays bound
+    // by the composition seals only, as in-set). A legal cell is the end of
+    // it: a crossed model/ports is pure for the importer — trust is the
+    // dependency model, the provider's gate verified the claim — so the
+    // pureLibs trichotomy is never consulted. A blob or absent claim falls
+    // through to today's trichotomy.
+    const crossed = edge.to.layer
+    if (crossed !== null && crossed !== "blob") {
+      const cellExempt = typeOnlyExempt && TYPE_EXEMPT_TARGETS.has(crossed)
+      if (typeEdge && cellExempt) continue
+      const rules = moduleCellRules(importerLayer, crossed)
+      if (rules) {
+        const cited = cellExempt ? [...rules, 8] : rules
+        violations.push(matrixCell(importer, edge, crossed, cited))
       }
       continue
     }

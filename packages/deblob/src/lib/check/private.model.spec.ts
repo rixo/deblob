@@ -57,6 +57,7 @@ const lib = (specifier: string): EdgeTarget => ({
   specifier,
   package: specifier,
   declared: false,
+  layer: null,
 })
 
 describe("checkPrivate", () => {

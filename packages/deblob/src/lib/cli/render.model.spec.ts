@@ -18,6 +18,7 @@ import {
   renderCheckResults,
   renderExplain,
   renderUnresolved,
+  renderUnverified,
   sizeStatsOf,
 } from "./render.model.ts"
 
@@ -35,6 +36,7 @@ const layersViolation = (
     specifier: "node:fs",
     package: "node:fs",
     declared: false,
+    layer: null,
   },
   shape: "matrix-cell",
   targetClass: "concrete",
@@ -228,8 +230,14 @@ describe("renderCheckResults", () => {
 
   describe("messages", () => {
     // collapse the hanging-indent wrap so substrings assert on whole phrases
-    const message = (violation: Parameters<typeof renderCheckResults>[0][0]) =>
-      renderCheckResults([violation], STATS, NO_COLORS).replace(/\n {13}/g, " ")
+    const message = (
+      violation: Parameters<typeof renderCheckResults>[0][0],
+      prefix = "",
+    ) =>
+      renderCheckResults([violation], STATS, NO_COLORS, prefix).replace(
+        /\n {13}/g,
+        " ",
+      )
 
     it("seal violations carry the import-type hint when rule 8 is cited", () => {
       const output = message(
@@ -335,6 +343,7 @@ describe("renderCheckResults", () => {
             specifier: "some-made-up-lib",
             package: "some-made-up-lib",
             declared: false,
+            layer: null,
           },
         } as Partial<LayersViolation>),
       )
@@ -351,10 +360,80 @@ describe("renderCheckResults", () => {
             specifier: "$made-up:tokens.scss",
             package: "$made-up:*",
             declared: true,
+            layer: null,
           },
         }),
       )
       expect(output).toContain("imports $made-up:tokens.scss (declared)")
+    })
+
+    it("renders the surface claim-mismatch with subpath, claim, and fact", () => {
+      const output = message({
+        check: "surface",
+        ruleset: "arch",
+        rules: [3],
+        file: "src/stripe.adapter.ts",
+        serviceRoot: "src",
+        subpath: "./totals.model",
+        exported: "src/stripe.adapter.ts",
+        shape: "claim-mismatch",
+        claimed: "model",
+        actual: "adapters",
+      })
+      expect(output).toContain('is exported as "./totals.model" —')
+      expect(output).toContain("claims model")
+      expect(output).toContain("the file is adapters")
+      expect(output).toContain("(rule 3)")
+    })
+
+    it("names the built target a source wears when reached through the mirror", () => {
+      const output = message(
+        {
+          check: "surface",
+          ruleset: "arch",
+          rules: [2],
+          file: "src/index.ts",
+          serviceRoot: "src",
+          subpath: ".",
+          exported: "dist/index.js",
+          shape: "unlabeled-front",
+          fronts: "src/checkout.service.ts",
+          frontLayer: "service",
+        },
+        "../",
+      )
+      expect(output).toContain("  ../src/index.ts")
+      expect(output).toContain('is exported as "." (as ../dist/index.js) —')
+    })
+
+    it("renders the unlabeled front — direct, and through a fronted file", () => {
+      const direct = message({
+        check: "surface",
+        ruleset: "arch",
+        rules: [2],
+        file: "src/checkout.service.ts",
+        serviceRoot: "src",
+        subpath: "./checkout",
+        exported: "src/checkout.service.ts",
+        shape: "unlabeled-front",
+        fronts: "src/checkout.service.ts",
+        frontLayer: "service",
+      })
+      expect(direct).toContain("an unlabeled entry over service")
+      const chained = message({
+        check: "surface",
+        ruleset: "arch",
+        rules: [2],
+        file: "src/index.ts",
+        serviceRoot: "src",
+        subpath: ".",
+        exported: "src/index.ts",
+        shape: "unlabeled-front",
+        fronts: "src/checkout.service.ts",
+        frontLayer: "service",
+      })
+      expect(chained).toContain("fronting service (src/checkout.service.ts)")
+      expect(chained).toContain("(rule 2)")
     })
 
     it("barrel shapes: re-export at the index, direct-import remedy at the importer", () => {
@@ -637,7 +716,7 @@ describe("bare status", () => {
         "",
         "Commands",
         "  deblob check [what...]      run architecture checks",
-        "                              (dag · layers · private · barrels · ports)",
+        "                              (dag · layers · private · barrels · ports · surface)",
         "  deblob explain <topic...>   explain rules or checks",
         "  deblob --help               full help",
         "",
@@ -724,6 +803,89 @@ describe("renderUnresolved", () => {
       "../",
     )
     expect(output).toContain("  ../src/a.model.ts")
+  })
+})
+
+describe("renderUnverified", () => {
+  it("names each entry with its subpath and reason, teaches the three remedies", () => {
+    const output = renderUnverified(
+      [
+        {
+          subpath: ".",
+          target: "dist/index.js",
+          mapped: "src/index",
+          mirror: { root: "dist", source: "src" },
+          candidates: [],
+        },
+        {
+          subpath: "./legacy",
+          target: "build/legacy/index.js",
+          mapped: "build/legacy/index",
+          mirror: null,
+          candidates: [],
+        },
+      ],
+      NO_COLORS,
+      "",
+    )
+    expect(output).toContain(
+      "surface unverified — 2 entries could not be reached; the claim cannot be certified",
+    )
+    expect(output).toContain("  dist/index.js\n")
+    expect(output).toContain("  build/legacy/index.js\n")
+    // wrapped continuation lines rejoined — the sentences, whatever the width
+    const flat = output.replace(/\n */g, " ")
+    expect(flat).toContain(
+      'exported as "." — mirrors dist → src, no covered module at src/index',
+    )
+    expect(flat).toContain(
+      'exported as "./legacy" — under no build mirror root, not a covered module',
+    )
+    expect(flat).toContain('config key "build"')
+    expect(flat).toContain('config key "include"')
+    expect(flat).toContain('"deblob": { "blob": ["."] }')
+    expect(flat).toContain("consumers see it unlabeled")
+  })
+
+  it("an ambiguous stem names its candidates — the mirror cannot pick, and says so", () => {
+    const output = renderUnverified(
+      [
+        {
+          subpath: "./x",
+          target: "dist/x.js",
+          mapped: "src/x",
+          mirror: { root: "dist", source: "src" },
+          candidates: ["src/x.ts", "src/x.js"],
+        },
+      ],
+      NO_COLORS,
+      "../",
+    )
+    expect(output.replace(/\n */g, " ")).toContain(
+      "mirrors dist → src, 2 covered modules at ../src/x (../src/x.ts, ../src/x.js), the mirror cannot pick one",
+    )
+    expect(output.replace(/\n */g, " ")).toContain('"exclude" a twin')
+  })
+
+  it("singular headline, paths under the runner's prefix", () => {
+    const output = renderUnverified(
+      [
+        {
+          subpath: "./x",
+          target: "dist/x.js",
+          mapped: "src/x",
+          mirror: { root: "dist", source: "src" },
+          candidates: [],
+        },
+      ],
+      NO_COLORS,
+      "../",
+    )
+    expect(output).toContain("1 entry could not be reached")
+    expect(output).toContain("  ../dist/x.js\n")
+    expect(output.replace(/\n */g, " ")).toContain(
+      "no covered module at ../src/x",
+    )
   })
 })
 

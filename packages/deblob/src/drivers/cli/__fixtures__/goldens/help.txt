@@ -14,6 +14,8 @@ Checks
   barrels    the layer is visible in the import path — no index.ts
              indirection (rule 2)
   ports      port files are types only, no runtime exports (rule 10)
+  surface    the exports map matches the layers it fronts — only for
+             packages declaring "deblob": {} in package.json (rules 2, 3)
 
 Options
   -c, --config <path>    config file (default: nearest deblob.config.ts)

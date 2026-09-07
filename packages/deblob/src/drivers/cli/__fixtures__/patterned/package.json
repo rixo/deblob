@@ -1,0 +1,8 @@
+{
+  "name": "@fixture/patterned",
+  "deblob": {},
+  "exports": {
+    "./*": "./dist/*.js",
+    "./package.json": "./package.json"
+  }
+}

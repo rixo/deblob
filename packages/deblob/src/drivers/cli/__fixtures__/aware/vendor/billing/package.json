@@ -1,0 +1,8 @@
+{
+  "name": "@fixture/billing",
+  "deblob": {},
+  "exports": {
+    "./checkout.service": "./src/checkout.service.ts",
+    "./totals.model": "./src/totals.model.ts"
+  }
+}

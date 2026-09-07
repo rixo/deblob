@@ -1,0 +1,13 @@
+{
+  "name": "@fixture/built",
+  "deblob": {},
+  "exports": {
+    ".": "./dist/index.js",
+    "./checkout.service": {
+      "types": "./dist/checkout.service.d.ts",
+      "import": "./dist/checkout.service.js"
+    },
+    "./totals.model": "./dist/totals.model.js",
+    "./package.json": "./package.json"
+  }
+}

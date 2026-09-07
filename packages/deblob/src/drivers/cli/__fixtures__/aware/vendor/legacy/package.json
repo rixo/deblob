@@ -1,0 +1,8 @@
+{
+  "name": "@fixture/legacy",
+  "deblob": { "blob": [".", "./old.adapter"] },
+  "exports": {
+    ".": "./src/index.ts",
+    "./old.adapter": "./src/old.adapter.ts"
+  }
+}

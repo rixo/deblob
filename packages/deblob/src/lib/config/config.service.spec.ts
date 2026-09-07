@@ -215,6 +215,110 @@ describe("resolveConfig — external specifier patterns", () => {
   })
 })
 
+describe("resolveConfig — build", () => {
+  it("defaults to the dist → src mirror", () => {
+    expect(resolve({}).mirror).toEqual({ dist: "src" })
+  })
+
+  it("a string names the output root mirroring src/", () => {
+    expect(resolve({ build: "build" }).mirror).toEqual({ build: "src" })
+  })
+
+  it("false declares no mirror", () => {
+    expect(resolve({ build: false }).mirror).toEqual({})
+  })
+
+  it("the full form maps several roots to their source roots", () => {
+    expect(
+      resolve({
+        build: { mirror: { "dist/esm": "src", "dist/cjs": "src", out: "lib" } },
+      }).mirror,
+    ).toEqual({ "dist/esm": "src", "dist/cjs": "src", out: "lib" })
+  })
+
+  it("rejects any other shape, showing what it got", () => {
+    for (const raw of [
+      true,
+      42,
+      ["dist"],
+      {},
+      { mirror: "dist" },
+      { mirror: {}, SOME_MADE_UP_KEY: 1 },
+    ]) {
+      expect(() => resolve({ build: raw })).toThrowError(
+        new RegExp(
+          `config key "build" must be an output directory.*got ${JSON.stringify(raw).replace(/[[\]{}()*+?.\\^$|]/g, "\\$&")}`,
+          "s",
+        ),
+      )
+    }
+  })
+
+  it("rejects roots that are not root-relative directories", () => {
+    for (const [raw, offending] of [
+      ["", '""'],
+      ["/abs/dist", '"/abs/dist"'],
+      ["./dist", '"./dist"'],
+      ["../dist", '"../dist"'],
+      ["dist//x", '"dist//x"'],
+      [{ mirror: { dist: "../src" } }, '"../src"'],
+    ] as const) {
+      expect(() => resolve({ build: raw })).toThrowError(
+        new RegExp(
+          `mirror roots are root-relative directories — ${offending.replace(/[./]/g, "\\$&")} is not`,
+        ),
+      )
+    }
+  })
+})
+
+describe("resolveConfig — externalLayers", () => {
+  it("defaults to no claims", () => {
+    expect(resolve({}).externalLayers("@made-up/pkg/checkout.service")).toBe(
+      null,
+    )
+  })
+
+  it("maps specifier patterns to layers — same two wildcards as external", () => {
+    const { externalLayers } = resolve({
+      externalLayers: {
+        "@made-up/*/legacy": "blob",
+        "@made-up/**": "service",
+      },
+    })
+    // blob is the revoke: the target is back to unlabeled
+    expect(externalLayers("@made-up/billing/legacy")).toBe("blob")
+    expect(externalLayers("@made-up/billing/deep/entry")).toBe("service")
+    expect(externalLayers("@other/billing")).toBe(null)
+  })
+
+  it("first declaration-order match wins", () => {
+    const { externalLayers } = resolve({
+      externalLayers: {
+        "@made-up/**": "adapters",
+        "@made-up/pkg/**": "model",
+      },
+    })
+    expect(externalLayers("@made-up/pkg/thing")).toBe("adapters")
+  })
+
+  it("rejects a non-object value, naming the key", () => {
+    for (const raw of ["service", ["@made-up/**"], null]) {
+      expect(() => resolve({ externalLayers: raw })).toThrowError(
+        /"externalLayers".*pattern → layer/s,
+      )
+    }
+  })
+
+  it("rejects an unknown layer name loudly, listing the vocabulary", () => {
+    expect(() =>
+      resolve({ externalLayers: { "@made-up/**": "SOME_MADE_UP_LAYER" } }),
+    ).toThrowError(
+      /"@made-up\/\*\*".*SOME_MADE_UP_LAYER.*model, ports, service, adapters, assembly, blob/s,
+    )
+  })
+})
+
 describe("resolveConfig — flavor", () => {
   it("resolves a registry name to its instance", () => {
     const resolved = resolve({ flavor: STOCK_FLAVOR_NAME })

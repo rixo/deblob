@@ -312,6 +312,7 @@ describe("extractGraph over the forms fixture", () => {
       specifier: "node:path",
       package: "node:path",
       declared: false,
+      layer: null,
     })
     // unprefixed builtin: package is the resolver's normalized name
     expect(targets).toContainEqual({
@@ -319,24 +320,28 @@ describe("extractGraph over the forms fixture", () => {
       specifier: "path",
       package: "node:path",
       declared: false,
+      layer: null,
     })
     expect(targets).toContainEqual({
       type: "external",
       specifier: "somepkg",
       package: "somepkg",
       declared: false,
+      layer: null,
     })
     expect(targets).toContainEqual({
       type: "external",
       specifier: "somepkg/thing",
       package: "somepkg",
       declared: false,
+      layer: null,
     })
     expect(targets).toContainEqual({
       type: "external",
       specifier: "@scope/pkg",
       package: "@scope/pkg",
       declared: false,
+      layer: null,
     })
   })
 
@@ -357,6 +362,7 @@ describe("extractGraph over the forms fixture", () => {
           specifier: "../outside.js",
           package: null,
           declared: false,
+          layer: null,
         },
         kind: "runtime",
         form: "static",
@@ -576,6 +582,7 @@ describe("extractGraph — declared external specifiers", () => {
           specifier: "$theme:config.scss",
           package: "$theme:*",
           declared: true,
+          layer: null,
         },
         kind: "runtime",
         form: "static",
@@ -611,6 +618,7 @@ describe("extractGraph — declared external specifiers", () => {
     )
     expect(graph.edges[0]?.to).toMatchObject({
       declared: true,
+      layer: null,
       specifier: "$theme:zz-unseen-tail.scss",
     })
   })
@@ -648,5 +656,93 @@ describe("extractGraph failure modes", () => {
         files: ["src/dep.ts"],
       }),
     ).toThrow(/flavor broke its contract/)
+  })
+})
+
+describe("externalLayerOf — the crossed layer carrier on external leaves", () => {
+  /** One file importing the given specifiers; resolution by convention. */
+  const extractCrossed = (
+    specifiers: readonly string[],
+    externalLayerOf?: (
+      specifier: string,
+    ) => import("./graph.model.ts").Layer | null,
+    external?: (specifier: string) => string | null,
+  ): ImportGraph => {
+    const engine: ExtractionEngine = {
+      extract: (absolutePath) =>
+        absolutePath.endsWith("src/a.model.ts")
+          ? {
+              imports: specifiers.map((specifier) => ({
+                specifier,
+                typeOnly: false,
+                form: "static" as const,
+                reExport: false,
+                literal: true,
+              })),
+              runtimeContent: [],
+            }
+          : null,
+      resolve: (_from, specifier) =>
+        specifier.startsWith("node:")
+          ? { kind: "builtin", specifier }
+          : specifier.startsWith(".")
+            ? { kind: "file", path: `/made-up-elsewhere/${specifier.slice(2)}` }
+            : {
+                kind: "file",
+                path: `/made-up-root/node_modules/${specifier}.ts`,
+              },
+    }
+    return createExtraction({
+      engine,
+      flavor: createTsSuffixesFactoriesFlavor(),
+    }).extractGraph({
+      root: "/made-up-root",
+      files: ["src/a.model.ts"],
+      ...(external ? { external } : {}),
+      ...(externalLayerOf ? { externalLayerOf } : {}),
+    })
+  }
+
+  const layerByConvention = (specifier: string) =>
+    specifier.endsWith(".service") ? ("service" as const) : null
+
+  it("stamps the layer on package, builtin, and out-of-coverage leaves — one operation, every leaf kind", () => {
+    const graph = extractCrossed(
+      [
+        "@made-up/billing/checkout.service",
+        "node:made-up.service",
+        "../outside/thing.service",
+        "@made-up/billing",
+      ],
+      layerByConvention,
+    )
+    const layers = new Map(
+      graph.edges.map((edge) => [
+        (edge.to as { specifier: string }).specifier,
+        (edge.to as { layer: unknown }).layer,
+      ]),
+    )
+    expect(layers.get("@made-up/billing/checkout.service")).toBe("service")
+    expect(layers.get("node:made-up.service")).toBe("service")
+    expect(layers.get("../outside/thing.service")).toBe("service")
+    expect(layers.get("@made-up/billing")).toBe(null)
+  })
+
+  it("consults the carrier for declared externals too — a pattern hit can carry a patched layer", () => {
+    const graph = extractCrossed(
+      ["$made-up:checkout.service"],
+      layerByConvention,
+      (specifier) => (specifier.startsWith("$made-up:") ? "$made-up:*" : null),
+    )
+    expect(graph.edges[0]?.to).toMatchObject({
+      declared: true,
+      package: "$made-up:*",
+      layer: "service",
+    })
+  })
+
+  it("without the carrier every leaf stays layer: null — today's behavior", () => {
+    const graph = extractCrossed(["@made-up/billing/checkout.service"])
+    expect(graph.edges[0]?.to).toMatchObject({ layer: null })
   })
 })

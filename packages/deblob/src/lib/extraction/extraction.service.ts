@@ -3,23 +3,14 @@ import { relative, resolve, sep } from "node:path"
 import type {
   ImportEdge,
   ImportGraph,
+  Layer,
   ModuleNode,
   UnresolvedImport,
   EdgeTarget,
 } from "./graph.model.ts"
+import { packageNameOf } from "./graph.model.ts"
 import type { ExtractionEngine } from "./ports/extraction.port.ts"
 import type { FlavorResolver } from "./ports/flavor.port.ts"
-
-/**
- * Bare-specifier package name (`zod`, `@scope/name`, `node:path`); `null` for
- * relative/absolute specifiers.
- */
-const packageNameOf = (specifier: string): string | null => {
-  if (/^[./]/.test(specifier)) return null
-  const nameStart = specifier.startsWith("@") ? specifier.indexOf("/") + 1 : 0
-  const slash = specifier.indexOf("/", nameStart)
-  return slash === -1 ? specifier : specifier.slice(0, slash)
-}
 
 const toPosix = (path: string): string => path.split(sep).join("/")
 
@@ -40,6 +31,7 @@ export const createExtraction = ({
     files,
     isAssembly,
     external,
+    externalLayerOf,
   }: {
     root: string
     /** Coverage set: paths relative to `root`, POSIX-style. */
@@ -57,6 +49,13 @@ export const createExtraction = ({
      * purity identity. Absent = nothing is declared.
      */
     external?: (specifier: string) => string | null
+    /**
+     * The crossed layer identity of an external leaf — composed by assembly
+     * from the consumer's `externalLayers` patch and producer `deblob` fields.
+     * Consulted uniformly for every external leaf, declared ones included;
+     * absent = no claims, every leaf stays `layer: null`.
+     */
+    externalLayerOf?: (specifier: string) => Layer | null
   }): ImportGraph => {
     const classifications = flavor.classify(files)
     const fileSet = new Set(files)
@@ -69,6 +68,7 @@ export const createExtraction = ({
       fromAbsolutePath: string,
       specifier: string,
     ): { target: EdgeTarget } | { reason: string } => {
+      const layer = () => externalLayerOf?.(specifier) ?? null
       const pattern = external?.(specifier) ?? null
       if (pattern !== null) {
         return {
@@ -77,6 +77,7 @@ export const createExtraction = ({
             specifier,
             package: pattern,
             declared: true,
+            layer: layer(),
           },
         }
       }
@@ -91,6 +92,7 @@ export const createExtraction = ({
             specifier,
             package: resolution.specifier,
             declared: false,
+            layer: layer(),
           },
         }
       }
@@ -103,6 +105,7 @@ export const createExtraction = ({
               specifier,
               package: packageNameOf(specifier),
               declared: false,
+              layer: layer(),
             },
       }
     }

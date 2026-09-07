@@ -1,0 +1,5 @@
+{
+  "name": "@fixture/field-newer",
+  "deblob": { "flavor": "SOME_MADE_UP_FLAVOR" },
+  "exports": { "./app.model": "./src/app.model.ts" }
+}

@@ -27,4 +27,14 @@ export interface FlavorResolver {
    * shapes land in `blob`, never an error, never a skip.
    */
   classify(files: readonly string[]): ReadonlyMap<string, FlavorClassification>
+
+  /**
+   * The naming rule over one exports subpath or specifier tail — how a
+   * package's entries classify from outside. `null` = no claim. Optional: a
+   * flavor without it contributes nothing cross-package. In v1 both sides of
+   * the boundary consult the stock resolver's implementation (the `deblob`
+   * field claims the stock rule); the method lives on the port so a named
+   * flavor can carry its own rule later.
+   */
+  classifyEntry?(subpath: string): FlavorLayer | null
 }

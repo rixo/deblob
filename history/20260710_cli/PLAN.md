@@ -468,6 +468,108 @@ doesn't check:
 
 ### Ideas
 
+- **Directory-form subpaths on the surface — `./checkout/service` claims
+  service** (2026-09-04, at the 13 review) — the field claims "the stock naming
+  rule holds on my surface", and today that rule is suffix-only:
+  `./checkout/service` and `./service/checkout` claim nothing, fall to the
+  trichotomy abroad, and fire rule 2 at home when they front a service. But the
+  surface is a published API, not the codebase: what a producer shows consumers
+  can legitimately differ from how it files code internally (a directory-flavor
+  codebase, or a suffix codebase that wants `@repo/billing/checkout/service` on
+  its storefront). The surface grammar is one function, `classifyEntry`, read by
+  both sides — extend it and producer verification and consumer classification
+  move together, no new field key. Little code: when the tail carries no suffix,
+  a layer word standing alone as a path segment (`service`, `adapters`, `model`,
+  `ports` — the exact vocabulary, no singular/plural aliasing) claims that
+  layer, last segment (`./checkout/service`) or first (`./service/checkout`); a
+  suffix on the tail wins over any segment; a segment word inside a longer name
+  (`./services/x`, `./modeling`) is not a word. The trouble is comprehension,
+  not code: two grammars for one claim, and a segment named `model` that meant
+  "the domain model folder" now claims purity for everything under it — abroad,
+  pure for the importer since the 13 trust ruling. So the spec must say the rule
+  in one sentence, `explain` must teach it, and the surface check's rule-3
+  message must name which grammar read the claim. Sibling of the
+  named-publishable-flavors card: this extends the stock surface grammar so most
+  producers never need a named flavor; that card stays for genuinely custom
+  rules. Wait for a producer that wants it.
+- **Declaration files classify by their suffix — `x.service.d.ts` is a service**
+  (2026-09-04, at the 13 ambiguity ruling) — the stock flavor's in-set rule
+  (`LAYER_SUFFIX`, `TEST_SUFFIX`) wants the layer word right before the
+  extension, so `totals.model.d.ts` classifies blob while `classifyStockEntry`
+  (the cross-package half of the same flavor) already strips `.d.ts` first and
+  reads model. One naming rule, two readings. It bites today: a types-only
+  exports entry (`"./totals.model": "./dist/totals.model.d.ts"` with only
+  `src/totals.model.d.ts` behind it) reaches the declaration as the module and
+  fires 3 — claims model, file is blob. Remedy: one shared extensionless-tail
+  helper (strip `.d.ts`/`.d.mts`/`.d.cts` whole, then the module extension)
+  feeding both `layerOf` and `classifyEntry`; declarations then carry their
+  layer, mark service roots like their siblings, and answer the in-set matrix
+  with their type-only edges — a `totals.model.d.ts` importing a port type fires
+  rule 1 exactly as its `.ts` twin would, which is the point. Declarations stay
+  in coverage (their import edges are real, type-level cycles included).
+  Tripwire: `x.service.d.mts` (a form absent from today's list) must read
+  service. Small, own commit — `fix(flavor):` with the pin.
+- **`--verify-build` — hold the mirror to its promise** (2026-09-04, at the 13
+  pattern-expansion ruling) — the build mirror is a declaration that the build
+  is one-to-one; the surface check trusts it and never looks at dist. A flag
+  that verifies the promise against the build on disk, both directions: every
+  module file under a mirror root has a source counterpart (catches bundler
+  chunks and copied assets — files consumers reach that no gate certified), and
+  every covered source module under a mirrored source root has a built
+  counterpart (catches inlined sources — the false-positive direction of pattern
+  expansion). Both failures are unverified, not violations (the mirror was
+  wrong, no rule was broken): a third reason in the block, the remedy names the
+  flag and `build`. A flag, not a config key — config is committed and a stale
+  local dist would trip every dev run; the flag goes where a fresh build is
+  guaranteed (CI after the build step, `prepack`). Additional idea: default it
+  on when CI is detected (`CI` env, the audience-detection seam the guided
+  deblobbing card also wants), off locally — explicit `--no-verify-build` to opt
+  out there. Name tied to the config key, not to `dist`, which is only the
+  default root.
+- **Living READMEs for our own services** (2026-09-03, at the 13 review) —
+  `packages/deblob/src/lib/*` carries zero `README.md`: five services (`check`,
+  `cli`, `config`, `explain`, `extraction`) with no living doc, while
+  `docs/implementation-guide.md` and the skill's `placement.md` prescribe one
+  per service. Dogfood is green because the tool checks structure, not docs —
+  the convention is prose, not a numbered rule, and stays that way (no nanny).
+  The sweep: one README per service in the shipped shape (goal, API, ports and
+  adapters, what it does not do), sourced from the current code, never from
+  chapter history; one commit, `docs(lib):`. Whether the `deblob docs` family
+  ever checks README presence is that family's question, not this card's.
+- **Stamp-travels manifest — layers for bundled surfaces** (2026-09-03, at the
+  13 dist-gap ruling) — a library bundling its whole surface into one file
+  breaks path identity, not the unit of layer: the source split is a requirement
+  for the checker and the reviewer, and the stamp a verified entry earns
+  survives the bundling. Today that stamp does not travel — a bundled root
+  subpath carries no tail, classifies null abroad, and the producer can only
+  disclose it in `blob`. The lane: the producer's gate emits a generated
+  manifest (subpath → verified layer, per export name if it ever comes to that)
+  the consumer reads instead of the tail. Trust model covers it as is — the
+  manifest is the producer's verdict, trusted as the code is, `externalLayers`
+  the override (the 13 trust ruling). Generated output next to the exports map,
+  never hand-written; `build.mirror`/`entries` are its inputs. Wait for a
+  bundled library that wants identity abroad.
+- **`test` over `it` in specs** (2026-09-02) — descriptions are not consistently
+  BDD-phrased, so `it("the carrier is…")` reads broken; the rule: `test` unless
+  a file genuinely commits to "it <does X>" sentences. Existing corpus uses `it`
+  throughout — mechanical sweep (`it(` → `test(`, import update), one commit,
+  whenever convenient; new files use `test` starting now.
+- **Named publishable flavors — flavor-as-package** (2026-09-02, at the 13 spec)
+  — a custom flavor today is a nameless inline resolver, so it cannot be named
+  in the producer `deblob` field: no `surface` self-verification at home,
+  unlabeled abroad. The lane: the field (and the `flavor` config key) accepts a
+  package specifier (`"@acme/hex-flavor"`) whose package ships the resolver;
+  producer and consumer both resolve it by import, `classifyEntry` travels,
+  customs reach stock parity. Not free: the consumer would execute code a
+  producer named — the 13 trust ruling covers claims (the consumer already runs
+  the producer's code), not code the producer names for the consumer's toolchain
+  to run — so consumer ratification of flavor packages, `pureLibs`-grade, is
+  part of the design. Version skew too: the 13 field honors `blob` only and
+  older consumers ignore unknown keys, so they will stock-read a `flavor`-keyed
+  surface — and since claims cross purity included, a stock misread mislabels
+  both ways; the likely answer is that a `flavor` key makes an older consumer
+  read no claim at all. Wait for a field case: a real custom flavor wanting to
+  cross.
 - **`conditions` — resolver conditions** (2026-08-28, at the 12 reframe) — a
   package whose `exports` map only answers under a bundler condition (`browser`,
   `svelte`, `worker`) fails resolution today, and the honest lane is missing:

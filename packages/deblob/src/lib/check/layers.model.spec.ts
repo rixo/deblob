@@ -55,6 +55,21 @@ const lib = (specifier: string): EdgeTarget => ({
   specifier,
   package: specifier,
   declared: false,
+  layer: null,
+})
+
+/** An external leaf carrying a crossed layer — a producer field or a patch. */
+const crossed = (
+  specifier: string,
+  layer: NonNullable<Extract<EdgeTarget, { type: "external" }>["layer"]>,
+): EdgeTarget => ({
+  type: "external",
+  specifier,
+  package: specifier.startsWith("@")
+    ? specifier.split("/").slice(0, 2).join("/")
+    : (specifier.split("/")[0] as string),
+  declared: false,
+  layer,
 })
 
 /** A resolved file outside the coverage set — no package name. */
@@ -63,6 +78,7 @@ const outsideFile = (specifier: string): EdgeTarget => ({
   specifier,
   package: null,
   declared: false,
+  layer: null,
 })
 
 /** A declared external — purity identity is the pattern that matched. */
@@ -71,6 +87,7 @@ const declaredLeaf = (specifier: string, pattern: string): EdgeTarget => ({
   specifier,
   package: pattern,
   declared: true,
+  layer: null,
 })
 
 describe("checkLayers", () => {
@@ -481,6 +498,202 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
       expect(checkLayers(g, { typeOnlyExempt: false })).toEqual([
         expect.objectContaining({ rules: [1, 4], targetClass: "concrete" }),
+      ])
+    })
+  })
+
+  describe("cross-package layers — identity crosses, the matrix applies in-set", () => {
+    it.each([
+      // the exact in-set cells: inward-pointing rows cite 1, the seal rows 6
+      ["model", [1, 8]],
+      ["ports", [1, 8]],
+      ["service", [6, 8]],
+      ["adapters", [6, 8]],
+      ["blob", [6, 8]],
+    ] as const)(
+      "fires when %s imports a crossed service entry — the in-set cell, rules %j",
+      (importerLayer, rules) => {
+        const g = graph(
+          { "a/x.ts": { layer: importerLayer, serviceRoot: "a" } },
+          [
+            {
+              from: "a/x.ts",
+              to: crossed("@made-up/billing/checkout.service", "service"),
+            },
+          ],
+        )
+        expect(checkLayers(g)).toEqual([
+          expect.objectContaining({
+            rules: [...rules],
+            importerLayer,
+            shape: "matrix-cell",
+            targetClass: "service",
+          }),
+        ])
+      },
+    )
+
+    it("fires 7 when an adapter imports a sibling package's adapter — in-set-consistent", () => {
+      const g = graph(
+        { "a/x.adapter.ts": { layer: "adapters", serviceRoot: "a" } },
+        [
+          {
+            from: "a/x.adapter.ts",
+            to: crossed("@made-up/billing/stripe.adapter", "adapters"),
+          },
+        ],
+      )
+      expect(checkLayers(g)).toEqual([
+        expect.objectContaining({
+          rules: [7, 8],
+          shape: "matrix-cell",
+          targetClass: "adapters",
+        }),
+      ])
+    })
+
+    it("the carrier is exactly what distinguishes: the same import unlabeled stays green from adapters", () => {
+      const g = graph(
+        { "a/x.adapter.ts": { layer: "adapters", serviceRoot: "a" } },
+        [{ from: "a/x.adapter.ts", to: lib("@made-up/raw-sdk") }],
+      )
+      expect(checkLayers(g)).toEqual([])
+    })
+
+    it("stays green from assembly — the bottom row crosses too", () => {
+      const g = graph({ "main.ts": { layer: "assembly" } }, [
+        {
+          from: "main.ts",
+          to: crossed("@made-up/b/checkout.service", "service"),
+        },
+        {
+          from: "main.ts",
+          to: crossed("@made-up/b/stripe.adapter", "adapters"),
+        },
+      ])
+      expect(checkLayers(g)).toEqual([])
+    })
+
+    it.each(["model", "ports", "service", "adapters"] as const)(
+      "fires 1 when %s imports a crossed assembly entry",
+      (importerLayer) => {
+        const g = graph(
+          { "a/x.ts": { layer: importerLayer, serviceRoot: "a" } },
+          [{ from: "a/x.ts", to: crossed("@made-up/b/main", "assembly") }],
+        )
+        expect(checkLayers(g)).toEqual([
+          expect.objectContaining({
+            rules: [1],
+            importerLayer,
+            shape: "matrix-cell",
+            targetClass: "assembly",
+          }),
+        ])
+      },
+    )
+
+    it("blob importing a crossed assembly entry stays green — bound by the composition seals only, as in-set", () => {
+      const g = graph({ "lib/x.ts": { layer: "blob" } }, [
+        { from: "lib/x.ts", to: crossed("@made-up/b/main", "assembly") },
+      ])
+      expect(checkLayers(g)).toEqual([])
+    })
+
+    it("a crossed model claim is pure for the importer — the trust pin: rule 4 satisfied, no pureLibs line", () => {
+      const g = graph(
+        { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
+        [
+          {
+            from: "a/x.model.ts",
+            to: crossed("@made-up/b/totals.model", "model"),
+          },
+        ],
+      )
+      expect(checkLayers(g)).toEqual([])
+    })
+
+    it("a crossed ports claim is pure the same way — from a service too", () => {
+      const g = graph(
+        { "a/a.service.ts": { layer: "service", serviceRoot: "a" } },
+        [
+          {
+            from: "a/a.service.ts",
+            to: crossed("@made-up/b/store.port", "ports"),
+          },
+        ],
+      )
+      expect(checkLayers(g)).toEqual([])
+    })
+
+    it("pure is not lawless — model importing a crossed ports entry fires 1, the in-set cell", () => {
+      const g = graph(
+        { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
+        [
+          {
+            from: "a/x.model.ts",
+            to: crossed("@made-up/b/store.port", "ports"),
+          },
+        ],
+      )
+      expect(checkLayers(g)).toEqual([
+        expect.objectContaining({
+          rules: [1],
+          shape: "matrix-cell",
+          targetClass: "ports",
+        }),
+      ])
+      // pureLibs cannot silence it: a crossed cell never reaches the trichotomy
+      expect(checkLayers(g, { pureLibs: ["@made-up/b"] })).toHaveLength(1)
+    })
+
+    it("a crossed blob claim claims nothing — today's trichotomy, untouched (the revoke lands here)", () => {
+      const g = graph(
+        {
+          "a/x.model.ts": { layer: "model", serviceRoot: "a" },
+          "a/y.adapter.ts": { layer: "adapters", serviceRoot: "a" },
+        },
+        [
+          { from: "a/x.model.ts", to: crossed("@made-up/b", "blob") },
+          { from: "a/y.adapter.ts", to: crossed("@made-up/b", "blob") },
+        ],
+      )
+      expect(checkLayers(g)).toEqual([
+        expect.objectContaining({ shape: "unclassified-lib" }),
+      ])
+    })
+
+    it("type-only crossing: exempt on service/adapters targets, binding on assembly, strict binds all", () => {
+      const service = crossed("@made-up/b/checkout.service", "service")
+      const adapters = crossed("@made-up/b/stripe.adapter", "adapters")
+      const assembly = crossed("@made-up/b/main", "assembly")
+      const g = (to: EdgeTarget) =>
+        graph({ "a/x.model.ts": { layer: "model", serviceRoot: "a" } }, [
+          { from: "a/x.model.ts", to, kind: "type" },
+        ])
+      expect(checkLayers(g(service))).toEqual([])
+      expect(checkLayers(g(adapters))).toEqual([])
+      expect(checkLayers(g(assembly))).toEqual([
+        expect.objectContaining({ rules: [1], targetClass: "assembly" }),
+      ])
+      expect(checkLayers(g(service), { typeOnlyExempt: false })).toEqual([
+        expect.objectContaining({ rules: [1], targetClass: "service" }),
+      ])
+    })
+
+    it("a declared external can carry a patched layer — the pattern hit does not shed identity", () => {
+      const leaf: EdgeTarget = {
+        type: "external",
+        specifier: "$made-up:checkout",
+        package: "$made-up:*",
+        declared: true,
+        layer: "service",
+      }
+      const g = graph(
+        { "a/a.service.ts": { layer: "service", serviceRoot: "a" } },
+        [{ from: "a/a.service.ts", to: leaf }],
+      )
+      expect(checkLayers(g)).toEqual([
+        expect.objectContaining({ rules: [6, 8], targetClass: "service" }),
       ])
     })
   })

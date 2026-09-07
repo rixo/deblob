@@ -59,6 +59,7 @@ const lib = (specifier: string): EdgeTarget => ({
   specifier,
   package: specifier,
   declared: false,
+  layer: null,
 })
 
 const entry = (overrides: Partial<RuntimeEntry> = {}): RuntimeEntry => ({

@@ -113,6 +113,38 @@ export type PortsViolation = {
     }
 )
 
+export type SurfaceViolation = {
+  check: "surface"
+  ruleset: Ruleset
+  /** 3 for a claim/actual mismatch, 2 for an unlabeled entry fronting one. */
+  rules: readonly number[]
+  /** The covered source module the entry reaches — the fix site. */
+  file: string
+  /** Grouping key; `null` = the `blob` bucket. */
+  serviceRoot: string | null
+  /** The exports-map subpath making the claim (`.`, `./checkout.service`). */
+  subpath: string
+  /** The exports target as written — equals `file` unless reached via mirror. */
+  exported: string
+} & (
+  | {
+      /** The subpath's naming claims one layer, the target file is another. */
+      shape: "claim-mismatch"
+      claimed: Layer
+      actual: Layer
+    }
+  | {
+      /**
+       * A subpath claiming nothing over a composition unit or adapter —
+       * directly, or through a re-export chain (the laundering shape).
+       */
+      shape: "unlabeled-front"
+      /** The fronted service/adapter file — equals `file` when direct. */
+      fronts: string
+      frontLayer: Layer
+    }
+)
+
 /**
  * Where a cycle finding lands in the grouped output — cycles have no single
  * `file`/`serviceRoot` pair, so the bucket is carried explicitly.
@@ -165,3 +197,4 @@ export type Violation =
   | BarrelsViolation
   | PortsViolation
   | DagViolation
+  | SurfaceViolation

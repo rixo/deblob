@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { STOCK_FLAVOR_NAME } from "../stock-flavor.model.ts"
 import {
   STOCK_FLAVORS,
+  classifyStockEntry,
   createTsSuffixesFactoriesFlavor,
 } from "./ts-suffixes-factories-flavor.adapter.ts"
 
@@ -178,5 +179,46 @@ describe("ts-suffixes-factories flavor", () => {
     const result = classify(["src/widget.svelte", "src/foo.specs.ts"])
     expect(result.get("src/widget.svelte")?.layer).toBe("blob")
     expect(result.get("src/foo.specs.ts")?.layer).toBe("blob")
+  })
+})
+
+describe("classifyStockEntry — the naming rule over subpath and specifier tails", () => {
+  it("classifies each layer suffix on an extensionless tail", () => {
+    expect(classifyStockEntry("checkout.service")).toBe("service")
+    expect(classifyStockEntry("totals.model")).toBe("model")
+    expect(classifyStockEntry("store.port")).toBe("ports")
+    expect(classifyStockEntry("stripe.adapter")).toBe("adapters")
+  })
+
+  it("reads exports-map subpaths as written — ./ prefix and nesting", () => {
+    expect(classifyStockEntry("./checkout.service")).toBe("service")
+    expect(classifyStockEntry("./nested/totals.model")).toBe("model")
+  })
+
+  it("sees through an extension — dist artifacts and typed entries included", () => {
+    expect(classifyStockEntry("checkout.service.js")).toBe("service")
+    expect(classifyStockEntry("dist/checkout.service.mjs")).toBe("service")
+    expect(classifyStockEntry("src/stripe.adapter.ts")).toBe("adapters")
+    expect(classifyStockEntry("checkout.service.d.ts")).toBe("service")
+    expect(classifyStockEntry("checkout.service.d.mts")).toBe("service")
+  })
+
+  it("claims nothing for unsuffixed tails — the bare root included", () => {
+    expect(classifyStockEntry("")).toBe(null)
+    expect(classifyStockEntry(".")).toBe(null)
+    expect(classifyStockEntry("./")).toBe(null)
+    expect(classifyStockEntry("checkout")).toBe(null)
+    expect(classifyStockEntry("dist/index.js")).toBe(null)
+  })
+
+  it("claims nothing for a suffix no list names — the set is the record, no census (tripwire)", () => {
+    expect(classifyStockEntry("thing.mega-widget")).toBe(null)
+    expect(classifyStockEntry("x.spec")).toBe(null)
+    expect(classifyStockEntry("x.helper.js")).toBe(null)
+  })
+
+  it("rides the resolver instance as classifyEntry — the port method is the same rule", () => {
+    const flavor = createTsSuffixesFactoriesFlavor()
+    expect(flavor.classifyEntry?.("checkout.service")).toBe("service")
   })
 })
