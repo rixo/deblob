@@ -1,0 +1,40 @@
+# cli
+
+The command surface as data, and the text the terminal shows. Both pure: argv
+in, a dispatch decision out; violation values in, the exact strings the goldens
+pin out. The process, streams, and exit codes belong to the driver.
+
+## API
+
+- `parseCli(argv)` → `ParsedCli | UsageError` (`cli.model.ts`). Recognizes the
+  bare status run, `check` with its check selection and `--explain` /
+  `--explain-only` / `--no-color` / `-c` flags, `explain <topic...>`, and help.
+  Usage errors are values with teaching messages, never thrown.
+- `KNOWN_CHECKS`, `CHECK_RULES` — the check names and the rule numbers each one
+  cites; `rulesForTopic(topic)` maps an `explain` topic (a rule number, a check
+  name) to rule numbers.
+- `renderCheckResults(violations, stats, colors, pathPrefix)` — the check
+  listing: findings grouped and sorted deterministically, each with its cited
+  rules, the footer with the graph stats and the fired rules as a pasteable
+  `explain` invocation.
+- `renderUnresolved(entries, colors, prefix)` and
+  `renderUnverified(entries, colors, prefix)` — the two stderr blocks of an
+  uncertifiable run, remedies included.
+- `renderBareStatus(status, colors)` — the informational headline: version,
+  provenance, blob percentage by size, service count.
+- `renderExplain(entries, colors)` — rule rationale plus shipped cards.
+- `HELP`, `CHECK_HELP` — the help screens as literals, so docs cannot drift from
+  the binary.
+- `Colors`, `NO_COLORS`, `ANSI_COLORS` — the palette injected by the driver from
+  `NO_COLOR`, `FORCE_COLOR`, and TTY detection.
+
+## Layer map
+
+Model files only; no service, no ports. `cli.model.ts` imports `node:util` for
+argument parsing, declared pure in the dogfood config.
+
+## What it does not do
+
+No IO: nothing here writes to a stream or reads a file. No policy: which checks
+exist is data here, what they mean lives in `check`. No exit codes: the driver
+maps results to 0, 1, or 2.

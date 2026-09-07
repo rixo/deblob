@@ -526,16 +526,6 @@ doesn't check:
   deblobbing card also wants), off locally — explicit `--no-verify-build` to opt
   out there. Name tied to the config key, not to `dist`, which is only the
   default root.
-- **Living READMEs for our own services** (2026-09-03, at the 13 review) —
-  `packages/deblob/src/lib/*` carries zero `README.md`: five services (`check`,
-  `cli`, `config`, `explain`, `extraction`) with no living doc, while
-  `docs/implementation-guide.md` and the skill's `placement.md` prescribe one
-  per service. Dogfood is green because the tool checks structure, not docs —
-  the convention is prose, not a numbered rule, and stays that way (no nanny).
-  The sweep: one README per service in the shipped shape (goal, API, ports and
-  adapters, what it does not do), sourced from the current code, never from
-  chapter history; one commit, `docs(lib):`. Whether the `deblob docs` family
-  ever checks README presence is that family's question, not this card's.
 - **Stamp-travels manifest — layers for bundled surfaces** (2026-09-03, at the
   13 dist-gap ruling) — a library bundling its whole surface into one file
   breaks path identity, not the unit of layer: the source split is a requirement
