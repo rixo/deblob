@@ -131,7 +131,11 @@ const runSurface = (
   checkSurface(graph, surface, {
     classifyEntry: classifyStockEntry,
     mirror: config.mirror,
-    disclosed: specifierMatcher(surface?.blob ?? []),
+    // both carve-outs: retracted and designated-wiring subpaths alike
+    disclosed: specifierMatcher([
+      ...(surface?.blob ?? []),
+      ...(surface?.assembly ?? []),
+    ]),
   })
 
 /**

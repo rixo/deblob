@@ -242,6 +242,7 @@ describe("readPackageSurface", () => {
         { subpath: "./legacy", targets: ["dist/legacy.cjs"] },
       ],
       blob: [],
+      assembly: [],
     })
   })
 
@@ -252,6 +253,7 @@ describe("readPackageSurface", () => {
     expect(readPackageSurface(asString)).toEqual({
       subpaths: [{ subpath: ".", targets: ["src/index.ts"] }],
       blob: [],
+      assembly: [],
     })
     const asConditions = await rootWith(
       JSON.stringify({
@@ -265,6 +267,7 @@ describe("readPackageSurface", () => {
         { subpath: ".", targets: ["dist/index.js", "dist/index.cjs"] },
       ],
       blob: [],
+      assembly: [],
     })
   })
 
@@ -275,11 +278,16 @@ describe("readPackageSurface", () => {
     expect(readPackageSurface(bare)).toEqual({
       subpaths: [{ subpath: ".", targets: ["src/index.ts"] }],
       blob: [],
+      assembly: [],
     })
     const scalar = await rootWith(
       JSON.stringify({ name: "m", deblob: {}, exports: 42 }),
     )
-    expect(readPackageSurface(scalar)).toEqual({ subpaths: [], blob: [] })
+    expect(readPackageSurface(scalar)).toEqual({
+      subpaths: [],
+      blob: [],
+      assembly: [],
+    })
   })
 
   it("rejects a field without an exports map — the map is the surface the field claims; main is not one", async () => {
@@ -314,7 +322,7 @@ describe("readPackageSurface", () => {
       JSON.stringify({ name: "m", deblob: { flavor: "SOME_MADE_UP_FLAVOR" } }),
     )
     expect(() => readPackageSurface(root)).toThrowError(
-      /"flavor".*honors "blob" only/s,
+      /"flavor".*honors "blob" and "assembly" only/s,
     )
   })
 
@@ -329,6 +337,7 @@ describe("readPackageSurface", () => {
     expect(readPackageSurface(root)).toEqual({
       subpaths: [{ subpath: ".", targets: ["src/index.ts"] }],
       blob: [".", "./legacy/**"],
+      assembly: [],
     })
   })
 
@@ -352,6 +361,34 @@ describe("readPackageSurface", () => {
         ),
       )
     }
+  })
+
+  it("reads the assembly designations — the same pattern grammar, its own list", async () => {
+    const root = await rootWith(
+      JSON.stringify({
+        name: "m",
+        deblob: { assembly: ["./cli", "./bin/*"], blob: ["./legacy/**"] },
+        exports: { "./cli": "./src/cli.ts" },
+      }),
+    )
+    expect(readPackageSurface(root)).toEqual({
+      subpaths: [{ subpath: "./cli", targets: ["src/cli.ts"] }],
+      blob: ["./legacy/**"],
+      assembly: ["./cli", "./bin/*"],
+    })
+  })
+
+  it("rejects a malformed assembly list loudly at home — the message names the key", async () => {
+    const root = await rootWith(
+      JSON.stringify({
+        name: "m",
+        deblob: { assembly: ["cli"] },
+        exports: { "./cli": "./src/cli.ts" },
+      }),
+    )
+    expect(() => readPackageSurface(root)).toThrowError(
+      /"deblob"\.assembly must be an array of subpath patterns.*"cli" is not/s,
+    )
   })
 
   it("rejects an unparseable own manifest loudly — home is not a stranger", async () => {

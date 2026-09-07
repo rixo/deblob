@@ -108,6 +108,26 @@ count). Same trial, captured rather than built: a word for generated output with
 no source behind it, and the odd feel of disclosing markdown assets under `blob`
 — a PLAN card and a setup sentence.
 
+Ruled the same day (2026-09-07, rixo) — **`assembly` is the field's second
+word**. The trial's other question was the published composition root: a CLI
+package's `./cli` re-exporting its service could only be disclosed as `blob`,
+and the setup card had to argue that disclosing your main entry is not a
+confession. The observation that settles it: assembly is never a verified fact
+anywhere — in-set it is the config's designation, not something the flavor reads
+off a file — so verifying an `assembly` claim at home would compare two
+declarations by the same author and learn nothing. It behaves exactly like
+`blob` at home (a carve-out: no lookup, no fronting check, no unverified entry)
+and differs abroad: the subpath classifies `assembly`, which the crossed matrix
+already seals to the consumer's wiring (rule 1 from every row but blob and
+assembly, type edges bind — wiring owns no contract, no `pureLibs` escape). The
+direction is strictly tightening for the consumer, the safest claim the field
+can carry; laundering does not return, because the fronting check exists for the
+unlabeled grab-bag that escapes the seal, and an assembly-labeled one escapes
+nothing. The two words mean different things to a consumer — `blob` says
+"SDK-like, consume it where you consume third-party code", `assembly` says
+"wiring, import it only from wiring" — and the producer picks which its entry
+is. Shipped in 0.0.4 so the field's first public grammar carries both words.
+
 ## Goal
 
 A cross-package import edge carries the target's layer when the target declares
@@ -126,13 +146,18 @@ Concretely:
   would refuse) is off the surface, and the field says nothing about it —
   unlabeled, today's trichotomy (review catch 2026-09-04: without this, an alias
   into source bypassed both the producer's verification and its `blob`
-  disclosure). One key carves the claim: `blob`, subpath patterns the field does
-  not cover — a listed subpath classifies abroad as if the package had no field
-  (null, suffixed tail or not) and is exempt from the producer's own
-  verification. Future keys (a `flavor` naming a publishable resolver — captured
-  idea) arrive additively. The bare root entry (`@repo/billing`) carries no
-  suffix, classifies to no layer, and behaves exactly as today: the fat root
-  barrel stays what it is, an unlabeled surface.
+  disclosure). Two keys carve the claim, both lists of subpath patterns: `blob`,
+  the subpaths the field does not cover — a listed subpath classifies abroad as
+  if the package had no field (null, suffixed tail or not) — and `assembly`, the
+  subpaths the producer designates as wiring — a listed subpath classifies
+  `assembly` abroad, suffixed tail or not, sealed to the consumer's own wiring.
+  Both are exempt from the producer's own verification: a retraction has nothing
+  to verify, and assembly is a designation everywhere (in-set it is config),
+  never a fact about a file. `blob` wins over `assembly` on overlap — retracting
+  is always allowed. Future keys (a `flavor` naming a publishable resolver —
+  captured idea) arrive additively. The bare root entry (`@repo/billing`)
+  carries no suffix, classifies to no layer, and behaves exactly as today: the
+  fat root barrel stays what it is, an unlabeled surface.
 - **Consumer patch** for non-aware packages: a config key mapping specifier
   patterns (the `external`-key two-wildcard patterns) to layers. Consumer-
   declared, reviewed, same trust class as `pureLibs`; wins over the producer
@@ -228,18 +253,20 @@ above is a check on _facts_, not a nanny on config).
 ## API
 
 - Producer: `package.json` gains an optional `"deblob"` field —
-  `{ blob?: string[] }`, subpath patterns (the two-wildcard grammar of
-  `external`, over the exports subpath as written: `"."`, `"./legacy/**"`).
-  Abroad, a matching subpath classifies null before the tail is consulted; the
-  consumer's `externalLayers` still wins over both (reviewer of record). At
-  home, a matching entry is exempt from `surface`. Consumers ignore keys they do
-  not understand, and treat a malformed `blob` as absent (a stranger's
-  package.json must never break a consumer's run, and a newer producer must stay
-  readable by an older consumer — an older consumer stock-reads a disclosed
-  suffixed tail, the harmless, stricter direction); the producer's own gate
-  rejects keys it cannot honor and malformed `blob` patterns loudly (exit 2) —
-  the claim is load-bearing at home, and a key expecting behavior this version
-  lacks (a `flavor`, today) must not fail silent there.
+  `{ blob?: string[], assembly?: string[] }`, subpath patterns (the two-wildcard
+  grammar of `external`, over the exports subpath as written: `"."`,
+  `"./legacy/**"`). Abroad, a `blob` match classifies null and an `assembly`
+  match classifies `assembly`, both before the tail is consulted, `blob` first;
+  the consumer's `externalLayers` still wins over all of it (reviewer of
+  record). At home, a matching entry of either list is exempt from `surface`.
+  Consumers ignore keys they do not understand, and treat a malformed list as
+  absent (a stranger's package.json must never break a consumer's run, and a
+  newer producer must stay readable by an older consumer — an older consumer
+  stock-reads a disclosed suffixed tail, the harmless, stricter direction); the
+  producer's own gate rejects keys it cannot honor and malformed patterns in
+  either list loudly (exit 2, the message naming the key) — the claim is
+  load-bearing at home, and a key expecting behavior this version lacks (a
+  `flavor`, today) must not fail silent there.
 - `DeblobConfig.build?: string | false | { mirror: Readonly<Record<string, string>> }`
   — the build mirror: output root → source root, root-relative directories.
   `"dist"` is the shortcut for `{ mirror: { dist: "src" } }` and the default;
@@ -343,9 +370,11 @@ above is a check on _facts_, not a nanny on config).
   `package.json "deblob".blob must be an array of subpath patterns ("." or "./…", wildcards * and **) — "<value>" is not`;
   `package.json declares "deblob" but no "exports" map — the exports map is the surface the field claims; declare one`;
   the unhonorable-key message amended to
-  `this deblob version honors "blob" only`. Abroad, none of these fire: a
-  malformed field is read as `{}`, a malformed `blob` as absent, a field with no
-  exports map as no claim.
+  `this deblob version honors "blob" and "assembly" only`; the malformed-list
+  message names its key
+  (`"deblob".assembly must be an array of subpath patterns …`). Abroad, none of
+  these fire: a malformed field is read as `{}`, a malformed list as absent, a
+  field with no exports map as no claim.
 
 ## Testing
 
@@ -425,6 +454,14 @@ above is a check on _facts_, not a nanny on config).
   disclosure; a malformed `blob` abroad is ignored, at home exit 2; a producer
   gate honors `blob` (no unhonorable-key exit); pattern grammar shared with
   `external` (one matcher, tested once).
+- `assembly`: a designated subpath classifies `assembly` abroad, suffixed tail
+  or not (the designation beats the tail), `blob` wins over it on overlap, a
+  malformed list abroad is ignored and the tail decides, at home exit 2 naming
+  the key; the loader reads both lists as their own; CLI: the aware sibling
+  gains a re-exporting `./run` declared assembly — green at its own gate (a
+  carve-out, nothing to verify, its config designating the file too), and from
+  the consumer it fires rule 1 from an adapter and stays silent from `main.ts` —
+  the word that distinguishes wiring from an SDK-like entry.
 - CLI fixtures: consumer + aware sibling in one fixture tree, both directions
   proven (the seal fires from a non-assembly importer, the sibling's model is
   pure with no `pureLibs` line, `externalLayers: blob` revokes it); a package

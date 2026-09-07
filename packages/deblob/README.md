@@ -140,7 +140,13 @@ remedies, and exits 2 — no green until it is mapped, or disclosed. Disclosure 
 public: `"deblob": { "blob": ["./legacy/**"] }` lists the subpaths the field
 does not cover; they classify as unlabeled abroad, exactly as if the package had
 no field, and the claim reads precisely — every subpath not listed is verified
-at the producer's gate.
+at the producer's gate. The field's other word is `assembly`:
+`"deblob": { "assembly": ["./cli"] }` designates a published composition root as
+wiring — sealed to every consumer's own wiring, exactly as an in-set assembly
+file is — and, like an in-set designation, it is never verified: a carve-out at
+home, a seal abroad. The two words are the producer's choice of meaning for an
+unsuffixed entry: `blob` says "consume it like any third-party package",
+`assembly` says "import it from wiring only".
 
 ## Why each rule exists
 

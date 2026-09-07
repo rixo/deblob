@@ -20,6 +20,7 @@ const unresolvableDir = here("__fixtures__/unresolvable")
 const externalDir = here("__fixtures__/external")
 const awareDir = here("__fixtures__/aware")
 const legacyDir = here("__fixtures__/aware/vendor/legacy")
+const billingDir = here("__fixtures__/aware/vendor/billing")
 const declaringDir = here("__fixtures__/declaring")
 const fieldNewerDir = here("__fixtures__/field-newer")
 const builtDir = here("__fixtures__/built")
@@ -208,7 +209,21 @@ describe("deblob check", () => {
     // the disclosed adapter of the other sibling is unlabeled — no rule-7 seal
     expect(out).not.toContain("totals.model")
     expect(out).not.toContain("gateway.adapter")
-    expect(out).toContain("1 violation (1 layers)")
+    // the sibling's declared-assembly entry is wiring: sealed to the
+    // consumer's wiring — fires from the adapter, silent from main.ts
+    expect(out).toContain("src/report.adapter.ts")
+    expect(out.replace(/\n +/g, " ")).toContain(
+      "imports @fixture/billing/run — adapters may not import assembly (rule 1)",
+    )
+    expect(out).not.toContain("src/main.ts")
+    expect(out).toContain("2 violations (2 layers)")
+  })
+
+  it("declared-assembly entry at home: the re-exporting root is a carve-out — nothing to verify, green", async () => {
+    const { code, out, err } = await run(["check"], { cwd: billingDir })
+    expect(err).toBe("")
+    expect(code).toBe(0)
+    expect(out).not.toContain("surface")
   })
 
   it("externalLayers: blob revokes a sibling's model claim — back to unlabeled, rule 4 fires", async () => {
@@ -220,7 +235,7 @@ describe("deblob check", () => {
     expect(out.replace(/\n +/g, " ")).toContain(
       "imports @fixture/billing/totals.model — unclassified third-party in a pure layer",
     )
-    expect(out).toContain("2 violations (2 layers)")
+    expect(out).toContain("3 violations (3 layers)")
   })
 
   it("disclosing package at home: the laundering root listed in blob goes green — confessed, not hidden", async () => {
@@ -264,7 +279,7 @@ describe("deblob check", () => {
     expect(code).toBe(2)
     expect(out).toBe("")
     expect(err).toContain('"flavor"')
-    expect(err).toContain('honors "blob" only')
+    expect(err).toContain('honors "blob" and "assembly" only')
   })
 
   it("built package: the default mirror reaches source through dist — the laundering root fires citing the source, wearing its built name", async () => {

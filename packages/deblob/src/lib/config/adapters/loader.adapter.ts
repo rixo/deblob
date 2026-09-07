@@ -78,33 +78,40 @@ export const tsconfigPathOf = (config: {
   return existsSync(fallback) ? fallback : null
 }
 
-const HONORED_FIELD_KEYS = ["blob"] as const
+/** The field's two pattern lists: `blob` retracts, `assembly` seals. */
+const HONORED_FIELD_KEYS = ["blob", "assembly"] as const
 
 const isSubpathPattern = (value: unknown): value is string =>
   typeof value === "string" && (value === "." || value.startsWith("./"))
 
-/** The field's `blob` carve-outs, validated — the claim is load-bearing at home. */
-const blobOf = (field: Record<string, unknown>): readonly string[] => {
-  const blob = field["blob"]
-  if (blob === undefined) return []
-  const bad = Array.isArray(blob)
-    ? blob.find((entry) => !isSubpathPattern(entry))
-    : blob
-  if (!Array.isArray(blob) || bad !== undefined) {
+/**
+ * One of the field's pattern lists, validated — the claim is load-bearing at
+ * home.
+ */
+const patternsOf = (
+  field: Record<string, unknown>,
+  key: (typeof HONORED_FIELD_KEYS)[number],
+): readonly string[] => {
+  const value = field[key]
+  if (value === undefined) return []
+  const bad = Array.isArray(value)
+    ? value.find((entry) => !isSubpathPattern(entry))
+    : value
+  if (!Array.isArray(value) || bad !== undefined) {
     throw new ConfigError(
-      `package.json "deblob".blob must be an array of subpath patterns ("." or "./…", wildcards * and **) — ${JSON.stringify(bad)} is not`,
+      `package.json "deblob".${key} must be an array of subpath patterns ("." or "./…", wildcards * and **) — ${JSON.stringify(bad)} is not`,
     )
   }
-  return blob as string[]
+  return value as string[]
 }
 
 /**
  * The package's own surface claim — package.json at the config root: `deblob`
- * field presence, its `blob` carve-outs, plus the exports map flattened to
- * subpath → target paths. `null` = no package.json or no field: no claim, no
- * check. The claim is load-bearing at home — a key this version cannot honor
- * fails loud, never silent, and a field without an exports map is a provider
- * error: the exports map is the surface the field claims.
+ * field presence, its `blob` carve-outs and `assembly` designations, plus the
+ * exports map flattened to subpath → target paths. `null` = no package.json or
+ * no field: no claim, no check. The claim is load-bearing at home — a key this
+ * version cannot honor fails loud, never silent, and a field without an exports
+ * map is a provider error: the exports map is the surface the field claims.
  */
 export const readPackageSurface = (root: string): PackageSurface | null => {
   const manifestPath = join(root, "package.json")
@@ -135,7 +142,7 @@ export const readPackageSurface = (root: string): PackageSurface | null => {
         .map((key) => `"${key}"`)
         .join(
           ", ",
-        )} — this deblob version honors "blob" only; a key expecting behavior it lacks must not fail silent`,
+        )} — this deblob version honors "blob" and "assembly" only; a key expecting behavior it lacks must not fail silent`,
     )
   }
   const exports = manifest["exports"]
@@ -144,9 +151,11 @@ export const readPackageSurface = (root: string): PackageSurface | null => {
       `package.json declares "deblob" but no "exports" map — the exports map is the surface the field claims; declare one`,
     )
   }
+  const record = field as Record<string, unknown>
   return {
     subpaths: exportsSubpathsOf(exports),
-    blob: blobOf(field as Record<string, unknown>),
+    blob: patternsOf(record, "blob"),
+    assembly: patternsOf(record, "assembly"),
   }
 }
 

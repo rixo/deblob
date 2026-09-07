@@ -1,8 +1,9 @@
 {
   "name": "@fixture/billing",
-  "deblob": {},
+  "deblob": { "assembly": ["./run"] },
   "exports": {
     "./checkout.service": "./src/checkout.service.ts",
-    "./totals.model": "./src/totals.model.ts"
+    "./totals.model": "./src/totals.model.ts",
+    "./run": "./src/run.ts"
   }
 }

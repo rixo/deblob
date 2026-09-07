@@ -18,11 +18,21 @@ import type { ExtractionEngine } from "../ports/extraction.port.ts"
 
 /**
  * A readable claim: the field is present; `keyFor` is the exports surface it
- * covers (Node's key resolution), `disclosed` its `blob`.
+ * covers (Node's key resolution), `disclosed` its `blob`, `wiring` its
+ * `assembly`.
  */
 type Claim = {
   keyFor: (subpath: string) => string | null
   disclosed: (subpath: string) => boolean
+  wiring: (subpath: string) => boolean
+}
+
+/** A pattern list of the field, read leniently: anything but strings drops. */
+const patternsIn = (field: Record<string, unknown>, key: string): string[] => {
+  const value = field[key]
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : []
 }
 
 export const createPackageMetaReader = ({
@@ -41,11 +51,11 @@ export const createPackageMetaReader = ({
   const claims = new Map<string, Claim | null>()
 
   /**
-   * The field's `blob`, read leniently: keys this version does not understand
-   * are ignored and a malformed value reads as absent — a newer producer stays
-   * readable by an older consumer, a broken one never breaks the run. A field
-   * without an exports map is the provider's error (its own gate rejects it):
-   * no surface, no claim.
+   * The field's `blob` and `assembly`, read leniently: keys this version does
+   * not understand are ignored and a malformed value reads as absent — a newer
+   * producer stays readable by an older consumer, a broken one never breaks the
+   * run. A field without an exports map is the provider's error (its own gate
+   * rejects it): no surface, no claim.
    */
   const claimOf = (manifest: Record<string, unknown>): Claim | null => {
     const field = manifest["deblob"]
@@ -54,15 +64,13 @@ export const createPackageMetaReader = ({
     }
     const exports = manifest["exports"]
     if (exports === undefined || exports === null) return null
-    const blob = (field as { blob?: unknown }).blob
-    const patterns = Array.isArray(blob)
-      ? blob.filter((entry): entry is string => typeof entry === "string")
-      : []
+    const record = field as Record<string, unknown>
     return {
       keyFor: exportsKeyFor(
         exportsSubpathsOf(exports).map((entry) => entry.subpath),
       ),
-      disclosed: specifierMatcher(patterns),
+      disclosed: specifierMatcher(patternsIn(record, "blob")),
+      wiring: specifierMatcher(patternsIn(record, "assembly")),
     }
   }
 
@@ -119,7 +127,10 @@ export const createPackageMetaReader = ({
     // off the exports surface (a deep import around the map, an alias into
     // source): the field never claimed it, the producer's gate never saw it
     if (claim.keyFor(subpath) === null) return null
+    // blob retracts before anything else is read; assembly is the producer's
+    // designation and beats the tail — both trusted as the code is
     if (claim.disclosed(subpath)) return null
+    if (claim.wiring(subpath)) return "assembly"
     return classifyEntry(tail)
   }
 

@@ -130,10 +130,11 @@ assembly.
   check follows re-export edges only. What fires is a subpath re-exporting a
   service or adapter unlabeled (`export * from "./report.service"` under
   `./cli`). Three honest exits: put the layer on the subpath
-  (`./report.service`), compose instead of re-exporting, or disclose the subpath
-  in `blob` — the last is not a confession, it is the same statement the bare
-  root makes: this entry is a grab-bag, consumers get no layer for it. A CLI's
-  `blob` list often reads as its inventory of entry points.
+  (`./report.service`), compose instead of re-exporting, or say what the entry
+  is — `"deblob": { "assembly": ["./cli"] }` designates it wiring, sealed to
+  every consumer's wiring like an in-set assembly file and, like one, never
+  verified; `blob` retracts instead, and consumers treat it like any third-party
+  package. A CLI's `assembly` list reads as its inventory of entry points.
 
 - **Consumer side** — nothing to configure. Workspaces (pnpm/npm/yarn)
   materialize siblings as node_modules symlinks and the resolver follows them;
@@ -147,10 +148,11 @@ assembly.
   identity for packages declaring nothing, and it wins over a producer's field.
   Reviewed like `pureLibs`. Mapping a subpath to `blob` revokes a claim you do
   not buy.
-- The `assembly` designation is for composition roots, not for silencing rule 2
-  on a re-export barrel: an unlabeled entry fronting a service or adapter is
-  exactly what `surface` fires on. Assembly globs deserve `pureLibs`-grade
-  review.
+- The config's `assembly` globs designate composition roots at home; they never
+  silence rule 2 on a re-export barrel — an unlabeled entry fronting a service
+  or adapter is exactly what `surface` fires on. The field's `assembly` list is
+  the word for that, because it seals the subpath abroad. Both deserve
+  `pureLibs`-grade review.
 - The external-treatment premise assumes imports go through the package
   boundary. Deep imports into sibling source (`@scope/lib/src/…`) resolve
   outside the run root and become unlabeled external leaves — the producer's

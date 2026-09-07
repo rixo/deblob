@@ -171,6 +171,47 @@ describe("createPackageMetaReader", () => {
     expect(layerOf("@made-up/billing/checkout.service")).toBe("service")
   })
 
+  it("an assembly-designated subpath classifies assembly — the producer's word, over the tail", async () => {
+    const { layerOf } = await workspace(
+      {
+        "node_modules/@made-up/tool/package.json": JSON.stringify({
+          name: "@made-up/tool",
+          deblob: {
+            assembly: ["./cli", "./bin/**", "./wired.service"],
+            blob: ["./bin/legacy"],
+          },
+          exports: { "./*": "./src/*.ts" },
+        }),
+        "node_modules/@made-up/tool/src/cli.ts": "",
+      },
+      { "@made-up/tool/cli": "node_modules/@made-up/tool/src/cli.ts" },
+    )
+    expect(layerOf("@made-up/tool/cli")).toBe("assembly")
+    expect(layerOf("@made-up/tool/bin/deep/run")).toBe("assembly")
+    // the designation beats the tail's own suffix
+    expect(layerOf("@made-up/tool/wired.service")).toBe("assembly")
+    // blob retracts before assembly is read
+    expect(layerOf("@made-up/tool/bin/legacy")).toBe(null)
+    // undesignated siblings still read the stock rule
+    expect(layerOf("@made-up/tool/totals.model")).toBe("model")
+  })
+
+  it("a malformed assembly list abroad reads as absent — the tail decides", async () => {
+    const { layerOf } = await workspace(
+      {
+        "node_modules/sloppy-tool/package.json": JSON.stringify({
+          name: "sloppy-tool",
+          deblob: { assembly: "./cli" },
+          exports: { "./*": "./*.js" },
+        }),
+        "node_modules/sloppy-tool/cli.js": "",
+      },
+      { "sloppy-tool/cli": "node_modules/sloppy-tool/cli.js" },
+    )
+    expect(layerOf("sloppy-tool/cli")).toBe(null)
+    expect(layerOf("sloppy-tool/x.service")).toBe("service")
+  })
+
   it("a field without an exports map is the provider's error — ignored abroad, no claim", async () => {
     const { layerOf } = await workspace(
       {

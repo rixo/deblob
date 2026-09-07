@@ -15,9 +15,11 @@
  * rule was broken; the run just cannot certify). A pattern entry (`"./*"`) is
  * expanded the way Node resolves it, over the source side of the mirror — the
  * mirror is the producer's promise that the build is one-to-one, and the
- * expansion holds it to that. Subpaths the producer disclosed in `blob` are the
- * field's own carve-outs and are not checked. Pure: classified graph + parsed
- * surface in, violations + unverified out.
+ * expansion holds it to that. Subpaths the producer disclosed in `blob` or
+ * designated `assembly` are the field's own carve-outs and are not checked —
+ * assembly is a designation everywhere, never a verified fact, and abroad it
+ * seals the subpath to the consumer's wiring, so nothing escapes through it.
+ * Pure: classified graph + parsed surface in, violations + unverified out.
  */
 
 import type {
@@ -37,6 +39,13 @@ export type PackageSurface = {
   }[]
   /** The field's `blob` carve-outs — subpath patterns, as written. */
   blob: readonly string[]
+  /**
+   * The field's `assembly` designations — subpath patterns, as written. A
+   * designation, never a fact about a file (in-set it is config too): nothing
+   * to verify at home, a carve-out like `blob`; abroad the subpath is sealed to
+   * the consumer's wiring.
+   */
+  assembly: readonly string[]
 }
 
 export type CheckSurfaceOptions = {
@@ -47,7 +56,10 @@ export type CheckSurfaceOptions = {
   classifyEntry: (subpath: string) => FlavorLayer | null
   /** Build mirror: output root → source root, root-relative, no trailing `/`. */
   mirror: Readonly<Record<string, string>>
-  /** Compiled `blob` — a disclosed subpath is the field's own carve-out. */
+  /**
+   * Compiled `blob` + `assembly` — a subpath the field carves out of the claim:
+   * retracted, or designated wiring. Neither is checked here.
+   */
   disclosed: (subpath: string) => boolean
 }
 

@@ -59,6 +59,7 @@ const surface = (
     targets,
   })),
   blob,
+  assembly: [],
 })
 
 const options = {
@@ -852,6 +853,7 @@ describe("checkSurface", () => {
         },
       ],
       blob: [],
+      assembly: [],
     }
     expect(checkSurface(g, s, options).violations).toEqual([
       expect.objectContaining({ exported: "dist/stripe.adapter.js" }),
