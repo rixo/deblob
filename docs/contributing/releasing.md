@@ -25,7 +25,11 @@ Everything before `publish` is rehearsable; only the last step is outward.
    new behavior works from the shipped artifact) and one negative (the failure
    mode still fails). The suite runs from source; the tarball is a different
    artifact (`files` field, bin wiring, prepack output) and only a smoke proves
-   it. Done at both cuts so far, no break found — cheap insurance, not a scar.
+   it. Install into a project as `npm init -y` writes it (npm 11:
+   `"type": "commonjs"`) — the 0.0.4 smoke caught every `deblob.config.ts`
+   failing to load under that default, a break the suite (source,
+   `"type": "module"`) could never see. Two clean cuts, then a real catch: the
+   step earns its keep.
 4. **Release commit** — `chore(release): X.Y.Z — <headline>`, carrying the bump
    and the golden. Push `main`.
 5. **CI gate** — all three jobs green on the release commit: `check`, `alpine`
