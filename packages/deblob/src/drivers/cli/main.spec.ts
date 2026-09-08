@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { beforeAll, describe, expect, it } from "vitest"
+import { beforeAll, describe, expect, test } from "vitest"
 
 import { main } from "./main.ts"
 
@@ -58,20 +58,20 @@ beforeAll(() => {
 })
 
 describe("help / version", () => {
-  it("--help prints the help screen, exit 0", async () => {
+  test("--help prints the help screen, exit 0", async () => {
     const { code, out, err } = await run(["--help"])
     expect(code).toBe(0)
     expect(err).toBe("")
     await expect(out).toMatchFileSnapshot("__fixtures__/goldens/help.txt")
   })
 
-  it("check --help prints the check help screen, exit 0", async () => {
+  test("check --help prints the check help screen, exit 0", async () => {
     const { code, out } = await run(["check", "--help"])
     expect(code).toBe(0)
     await expect(out).toMatchFileSnapshot("__fixtures__/goldens/check-help.txt")
   })
 
-  it("--version prints the package version, exit 0", async () => {
+  test("--version prints the package version, exit 0", async () => {
     const { code, out } = await run(["--version"])
     expect(code).toBe(0)
     expect(out).toMatch(/^deblob \d+\.\d+\.\d+\n$/)
@@ -79,20 +79,20 @@ describe("help / version", () => {
 })
 
 describe("usage errors — exit 2, teaching message on stderr", () => {
-  it("unknown command", async () => {
+  test("unknown command", async () => {
     const { code, out, err } = await run(["frobnicate"])
     expect(code).toBe(2)
     expect(out).toBe("")
     expect(err).toContain("frobnicate")
   })
 
-  it("unknown check", async () => {
+  test("unknown check", async () => {
     const { code, err } = await run(["check", "SOME_MADE_UP_CHECK"])
     expect(code).toBe(2)
     expect(err).toContain('unknown check "SOME_MADE_UP_CHECK"')
   })
 
-  it("unknown explain topic", async () => {
+  test("unknown explain topic", async () => {
     const { code, err } = await run(["explain", "SOME_MADE_UP_TOPIC"])
     expect(code).toBe(2)
     expect(err).toContain("SOME_MADE_UP_TOPIC")
@@ -100,7 +100,7 @@ describe("usage errors — exit 2, teaching message on stderr", () => {
 })
 
 describe("deblob check", () => {
-  it("violating repo: grouped listing golden, exit 1", async () => {
+  test("violating repo: grouped listing golden, exit 1", async () => {
     const { code, out } = await run(["check"])
     expect(code).toBe(1)
     await expect(out).toMatchFileSnapshot(
@@ -108,7 +108,7 @@ describe("deblob check", () => {
     )
   })
 
-  it("run below the config root: paths print cwd-relative, ctrl+clickable", async () => {
+  test("run below the config root: paths print cwd-relative, ctrl+clickable", async () => {
     const { code, out } = await run(["check"], {
       cwd: `${violatingDir}/src`,
     })
@@ -117,14 +117,14 @@ describe("deblob check", () => {
     expect(out).toContain("imports ../src/invoice/private/totals.model.ts")
   })
 
-  it("named subset runs only those checks", async () => {
+  test("named subset runs only those checks", async () => {
     const { code, out } = await run(["check", "ports"])
     expect(code).toBe(1)
     expect(out).toContain("ports")
     expect(out).not.toContain("private/ is sealed")
   })
 
-  it("check dag alone reports both cycle shapes", async () => {
+  test("check dag alone reports both cycle shapes", async () => {
     const { code, out } = await run(["check", "dag"])
     expect(code).toBe(1)
     expect(out).toContain("cross-service")
@@ -134,7 +134,7 @@ describe("deblob check", () => {
     expect(out).not.toContain("private/ is sealed")
   })
 
-  it("explain dag prints rules 13 and 14, shared card once", async () => {
+  test("explain dag prints rules 13 and 14, shared card once", async () => {
     const { code, out } = await run(["explain", "dag"])
     expect(code).toBe(0)
     expect(out).toContain("rule 13 —")
@@ -143,14 +143,14 @@ describe("deblob check", () => {
     expect(out).toContain("card: acyclic — shown above")
   })
 
-  it("explain swallows the footer's whole rule list in one run", async () => {
+  test("explain swallows the footer's whole rule list in one run", async () => {
     const { code, out } = await run(["explain", "2", "10", "barrels"])
     expect(code).toBe(0)
     expect(out).toContain("rule 2 —")
     expect(out).toContain("rule 10 —")
   })
 
-  it("unknown topics among several: exit 2, every offender named", async () => {
+  test("unknown topics among several: exit 2, every offender named", async () => {
     const { code, err } = await run([
       "explain",
       "4",
@@ -162,7 +162,7 @@ describe("deblob check", () => {
     expect(err).toContain('"rule-999"')
   })
 
-  it("clean repo: the summary and coverage lines, no exports segment without a field, exit 0", async () => {
+  test("clean repo: the summary and coverage lines, no exports segment without a field, exit 0", async () => {
     const { code, out } = await run(["check"], { cwd: cleanDir })
     expect(code).toBe(0)
     expect(out).toMatch(
@@ -170,7 +170,7 @@ describe("deblob check", () => {
     )
   })
 
-  it("aliased repo: tsconfig paths + config alias both land edges — violations prove them", async () => {
+  test("aliased repo: tsconfig paths + config alias both land edges — violations prove them", async () => {
     const { code, out } = await run(["check"], { cwd: aliasedDir })
     expect(code).toBe(1)
     // resolved module paths in the messages = the aliases became in-set edges
@@ -178,7 +178,7 @@ describe("deblob check", () => {
     expect(out).toContain("imports src/lib/other-made-up.service.ts")
   })
 
-  it("unresolvable literal import: exit 2, stderr teaches, listing still prints", async () => {
+  test("unresolvable literal import: exit 2, stderr teaches, listing still prints", async () => {
     const { code, out, err } = await run(["check"], { cwd: unresolvableDir })
     expect(code).toBe(2)
     expect(out).toContain("0 violations")
@@ -188,7 +188,7 @@ describe("deblob check", () => {
     expect(err).toContain('config key "external"')
   })
 
-  it("external repo: declared patterns land leaves (no unresolved), pureLibs ratifies by pattern", async () => {
+  test("external repo: declared patterns land leaves (no unresolved), pureLibs ratifies by pattern", async () => {
     const { code, out, err } = await run(["check"], { cwd: externalDir })
     expect(err).toBe("")
     expect(code).toBe(1)
@@ -197,7 +197,7 @@ describe("deblob check", () => {
     expect(out).not.toContain("$made-up:tokens.scss")
   })
 
-  it("aware sibling: the crossed service identity seals to assembly, the crossed model is pure — trust is the dependency model", async () => {
+  test("aware sibling: the crossed service identity seals to assembly, the crossed model is pure — trust is the dependency model", async () => {
     const { code, out, err } = await run(["check"], { cwd: awareDir })
     expect(err).toBe("")
     expect(code).toBe(1)
@@ -219,7 +219,7 @@ describe("deblob check", () => {
     expect(out).toContain("2 violations (2 layers)")
   })
 
-  it("declared-assembly entry at home: the re-exporting root is a carve-out — nothing to verify, green", async () => {
+  test("declared-assembly entry at home: the re-exporting root is a carve-out — nothing to verify, green", async () => {
     const { code, out, err } = await run(["check"], { cwd: billingDir })
     expect(err).toBe("")
     expect(code).toBe(0)
@@ -229,7 +229,7 @@ describe("deblob check", () => {
     expect(out).toContain("· exports 2 checked, 1 disclosed\n")
   })
 
-  it("externalLayers: blob revokes a sibling's model claim — back to unlabeled, rule 4 fires", async () => {
+  test("externalLayers: blob revokes a sibling's model claim — back to unlabeled, rule 4 fires", async () => {
     const { code, out } = await run(
       ["check", "layers", "-c", "revoked.config.ts"],
       { cwd: awareDir },
@@ -241,7 +241,7 @@ describe("deblob check", () => {
     expect(out).toContain("3 violations (3 layers)")
   })
 
-  it("disclosing package at home: the laundering root listed in blob goes green — confessed, not hidden", async () => {
+  test("disclosing package at home: the laundering root listed in blob goes green — confessed, not hidden", async () => {
     const { code, out, err } = await run(["check"], { cwd: legacyDir })
     expect(err).toBe("")
     expect(code).toBe(0)
@@ -249,7 +249,7 @@ describe("deblob check", () => {
     expect(out).toContain("· exports 0 checked, 2 disclosed\n")
   })
 
-  it("externalLayers patch wins over the producer field — reviewer of record", async () => {
+  test("externalLayers patch wins over the producer field — reviewer of record", async () => {
     const { code, out } = await run(
       ["check", "layers", "-c", "patched.config.ts"],
       { cwd: awareDir },
@@ -262,7 +262,7 @@ describe("deblob check", () => {
     expect(out).toContain("import assembly (rule 1)")
   })
 
-  it("declaring package: surface verifies the exports claims at the producer's own gate", async () => {
+  test("declaring package: surface verifies the exports claims at the producer's own gate", async () => {
     const { code, out, err } = await run(["check"], { cwd: declaringDir })
     expect(err).toBe("")
     expect(code).toBe(1)
@@ -279,7 +279,7 @@ describe("deblob check", () => {
     expect(out).toContain("· exports 3 checked\n")
   })
 
-  it("a field key this version cannot honor: exit 2, loud at home, never silent", async () => {
+  test("a field key this version cannot honor: exit 2, loud at home, never silent", async () => {
     const { code, out, err } = await run(["check"], { cwd: fieldNewerDir })
     expect(code).toBe(2)
     expect(out).toBe("")
@@ -287,7 +287,7 @@ describe("deblob check", () => {
     expect(err).toContain('honors "blob" and "assembly" only')
   })
 
-  it("built package: the default mirror reaches source through dist — the laundering root fires citing the source, wearing its built name", async () => {
+  test("built package: the default mirror reaches source through dist — the laundering root fires citing the source, wearing its built name", async () => {
     const { code, out, err } = await run(["check"], { cwd: builtDir })
     expect(err).toBe("")
     expect(code).toBe(1)
@@ -301,7 +301,7 @@ describe("deblob check", () => {
     expect(out).toContain("· exports 3 checked\n")
   })
 
-  it("pattern export: the star expands over src/ through the mirror — the unlabeled concrete subpath fires, the suffixed ones match", async () => {
+  test("pattern export: the star expands over src/ through the mirror — the unlabeled concrete subpath fires, the suffixed ones match", async () => {
     const { code, out, err } = await run(["check"], { cwd: patternedDir })
     expect(err).toBe("")
     expect(code).toBe(1)
@@ -314,7 +314,7 @@ describe("deblob check", () => {
     expect(out).toContain("· exports 3 checked\n")
   })
 
-  it("unverified surface: an entry under no mirror root cannot be certified — stderr block, exit 2, until mapped", async () => {
+  test("unverified surface: an entry under no mirror root cannot be certified — stderr block, exit 2, until mapped", async () => {
     const { code, out, err } = await run(["check"], { cwd: unverifiedDir })
     expect(code).toBe(2)
     expect(out).not.toContain("surface")
@@ -341,14 +341,14 @@ describe("deblob check", () => {
     expect(mapped.out).toContain("· exports 1 checked\n")
   })
 
-  it("broken config: teaching error on stderr, exit 2", async () => {
+  test("broken config: teaching error on stderr, exit 2", async () => {
     const { code, out, err } = await run(["check"], { cwd: brokenConfigDir })
     expect(code).toBe(2)
     expect(out).toBe("")
     expect(err).toContain("deblob.config.ts")
   })
 
-  it("check surface named by hand on a package with no field: one stderr note, no exports segment, exit 0 — a pass it never ran does not read as a pass", async () => {
+  test("check surface named by hand on a package with no field: one stderr note, no exports segment, exit 0 — a pass it never ran does not read as a pass", async () => {
     const named = await run(["check", "surface"], { cwd: cleanDir })
     expect(named.code).toBe(0)
     expect(named.err).toBe(
@@ -368,7 +368,7 @@ describe("deblob check", () => {
     expect(others.out).not.toContain("exports")
   })
 
-  it("--explain appends the crash course for every fired rule", async () => {
+  test("--explain appends the crash course for every fired rule", async () => {
     const { code, out } = await run(["check", "--explain"])
     expect(code).toBe(1)
     expect(out).toContain("pdf-render.service.ts")
@@ -379,14 +379,14 @@ describe("deblob check", () => {
     expect(out).toContain("card: dependency-matrix")
   })
 
-  it("--explain-only prints the explanations without the listing", async () => {
+  test("--explain-only prints the explanations without the listing", async () => {
     const { code, out } = await run(["check", "--explain-only"])
     expect(code).toBe(1)
     expect(out).not.toContain("pdf-render.service.ts")
     expect(out).toContain("rule 4 —")
   })
 
-  it("--explain on a clean repo adds nothing", async () => {
+  test("--explain on a clean repo adds nothing", async () => {
     const { out } = await run(["check", "--explain"], { cwd: cleanDir })
     expect(out).toMatch(
       /^0 violations · \d+ files · \d+kb · \d+% blob\n\d+ services? · \d+ imports\n$/,
@@ -397,7 +397,7 @@ describe("deblob check", () => {
     )
   })
 
-  it("-c runs an explicit config from anywhere", async () => {
+  test("-c runs an explicit config from anywhere", async () => {
     const { code, out } = await run(
       ["-c", join(violatingDir, "deblob.config.ts"), "check", "ports"],
       { cwd: cleanDir },
@@ -408,7 +408,7 @@ describe("deblob check", () => {
 })
 
 describe("deblob explain", () => {
-  it("rule-4: summary excerpt, card, canonical URL, exit 0", async () => {
+  test("rule-4: summary excerpt, card, canonical URL, exit 0", async () => {
     const { code, out } = await run(["explain", "rule-4"])
     expect(code).toBe(0)
     expect(out).toContain("rule 4 — service cannot depend on concrete")
@@ -418,13 +418,13 @@ describe("deblob explain", () => {
     )
   })
 
-  it("bare number and rule-N resolve identically", async () => {
+  test("bare number and rule-N resolve identically", async () => {
     expect((await run(["explain", "4"])).out).toBe(
       (await run(["explain", "rule-4"])).out,
     )
   })
 
-  it("a check name explains each of its rules, shared card shown once", async () => {
+  test("a check name explains each of its rules, shared card shown once", async () => {
     const { code, out } = await run(["explain", "private"])
     expect(code).toBe(0)
     expect(out).toContain("rule 12 —")
@@ -432,14 +432,14 @@ describe("deblob explain", () => {
 })
 
 describe("bare deblob — status, always exit 0", () => {
-  it("prints the inventory golden", async () => {
+  test("prints the inventory golden", async () => {
     const { code, out, err } = await run([])
     expect(code).toBe(0)
     expect(err).toBe("")
     await expect(out).toMatchFileSnapshot("__fixtures__/goldens/bare.txt")
   })
 
-  it("configless: defaults provenance, empty temp dir", async () => {
+  test("configless: defaults provenance, empty temp dir", async () => {
     const temp = await mkdtemp(join(tmpdir(), "deblob-bare-"))
     try {
       const { code, out } = await run([], { cwd: temp })
@@ -452,7 +452,7 @@ describe("bare deblob — status, always exit 0", () => {
     }
   })
 
-  it("a declaring package: the claim tallied at scan speed — claimed, not checked", async () => {
+  test("a declaring package: the claim tallied at scan speed — claimed, not checked", async () => {
     const { code, out, err } = await run([], { cwd: billingDir })
     expect(code).toBe(0)
     expect(err).toBe("")
@@ -462,7 +462,7 @@ describe("bare deblob — status, always exit 0", () => {
     expect(unverified.out).toContain("· exports 1 claimed\n")
   })
 
-  it("a field this version cannot read: the teaching line on stderr, the segment skipped, still exit 0", async () => {
+  test("a field this version cannot read: the teaching line on stderr, the segment skipped, still exit 0", async () => {
     const { code, out, err } = await run([], { cwd: fieldNewerDir })
     expect(code).toBe(0)
     expect(err).toContain('honors "blob" and "assembly" only')
@@ -470,7 +470,7 @@ describe("bare deblob — status, always exit 0", () => {
     expect(out).not.toContain("exports")
   })
 
-  it("broken config: stderr teaching error, stat lines skipped, still exit 0", async () => {
+  test("broken config: stderr teaching error, stat lines skipped, still exit 0", async () => {
     const { code, out, err } = await run([], { cwd: brokenConfigDir })
     expect(code).toBe(0)
     expect(err).not.toBe("")
@@ -480,7 +480,7 @@ describe("bare deblob — status, always exit 0", () => {
 })
 
 describe("color plumbing", () => {
-  it("FORCE_COLOR styles, --no-color and NO_COLOR strip", async () => {
+  test("FORCE_COLOR styles, --no-color and NO_COLOR strip", async () => {
     const forced = await run(["check"], { env: { FORCE_COLOR: "1" } })
     expect(forced.out).toContain("[")
     const flagged = await run(["--no-color", "check"], {
@@ -493,7 +493,7 @@ describe("color plumbing", () => {
     expect(envKilled.out).not.toContain("[")
   })
 
-  it("a TTY stdout styles, a piped one stays plain", async () => {
+  test("a TTY stdout styles, a piped one stays plain", async () => {
     expect((await run(["check"], { isTTY: true })).out).toContain("[")
     expect((await run(["check"], { isTTY: false })).out).not.toContain("[")
   })
@@ -523,7 +523,7 @@ describe("bin shim (child process smoke)", () => {
     }
   }
 
-  it("wires argv, cwd, streams, and the exit code", () => {
+  test("wires argv, cwd, streams, and the exit code", () => {
     const version = spawn(["--version"], violatingDir)
     expect(version.status).toBe(0)
     expect(version.stdout).toMatch(/^deblob \d+\.\d+\.\d+\n$/)
@@ -533,7 +533,7 @@ describe("bin shim (child process smoke)", () => {
     expect(check.stdout).toContain("pdf-render.service.ts")
   })
 
-  it("an ESM .ts config under a CommonJS-typed package teaches the .mts rename — only Node's own loader shows it", () => {
+  test("an ESM .ts config under a CommonJS-typed package teaches the .mts rename — only Node's own loader shows it", () => {
     // npm 11's `npm init -y` writes "type": "commonjs"; the in-process suite
     // loads configs through vitest and never sees this — the shim does
     const check = spawn(["check"], here("__fixtures__/cjs-typed"))

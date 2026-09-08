@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import {
   ConfigError,
@@ -9,7 +9,7 @@ import {
 } from "./config.model.ts"
 
 describe("asConfigError", () => {
-  it("passes a ConfigError through, rethrows anything else", () => {
+  test("passes a ConfigError through, rethrows anything else", () => {
     const teaching = new ConfigError("SOME_MADE_UP_MESSAGE")
     expect(asConfigError(teaching)).toBe(teaching)
     const bug = new Error("SOME_MADE_UP_BUG")
@@ -18,13 +18,13 @@ describe("asConfigError", () => {
 })
 
 describe("hasCoverageExtension", () => {
-  it("accepts every extension of the gate", () => {
+  test("accepts every extension of the gate", () => {
     for (const ext of COVERAGE_EXTENSIONS) {
       expect(hasCoverageExtension(`dir/file${ext}`)).toBe(true)
     }
   })
 
-  it("rejects non-source extensions and near-misses", () => {
+  test("rejects non-source extensions and near-misses", () => {
     expect(hasCoverageExtension("dir/styles.css")).toBe(false)
     expect(hasCoverageExtension("dir/notes.md")).toBe(false)
     expect(hasCoverageExtension("dir/data.json")).toBe(false)
@@ -33,7 +33,7 @@ describe("hasCoverageExtension", () => {
 })
 
 describe("configImportErrorMessage", () => {
-  it("teaches the erasable-only constraint on the Node syntax code", () => {
+  test("teaches the erasable-only constraint on the Node syntax code", () => {
     const error = Object.assign(new Error("enum stripped"), {
       code: "ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX",
     })
@@ -42,7 +42,7 @@ describe("configImportErrorMessage", () => {
     expect(message).toMatch(/deblob\.config\.ts/)
   })
 
-  it("teaches the .mts rename when ESM syntax was read as CommonJS", () => {
+  test("teaches the .mts rename when ESM syntax was read as CommonJS", () => {
     const error = new SyntaxError("Unexpected token 'export'")
     const message = configImportErrorMessage(error, "/repo/deblob.config.ts")
     expect(message).toMatch(/loaded as CommonJS/)
@@ -68,7 +68,7 @@ describe("configImportErrorMessage", () => {
     ).toMatch(/^failed to load/)
   })
 
-  it("names the config path on any other failure", () => {
+  test("names the config path on any other failure", () => {
     const message = configImportErrorMessage(
       new Error("SOME_FAKE_EVALUATION_FAILURE"),
       "/repo/deblob.config.ts",

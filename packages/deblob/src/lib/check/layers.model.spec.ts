@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import type {
   EdgeKind,
@@ -92,7 +92,7 @@ const declaredLeaf = (specifier: string, pattern: string): EdgeTarget => ({
 
 describe("checkLayers", () => {
   describe("model and ports stay pure and inward (rules 1, 4)", () => {
-    it("fires 1+4 (8 hint) when model imports a concrete builtin", () => {
+    test("fires 1+4 (8 hint) when model imports a concrete builtin", () => {
       const g = graph(
         {
           "invoice/model/totals.ts": { layer: "model", serviceRoot: "invoice" },
@@ -114,7 +114,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires 1 when model imports service, adapters, assembly, or ports", () => {
+    test("fires 1 when model imports service, adapters, assembly, or ports", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -140,7 +140,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires 1 when ports import outward", () => {
+    test("fires 1 when ports import outward", () => {
       const g = graph(
         {
           "invoice/ports/renderer.ts": {
@@ -169,7 +169,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires 1+4 (8 hint) when ports import a concrete builtin", () => {
+    test("fires 1+4 (8 hint) when ports import a concrete builtin", () => {
       const g = graph(
         { "a/ports/p.ts": { layer: "ports", serviceRoot: "a" } },
         [{ from: "a/ports/p.ts", to: lib("node:fs") }],
@@ -185,7 +185,7 @@ describe("checkLayers", () => {
   })
 
   describe("service purity (rule 4)", () => {
-    it("fires 4 (8 hint) when service imports a concrete builtin", () => {
+    test("fires 4 (8 hint) when service imports a concrete builtin", () => {
       const g = graph(
         {
           "invoice/pdf-render.service.ts": {
@@ -205,7 +205,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires 1 (8 hint) when service imports an adapter", () => {
+    test("fires 1 (8 hint) when service imports an adapter", () => {
       const g = graph(
         {
           "invoice/pdf-render.service.ts": {
@@ -233,7 +233,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires 1 when service or adapters import assembly", () => {
+    test("fires 1 when service or adapters import assembly", () => {
       const g = graph(
         {
           "a/a.service.ts": { layer: "service", serviceRoot: "a" },
@@ -258,7 +258,7 @@ describe("checkLayers", () => {
   })
 
   describe("composition seals (rules 6, 7 — rule 8 hint)", () => {
-    it.each(["service", "adapters", "blob"] as const)(
+    test.each(["service", "adapters", "blob"] as const)(
       "fires 6+8 when %s runtime-imports a service file",
       (importerLayer) => {
         const g = graph(
@@ -291,7 +291,7 @@ describe("checkLayers", () => {
       },
     )
 
-    it.each(["adapters", "blob"] as const)(
+    test.each(["adapters", "blob"] as const)(
       "fires 7 (8 hint) when %s runtime-imports an adapter file",
       (importerLayer) => {
         const g = graph(
@@ -320,7 +320,7 @@ describe("checkLayers", () => {
   })
 
   describe("blob seal (rule 5)", () => {
-    it.each(["model", "ports", "service", "adapters"] as const)(
+    test.each(["model", "ports", "service", "adapters"] as const)(
       "fires 5 when %s imports blob",
       (importerLayer) => {
         const g = graph(
@@ -343,7 +343,7 @@ describe("checkLayers", () => {
   })
 
   describe("concrete classification (rule 4, default-concrete)", () => {
-    it("fires the unclassified violation for an unlisted lib from model", () => {
+    test("fires the unclassified violation for an unlisted lib from model", () => {
       const g = graph(
         {
           "invoice/model/schedule.ts": {
@@ -367,7 +367,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires the unclassified violation for an unlisted lib from service", () => {
+    test("fires the unclassified violation for an unlisted lib from service", () => {
       const g = graph(
         { "a/a.service.ts": { layer: "service", serviceRoot: "a" } },
         [{ from: "a/a.service.ts", to: lib("axios") }],
@@ -377,7 +377,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires for a never-seen bare specifier — unlisted ⇒ concrete, no census (tripwire)", () => {
+    test("fires for a never-seen bare specifier — unlisted ⇒ concrete, no census (tripwire)", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: lib("@nobody/heard-of-this-one") }],
@@ -387,7 +387,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("stays green for a pureLibs-listed lib from model", () => {
+    test("stays green for a pureLibs-listed lib from model", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: lib("luxon") }],
@@ -395,7 +395,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g, { pureLibs: ["luxon"] })).toEqual([])
     })
 
-    it("stays green for a curated pure builtin from model", () => {
+    test("stays green for a curated pure builtin from model", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: lib("node:path") }],
@@ -403,7 +403,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("a pureLibs-declared builtin is pure — builtin specifiers are ratified pureLibs entries", () => {
+    test("a pureLibs-declared builtin is pure — builtin specifiers are ratified pureLibs entries", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: lib("node:util") }],
@@ -414,7 +414,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g, { pureLibs: ["node:util"] })).toEqual([])
     })
 
-    it("treats a resolved file outside the coverage set as concrete", () => {
+    test("treats a resolved file outside the coverage set as concrete", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: outsideFile("../../outside.ts") }],
@@ -432,7 +432,7 @@ describe("checkLayers", () => {
   describe("declared externals — concrete by default, pureLibs by pattern", () => {
     const leaf = declaredLeaf("$made-up:tokens.scss", "$made-up:*")
 
-    it("fires 1+4 (8 hint) from model — a matrix cell, never unclassified", () => {
+    test("fires 1+4 (8 hint) from model — a matrix cell, never unclassified", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: leaf }],
@@ -452,7 +452,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires 4 (8 hint) from service", () => {
+    test("fires 4 (8 hint) from service", () => {
       const g = graph(
         { "a/a.service.ts": { layer: "service", serviceRoot: "a" } },
         [{ from: "a/a.service.ts", to: leaf }],
@@ -462,7 +462,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("stays green from adapters, blob, and assembly", () => {
+    test("stays green from adapters, blob, and assembly", () => {
       const g = graph(
         {
           "a/x.adapter.ts": { layer: "adapters", serviceRoot: "a" },
@@ -478,7 +478,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("stays green when the matched pattern is a pureLibs entry — verbatim, like a package name", () => {
+    test("stays green when the matched pattern is a pureLibs entry — verbatim, like a package name", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: leaf }],
@@ -490,7 +490,7 @@ describe("checkLayers", () => {
       ).toHaveLength(1)
     })
 
-    it("exempts type-only imports by default — declared typings are the contract; strict mode binds", () => {
+    test("exempts type-only imports by default — declared typings are the contract; strict mode binds", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: leaf, kind: "type" }],
@@ -503,7 +503,7 @@ describe("checkLayers", () => {
   })
 
   describe("cross-package layers — identity crosses, the matrix applies in-set", () => {
-    it.each([
+    test.each([
       // the exact in-set cells: inward-pointing rows cite 1, the seal rows 6
       ["model", [1, 8]],
       ["ports", [1, 8]],
@@ -533,7 +533,7 @@ describe("checkLayers", () => {
       },
     )
 
-    it("fires 7 when an adapter imports a sibling package's adapter — in-set-consistent", () => {
+    test("fires 7 when an adapter imports a sibling package's adapter — in-set-consistent", () => {
       const g = graph(
         { "a/x.adapter.ts": { layer: "adapters", serviceRoot: "a" } },
         [
@@ -552,7 +552,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("the carrier is exactly what distinguishes: the same import unlabeled stays green from adapters", () => {
+    test("the carrier is exactly what distinguishes: the same import unlabeled stays green from adapters", () => {
       const g = graph(
         { "a/x.adapter.ts": { layer: "adapters", serviceRoot: "a" } },
         [{ from: "a/x.adapter.ts", to: lib("@made-up/raw-sdk") }],
@@ -560,7 +560,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("stays green from assembly — the bottom row crosses too", () => {
+    test("stays green from assembly — the bottom row crosses too", () => {
       const g = graph({ "main.ts": { layer: "assembly" } }, [
         {
           from: "main.ts",
@@ -574,7 +574,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it.each(["model", "ports", "service", "adapters"] as const)(
+    test.each(["model", "ports", "service", "adapters"] as const)(
       "fires 1 when %s imports a crossed assembly entry",
       (importerLayer) => {
         const g = graph(
@@ -592,14 +592,14 @@ describe("checkLayers", () => {
       },
     )
 
-    it("blob importing a crossed assembly entry stays green — bound by the composition seals only, as in-set", () => {
+    test("blob importing a crossed assembly entry stays green — bound by the composition seals only, as in-set", () => {
       const g = graph({ "lib/x.ts": { layer: "blob" } }, [
         { from: "lib/x.ts", to: crossed("@made-up/b/main", "assembly") },
       ])
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("a crossed model claim is pure for the importer — the trust pin: rule 4 satisfied, no pureLibs line", () => {
+    test("a crossed model claim is pure for the importer — the trust pin: rule 4 satisfied, no pureLibs line", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [
@@ -612,7 +612,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("a crossed ports claim is pure the same way — from a service too", () => {
+    test("a crossed ports claim is pure the same way — from a service too", () => {
       const g = graph(
         { "a/a.service.ts": { layer: "service", serviceRoot: "a" } },
         [
@@ -625,7 +625,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("pure is not lawless — model importing a crossed ports entry fires 1, the in-set cell", () => {
+    test("pure is not lawless — model importing a crossed ports entry fires 1, the in-set cell", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [
@@ -646,7 +646,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g, { pureLibs: ["@made-up/b"] })).toHaveLength(1)
     })
 
-    it("a crossed blob claim claims nothing — today's trichotomy, untouched (the revoke lands here)", () => {
+    test("a crossed blob claim claims nothing — today's trichotomy, untouched (the revoke lands here)", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -662,7 +662,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("type-only crossing: exempt on service/adapters targets, binding on assembly, strict binds all", () => {
+    test("type-only crossing: exempt on service/adapters targets, binding on assembly, strict binds all", () => {
       const service = crossed("@made-up/b/checkout.service", "service")
       const adapters = crossed("@made-up/b/stripe.adapter", "adapters")
       const assembly = crossed("@made-up/b/main", "assembly")
@@ -680,7 +680,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("a declared external can carry a patched layer — the pattern hit does not shed identity", () => {
+    test("a declared external can carry a patched layer — the pattern hit does not shed identity", () => {
       const leaf: EdgeTarget = {
         type: "external",
         specifier: "$made-up:checkout",
@@ -699,7 +699,7 @@ describe("checkLayers", () => {
   })
 
   describe("rule 8 — per-cell type exemption and the strict opt-out", () => {
-    it("ignores type-only imports of service and adapter files by default", () => {
+    test("ignores type-only imports of service and adapter files by default", () => {
       const g = graph(
         {
           "billing/b.service.ts": { layer: "service", serviceRoot: "billing" },
@@ -725,7 +725,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("lets model type-import a service — rule 8's example, legal anywhere", () => {
+    test("lets model type-import a service — rule 8's example, legal anywhere", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -742,7 +742,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("ignores type-only imports of externals by default — published types are the contract", () => {
+    test("ignores type-only imports of externals by default — published types are the contract", () => {
       const g = graph(
         {
           "a/a.service.ts": { layer: "service", serviceRoot: "a" },
@@ -756,7 +756,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it.each(["model", "ports", "service", "adapters"] as const)(
+    test.each(["model", "ports", "service", "adapters"] as const)(
       "fires 5 when %s type-imports blob — no contract shape to depend on",
       (importerLayer) => {
         const g = graph(
@@ -776,7 +776,7 @@ describe("checkLayers", () => {
       },
     )
 
-    it("fires 1 when model type-imports assembly — wiring exports no contract", () => {
+    test("fires 1 when model type-imports assembly — wiring exports no contract", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -789,7 +789,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires 1+4 when model type-imports a file outside the coverage set — not a package, no contract", () => {
+    test("fires 1+4 when model type-imports a file outside the coverage set — not a package, no contract", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [
@@ -805,7 +805,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("pulls type edges into scope with typeOnlyExempt: false, citing 6 alone", () => {
+    test("pulls type edges into scope with typeOnlyExempt: false, citing 6 alone", () => {
       const g = graph(
         {
           "billing/b.service.ts": { layer: "service", serviceRoot: "billing" },
@@ -828,7 +828,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("cites 6 alone on runtime edges too under typeOnlyExempt: false", () => {
+    test("cites 6 alone on runtime edges too under typeOnlyExempt: false", () => {
       const g = graph(
         {
           "lib/helpers.ts": { layer: "blob" },
@@ -841,7 +841,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("binds the exempt cells under typeOnlyExempt: false, plain citations", () => {
+    test("binds the exempt cells under typeOnlyExempt: false, plain citations", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -867,7 +867,7 @@ describe("checkLayers", () => {
   })
 
   describe("own-service private/ (rule 9)", () => {
-    it.each(["service", "adapters"] as const)(
+    test.each(["service", "adapters"] as const)(
       "lets %s import from its own service's private/",
       (importerLayer) => {
         const g = graph(
@@ -890,7 +890,7 @@ describe("checkLayers", () => {
       },
     )
 
-    it("lets a root-level service import from the root private/", () => {
+    test("lets a root-level service import from the root private/", () => {
       const g = graph(
         {
           "app.service.ts": { layer: "service", serviceRoot: "." },
@@ -905,7 +905,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("still fires on a foreign service's private composition unit", () => {
+    test("still fires on a foreign service's private composition unit", () => {
       const g = graph(
         {
           "billing/stripe.adapter.ts": {
@@ -932,7 +932,7 @@ describe("checkLayers", () => {
   })
 
   describe("non-violations — deliberately legal shapes stay green", () => {
-    it("blob importing blob, model, or ports", () => {
+    test("blob importing blob, model, or ports", () => {
       const g = graph(
         {
           "lib/a.ts": { layer: "blob" },
@@ -951,7 +951,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("adapter importing concrete and unlisted libs — that's its job", () => {
+    test("adapter importing concrete and unlisted libs — that's its job", () => {
       const g = graph(
         { "icons/fs.adapter.ts": { layer: "adapters", serviceRoot: "icons" } },
         [
@@ -962,7 +962,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("cross-service model→model — the matrix is layers, not packaging", () => {
+    test("cross-service model→model — the matrix is layers, not packaging", () => {
       const g = graph(
         {
           "orders/x.model.ts": { layer: "model", serviceRoot: "orders" },
@@ -973,7 +973,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it.each(["ports", "service", "adapters"] as const)(
+    test.each(["ports", "service", "adapters"] as const)(
       "%s importing model and ports",
       (importerLayer) => {
         const g = graph(
@@ -991,7 +991,7 @@ describe("checkLayers", () => {
       },
     )
 
-    it("assembly importing anything — bottom row of the matrix", () => {
+    test("assembly importing anything — bottom row of the matrix", () => {
       const g = graph(
         {
           "main.spec.ts": { layer: "assembly" },
@@ -1010,7 +1010,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    it("an all-blob graph runs clean — the brownfield ground state", () => {
+    test("an all-blob graph runs clean — the brownfield ground state", () => {
       const g = graph(
         {
           "src/a.ts": { layer: "blob" },
@@ -1029,7 +1029,7 @@ describe("checkLayers", () => {
   })
 
   describe("contract breaches are loud", () => {
-    it("throws when an edge references a module missing from the graph", () => {
+    test("throws when an edge references a module missing from the graph", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: mod("ghost.ts") }],

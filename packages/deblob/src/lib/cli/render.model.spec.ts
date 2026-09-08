@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import type {
   BarrelsViolation,
@@ -95,7 +95,7 @@ const STATS: GraphStats = {
 }
 
 describe("renderCheckResults", () => {
-  it("renders the fiction's grouped listing: service → file → tagged lines", () => {
+  test("renders the fiction's grouped listing: service → file → tagged lines", () => {
     const output = renderCheckResults(
       [layersViolation(), privateViolation()],
       STATS,
@@ -121,7 +121,7 @@ describe("renderCheckResults", () => {
     )
   })
 
-  it("rule citations never split across wrapped lines", () => {
+  test("rule citations never split across wrapped lines", () => {
     // slide the citation over the wrap boundary — no orphaned "(rule" / "8)"
     for (let pad = 0; pad <= 60; pad += 1) {
       const target = {
@@ -143,7 +143,7 @@ describe("renderCheckResults", () => {
     }
   })
 
-  it("pathPrefix lands on every module path, never on package specifiers", () => {
+  test("pathPrefix lands on every module path, never on package specifiers", () => {
     const output = renderCheckResults(
       [layersViolation(), privateViolation()],
       STATS,
@@ -157,13 +157,13 @@ describe("renderCheckResults", () => {
     expect(output).toContain("imports node:fs —")
   })
 
-  it("a clean run is the summary and coverage lines, no footer", () => {
+  test("a clean run is the summary and coverage lines, no footer", () => {
     expect(renderCheckResults([], STATS, NO_COLORS)).toBe(
       "0 violations · 214 files · 218kb · 25% blob\n12 services · 380 imports\n",
     )
   })
 
-  it("coverage line: the exports segment exists iff a claim was checked, disclosed only when nonzero", () => {
+  test("coverage line: the exports segment exists iff a claim was checked, disclosed only when nonzero", () => {
     const claimed = { ...STATS, surface: { checked: 7, disclosed: 2 } }
     expect(renderCheckResults([], claimed, NO_COLORS)).toContain(
       "\n12 services · 380 imports · exports 7 checked, 2 disclosed\n",
@@ -182,19 +182,19 @@ describe("renderCheckResults", () => {
     ).toContain("\n1 service · 1 import\n")
   })
 
-  it("the no-field note names the opt-in — one stderr line, the driver keeps exit 0", () => {
+  test("the no-field note names the opt-in — one stderr line, the driver keeps exit 0", () => {
     expect(SURFACE_NOT_CLAIMED).toBe(
       'surface: no "deblob" field in package.json — nothing to check; declaring is opting in ("deblob": {})\n',
     )
   })
 
-  it("singular: 1 violation", () => {
+  test("singular: 1 violation", () => {
     const output = renderCheckResults([layersViolation()], STATS, NO_COLORS)
     expect(output).toContain("1 violation (1 layers)")
     expect(output).not.toContain("1 violations")
   })
 
-  it("groups deterministically: services ascending, blob bucket last, files ascending", () => {
+  test("groups deterministically: services ascending, blob bucket last, files ascending", () => {
     const output = renderCheckResults(
       [
         layersViolation({
@@ -221,7 +221,7 @@ describe("renderCheckResults", () => {
     expect(output).toContain("  src/lib/helpers.ts")
   })
 
-  it("orders violations inside a file by check name", () => {
+  test("orders violations inside a file by check name", () => {
     const output = renderCheckResults(
       [
         portsViolation({
@@ -244,7 +244,7 @@ describe("renderCheckResults", () => {
     )
   })
 
-  it("same-check violations in a file order by message, either input order", () => {
+  test("same-check violations in a file order by message, either input order", () => {
     const exportViolation = (name: string) =>
       portsViolation({ name } as Partial<PortsViolation>)
     for (const input of [
@@ -269,7 +269,7 @@ describe("renderCheckResults", () => {
         " ",
       )
 
-    it("seal violations carry the import-type hint when rule 8 is cited", () => {
+    test("seal violations carry the import-type hint when rule 8 is cited", () => {
       const output = message(
         layersViolation({
           rules: [6, 8],
@@ -287,7 +287,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("(rules 6, 8)")
     })
 
-    it("seal violations without the exemption carry no hint", () => {
+    test("seal violations without the exemption carry no hint", () => {
       const output = message(
         layersViolation({
           rules: [7],
@@ -299,7 +299,7 @@ describe("renderCheckResults", () => {
       expect(output).not.toContain("import type is fine")
     })
 
-    it("blob target cites the extraction remedy", () => {
+    test("blob target cites the extraction remedy", () => {
       const output = message(
         layersViolation({
           rules: [5],
@@ -310,7 +310,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("only assembly may import blob")
     })
 
-    it("model purity wording differs from the service one", () => {
+    test("model purity wording differs from the service one", () => {
       const output = message(
         layersViolation({
           rules: [1, 4],
@@ -321,7 +321,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("model must stay pure")
     })
 
-    it("a matrix cell outside the named wordings falls back to the generic form", () => {
+    test("a matrix cell outside the named wordings falls back to the generic form", () => {
       const output = message(
         layersViolation({
           rules: [1],
@@ -334,7 +334,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("adapters may not import assembly")
     })
 
-    it("model inward-only cell names its allowed set", () => {
+    test("model inward-only cell names its allowed set", () => {
       const output = message(
         layersViolation({
           rules: [1],
@@ -347,7 +347,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("model may only import model")
     })
 
-    it("inward-only cells name the allowed set", () => {
+    test("inward-only cells name the allowed set", () => {
       const output = message(
         layersViolation({
           rules: [1],
@@ -363,7 +363,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("ports may only import model and ports")
     })
 
-    it("unclassified lib points at the pureLibs escape hatch", () => {
+    test("unclassified lib points at the pureLibs escape hatch", () => {
       const output = message(
         layersViolation({
           rules: [4],
@@ -381,7 +381,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("pureLibs")
     })
 
-    it("marks a declared external leaf so the cell reads as declared, not a resolver accident", () => {
+    test("marks a declared external leaf so the cell reads as declared, not a resolver accident", () => {
       const output = message(
         layersViolation({
           rules: [4, 8],
@@ -397,7 +397,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("imports $made-up:tokens.scss (declared)")
     })
 
-    it("renders the surface claim-mismatch with subpath, claim, and fact", () => {
+    test("renders the surface claim-mismatch with subpath, claim, and fact", () => {
       const output = message({
         check: "surface",
         ruleset: "arch",
@@ -416,7 +416,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("(rule 3)")
     })
 
-    it("names the built target a source wears when reached through the mirror", () => {
+    test("names the built target a source wears when reached through the mirror", () => {
       const output = message(
         {
           check: "surface",
@@ -436,7 +436,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain('is exported as "." (as ../dist/index.js) —')
     })
 
-    it("renders the unlabeled front — direct, and through a fronted file", () => {
+    test("renders the unlabeled front — direct, and through a fronted file", () => {
       const direct = message({
         check: "surface",
         ruleset: "arch",
@@ -466,7 +466,7 @@ describe("renderCheckResults", () => {
       expect(chained).toContain("(rule 2)")
     })
 
-    it("barrel shapes: re-export at the index, direct-import remedy at the importer", () => {
+    test("barrel shapes: re-export at the index, direct-import remedy at the importer", () => {
       expect(message(barrelsViolation())).toContain(
         "re-exports src/invoice/pdf-render.service.ts — no index.ts indirection",
       )
@@ -482,7 +482,7 @@ describe("renderCheckResults", () => {
       ).toContain("import the layered file directly")
     })
 
-    it("ports shapes: export, contains, runtime edges both directions", () => {
+    test("ports shapes: export, contains, runtime edges both directions", () => {
       expect(message(portsViolation())).toContain(
         "exports const SOME_MADE_UP_CONST — ports are types only",
       )
@@ -573,7 +573,7 @@ describe("renderCheckResults", () => {
         ...overrides,
       }) as DagViolation
 
-    it("renders the fiction's cross-service block with quoted carrying edges", () => {
+    test("renders the fiction's cross-service block with quoted carrying edges", () => {
       const output = renderCheckResults([serviceCycle()], STATS, NO_COLORS)
       expect(output).toBe(
         [
@@ -594,7 +594,7 @@ describe("renderCheckResults", () => {
       )
     })
 
-    it("orders blocks in a bucket by rule, then membership", () => {
+    test("orders blocks in a bucket by rule, then membership", () => {
       const output = renderCheckResults(
         [
           moduleCycle({
@@ -622,7 +622,7 @@ describe("renderCheckResults", () => {
       expect(reversed).toBe(output)
     })
 
-    it("renders the module cycle in the blob bucket, last", () => {
+    test("renders the module cycle in the blob bucket, last", () => {
       const output = renderCheckResults(
         [moduleCycle(), serviceCycle()],
         STATS,
@@ -638,7 +638,7 @@ describe("renderCheckResults", () => {
       )
     })
 
-    it("marks type-only and wiring hops, and extends the remedy for wiring", () => {
+    test("marks type-only and wiring hops, and extends the remedy for wiring", () => {
       const output = renderCheckResults(
         [
           serviceCycle({
@@ -675,7 +675,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("wiring outside the service tree")
     })
 
-    it("renders a longer witness as an arrow chain and notes entanglement", () => {
+    test("renders a longer witness as an arrow chain and notes entanglement", () => {
       const output = renderCheckResults(
         [
           serviceCycle({
@@ -724,7 +724,7 @@ describe("renderCheckResults", () => {
 })
 
 describe("bare status", () => {
-  it("renders the fiction's block with the full check-list hint", () => {
+  test("renders the fiction's block with the full check-list hint", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
@@ -756,7 +756,7 @@ describe("bare status", () => {
     )
   })
 
-  it("singular service, configless provenance", () => {
+  test("singular service, configless provenance", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
@@ -777,7 +777,7 @@ describe("bare status", () => {
     expect(output).toContain("1 service\n")
   })
 
-  it("a claim with nothing disclosed prints the count alone", () => {
+  test("a claim with nothing disclosed prints the count alone", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
@@ -795,14 +795,14 @@ describe("bare status", () => {
     expect(output).toContain("  2 services · exports 3 claimed\n")
   })
 
-  it("formatSize: kb below 1000kb, mb above, no trailing .0", () => {
+  test("formatSize: kb below 1000kb, mb above, no trailing .0", () => {
     expect(formatSize(0)).toBe("0kb")
     expect(formatSize(125952)).toBe("123kb")
     expect(formatSize(5 * 1024 * 1024)).toBe("5mb")
     expect(formatSize(4404019)).toBe("4.2mb")
   })
 
-  it("a broken config skips the stat lines — bare informs, never fails", () => {
+  test("a broken config skips the stat lines — bare informs, never fails", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
@@ -815,7 +815,7 @@ describe("bare status", () => {
     expect(output).toContain("Commands")
   })
 
-  it("sizeStatsOf folds total bytes + size-weighted blob %, survives an empty set", () => {
+  test("sizeStatsOf folds total bytes + size-weighted blob %, survives an empty set", () => {
     expect(
       sizeStatsOf([
         { size: 900, blob: true },
@@ -827,7 +827,7 @@ describe("bare status", () => {
 })
 
 describe("renderUnresolved", () => {
-  it("names each import, cites the incompleteness, teaches the remedies", () => {
+  test("names each import, cites the incompleteness, teaches the remedies", () => {
     const output = renderUnresolved(
       [
         {
@@ -848,7 +848,7 @@ describe("renderUnresolved", () => {
     expect(output).toContain('config key "external"')
   })
 
-  it("prints importer paths under the runner's prefix, ctrl+clickable", () => {
+  test("prints importer paths under the runner's prefix, ctrl+clickable", () => {
     const output = renderUnresolved(
       [{ from: "src/a.model.ts", specifier: "x", reason: "r", literal: true }],
       NO_COLORS,
@@ -859,7 +859,7 @@ describe("renderUnresolved", () => {
 })
 
 describe("renderUnverified", () => {
-  it("names each entry with its subpath and reason, teaches the three remedies", () => {
+  test("names each entry with its subpath and reason, teaches the three remedies", () => {
     const output = renderUnverified(
       [
         {
@@ -907,7 +907,7 @@ describe("renderUnverified", () => {
     expect(flat).toContain("consumers see it unlabeled")
   })
 
-  it("an ambiguous stem names its candidates — the mirror cannot pick, and says so", () => {
+  test("an ambiguous stem names its candidates — the mirror cannot pick, and says so", () => {
     const output = renderUnverified(
       [
         {
@@ -931,7 +931,7 @@ describe("renderUnverified", () => {
     expect(output.replace(/\n */g, " ")).toContain('"exclude" a twin')
   })
 
-  it("singular headline, paths under the runner's prefix", () => {
+  test("singular headline, paths under the runner's prefix", () => {
     const output = renderUnverified(
       [
         {
@@ -956,7 +956,7 @@ describe("renderUnverified", () => {
     )
   })
 
-  it("one block per subpath — its targets on one line, one reason when they all missed the same way", () => {
+  test("one block per subpath — its targets on one line, one reason when they all missed the same way", () => {
     const output = renderUnverified(
       [
         {
@@ -989,7 +989,7 @@ describe("renderUnverified", () => {
     expect(output.match(/no covered module/g)).toHaveLength(1)
   })
 
-  it("targets that missed differently each carry their own reason, target-prefixed", () => {
+  test("targets that missed differently each carry their own reason, target-prefixed", () => {
     const output = renderUnverified(
       [
         {
@@ -1031,7 +1031,7 @@ describe("renderExplain", () => {
     url: `https://github.com/rixo/deblob/blob/main/docs/architecture.md#rule-${rule}`,
   })
 
-  it("prints heading (lowercased title), body, card, url", () => {
+  test("prints heading (lowercased title), body, card, url", () => {
     const output = renderExplain(
       [entry(4, [{ slug: "made-up-card", text: "# Card\n\ncard body\n" }])],
       NO_COLORS,
@@ -1055,7 +1055,7 @@ describe("renderExplain", () => {
     )
   })
 
-  it("a card cited by several rules prints once, later citations point up", () => {
+  test("a card cited by several rules prints once, later citations point up", () => {
     const shared = { slug: "shared-card", text: "shared card body" }
     const output = renderExplain(
       [entry(6, [shared]), entry(7, [shared])],
@@ -1066,7 +1066,7 @@ describe("renderExplain", () => {
     expect(output).toContain("···")
   })
 
-  it("wraps a long body at the output width", () => {
+  test("wraps a long body at the output width", () => {
     const long = entry(1, [])
     long.body = Array.from({ length: 30 }, () => "word").join(" ")
     const output = renderExplain([long], NO_COLORS)
@@ -1077,7 +1077,7 @@ describe("renderExplain", () => {
 })
 
 describe("colors", () => {
-  it("ANSI palette wraps in SGR codes; NO_COLORS is identity", () => {
+  test("ANSI palette wraps in SGR codes; NO_COLORS is identity", () => {
     expect(ANSI_COLORS.strong("x")).toBe("\u001b[1mx\u001b[22m")
     expect(ANSI_COLORS.dim("x")).toBe("\u001b[2mx\u001b[22m")
     expect(ANSI_COLORS.accent("x")).toBe("\u001b[36mx\u001b[39m")
@@ -1088,7 +1088,7 @@ describe("colors", () => {
 })
 
 describe("help screens", () => {
-  it("main help: commands, checks, options, exit codes, the no-autofix line", () => {
+  test("main help: commands, checks, options, exit codes, the no-autofix line", () => {
     expect(HELP).toContain("deblob check [what...]")
     expect(HELP).toContain("deblob explain <topic...>")
     expect(HELP).toContain("-c, --config <path>")
@@ -1099,13 +1099,13 @@ describe("help screens", () => {
     expect(HELP).toContain("deblob detects; it never moves code.")
   })
 
-  it("check help: batch flags and the teaching primer", () => {
+  test("check help: batch flags and the teaching primer", () => {
     expect(CHECK_HELP).toContain("--explain")
     expect(CHECK_HELP).toContain("--explain-only")
     expect(CHECK_HELP).toContain("one shared import graph")
   })
 
-  it("both help screens carry dag — the fiction's full check list", () => {
+  test("both help screens carry dag — the fiction's full check list", () => {
     expect(HELP).toContain("dag        service dependencies form a DAG")
     expect(CHECK_HELP).toContain("deblob check dag layers")
   })

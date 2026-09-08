@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import { STOCK_FLAVOR_NAME } from "../stock-flavor.model.ts"
 import {
@@ -11,7 +11,7 @@ const classify = (files: string[]) =>
   createTsSuffixesFactoriesFlavor().classify(files)
 
 describe("stock flavor registry", () => {
-  it("yields this flavor under the stock name", () => {
+  test("yields this flavor under the stock name", () => {
     const flavor = STOCK_FLAVORS[STOCK_FLAVOR_NAME]?.()
     const result = flavor?.classify(["icons/icons.model.ts"])
     expect(result?.get("icons/icons.model.ts")?.layer).toBe("model")
@@ -19,7 +19,7 @@ describe("stock flavor registry", () => {
 })
 
 describe("ts-suffixes-factories flavor", () => {
-  it("classifies each layer suffix to its layer", () => {
+  test("classifies each layer suffix to its layer", () => {
     const result = classify([
       "icons/icons.model.ts",
       "icons/icons.service.ts",
@@ -32,13 +32,13 @@ describe("ts-suffixes-factories flavor", () => {
     expect(result.get("icons/fs-source.adapter.ts")?.layer).toBe("adapters")
   })
 
-  it("classifies every file of the set — none skipped", () => {
+  test("classifies every file of the set — none skipped", () => {
     const files = ["a/a.model.ts", "b/readme.md", "c.ts"]
     const result = classify(files)
     expect([...result.keys()].sort()).toEqual([...files].sort())
   })
 
-  it("classifies unsuffixed files as blob", () => {
+  test("classifies unsuffixed files as blob", () => {
     const result = classify(["src/util.ts"])
     expect(result.get("src/util.ts")).toEqual({
       layer: "blob",
@@ -47,7 +47,7 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  it("classifies unknown shapes as blob, never an error (open-set tripwire)", () => {
+  test("classifies unknown shapes as blob, never an error (open-set tripwire)", () => {
     const result = classify([
       "src/foo.helper.ts",
       "src/widget.svelte",
@@ -58,14 +58,14 @@ describe("ts-suffixes-factories flavor", () => {
     expect(result.get("src/data.json")?.layer).toBe("blob")
   })
 
-  it("never yields assembly from source naming — designation is the caller's", () => {
+  test("never yields assembly from source naming — designation is the caller's", () => {
     const result = classify(["src/main.assembly.ts", "src/assembly/wire.ts"])
     for (const [, classification] of result) {
       expect(classification.layer).not.toBe("assembly")
     }
   })
 
-  it("attributes a file to the nearest ancestor service root", () => {
+  test("attributes a file to the nearest ancestor service root", () => {
     const result = classify(["icons/icons.service.ts", "icons/notes.ts"])
     expect(result.get("icons/notes.ts")).toEqual({
       layer: "blob",
@@ -74,7 +74,7 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  it("does not count a layer grouping dir as a service root", () => {
+  test("does not count a layer grouping dir as a service root", () => {
     const result = classify([
       "icons/icons.service.ts",
       "icons/ports/icon-source.port.ts",
@@ -84,19 +84,19 @@ describe("ts-suffixes-factories flavor", () => {
     )
   })
 
-  it("attributes through a chain of grouping dirs when the service dir has no direct layer file", () => {
+  test("attributes through a chain of grouping dirs when the service dir has no direct layer file", () => {
     const result = classify(["icons/ports/icon-source.port.ts"])
     expect(result.get("icons/ports/icon-source.port.ts")?.serviceRoot).toBe(
       "icons",
     )
   })
 
-  it("treats a repo-root layer file as belonging to the root service", () => {
+  test("treats a repo-root layer file as belonging to the root service", () => {
     const result = classify(["app.model.ts"])
     expect(result.get("app.model.ts")?.serviceRoot).toBe(".")
   })
 
-  it("marks private/ subtree membership", () => {
+  test("marks private/ subtree membership", () => {
     const result = classify([
       "icons/icons.service.ts",
       "icons/private/scoring.model.ts",
@@ -108,7 +108,7 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  it("gives a nested service its own root", () => {
+  test("gives a nested service its own root", () => {
     const result = classify([
       "icons/icons.service.ts",
       "icons/manifest/manifest.adapter.ts",
@@ -122,7 +122,7 @@ describe("ts-suffixes-factories flavor", () => {
     )
   })
 
-  it("gives a nested service under private/ its own root, still private", () => {
+  test("gives a nested service under private/ its own root, still private", () => {
     const result = classify([
       "icons/icons.service.ts",
       "icons/private/manifest/manifest.service.ts",
@@ -134,7 +134,7 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  it("classifies test files as assembly — rule 16, the flavor's opinion", () => {
+  test("classifies test files as assembly — rule 16, the flavor's opinion", () => {
     const result = classify([
       "icons/icons.model.spec.ts",
       "icons/loader.test.ts",
@@ -145,7 +145,7 @@ describe("ts-suffixes-factories flavor", () => {
     expect(result.get("icons/icons.model.spec.ts")?.serviceRoot).toBe("icons")
   })
 
-  it("classifies test files as assembly inside grouping dirs too", () => {
+  test("classifies test files as assembly inside grouping dirs too", () => {
     const result = classify([
       "icons/icons.service.ts",
       "icons/ports/icon-source.spec.ts",
@@ -163,19 +163,19 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  it("classifies test naming across the same extension set as layer suffixes", () => {
+  test("classifies test naming across the same extension set as layer suffixes", () => {
     const result = classify(["a/x.spec.tsx", "a/y.test.mjs", "a/z.spec.cts"])
     for (const [, classification] of result) {
       expect(classification.layer).toBe("assembly")
     }
   })
 
-  it("does not let a test file mark a service root", () => {
+  test("does not let a test file mark a service root", () => {
     const result = classify(["icons/icons.service.spec.ts", "icons/util.ts"])
     expect(result.get("icons/util.ts")?.serviceRoot).toBe(null)
   })
 
-  it("keeps .svelte and unknown suffixes blob — test naming is a closed carve-out", () => {
+  test("keeps .svelte and unknown suffixes blob — test naming is a closed carve-out", () => {
     const result = classify(["src/widget.svelte", "src/foo.specs.ts"])
     expect(result.get("src/widget.svelte")?.layer).toBe("blob")
     expect(result.get("src/foo.specs.ts")?.layer).toBe("blob")
@@ -183,19 +183,19 @@ describe("ts-suffixes-factories flavor", () => {
 })
 
 describe("classifyStockEntry — the naming rule over subpath and specifier tails", () => {
-  it("classifies each layer suffix on an extensionless tail", () => {
+  test("classifies each layer suffix on an extensionless tail", () => {
     expect(classifyStockEntry("checkout.service")).toBe("service")
     expect(classifyStockEntry("totals.model")).toBe("model")
     expect(classifyStockEntry("store.port")).toBe("ports")
     expect(classifyStockEntry("stripe.adapter")).toBe("adapters")
   })
 
-  it("reads exports-map subpaths as written — ./ prefix and nesting", () => {
+  test("reads exports-map subpaths as written — ./ prefix and nesting", () => {
     expect(classifyStockEntry("./checkout.service")).toBe("service")
     expect(classifyStockEntry("./nested/totals.model")).toBe("model")
   })
 
-  it("sees through an extension — dist artifacts and typed entries included", () => {
+  test("sees through an extension — dist artifacts and typed entries included", () => {
     expect(classifyStockEntry("checkout.service.js")).toBe("service")
     expect(classifyStockEntry("dist/checkout.service.mjs")).toBe("service")
     expect(classifyStockEntry("src/stripe.adapter.ts")).toBe("adapters")
@@ -203,7 +203,7 @@ describe("classifyStockEntry — the naming rule over subpath and specifier tail
     expect(classifyStockEntry("checkout.service.d.mts")).toBe("service")
   })
 
-  it("claims nothing for unsuffixed tails — the bare root included", () => {
+  test("claims nothing for unsuffixed tails — the bare root included", () => {
     expect(classifyStockEntry("")).toBe(null)
     expect(classifyStockEntry(".")).toBe(null)
     expect(classifyStockEntry("./")).toBe(null)
@@ -211,13 +211,13 @@ describe("classifyStockEntry — the naming rule over subpath and specifier tail
     expect(classifyStockEntry("dist/index.js")).toBe(null)
   })
 
-  it("claims nothing for a suffix no list names — the set is the record, no census (tripwire)", () => {
+  test("claims nothing for a suffix no list names — the set is the record, no census (tripwire)", () => {
     expect(classifyStockEntry("thing.mega-widget")).toBe(null)
     expect(classifyStockEntry("x.spec")).toBe(null)
     expect(classifyStockEntry("x.helper.js")).toBe(null)
   })
 
-  it("rides the resolver instance as classifyEntry — the port method is the same rule", () => {
+  test("rides the resolver instance as classifyEntry — the port method is the same rule", () => {
     const flavor = createTsSuffixesFactoriesFlavor()
     expect(flavor.classifyEntry?.("checkout.service")).toBe("service")
   })

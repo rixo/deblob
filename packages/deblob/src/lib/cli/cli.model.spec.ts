@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import { RULE_COUNT } from "../explain/rule-content.model.ts"
 import {
@@ -10,7 +10,7 @@ import {
 
 describe("parseCli", () => {
   describe("commands", () => {
-    it("bare argv is the status command", () => {
+    test("bare argv is the status command", () => {
       expect(parseCli([])).toEqual({
         config: null,
         noColor: false,
@@ -18,7 +18,7 @@ describe("parseCli", () => {
       })
     })
 
-    it("check with no names runs every known check", () => {
+    test("check with no names runs every known check", () => {
       expect(parseCli(["check"])).toEqual({
         config: null,
         noColor: false,
@@ -32,7 +32,7 @@ describe("parseCli", () => {
       })
     })
 
-    it("check with names runs that subset, argv order kept; `explicit` records that check names were passed on the command line rather than defaulted", () => {
+    test("check with names runs that subset, argv order kept; `explicit` records that check names were passed on the command line rather than defaulted", () => {
       expect(parseCli(["check", "ports", "layers"])).toMatchObject({
         action: {
           command: "check",
@@ -42,7 +42,7 @@ describe("parseCli", () => {
       })
     })
 
-    it("explain takes one or many topics — the check footer is pasteable", () => {
+    test("explain takes one or many topics — the check footer is pasteable", () => {
       expect(parseCli(["explain", "rule-4"])).toMatchObject({
         action: { command: "explain", topics: ["rule-4"] },
       })
@@ -53,20 +53,20 @@ describe("parseCli", () => {
   })
 
   describe("flags", () => {
-    it("--help and -h yield the help screen from anywhere", () => {
+    test("--help and -h yield the help screen from anywhere", () => {
       expect(parseCli(["--help"])).toMatchObject({
         action: { command: "help" },
       })
       expect(parseCli(["-h"])).toMatchObject({ action: { command: "help" } })
     })
 
-    it("check --help yields the check help screen", () => {
+    test("check --help yields the check help screen", () => {
       expect(parseCli(["check", "--help"])).toMatchObject({
         action: { command: "check-help" },
       })
     })
 
-    it("--version and -v print the version", () => {
+    test("--version and -v print the version", () => {
       expect(parseCli(["--version"])).toMatchObject({
         action: { command: "version" },
       })
@@ -75,7 +75,7 @@ describe("parseCli", () => {
       })
     })
 
-    it("-c / --config carries the explicit config path", () => {
+    test("-c / --config carries the explicit config path", () => {
       expect(parseCli(["-c", "some/made-up.config.ts", "check"])).toMatchObject(
         { config: "some/made-up.config.ts" },
       )
@@ -84,13 +84,13 @@ describe("parseCli", () => {
       })
     })
 
-    it("--no-color is carried", () => {
+    test("--no-color is carried", () => {
       expect(parseCli(["--no-color", "check"])).toMatchObject({
         noColor: true,
       })
     })
 
-    it("--explain and --explain-only ride check", () => {
+    test("--explain and --explain-only ride check", () => {
       expect(parseCli(["check", "--explain"])).toMatchObject({
         action: { explain: true, explainOnly: false },
       })
@@ -107,35 +107,35 @@ describe("parseCli", () => {
       return parsed.error
     }
 
-    it("unknown command names the valid commands", () => {
+    test("unknown command names the valid commands", () => {
       const message = errorOf(["frobnicate"])
       expect(message).toContain("frobnicate")
       expect(message).toContain("check")
       expect(message).toContain("explain")
     })
 
-    it("unknown check names the known set", () => {
+    test("unknown check names the known set", () => {
       const message = errorOf(["check", "SOME_MADE_UP_CHECK"])
       expect(message).toContain("SOME_MADE_UP_CHECK")
       for (const check of KNOWN_CHECKS) expect(message).toContain(check)
     })
 
-    it("unknown flag is a usage error", () => {
+    test("unknown flag is a usage error", () => {
       expect(errorOf(["--some-made-up-flag"])).toContain("--some-made-up-flag")
     })
 
-    it("explain without a topic is a usage error", () => {
+    test("explain without a topic is a usage error", () => {
       expect(errorOf(["explain"])).toContain("topic")
     })
 
-    it("--explain outside check is a usage error", () => {
+    test("--explain outside check is a usage error", () => {
       expect(errorOf(["--explain"])).toContain("--explain")
       expect(errorOf(["explain", "rule-4", "--explain-only"])).toContain(
         "--explain-only",
       )
     })
 
-    it("--explain with --explain-only is contradictory", () => {
+    test("--explain with --explain-only is contradictory", () => {
       const message = errorOf(["check", "--explain", "--explain-only"])
       expect(message).toContain("--explain")
       expect(message).toContain("--explain-only")
@@ -144,18 +144,18 @@ describe("parseCli", () => {
 })
 
 describe("rulesForTopic", () => {
-  it("resolves rule-N and bare N to the rule", () => {
+  test("resolves rule-N and bare N to the rule", () => {
     expect(rulesForTopic("rule-4")).toEqual([4])
     expect(rulesForTopic("4")).toEqual([4])
     expect(rulesForTopic(`rule-${RULE_COUNT}`)).toEqual([RULE_COUNT])
   })
 
-  it("resolves a check name to the rules it cites", () => {
+  test("resolves a check name to the rules it cites", () => {
     expect(rulesForTopic("layers")).toEqual(CHECK_RULES.layers)
     expect(rulesForTopic("ports")).toEqual([10])
   })
 
-  it("rejects out-of-range rules and unknown topics", () => {
+  test("rejects out-of-range rules and unknown topics", () => {
     expect(rulesForTopic("rule-0")).toBeNull()
     expect(rulesForTopic(`rule-${RULE_COUNT + 1}`)).toBeNull()
     expect(rulesForTopic("0")).toBeNull()
@@ -165,7 +165,7 @@ describe("rulesForTopic", () => {
 })
 
 describe("CHECK_RULES", () => {
-  it("pins the detector↔rule map, every rule in range", () => {
+  test("pins the detector↔rule map, every rule in range", () => {
     expect(CHECK_RULES).toEqual({
       dag: [13, 14],
       layers: [1, 4, 5, 6, 7, 8, 9],
@@ -182,7 +182,7 @@ describe("CHECK_RULES", () => {
     }
   })
 
-  it("keys are exactly the known checks", () => {
+  test("keys are exactly the known checks", () => {
     expect(Object.keys(CHECK_RULES)).toEqual([...KNOWN_CHECKS])
   })
 })

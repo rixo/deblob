@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { fileURLToPath } from "node:url"
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import {
   RULE_CARDS,
@@ -18,7 +18,7 @@ const architectureMd = () =>
   readFileSync(join(repoRoot, "docs/architecture.md"), "utf8")
 
 describe("rule mapping", () => {
-  it("is total over the summary's numbering, every rule with at least one card", () => {
+  test("is total over the summary's numbering, every rule with at least one card", () => {
     for (let rule = 1; rule <= RULE_COUNT; rule += 1) {
       expect(RULE_CARDS[rule], `rule ${rule}`).toBeDefined()
       expect(RULE_CARDS[rule]!.length).toBeGreaterThan(0)
@@ -26,7 +26,7 @@ describe("rule mapping", () => {
     expect(Object.keys(RULE_CARDS)).toHaveLength(RULE_COUNT)
   })
 
-  it("names only cards that exist in the repo", () => {
+  test("names only cards that exist in the repo", () => {
     for (const cards of Object.values(RULE_CARDS)) {
       for (const cardPath of cards) {
         expect(existsSync(join(repoRoot, cardPath)), cardPath).toBe(true)
@@ -34,7 +34,7 @@ describe("rule mapping", () => {
     }
   })
 
-  it("builds the canonical anchor URL for a rule", () => {
+  test("builds the canonical anchor URL for a rule", () => {
     expect(canonicalRuleUrl(4)).toBe(
       "https://github.com/rixo/deblob/blob/main/docs/architecture.md#rule-4",
     )
@@ -42,20 +42,20 @@ describe("rule mapping", () => {
 })
 
 describe("architecture.md anchors", () => {
-  it("carries a #rule-N anchor for every rule of the summary", () => {
+  test("carries a #rule-N anchor for every rule of the summary", () => {
     const summary = extractRulesSummary(architectureMd())
     for (let rule = 1; rule <= RULE_COUNT; rule += 1) {
       expect(summary).toContain(`<a id="rule-${rule}"></a>`)
     }
   })
 
-  it("throws loudly when the summary section is missing", () => {
+  test("throws loudly when the summary section is missing", () => {
     expect(() => extractRulesSummary("# nothing here")).toThrow(
       /no '### Summary' section/,
     )
   })
 
-  it("extracts to end of document when the summary is the last section", () => {
+  test("extracts to end of document when the summary is the last section", () => {
     expect(extractRulesSummary("intro\n### Summary\n1. rule")).toBe(
       "### Summary\n1. rule",
     )
@@ -79,35 +79,35 @@ describe("ruleSummaryOf", () => {
     '3. <a id="rule-3"></a>**Last rule** — last body.',
   ].join("\n")
 
-  it("splits title from body, joins the wrap, strips the anchor", () => {
+  test("splits title from body, joins the wrap, strips the anchor", () => {
     expect(ruleSummaryOf(summary, 1)).toEqual({
       title: "Some made-up first rule",
       body: "body of the first rule, wrapped across lines.",
     })
   })
 
-  it("drops the title's trailing period and inline-link syntax", () => {
+  test("drops the title's trailing period and inline-link syntax", () => {
     expect(ruleSummaryOf(summary, 2)).toEqual({
       title: "Title with trailing period inside bold",
       body: "Body with a link label stripped to its text.",
     })
   })
 
-  it("reads an entry ended by a section header or end of text", () => {
+  test("reads an entry ended by a section header or end of text", () => {
     expect(ruleSummaryOf(summary, 3).body).toBe("last body.")
   })
 
-  it("throws on a missing anchor", () => {
+  test("throws on a missing anchor", () => {
     expect(() => ruleSummaryOf(summary, 9)).toThrow(/no anchor for rule 9/)
   })
 
-  it("throws on an entry without a bold title", () => {
+  test("throws on an entry without a bold title", () => {
     expect(() =>
       ruleSummaryOf('5. <a id="rule-5"></a>no bold here', 5),
     ).toThrow(/no bold title/)
   })
 
-  it("parses every real rule out of the shipped excerpt", () => {
+  test("parses every real rule out of the shipped excerpt", () => {
     const real = extractRulesSummary(architectureMd())
     for (let rule = 1; rule <= RULE_COUNT; rule += 1) {
       const entry = ruleSummaryOf(real, rule)
@@ -119,14 +119,14 @@ describe("ruleSummaryOf", () => {
 })
 
 describe("card links", () => {
-  it("collects relative md targets, ignoring fragment links", () => {
+  test("collects relative md targets, ignoring fragment links", () => {
     const links = collectMdLinks(
       "see [a](other.md) and [b](../up/two.md) and [c](#anchor) and [d](https://x.test/page)",
     )
     expect(links).toEqual(["other.md", "../up/two.md"])
   })
 
-  it("form a closed set from the mapped cards — the shipped closure has no dead pointers", () => {
+  test("form a closed set from the mapped cards — the shipped closure has no dead pointers", () => {
     const seen = new Set<string>()
     const queue = Object.values(RULE_CARDS).flat()
     while (queue.length > 0) {
@@ -144,7 +144,7 @@ describe("card links", () => {
 })
 
 describe("knowledge INDEX rule ranges", () => {
-  it("shows each mapped range on its card's row", () => {
+  test("shows each mapped range on its card's row", () => {
     const index = readFileSync(
       join(repoRoot, "skills/deblob/knowledge/INDEX.md"),
       "utf8",

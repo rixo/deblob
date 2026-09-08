@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import type {
   EdgeForm,
@@ -71,7 +71,7 @@ const entry = (overrides: Partial<RuntimeEntry> = {}): RuntimeEntry => ({
 
 describe("checkPorts", () => {
   describe("runtime-export — runtime content in a port file (rule 10)", () => {
-    it("fires on a runtime export, carrying the declaration's form and name", () => {
+    test("fires on a runtime export, carrying the declaration's form and name", () => {
       const g = graph({
         "invoice/ports/renderer.ts": {
           layer: "ports",
@@ -94,7 +94,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    it("fires once per entry when a port holds several", () => {
+    test("fires once per entry when a port holds several", () => {
       const g = graph({
         "invoice/ports/renderer.ts": {
           layer: "ports",
@@ -111,14 +111,14 @@ describe("checkPorts", () => {
       ])
     })
 
-    it("stays green on a pure port", () => {
+    test("stays green on a pure port", () => {
       const g = graph({
         "invoice/ports/renderer.ts": { layer: "ports", serviceRoot: "invoice" },
       })
       expect(checkPorts(g)).toEqual([])
     })
 
-    it.each(["model", "service", "adapters", "assembly", "blob"] as const)(
+    test.each(["model", "service", "adapters", "assembly", "blob"] as const)(
       "stays green on runtime content in a %s file — rule 10 binds ports only",
       (layer) => {
         const g = graph({
@@ -150,7 +150,7 @@ describe("checkPorts", () => {
         [{ from: "invoice/ports/renderer.ts", to, ...edge }],
       )
 
-    it("fires on a matrix-legal target — the rule is target-blind", () => {
+    test("fires on a matrix-legal target — the rule is target-blind", () => {
       const g = port(
         mod("invoice/dpi.model.ts"),
         {},
@@ -171,7 +171,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    it.each([
+    test.each([
       ["another port", mod("invoice/ports/other.ts")],
       ["blob", mod("lib/helpers.ts")],
     ] as const)("fires on a runtime edge to %s", (_label, to) => {
@@ -188,7 +188,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    it("fires on an external target — pure-lib classification is irrelevant", () => {
+    test("fires on an external target — pure-lib classification is irrelevant", () => {
       const g = port(lib("zod"))
       expect(checkPorts(g)).toEqual([
         expect.objectContaining({
@@ -198,14 +198,14 @@ describe("checkPorts", () => {
       ])
     })
 
-    it.each(["dynamic", "require"] as const)("fires on a %s edge", (form) => {
+    test.each(["dynamic", "require"] as const)("fires on a %s edge", (form) => {
       const g = port(lib("zod"), { form })
       expect(checkPorts(g)).toEqual([
         expect.objectContaining({ shape: "runtime-import" }),
       ])
     })
 
-    it("fires on a runtime re-export edge", () => {
+    test("fires on a runtime re-export edge", () => {
       const g = port(
         mod("invoice/pdf.adapter.ts"),
         { reExport: true },
@@ -221,7 +221,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    it("stays green on type edges from a port, whatever the target", () => {
+    test("stays green on type edges from a port, whatever the target", () => {
       const g = port(
         mod("invoice/pdf.adapter.ts"),
         { kind: "type" },
@@ -253,7 +253,7 @@ describe("checkPorts", () => {
         [{ from, to: mod("invoice/ports/renderer.ts"), ...edge }],
       )
 
-    it("fires at the importer on the matrix-legal service → ports cell", () => {
+    test("fires at the importer on the matrix-legal service → ports cell", () => {
       const g = importOfPort("invoice/invoice.service.ts", {
         layer: "service",
         serviceRoot: "invoice",
@@ -271,7 +271,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    it.each([
+    test.each([
       ["model", "invoice/dpi.model.ts", "invoice"],
       ["adapters", "invoice/pdf.adapter.ts", "invoice"],
       ["assembly", "src/main.ts", null],
@@ -290,14 +290,14 @@ describe("checkPorts", () => {
       },
     )
 
-    it.each(["dynamic", "require"] as const)("fires on a %s edge", (form) => {
+    test.each(["dynamic", "require"] as const)("fires on a %s edge", (form) => {
       const g = importOfPort("lib/helpers.ts", { layer: "blob" }, { form })
       expect(checkPorts(g)).toEqual([
         expect.objectContaining({ shape: "runtime-import-of-port" }),
       ])
     })
 
-    it("stays green on `import type` of a port from anywhere", () => {
+    test("stays green on `import type` of a port from anywhere", () => {
       const g = importOfPort(
         "invoice/invoice.service.ts",
         { layer: "service", serviceRoot: "invoice" },
@@ -306,7 +306,7 @@ describe("checkPorts", () => {
       expect(checkPorts(g)).toEqual([])
     })
 
-    it("stays green on runtime imports of non-port targets", () => {
+    test("stays green on runtime imports of non-port targets", () => {
       const g = graph(
         {
           "invoice/invoice.service.ts": {
@@ -328,7 +328,7 @@ describe("checkPorts", () => {
   })
 
   describe("the shapes partition rule 10", () => {
-    it("port → port runtime yields exactly one finding, at the acting port", () => {
+    test("port → port runtime yields exactly one finding, at the acting port", () => {
       const g = graph(
         {
           "invoice/ports/a.ts": { layer: "ports", serviceRoot: "invoice" },
@@ -344,7 +344,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    it("a port with runtime content and a runtime import yields two findings, distinct shapes", () => {
+    test("a port with runtime content and a runtime import yields two findings, distinct shapes", () => {
       const g = graph(
         {
           "invoice/ports/renderer.ts": {
@@ -363,7 +363,7 @@ describe("checkPorts", () => {
   })
 
   describe("contract breaches are loud", () => {
-    it("throws when an edge references a module missing from the graph", () => {
+    test("throws when an edge references a module missing from the graph", () => {
       const g = graph(
         {
           "invoice/ports/renderer.ts": {

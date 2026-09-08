@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import type { FlavorResolver } from "../extraction/ports/flavor.port.ts"
 import { STOCK_FLAVOR_NAME } from "../extraction/stock-flavor.model.ts"
@@ -33,14 +33,14 @@ const resolve = (raw: unknown, flavors: FlavorRegistry = FLAVORS) =>
   })
 
 describe("defineConfig", () => {
-  it("is the identity — typing channel only", () => {
+  test("is the identity — typing channel only", () => {
     const config = { pureLibs: ["some-fake-lib"] }
     expect(defineConfig(config)).toBe(config)
   })
 })
 
 describe("resolveConfig — defaults", () => {
-  it("resolves an empty config to every default", () => {
+  test("resolves an empty config to every default", () => {
     const resolved = resolve({})
     expect(resolved.root).toBe("/fixture-root")
     expect(resolved.configPath).toBe("/fixture-root/deblob.config.ts")
@@ -51,25 +51,25 @@ describe("resolveConfig — defaults", () => {
     expect(resolved.isAssembly("src/main.ts")).toBe(false)
   })
 
-  it("defaults the flavor to the stock name's registry entry", () => {
+  test("defaults the flavor to the stock name's registry entry", () => {
     const stock = fakeFlavor()
     const resolved = resolve({}, { [STOCK_FLAVOR_NAME]: () => stock })
     expect(resolved.flavor).toBe(stock)
     expect(resolved.flavorName).toBe(STOCK_FLAVOR_NAME)
   })
 
-  it("labels provenance: registry name as-is, custom object as custom", () => {
+  test("labels provenance: registry name as-is, custom object as custom", () => {
     expect(resolve({ flavor: STOCK_FLAVOR_NAME }).flavorName).toBe(
       STOCK_FLAVOR_NAME,
     )
     expect(resolve({ flavor: fakeFlavor() }).flavorName).toBe("custom")
   })
 
-  it("fails loud when the registry lacks the stock flavor (wiring bug)", () => {
+  test("fails loud when the registry lacks the stock flavor (wiring bug)", () => {
     expect(() => resolve({}, {})).toThrowError(/registry/)
   })
 
-  it("keeps a null configPath (configless run)", () => {
+  test("keeps a null configPath (configless run)", () => {
     const resolved = resolveConfig(
       {},
       { root: "/somewhere", configPath: null, flavors: FLAVORS },
@@ -79,25 +79,25 @@ describe("resolveConfig — defaults", () => {
 })
 
 describe("resolveConfig — validation", () => {
-  it("rejects a non-object config", () => {
+  test("rejects a non-object config", () => {
     for (const raw of [null, undefined, "flavor", [1]]) {
       expect(() => resolve(raw)).toThrowError(ConfigError)
     }
   })
 
-  it("rejects an unknown key, naming it and the valid set", () => {
+  test("rejects an unknown key, naming it and the valid set", () => {
     expect(() => resolve({ SOME_MADE_UP_KEY: true })).toThrowError(
       /SOME_MADE_UP_KEY.*flavor.*assembly.*include.*exclude.*pureLibs.*typeOnlyExempt/s,
     )
   })
 
-  it("rejects the plausible typo through the same path", () => {
+  test("rejects the plausible typo through the same path", () => {
     expect(() => resolve({ pureLib: ["some-fake-lib"] })).toThrowError(
       /unknown key "pureLib"/,
     )
   })
 
-  it("rejects wrong-typed values, naming key and expected shape", () => {
+  test("rejects wrong-typed values, naming key and expected shape", () => {
     expect(() => resolve({ include: "src/**" })).toThrowError(
       /"include".*array of strings/s,
     )
@@ -109,13 +109,13 @@ describe("resolveConfig — validation", () => {
     )
   })
 
-  it("rejects an unknown flavor name, naming the known ones", () => {
+  test("rejects an unknown flavor name, naming the known ones", () => {
     expect(() => resolve({ flavor: "no-such-flavor" })).toThrowError(
       /no-such-flavor.*ts-suffixes-factories/s,
     )
   })
 
-  it("rejects a flavor object without classify", () => {
+  test("rejects a flavor object without classify", () => {
     expect(() => resolve({ flavor: { name: "broken" } })).toThrowError(
       /"flavor".*classify/s,
     )
@@ -123,29 +123,29 @@ describe("resolveConfig — validation", () => {
 })
 
 describe("resolveConfig — tsconfig & alias", () => {
-  it("defaults: tsconfig undefined (discover at root), alias empty", () => {
+  test("defaults: tsconfig undefined (discover at root), alias empty", () => {
     const resolved = resolve({})
     expect(resolved.tsconfig).toBeUndefined()
     expect(resolved.alias).toEqual({})
   })
 
-  it("resolves a declared tsconfig path against the root", () => {
+  test("resolves a declared tsconfig path against the root", () => {
     expect(resolve({ tsconfig: "./tsconfig.base.json" }).tsconfig).toBe(
       "/fixture-root/tsconfig.base.json",
     )
   })
 
-  it("passes tsconfig: false through — discovery disabled", () => {
+  test("passes tsconfig: false through — discovery disabled", () => {
     expect(resolve({ tsconfig: false }).tsconfig).toBe(false)
   })
 
-  it("rejects non-string non-false tsconfig values", () => {
+  test("rejects non-string non-false tsconfig values", () => {
     for (const value of [true, 42, {}]) {
       expect(() => resolve({ tsconfig: value })).toThrowError(/"tsconfig"/)
     }
   })
 
-  it("normalizes alias: every value an array, path-like entries absolute", () => {
+  test("normalizes alias: every value an array, path-like entries absolute", () => {
     const resolved = resolve({
       alias: {
         "some-made-up-alias": "./src/some-made-up-dir",
@@ -161,7 +161,7 @@ describe("resolveConfig — tsconfig & alias", () => {
     })
   })
 
-  it("rejects malformed alias shapes, naming the offender", () => {
+  test("rejects malformed alias shapes, naming the offender", () => {
     expect(() => resolve({ alias: ["nope"] })).toThrowError(/"alias"/)
     expect(() => resolve({ alias: { "some-made-up-alias": 42 } })).toThrowError(
       /"some-made-up-alias"/,
@@ -170,11 +170,11 @@ describe("resolveConfig — tsconfig & alias", () => {
 })
 
 describe("resolveConfig — external specifier patterns", () => {
-  it("defaults to a matcher that matches nothing", () => {
+  test("defaults to a matcher that matches nothing", () => {
     expect(resolve({}).external("$made-up/config")).toBeNull()
   })
 
-  it("returns the first declared pattern matching the raw specifier", () => {
+  test("returns the first declared pattern matching the raw specifier", () => {
     const { external } = resolve({
       external: ["$made-up/**", "$made-up:*", "$made-up/assets:*"],
     })
@@ -187,14 +187,14 @@ describe("resolveConfig — external specifier patterns", () => {
     expect(external("./made-up/config")).toBeNull()
   })
 
-  it("`**` crosses `/` even glued to a prefix — specifiers are not paths (field papercut)", () => {
+  test("`**` crosses `/` even glued to a prefix — specifiers are not paths (field papercut)", () => {
     const { external } = resolve({ external: ["$a:**"] })
     expect(external("$a:x.scss")).toBe("$a:**")
     expect(external("$a:x/y/z.scss")).toBe("$a:**")
     expect(external("$a:")).toBe("$a:**")
   })
 
-  it("`*` stays within a segment; `.` and other regex characters stay literal", () => {
+  test("`*` stays within a segment; `.` and other regex characters stay literal", () => {
     const { external } = resolve({ external: ["$a:*.scss", "$b/*"] })
     expect(external("$a:x.scss")).toBe("$a:*.scss")
     expect(external("$a:x/y.scss")).toBeNull()
@@ -205,7 +205,7 @@ describe("resolveConfig — external specifier patterns", () => {
     expect(resolve({ external: ["$c/**"] }).external("$c")).toBeNull()
   })
 
-  it("rejects non-array and non-string entries, naming the key", () => {
+  test("rejects non-array and non-string entries, naming the key", () => {
     expect(() => resolve({ external: "$made-up/**" })).toThrowError(
       /"external".*array of strings/s,
     )
@@ -216,19 +216,19 @@ describe("resolveConfig — external specifier patterns", () => {
 })
 
 describe("resolveConfig — build", () => {
-  it("defaults to the dist → src mirror", () => {
+  test("defaults to the dist → src mirror", () => {
     expect(resolve({}).mirror).toEqual({ dist: "src" })
   })
 
-  it("a string names the output root mirroring src/", () => {
+  test("a string names the output root mirroring src/", () => {
     expect(resolve({ build: "build" }).mirror).toEqual({ build: "src" })
   })
 
-  it("false declares no mirror", () => {
+  test("false declares no mirror", () => {
     expect(resolve({ build: false }).mirror).toEqual({})
   })
 
-  it("the full form maps several roots to their source roots", () => {
+  test("the full form maps several roots to their source roots", () => {
     expect(
       resolve({
         build: { mirror: { "dist/esm": "src", "dist/cjs": "src", out: "lib" } },
@@ -236,7 +236,7 @@ describe("resolveConfig — build", () => {
     ).toEqual({ "dist/esm": "src", "dist/cjs": "src", out: "lib" })
   })
 
-  it("rejects any other shape, showing what it got", () => {
+  test("rejects any other shape, showing what it got", () => {
     for (const raw of [
       true,
       42,
@@ -254,7 +254,7 @@ describe("resolveConfig — build", () => {
     }
   })
 
-  it("rejects roots that are not root-relative directories", () => {
+  test("rejects roots that are not root-relative directories", () => {
     for (const [raw, offending] of [
       ["", '""'],
       ["/abs/dist", '"/abs/dist"'],
@@ -273,13 +273,13 @@ describe("resolveConfig — build", () => {
 })
 
 describe("resolveConfig — externalLayers", () => {
-  it("defaults to no claims", () => {
+  test("defaults to no claims", () => {
     expect(resolve({}).externalLayers("@made-up/pkg/checkout.service")).toBe(
       null,
     )
   })
 
-  it("maps specifier patterns to layers — same two wildcards as external", () => {
+  test("maps specifier patterns to layers — same two wildcards as external", () => {
     const { externalLayers } = resolve({
       externalLayers: {
         "@made-up/*/legacy": "blob",
@@ -292,7 +292,7 @@ describe("resolveConfig — externalLayers", () => {
     expect(externalLayers("@other/billing")).toBe(null)
   })
 
-  it("first declaration-order match wins", () => {
+  test("first declaration-order match wins", () => {
     const { externalLayers } = resolve({
       externalLayers: {
         "@made-up/**": "adapters",
@@ -302,7 +302,7 @@ describe("resolveConfig — externalLayers", () => {
     expect(externalLayers("@made-up/pkg/thing")).toBe("adapters")
   })
 
-  it("rejects a non-object value, naming the key", () => {
+  test("rejects a non-object value, naming the key", () => {
     for (const raw of ["service", ["@made-up/**"], null]) {
       expect(() => resolve({ externalLayers: raw })).toThrowError(
         /"externalLayers".*pattern → layer/s,
@@ -310,7 +310,7 @@ describe("resolveConfig — externalLayers", () => {
     }
   })
 
-  it("rejects an unknown layer name loudly, listing the vocabulary", () => {
+  test("rejects an unknown layer name loudly, listing the vocabulary", () => {
     expect(() =>
       resolve({ externalLayers: { "@made-up/**": "SOME_MADE_UP_LAYER" } }),
     ).toThrowError(
@@ -320,12 +320,12 @@ describe("resolveConfig — externalLayers", () => {
 })
 
 describe("resolveConfig — flavor", () => {
-  it("resolves a registry name to its instance", () => {
+  test("resolves a registry name to its instance", () => {
     const resolved = resolve({ flavor: STOCK_FLAVOR_NAME })
     expect(resolved.flavor.classify(["a.ts"]).get("a.ts")?.layer).toBe("blob")
   })
 
-  it("uses a custom resolver object as-is", () => {
+  test("uses a custom resolver object as-is", () => {
     const custom = fakeFlavor()
     const resolved = resolve({ flavor: custom })
     expect(resolved.flavor).toBe(custom)
@@ -349,7 +349,7 @@ describe("resolveConfig — typeOnlyExempt precedence", () => {
     { flavorStance: true, key: true, winner: true },
   ]
 
-  it.each(cases)(
+  test.each(cases)(
     "flavor $flavorStance × key $key → $winner",
     ({ flavorStance, key, winner }) => {
       const flavor =
@@ -364,20 +364,20 @@ describe("resolveConfig — typeOnlyExempt precedence", () => {
 })
 
 describe("resolveConfig — assembly matcher", () => {
-  it("matches extensionless route-file globs", () => {
+  test("matches extensionless route-file globs", () => {
     const resolved = resolve({ assembly: ["src/routes/**/+*"] })
     expect(resolved.isAssembly("src/routes/inbox/+page.svelte")).toBe(true)
     expect(resolved.isAssembly("src/routes/+layout.ts")).toBe(true)
     expect(resolved.isAssembly("src/routes/inbox/widget.svelte")).toBe(false)
   })
 
-  it("matches directory globs against descendants", () => {
+  test("matches directory globs against descendants", () => {
     const resolved = resolve({ assembly: ["src/wiring/**"] })
     expect(resolved.isAssembly("src/wiring/deep/main.ts")).toBe(true)
     expect(resolved.isAssembly("src/elsewhere/main.ts")).toBe(false)
   })
 
-  it("matches exact paths, root-relative", () => {
+  test("matches exact paths, root-relative", () => {
     const resolved = resolve({ assembly: ["src/main.ts"] })
     expect(resolved.isAssembly("src/main.ts")).toBe(true)
     expect(resolved.isAssembly("other/src/main.ts")).toBe(false)
@@ -385,12 +385,12 @@ describe("resolveConfig — assembly matcher", () => {
 })
 
 describe("resolveConfig — coverage keys", () => {
-  it("keeps user include as given (tightening)", () => {
+  test("keeps user include as given (tightening)", () => {
     const resolved = resolve({ include: ["src/**"] })
     expect(resolved.include).toEqual(["src/**"])
   })
 
-  it("appends user exclude to the baseline, never replaces it", () => {
+  test("appends user exclude to the baseline, never replaces it", () => {
     const resolved = resolve({ exclude: ["**/__fixtures__/**"] })
     expect(resolved.exclude).toEqual([
       ...EXCLUDE_BASELINE,
@@ -398,7 +398,7 @@ describe("resolveConfig — coverage keys", () => {
     ])
   })
 
-  it("passes pureLibs through untouched", () => {
+  test("passes pureLibs through untouched", () => {
     const resolved = resolve({ pureLibs: ["some-fake-lib", "node:path"] })
     expect(resolved.pureLibs).toEqual(["some-fake-lib", "node:path"])
   })

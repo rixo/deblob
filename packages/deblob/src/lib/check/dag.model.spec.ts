@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import type {
   EdgeForm,
@@ -61,7 +61,7 @@ const lib = (specifier: string): EdgeTarget => ({
 
 describe("checkDag", () => {
   describe("service cycles (rule 13)", () => {
-    it("fires a 2-node runtime cycle with both carrying edges quoted", () => {
+    test("fires a 2-node runtime cycle with both carrying edges quoted", () => {
       const g = graph(
         {
           "orders/checkout.service.ts": {
@@ -124,7 +124,7 @@ describe("checkDag", () => {
       ])
     })
 
-    it("fires the nesting trap — type edge up, runtime edge down, nearest-ancestor roots", () => {
+    test("fires the nesting trap — type edge up, runtime edge down, nearest-ancestor roots", () => {
       const g = graph(
         {
           "icons/icons.service.ts": { layer: "service", serviceRoot: "icons" },
@@ -158,7 +158,7 @@ describe("checkDag", () => {
       })
     })
 
-    it("keeps root wiring green — unowned files contribute no edges", () => {
+    test("keeps root wiring green — unowned files contribute no edges", () => {
       const g = graph(
         {
           "main.ts": { layer: "assembly" },
@@ -179,7 +179,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual([])
     })
 
-    it("keeps fixture wiring green — a spec wiring a same-service fixture adapter", () => {
+    test("keeps fixture wiring green — a spec wiring a same-service fixture adapter", () => {
       const g = graph(
         {
           "icons/icons.service.spec.ts": {
@@ -211,7 +211,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual([])
     })
 
-    it("fires misplaced wiring — a spec importing the real nested adapter", () => {
+    test("fires misplaced wiring — a spec importing the real nested adapter", () => {
       const g = graph(
         {
           "icons/icons.service.spec.ts": {
@@ -257,7 +257,7 @@ describe("checkDag", () => {
       ])
     })
 
-    it("reports an N-node cycle as one finding with the full witness path", () => {
+    test("reports an N-node cycle as one finding with the full witness path", () => {
       const g = graph(
         {
           "a/a.service.ts": { layer: "service", serviceRoot: "a" },
@@ -281,7 +281,7 @@ describe("checkDag", () => {
       )
     })
 
-    it("keeps a chorded SCC one finding — members beyond the witness", () => {
+    test("keeps a chorded SCC one finding — members beyond the witness", () => {
       // a ⇄ b plus the 3-loop through c: one knot, shortest witness
       const g = graph(
         {
@@ -306,7 +306,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual(checkDag(g))
     })
 
-    it("reports disjoint knots separately", () => {
+    test("reports disjoint knots separately", () => {
       const g = graph(
         {
           "a/a.service.ts": { layer: "service", serviceRoot: "a" },
@@ -329,7 +329,7 @@ describe("checkDag", () => {
       ])
     })
 
-    it("fires a mutual type-only cycle — both hops flagged", () => {
+    test("fires a mutual type-only cycle — both hops flagged", () => {
       const g = graph(
         {
           "a/a.service.ts": { layer: "service", serviceRoot: "a" },
@@ -351,7 +351,7 @@ describe("checkDag", () => {
       ])
     })
 
-    it("keeps a mixed hop unflagged — wiring means every inducing edge is assembly-origin", () => {
+    test("keeps a mixed hop unflagged — wiring means every inducing edge is assembly-origin", () => {
       // the spec file sorts first (carrying edge) but a service file also
       // induces the hop: the placement remedy would misdirect
       const g = graph(
@@ -380,7 +380,7 @@ describe("checkDag", () => {
       })
     })
 
-    it("quotes the smallest carrying edge and stays runtime-flagged when any inducing edge is runtime", () => {
+    test("quotes the smallest carrying edge and stays runtime-flagged when any inducing edge is runtime", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -408,7 +408,7 @@ describe("checkDag", () => {
       })
     })
 
-    it("breaks a same-importer tie on the target path", () => {
+    test("breaks a same-importer tie on the target path", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -434,7 +434,7 @@ describe("checkDag", () => {
   })
 
   describe("module cycles (rule 14)", () => {
-    it("fires a runtime cycle between two blob files, blob bucket", () => {
+    test("fires a runtime cycle between two blob files, blob bucket", () => {
       const g = graph(
         {
           "lib/fetchers.ts": { layer: "blob" },
@@ -458,7 +458,7 @@ describe("checkDag", () => {
       ])
     })
 
-    it("buckets an in-service cycle under its service", () => {
+    test("buckets an in-service cycle under its service", () => {
       const g = graph(
         {
           "icons/a.ts": { layer: "blob", serviceRoot: "icons" },
@@ -477,7 +477,7 @@ describe("checkDag", () => {
       ])
     })
 
-    it("coexists with the service finding on a cross-service runtime cycle — keep both", () => {
+    test("coexists with the service finding on a cross-service runtime cycle — keep both", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -496,7 +496,7 @@ describe("checkDag", () => {
       })
     })
 
-    it("fires through an unowned file while rule 13 stays silent — no service-edge transit", () => {
+    test("fires through an unowned file while rule 13 stays silent — no service-edge transit", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -518,7 +518,7 @@ describe("checkDag", () => {
       })
     })
 
-    it("stays green on a type-only cycle through an unowned file — the named non-goal", () => {
+    test("stays green on a type-only cycle through an unowned file — the named non-goal", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -534,7 +534,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual([])
     })
 
-    it("stays green when a type edge breaks the runtime loop", () => {
+    test("stays green when a type edge breaks the runtime loop", () => {
       const g = graph(
         {
           "lib/a.ts": { layer: "blob" },
@@ -548,7 +548,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual([])
     })
 
-    it("fires a runtime self-import as a one-file cycle", () => {
+    test("fires a runtime self-import as a one-file cycle", () => {
       const g = graph({ "lib/loop.ts": { layer: "blob" } }, [
         { from: "lib/loop.ts", to: mod("lib/loop.ts") },
       ])
@@ -561,7 +561,7 @@ describe("checkDag", () => {
       ])
     })
 
-    it.each(["dynamic", "require"] as const)(
+    test.each(["dynamic", "require"] as const)(
       "counts a %s runtime edge — form-blind",
       (form) => {
         const g = graph(
@@ -580,7 +580,7 @@ describe("checkDag", () => {
   })
 
   describe("non-participants", () => {
-    it("ignores external targets — leaves can never point back", () => {
+    test("ignores external targets — leaves can never point back", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -593,7 +593,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual([])
     })
 
-    it("runs a clean layered mini-graph green", () => {
+    test("runs a clean layered mini-graph green", () => {
       const g = graph(
         {
           "main.ts": { layer: "assembly" },
@@ -624,7 +624,7 @@ describe("checkDag", () => {
   })
 
   describe("contract breaches are loud", () => {
-    it("throws when an edge references a module missing from the graph", () => {
+    test("throws when an edge references a module missing from the graph", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: mod("ghost.ts") }],

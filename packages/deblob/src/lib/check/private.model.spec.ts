@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import type {
   EdgeForm,
@@ -62,7 +62,7 @@ const lib = (specifier: string): EdgeTarget => ({
 
 describe("checkPrivate", () => {
   describe("foreign private/ imports fire (rule 12)", () => {
-    it("fires when another service reaches into a private/ subtree", () => {
+    test("fires when another service reaches into a private/ subtree", () => {
       const g = graph(
         {
           "billing/stripe.adapter.ts": {
@@ -96,7 +96,7 @@ describe("checkPrivate", () => {
       ])
     })
 
-    it("fires for a top-level blob importer — blob binds under rule 12", () => {
+    test("fires for a top-level blob importer — blob binds under rule 12", () => {
       const g = graph(
         {
           "lib/helpers.ts": { layer: "blob" },
@@ -118,7 +118,7 @@ describe("checkPrivate", () => {
       ])
     })
 
-    it("fires for a foreign assembly — matrix privilege does not reach visibility", () => {
+    test("fires for a foreign assembly — matrix privilege does not reach visibility", () => {
       const g = graph(
         {
           "main.spec.ts": { layer: "assembly" },
@@ -135,7 +135,7 @@ describe("checkPrivate", () => {
       ])
     })
 
-    it("fires when a nested child service imports its parent's private/", () => {
+    test("fires when a nested child service imports its parent's private/", () => {
       const g = graph(
         {
           "invoice/manifest/m.adapter.ts": {
@@ -164,7 +164,7 @@ describe("checkPrivate", () => {
       ])
     })
 
-    it("fires on a private/ nested under a grouping dir — still the service's boundary", () => {
+    test("fires on a private/ nested under a grouping dir — still the service's boundary", () => {
       const g = graph(
         {
           "billing/x.service.ts": { layer: "service", serviceRoot: "billing" },
@@ -191,7 +191,7 @@ describe("checkPrivate", () => {
   })
 
   describe("every edge kind and form fires — packaging rule, rule 8 does not apply", () => {
-    it.each(["runtime", "type"] as const)("fires on a %s edge", (kind) => {
+    test.each(["runtime", "type"] as const)("fires on a %s edge", (kind) => {
       const g = graph(
         {
           "billing/b.service.ts": { layer: "service", serviceRoot: "billing" },
@@ -214,7 +214,7 @@ describe("checkPrivate", () => {
       ])
     })
 
-    it.each(["dynamic", "require"] as const)("fires on a %s edge", (form) => {
+    test.each(["dynamic", "require"] as const)("fires on a %s edge", (form) => {
       const g = graph(
         {
           "lib/helpers.ts": { layer: "blob" },
@@ -239,7 +239,7 @@ describe("checkPrivate", () => {
   })
 
   describe("own-service access stays green", () => {
-    it.each(["model", "ports", "service", "adapters"] as const)(
+    test.each(["model", "ports", "service", "adapters"] as const)(
       "lets the owning service's %s file into its private/",
       (layer) => {
         const g = graph(
@@ -257,7 +257,7 @@ describe("checkPrivate", () => {
       },
     )
 
-    it("lets a root-level service into the root private/", () => {
+    test("lets a root-level service into the root private/", () => {
       const g = graph(
         {
           "app.service.ts": { layer: "service", serviceRoot: "." },
@@ -272,7 +272,7 @@ describe("checkPrivate", () => {
       expect(checkPrivate(g)).toEqual([])
     })
 
-    it("lets siblings compose within one private/ subtree", () => {
+    test("lets siblings compose within one private/ subtree", () => {
       const g = graph(
         {
           "icons/private/a.ts": {
@@ -291,7 +291,7 @@ describe("checkPrivate", () => {
       expect(checkPrivate(g)).toEqual([])
     })
 
-    it("lets the owner reach a public file of a service nested under its own private/", () => {
+    test("lets the owner reach a public file of a service nested under its own private/", () => {
       // the isPrivate-flag trap: the target's flag is true (segment present)
       // and the serviceRoots differ, yet the edge crosses only the owner's
       // own boundary — a flag-based detector fires here wrongly
@@ -314,7 +314,7 @@ describe("checkPrivate", () => {
       expect(checkPrivate(g)).toEqual([])
     })
 
-    it("keeps an ownerless private/ inert — the all-blob ground state runs clean", () => {
+    test("keeps an ownerless private/ inert — the all-blob ground state runs clean", () => {
       const g = graph(
         {
           "src/a.ts": { layer: "blob" },
@@ -346,7 +346,7 @@ describe("checkPrivate", () => {
       },
     }
 
-    it("reports the outermost violated boundary once for an outsider", () => {
+    test("reports the outermost violated boundary once for an outsider", () => {
       const g = graph(nodes, [
         { from: "other/y.ts", to: mod("s/private/child/private/x.ts") },
       ])
@@ -355,7 +355,7 @@ describe("checkPrivate", () => {
       ])
     })
 
-    it("keeps the child's own files green on its inner private/", () => {
+    test("keeps the child's own files green on its inner private/", () => {
       const g = graph(nodes, [
         {
           from: "s/private/child/c.service.ts",
@@ -365,7 +365,7 @@ describe("checkPrivate", () => {
       expect(checkPrivate(g)).toEqual([])
     })
 
-    it("fires the inner boundary on the owner service — nesting confers no privilege", () => {
+    test("fires the inner boundary on the owner service — nesting confers no privilege", () => {
       const g = graph(nodes, [
         { from: "s/s.service.ts", to: mod("s/private/child/private/x.ts") },
       ])
@@ -377,7 +377,7 @@ describe("checkPrivate", () => {
       ])
     })
 
-    it("lets the owner reach the child's public surface under its own private/", () => {
+    test("lets the owner reach the child's public surface under its own private/", () => {
       const g = graph(nodes, [
         { from: "s/s.service.ts", to: mod("s/private/child/c.service.ts") },
       ])
@@ -386,7 +386,7 @@ describe("checkPrivate", () => {
   })
 
   describe("contract breaches are loud", () => {
-    it("throws when an edge references a module missing from the graph", () => {
+    test("throws when an edge references a module missing from the graph", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: mod("ghost.ts") }],

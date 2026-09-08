@@ -552,11 +552,12 @@ doesn't check:
   the override (the 13 trust ruling). Generated output next to the exports map,
   never hand-written; `build.mirror`/`entries` are its inputs. Wait for a
   bundled library that wants identity abroad.
-- **`test` over `it` in specs** (2026-09-02) — descriptions are not consistently
-  BDD-phrased, so `it("the carrier is…")` reads broken; the rule: `test` unless
-  a file genuinely commits to "it <does X>" sentences. Existing corpus uses `it`
-  throughout — mechanical sweep (`it(` → `test(`, import update), one commit,
-  whenever convenient; new files use `test` starting now.
+- **`test` over `it` in specs** — **swept 2026-09-08** (rixo, at the 0.0.4 cut):
+  every spec file, 477 call sites (`it(` and `it.each(`) and the vitest imports,
+  one commit, suite byte-identical in count and coverage. Ruled 2026-09-02:
+  descriptions are not consistently BDD-phrased, so `it("the carrier is…")`
+  reads broken; the rule: `test` unless a file genuinely commits to "it
+  <does X>" sentences — no file in the corpus did, so nothing was exempted.
 - **Named publishable flavors — flavor-as-package** (2026-09-02, at the 13 spec)
   — a custom flavor today is a nameless inline resolver, so it cannot be named
   in the producer `deblob` field: no `surface` self-verification at home,

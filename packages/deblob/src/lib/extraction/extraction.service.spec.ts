@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url"
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import { createTsSuffixesFactoriesFlavor } from "./adapters/ts-suffixes-factories-flavor.adapter.ts"
@@ -67,7 +67,7 @@ const edgesFrom = (graph: ImportGraph, from: string): ImportEdge[] =>
   graph.edges.filter((edge) => edge.from === from)
 
 describe("extractGraph over the forms fixture", () => {
-  it("yields a runtime static edge for a plain import", () => {
+  test("yields a runtime static edge for a plain import", () => {
     const edges = edgesFrom(extractForms(), "src/static-runtime.ts")
     expect(edges).toEqual([
       {
@@ -80,7 +80,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("yields a type edge for an `import type` statement", () => {
+  test("yields a type edge for an `import type` statement", () => {
     const edges = edgesFrom(extractForms(), "src/type-statement.ts")
     expect(edges).toEqual([
       {
@@ -93,7 +93,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("yields one runtime edge for a mixed `{ mk, type T }` statement", () => {
+  test("yields one runtime edge for a mixed `{ mk, type T }` statement", () => {
     const edges = edgesFrom(extractForms(), "src/mixed.ts")
     expect(edges).toEqual([
       {
@@ -106,7 +106,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("dedupes type + runtime statements to the same target into one runtime edge", () => {
+  test("dedupes type + runtime statements to the same target into one runtime edge", () => {
     const edges = edgesFrom(extractForms(), "src/two-statements.ts")
     expect(edges).toEqual([
       {
@@ -119,7 +119,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("yields a type edge for `export type ... from`", () => {
+  test("yields a type edge for `export type ... from`", () => {
     const edges = edgesFrom(extractForms(), "src/export-type-from.ts")
     expect(edges).toEqual([
       {
@@ -132,7 +132,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("yields a runtime edge for `export * from`", () => {
+  test("yields a runtime edge for `export * from`", () => {
     const edges = edgesFrom(extractForms(), "src/export-star.ts")
     expect(edges).toEqual([
       {
@@ -145,7 +145,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("yields a runtime re-export edge for `export { x } from`", () => {
+  test("yields a runtime re-export edge for `export { x } from`", () => {
     const edges = edgesFrom(extractForms(), "src/export-named-from.ts")
     expect(edges).toEqual([
       {
@@ -158,7 +158,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("yields a runtime re-export edge for `export * as ns from`", () => {
+  test("yields a runtime re-export edge for `export * as ns from`", () => {
     const edges = edgesFrom(extractForms(), "src/export-star-as.ts")
     expect(edges).toEqual([
       {
@@ -171,7 +171,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("marks the indirect form `import { x } …; export { x }` as a re-export — the module record normalizes it", () => {
+  test("marks the indirect form `import { x } …; export { x }` as a re-export — the module record normalizes it", () => {
     const edges = edgesFrom(extractForms(), "src/local-reexport.ts")
     expect(edges).toEqual([
       {
@@ -184,7 +184,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("merges a same-target import + re-export into one re-export edge", () => {
+  test("merges a same-target import + re-export into one re-export edge", () => {
     const edges = edgesFrom(extractForms(), "src/import-and-reexport.ts")
     expect(edges).toEqual([
       {
@@ -197,7 +197,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it('yields a runtime edge for a side-effect `import "mod"`', () => {
+  test('yields a runtime edge for a side-effect `import "mod"`', () => {
     const edges = edgesFrom(extractForms(), "src/side-effect.ts")
     expect(edges).toEqual([
       {
@@ -210,7 +210,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("yields a runtime dynamic edge for `import()`", () => {
+  test("yields a runtime dynamic edge for `import()`", () => {
     const edges = edgesFrom(extractForms(), "src/dynamic.ts")
     expect(edges).toEqual([
       {
@@ -223,14 +223,14 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("surfaces a non-literal `import(expr)` as an unresolved diagnostic", () => {
+  test("surfaces a non-literal `import(expr)` as an unresolved diagnostic", () => {
     const graph = extractForms()
     expect(graph.unresolved).toContainEqual(
       expect.objectContaining({ from: "src/dynamic.ts", specifier: "path" }),
     )
   })
 
-  it("surfaces a non-literal require(expr) as a diagnostic, skips argument-less require()", () => {
+  test("surfaces a non-literal require(expr) as a diagnostic, skips argument-less require()", () => {
     const graph = extractForms()
     const fromRequires = graph.unresolved.filter(
       (entry) => entry.from === "src/requires.ts",
@@ -245,7 +245,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("yields a runtime require edge for `require()`", () => {
+  test("yields a runtime require edge for `require()`", () => {
     const edges = edgesFrom(extractForms(), "src/requires.ts")
     expect(edges).toEqual([
       {
@@ -258,7 +258,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("extracts a file with no require through the prefilter negative path", () => {
+  test("extracts a file with no require through the prefilter negative path", () => {
     const edges = edgesFrom(extractForms(), "src/no-require.ts")
     expect(edges).toEqual([
       {
@@ -271,7 +271,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("surfaces an unresolvable specifier as a diagnostic, not an edge", () => {
+  test("surfaces an unresolvable specifier as a diagnostic, not an edge", () => {
     const graph = extractForms()
     expect(edgesFrom(graph, "src/unresolvable.ts")).toEqual([])
     const diagnostics = graph.unresolved.filter(
@@ -286,7 +286,7 @@ describe("extractGraph over the forms fixture", () => {
     })
   })
 
-  it("keeps an unparseable file kind as a node and edge target without outgoing edges", () => {
+  test("keeps an unparseable file kind as a node and edge target without outgoing edges", () => {
     const graph = extractForms()
     expect(graph.modules.get("src/widget.svelte")).toMatchObject({
       parsed: false,
@@ -303,7 +303,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("turns builtins, packages and exports subpaths into external leaves", () => {
+  test("turns builtins, packages and exports subpaths into external leaves", () => {
     const targets = edgesFrom(extractForms(), "src/externals.ts").map(
       (edge) => edge.to,
     )
@@ -345,14 +345,14 @@ describe("extractGraph over the forms fixture", () => {
     })
   })
 
-  it("never expands an external leaf into the module set", () => {
+  test("never expands an external leaf into the module set", () => {
     const graph = extractForms()
     for (const path of graph.modules.keys()) {
       expect(path).not.toContain("node_modules")
     }
   })
 
-  it("turns a file outside the coverage set into an external leaf with no package", () => {
+  test("turns a file outside the coverage set into an external leaf with no package", () => {
     const edges = edgesFrom(extractForms(), "src/imports-outside.ts")
     expect(edges).toEqual([
       {
@@ -371,7 +371,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("classifies nodes through the flavor at graph build", () => {
+  test("classifies nodes through the flavor at graph build", () => {
     const graph = extractForms()
     expect(graph.modules.get("src/foo.model.ts")).toMatchObject({
       layer: "model",
@@ -380,7 +380,7 @@ describe("extractGraph over the forms fixture", () => {
   })
 
   describe("runtime content — the fact rule 10 reads", () => {
-    it("collects every non-erasable top-level entry, statement order", () => {
+    test("collects every non-erasable top-level entry, statement order", () => {
       const graph = extractForms()
       expect(
         graph.modules.get("src/runtime-content.ts")?.runtimeContent,
@@ -402,12 +402,12 @@ describe("extractGraph over the forms fixture", () => {
       ])
     })
 
-    it("yields no entries for erasable forms — types, ambients, export clauses", () => {
+    test("yields no entries for erasable forms — types, ambients, export clauses", () => {
       const graph = extractForms()
       expect(graph.modules.get("src/types-only.ts")?.runtimeContent).toEqual([])
     })
 
-    it("carries a default-exported declaration's keyword, and its name where one exists", () => {
+    test("carries a default-exported declaration's keyword, and its name where one exists", () => {
       const graph = extractForms()
       expect(graph.modules.get("src/default-fn.ts")?.runtimeContent).toEqual([
         { form: "function", name: "makeThing", exported: true },
@@ -418,7 +418,7 @@ describe("extractGraph over the forms fixture", () => {
       )
     })
 
-    it("never lists import or re-export statements — those are edge facts", () => {
+    test("never lists import or re-export statements — those are edge facts", () => {
       const graph = extractForms()
       expect(
         graph.modules.get("src/export-named-from.ts")?.runtimeContent,
@@ -432,13 +432,13 @@ describe("extractGraph over the forms fixture", () => {
       ])
     })
 
-    it("claims nothing for an unparseable file kind", () => {
+    test("claims nothing for an unparseable file kind", () => {
       const graph = extractForms()
       expect(graph.modules.get("src/widget.svelte")?.runtimeContent).toEqual([])
     })
   })
 
-  it("grants assembly through the designation matcher, on top of the flavor", () => {
+  test("grants assembly through the designation matcher, on top of the flavor", () => {
     const graph = extractFixture({
       fixture: "forms",
       files: FORMS_FILES,
@@ -459,7 +459,7 @@ describe("extractGraph over the resolution fixture", () => {
   const extractResolution = () =>
     extractFixture({ fixture: "resolution", files: RESOLUTION_FILES })
 
-  it("resolves a tsconfig paths alias to the in-set module", () => {
+  test("resolves a tsconfig paths alias to the in-set module", () => {
     const edges = edgesFrom(extractResolution(), "src/uses-alias.ts")
     expect(edges).toEqual([
       {
@@ -472,7 +472,7 @@ describe("extractGraph over the resolution fixture", () => {
     ])
   })
 
-  it("resolves .cjs to .cts between .mts/.cts modules", () => {
+  test("resolves .cjs to .cts between .mts/.cts modules", () => {
     const edges = edgesFrom(extractResolution(), "src/esm.mts")
     expect(edges).toEqual([
       {
@@ -485,7 +485,7 @@ describe("extractGraph over the resolution fixture", () => {
     ])
   })
 
-  it("resolves a config alias to the in-set module — bundler-only aliases teach the resolver", () => {
+  test("resolves a config alias to the in-set module — bundler-only aliases teach the resolver", () => {
     const root = fixtureRoot("resolution")
     const extraction = createExtraction({
       engine: createOxcEngine({
@@ -569,7 +569,7 @@ describe("extractGraph — declared external specifiers", () => {
   const themeMatcher = (specifier: string): string | null =>
     specifier.startsWith("$theme:") ? "$theme:*" : null
 
-  it("turns a matched specifier into a declared external leaf, bypassing the resolver", () => {
+  test("turns a matched specifier into a declared external leaf, bypassing the resolver", () => {
     const { graph, resolved } = extractDeclared(
       { "src/a.model.ts": ["$theme:config.scss"] },
       themeMatcher,
@@ -593,7 +593,7 @@ describe("extractGraph — declared external specifiers", () => {
     expect(resolved).toEqual([])
   })
 
-  it("leaves an unmatched specifier to the resolver — unresolved as before", () => {
+  test("leaves an unmatched specifier to the resolver — unresolved as before", () => {
     const { graph, resolved } = extractDeclared(
       { "src/a.model.ts": ["$other:config.scss"] },
       themeMatcher,
@@ -605,13 +605,13 @@ describe("extractGraph — declared external specifiers", () => {
     expect(resolved).toEqual(["$other:config.scss"])
   })
 
-  it("without a matcher nothing is declared external", () => {
+  test("without a matcher nothing is declared external", () => {
     const { graph } = extractDeclared({ "src/a.model.ts": ["$theme:x.scss"] })
     expect(graph.edges).toEqual([])
     expect(graph.unresolved).toHaveLength(1)
   })
 
-  it("lands a tail no fixture or list names — the set is open (tripwire)", () => {
+  test("lands a tail no fixture or list names — the set is open (tripwire)", () => {
     const { graph } = extractDeclared(
       { "src/a.model.ts": ["$theme:zz-unseen-tail.scss"] },
       themeMatcher,
@@ -623,7 +623,7 @@ describe("extractGraph — declared external specifiers", () => {
     })
   })
 
-  it("merges type + runtime occurrences into one runtime edge, like every external", () => {
+  test("merges type + runtime occurrences into one runtime edge, like every external", () => {
     const { graph } = extractDeclared(
       {
         "src/a.model.ts": [
@@ -639,13 +639,13 @@ describe("extractGraph — declared external specifiers", () => {
 })
 
 describe("extractGraph failure modes", () => {
-  it("throws loudly on a parse failure of a supported file kind", () => {
+  test("throws loudly on a parse failure of a supported file kind", () => {
     expect(() =>
       extractFixture({ fixture: "broken", files: ["src/broken.ts"] }),
     ).toThrow()
   })
 
-  it("throws when the flavor breaks its totality contract", () => {
+  test("throws when the flavor breaks its totality contract", () => {
     const extraction = createExtraction({
       engine: createOxcEngine(),
       flavor: { classify: () => new Map() },
@@ -706,7 +706,7 @@ describe("externalLayerOf — the crossed layer carrier on external leaves", () 
   const layerByConvention = (specifier: string) =>
     specifier.endsWith(".service") ? ("service" as const) : null
 
-  it("stamps the layer on package, builtin, and out-of-coverage leaves — one operation, every leaf kind", () => {
+  test("stamps the layer on package, builtin, and out-of-coverage leaves — one operation, every leaf kind", () => {
     const graph = extractCrossed(
       [
         "@made-up/billing/checkout.service",
@@ -728,7 +728,7 @@ describe("externalLayerOf — the crossed layer carrier on external leaves", () 
     expect(layers.get("@made-up/billing")).toBe(null)
   })
 
-  it("consults the carrier for declared externals too — a pattern hit can carry a patched layer", () => {
+  test("consults the carrier for declared externals too — a pattern hit can carry a patched layer", () => {
     const graph = extractCrossed(
       ["$made-up:checkout.service"],
       layerByConvention,
@@ -741,7 +741,7 @@ describe("externalLayerOf — the crossed layer carrier on external leaves", () 
     })
   })
 
-  it("without the carrier every leaf stays layer: null — today's behavior", () => {
+  test("without the carrier every leaf stays layer: null — today's behavior", () => {
     const graph = extractCrossed(["@made-up/billing/checkout.service"])
     expect(graph.edges[0]?.to).toMatchObject({ layer: null })
   })

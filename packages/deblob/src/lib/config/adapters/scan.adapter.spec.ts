@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url"
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import { DEFAULT_INCLUDE, EXCLUDE_BASELINE } from "../config.model.ts"
 import { scanCoverage, statSizes } from "./scan.adapter.ts"
@@ -19,7 +19,7 @@ const scan = (
   })
 
 describe("scanCoverage", () => {
-  it("covers the whole tree by default — baseline out, extensions gated, hidden skipped, sorted", async () => {
+  test("covers the whole tree by default — baseline out, extensions gated, hidden skipped, sorted", async () => {
     expect(await scan()).toEqual([
       "scripts/task.js",
       "src/app.model.ts",
@@ -30,7 +30,7 @@ describe("scanCoverage", () => {
     // .hidden-tool/ (dot-segment), styles.css and notes.md (extension gate)
   })
 
-  it("appended user excludes remove more", async () => {
+  test("appended user excludes remove more", async () => {
     expect(await scan({ exclude: ["scripts/**"] })).toEqual([
       "src/app.model.ts",
       "src/app.ts",
@@ -38,7 +38,7 @@ describe("scanCoverage", () => {
     ])
   })
 
-  it("a tightened include narrows coverage", async () => {
+  test("a tightened include narrows coverage", async () => {
     expect(await scan({ include: ["src/**"] })).toEqual([
       "src/app.model.ts",
       "src/app.ts",
@@ -48,7 +48,7 @@ describe("scanCoverage", () => {
 })
 
 describe("statSizes", () => {
-  it("returns the byte size per covered file, paths preserved", async () => {
+  test("returns the byte size per covered file, paths preserved", async () => {
     const files = await scan({ include: ["src/**"] })
     const sizes = statSizes(root, files)
     expect(sizes.map((entry) => entry.path)).toEqual([...files])

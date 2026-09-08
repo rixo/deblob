@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import { exportsKeyFor, exportsSubpathsOf } from "./exports-map.model.ts"
 
 describe("exportsSubpathsOf", () => {
-  it("flattens a dot-keyed map — conditions and arrays to string leaves, ./ stripped", () => {
+  test("flattens a dot-keyed map — conditions and arrays to string leaves, ./ stripped", () => {
     expect(
       exportsSubpathsOf({
         ".": { types: "./dist/index.d.ts", import: "./dist/index.js" },
@@ -19,7 +19,7 @@ describe("exportsSubpathsOf", () => {
     ])
   })
 
-  it("a string, or a condition tree without dot keys, is the root", () => {
+  test("a string, or a condition tree without dot keys, is the root", () => {
     expect(exportsSubpathsOf("./src/index.ts")).toEqual([
       { subpath: ".", targets: ["src/index.ts"] },
     ])
@@ -28,7 +28,7 @@ describe("exportsSubpathsOf", () => {
     ).toEqual([{ subpath: ".", targets: ["dist/index.js", "dist/x.cjs"] }])
   })
 
-  it("a scalar that is not a path has no entries", () => {
+  test("a scalar that is not a path has no entries", () => {
     expect(exportsSubpathsOf(42)).toEqual([])
     expect(exportsSubpathsOf(null)).toEqual([])
   })
@@ -44,27 +44,27 @@ describe("exportsKeyFor — Node's key resolution", () => {
     "./*/*",
   ])
 
-  it("an exact literal key wins over any pattern", () => {
+  test("an exact literal key wins over any pattern", () => {
     expect(keyFor(".")).toBe(".")
     expect(keyFor("./index")).toBe("./index")
   })
 
-  it("the most specific pattern wins — longest base, then longest key", () => {
+  test("the most specific pattern wins — longest base, then longest key", () => {
     expect(keyFor("./checkout.service")).toBe("./*")
     expect(keyFor("./legacy/x")).toBe("./legacy/*")
     expect(keyFor("./legacy/x.js")).toBe("./legacy/*.js")
   })
 
-  it("the star binds a non-empty string, slashes included", () => {
+  test("the star binds a non-empty string, slashes included", () => {
     expect(keyFor("./deep/a/b")).toBe("./*")
     expect(keyFor("./")).toBe(null)
   })
 
-  it("a two-star key never matches — dead in Node, dead here (tripwire)", () => {
+  test("a two-star key never matches — dead in Node, dead here (tripwire)", () => {
     expect(exportsKeyFor(["./*/*"])("./a/b")).toBe(null)
   })
 
-  it("off the surface is null", () => {
+  test("off the surface is null", () => {
     expect(exportsKeyFor(["./checkout.service"])("./src/totals.model")).toBe(
       null,
     )
