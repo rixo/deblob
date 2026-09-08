@@ -1,8 +1,8 @@
 /**
  * The command surface as data — argv in, dispatch decision out. Pure:
  * `parseArgs` computes, never touches the process (the dogfood config declares
- * `node:util` in `pureLibs` — deterministic, string-only). Usage errors are
- * values with teaching messages; exit codes and IO belong to the driver.
+ * `node:util` in `pure` — deterministic, string-only). Usage errors are values
+ * with teaching messages; exit codes and IO belong to the driver.
  */
 
 import { parseArgs } from "node:util"

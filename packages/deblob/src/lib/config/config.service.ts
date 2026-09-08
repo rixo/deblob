@@ -55,7 +55,7 @@ export type DeblobConfig = {
    * as pure. Unlisted third-party imported from a pure layer fires as
    * unclassified — purity is declared, not presumed. Default: `[]`.
    */
-  pureLibs?: readonly string[]
+  pure?: readonly string[]
   /**
    * Rule-8 stance override: `false` = strict, type-only imports lose their
    * exemption. Default comes from the flavor (absent = `true`, canon).
@@ -83,8 +83,8 @@ export type DeblobConfig = {
    * one string, so `$theme:**` means the whole namespace. A match is a leaf
    * known by declaration: never resolved, never a failure. Resolvable packages
    * need no entry. Concrete by default; the matched pattern is the leaf's
-   * identity, so listing the same pattern in `pureLibs` ratifies it pure.
-   * Default: `[]`.
+   * identity, so listing the same pattern in `pure` ratifies it pure. Default:
+   * `[]`.
    */
   external?: readonly string[]
   /**
@@ -92,7 +92,7 @@ export type DeblobConfig = {
    * same two-wildcard patterns as `external`, first declaration-order match
    * wins. Wins over a producer's `deblob` field (the consumer is the reviewer
    * of record for their own run) — `blob` is the revoke: the target is back to
-   * unlabeled and the `pureLibs` trichotomy decides. Default: `{}`.
+   * unlabeled and the purity trichotomy decides. Default: `{}`.
    */
   externalLayers?: Readonly<Record<string, Layer>>
   /**
@@ -126,7 +126,7 @@ export type ResolvedConfig = {
   isAssembly: (path: string) => boolean
   include: readonly string[]
   exclude: readonly string[]
-  pureLibs: readonly string[]
+  pure: readonly string[]
   typeOnlyExempt: boolean
   /**
    * Declared tsconfig: absolute path, `false` = disabled, `undefined` =
@@ -161,7 +161,7 @@ const KNOWN_KEYS = [
   "assembly",
   "include",
   "exclude",
-  "pureLibs",
+  "pure",
   "typeOnlyExempt",
   "tsconfig",
   "alias",
@@ -177,7 +177,7 @@ const isStringArray = (value: unknown): value is readonly string[] =>
 
 const stringArrayKey = (
   raw: Record<string, unknown>,
-  key: "assembly" | "include" | "exclude" | "pureLibs" | "external",
+  key: "assembly" | "include" | "exclude" | "pure" | "external",
 ): readonly string[] | undefined => {
   const value = raw[key]
   if (value === undefined) return undefined
@@ -362,6 +362,14 @@ export const resolveConfig = (
   }
   const record = raw as Record<string, unknown>
 
+  // the one renamed key (0.0.5): a stale config fails loud with the new name —
+  // never silently accepted under the old one
+  if ("pureLibs" in record) {
+    throw new ConfigError(
+      `config key "pureLibs" was renamed "pure" in 0.0.5 — same values, new name`,
+    )
+  }
+
   for (const key of Object.keys(record)) {
     if (!(KNOWN_KEYS as readonly string[]).includes(key)) {
       throw new ConfigError(
@@ -387,7 +395,7 @@ export const resolveConfig = (
     ...EXCLUDE_BASELINE,
     ...(stringArrayKey(record, "exclude") ?? []),
   ]
-  const pureLibs = stringArrayKey(record, "pureLibs") ?? []
+  const pure = stringArrayKey(record, "pure") ?? []
   const typeOnlyExempt =
     (record["typeOnlyExempt"] as boolean | undefined) ??
     flavor.typeOnlyExempt ??
@@ -401,7 +409,7 @@ export const resolveConfig = (
     isAssembly: assembly.length > 0 ? picomatch([...assembly]) : () => false,
     include,
     exclude,
-    pureLibs,
+    pure,
     typeOnlyExempt,
     tsconfig: tsconfigOf(record["tsconfig"], context.root),
     alias: aliasOf(record["alias"], context.root),

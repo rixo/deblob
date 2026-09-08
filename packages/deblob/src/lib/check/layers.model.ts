@@ -23,7 +23,7 @@ export type CheckLayersOptions = {
    * Unlisted ⇒ concrete — the unclassified violation is the surfacing
    * mechanism, never a census of known libs.
    */
-  pureLibs?: readonly string[]
+  pure?: readonly string[]
   /**
    * Rule-8 stance: `true` (default) exempts type-only edges to targets owning a
    * contract shape; `false` is the strict opt-out binding every kind — knobs
@@ -54,22 +54,22 @@ type ExternalClass = "pure" | "concrete" | "unclassified"
 
 const classifyExternal = (
   target: Extract<EdgeTarget, { type: "external" }>,
-  pureLibs: ReadonlySet<string>,
+  pure: ReadonlySet<string>,
 ): ExternalClass => {
   const pkg = target.package
   // a resolved file outside the coverage set: ungoverned, undeclared ⇒ concrete
   if (pkg === null) return "concrete"
   // a declared external: the user already said what it is (a module the
   // environment provides); its identity is the matched pattern, and purity
-  // is the one open question — concrete unless the pattern is a pureLibs
+  // is the one open question — concrete unless the pattern is a `pure`
   // entry, never unclassified
-  if (target.declared) return pureLibs.has(pkg) ? "pure" : "concrete"
-  // pureLibs takes "package names and builtin specifiers" (ratified) — a
+  if (target.declared) return pure.has(pkg) ? "pure" : "concrete"
+  // `pure` takes "package names and builtin specifiers" (ratified) — a
   // declared builtin is pure like a declared package; undeclared builtins are
   // enumerable and default concrete, never unclassified
   if (pkg.startsWith("node:"))
-    return PURE_BUILTINS.has(pkg) || pureLibs.has(pkg) ? "pure" : "concrete"
-  return pureLibs.has(pkg) ? "pure" : "unclassified"
+    return PURE_BUILTINS.has(pkg) || pure.has(pkg) ? "pure" : "concrete"
+  return pure.has(pkg) ? "pure" : "unclassified"
 }
 
 /**
@@ -147,7 +147,7 @@ export const checkLayers = (
   graph: ImportGraph,
   options: CheckLayersOptions = {},
 ): LayersViolation[] => {
-  const pureLibs = new Set(options.pureLibs ?? [])
+  const pure = new Set(options.pure ?? [])
   const typeOnlyExempt = options.typeOnlyExempt ?? true
   const violations: LayersViolation[] = []
 
@@ -177,7 +177,7 @@ export const checkLayers = (
     // by the composition seals only, as in-set). A legal cell is the end of
     // it: a crossed model/ports is pure for the importer — trust is the
     // dependency model, the provider's gate verified the claim — so the
-    // pureLibs trichotomy is never consulted. A blob or absent claim falls
+    // purity trichotomy is never consulted. A blob or absent claim falls
     // through to today's trichotomy.
     const crossed = edge.to.layer
     if (crossed !== null && crossed !== "blob") {
@@ -203,7 +203,7 @@ export const checkLayers = (
     // file outside the coverage set (package null) publishes nothing and binds
     const externalExempt = typeOnlyExempt && edge.to.package !== null
     if (typeEdge && externalExempt) continue
-    const externalClass = classifyExternal(edge.to, pureLibs)
+    const externalClass = classifyExternal(edge.to, pure)
     if (externalClass === "pure") continue
     if (externalClass === "unclassified") {
       violations.push({

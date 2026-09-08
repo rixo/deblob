@@ -387,12 +387,12 @@ describe("checkLayers", () => {
       ])
     })
 
-    test("stays green for a pureLibs-listed lib from model", () => {
+    test("stays green for a `pure`-listed lib from model", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: lib("luxon") }],
       )
-      expect(checkLayers(g, { pureLibs: ["luxon"] })).toEqual([])
+      expect(checkLayers(g, { pure: ["luxon"] })).toEqual([])
     })
 
     test("stays green for a curated pure builtin from model", () => {
@@ -403,7 +403,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    test("a pureLibs-declared builtin is pure — builtin specifiers are ratified pureLibs entries", () => {
+    test("a `pure`-declared builtin is pure — builtin specifiers are ratified `pure` entries", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: lib("node:util") }],
@@ -411,7 +411,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({ rules: [1, 4, 8] }),
       ])
-      expect(checkLayers(g, { pureLibs: ["node:util"] })).toEqual([])
+      expect(checkLayers(g, { pure: ["node:util"] })).toEqual([])
     })
 
     test("treats a resolved file outside the coverage set as concrete", () => {
@@ -429,7 +429,7 @@ describe("checkLayers", () => {
     })
   })
 
-  describe("declared externals — concrete by default, pureLibs by pattern", () => {
+  describe("declared externals — concrete by default, `pure` by pattern", () => {
     const leaf = declaredLeaf("$made-up:tokens.scss", "$made-up:*")
 
     test("fires 1+4 (8 hint) from model — a matrix cell, never unclassified", () => {
@@ -478,16 +478,14 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    test("stays green when the matched pattern is a pureLibs entry — verbatim, like a package name", () => {
+    test("stays green when the matched pattern is a `pure` entry — verbatim, like a package name", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: leaf }],
       )
-      expect(checkLayers(g, { pureLibs: ["$made-up:*"] })).toEqual([])
+      expect(checkLayers(g, { pure: ["$made-up:*"] })).toEqual([])
       // the specifier itself is not the identity — the pattern is
-      expect(
-        checkLayers(g, { pureLibs: ["$made-up:tokens.scss"] }),
-      ).toHaveLength(1)
+      expect(checkLayers(g, { pure: ["$made-up:tokens.scss"] })).toHaveLength(1)
     })
 
     test("exempts type-only imports by default — declared typings are the contract; strict mode binds", () => {
@@ -599,7 +597,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    test("a crossed model claim is pure for the importer — the trust pin: rule 4 satisfied, no pureLibs line", () => {
+    test("a crossed model claim is pure for the importer — the trust pin: rule 4 satisfied, no `pure` line", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [
@@ -642,8 +640,8 @@ describe("checkLayers", () => {
           targetClass: "ports",
         }),
       ])
-      // pureLibs cannot silence it: a crossed cell never reaches the trichotomy
-      expect(checkLayers(g, { pureLibs: ["@made-up/b"] })).toHaveLength(1)
+      // `pure` cannot silence it: a crossed cell never reaches the trichotomy
+      expect(checkLayers(g, { pure: ["@made-up/b"] })).toHaveLength(1)
     })
 
     test("a crossed blob claim claims nothing — today's trichotomy, untouched (the revoke lands here)", () => {

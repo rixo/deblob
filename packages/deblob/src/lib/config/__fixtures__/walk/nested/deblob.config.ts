@@ -1,3 +1,3 @@
 export default {
-  pureLibs: ["FAKE_NESTED_LIB"],
+  pure: ["FAKE_NESTED_LIB"],
 }

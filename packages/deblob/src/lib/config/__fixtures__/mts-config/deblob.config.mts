@@ -1,3 +1,3 @@
 export default {
-  pureLibs: ["FAKE_MTS_LIB"],
+  pure: ["FAKE_MTS_LIB"],
 }

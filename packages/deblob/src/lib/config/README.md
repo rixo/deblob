@@ -7,7 +7,7 @@ adapters over the platform; assembly owns the load → resolve sequence.
 ## API
 
 - `DeblobConfig` (`config.service.ts`) — the authoring contract, all keys
-  optional: `flavor`, `assembly`, `include`, `exclude`, `pureLibs`,
+  optional: `flavor`, `assembly`, `include`, `exclude`, `pure`,
   `typeOnlyExempt`, `tsconfig`, `alias`, `external`, `externalLayers`, `build`.
   `defineConfig` is the identity that types a config file. Both are the
   package's public surface.

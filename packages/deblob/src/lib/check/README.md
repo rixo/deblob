@@ -11,11 +11,11 @@ One function per check, all over `ImportGraph` from `extraction`:
 - `checkDag(graph)` — rules 13 and 14. Service cycles over every import kind,
   module cycles over runtime edges only. One finding per strongly connected
   component, with the membership and a shortest witness cycle.
-- `checkLayers(graph, { pureLibs?, typeOnlyExempt? })` — the dependency matrix,
+- `checkLayers(graph, { pure?, typeOnlyExempt? })` — the dependency matrix,
   rules 1, 4–9. Per-cell rule 8: a type-only edge is exempt where the target
   owns a contract shape. An external leaf carrying a layer enters the matrix as
   a target of that layer; an unlabeled external falls to the purity trichotomy
-  (pure / concrete / unclassified) that `pureLibs` decides.
+  (pure / concrete / unclassified) that `pure` decides.
 - `checkPrivate(graph)` — rule 12. Every `private` path segment is one boundary;
   every edge kind and form binds.
 - `checkBarrels(graph, { tolerateBlobReexport? })` — rule 2. An index

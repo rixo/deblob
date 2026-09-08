@@ -363,7 +363,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("ports may only import model and ports")
     })
 
-    test("unclassified lib points at the pureLibs escape hatch", () => {
+    test("unclassified lib points at the `pure` escape hatch", () => {
       const output = message(
         layersViolation({
           rules: [4],
@@ -378,7 +378,7 @@ describe("renderCheckResults", () => {
         } as Partial<LayersViolation>),
       )
       expect(output).toContain("unclassified third-party in a pure layer")
-      expect(output).toContain("pureLibs")
+      expect(output).toContain('config key "pure"')
     })
 
     test("marks a declared external leaf so the cell reads as declared, not a resolver accident", () => {

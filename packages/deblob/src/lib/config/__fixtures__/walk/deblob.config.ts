@@ -1,3 +1,3 @@
 export default {
-  pureLibs: ["FAKE_ROOT_LIB"],
+  pure: ["FAKE_ROOT_LIB"],
 }

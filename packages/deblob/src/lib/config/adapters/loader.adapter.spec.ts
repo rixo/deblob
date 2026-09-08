@@ -131,25 +131,21 @@ describe("tsconfigPathOf", () => {
 describe("importConfigDefault + the assembly sequence", () => {
   test("loads a .ts config natively and resolves it", async () => {
     const resolved = await load(fixture("walk"))
-    expect(resolved.pureLibs).toEqual(["FAKE_ROOT_LIB"])
+    expect(resolved.pure).toEqual(["FAKE_ROOT_LIB"])
     expect(resolved.root).toBe(fixture("walk"))
     expect(resolved.configPath).toBe(join(fixture("walk"), "deblob.config.ts"))
   })
 
   test("the nearest config governs a nested cwd — no merge with the ancestor", async () => {
     const resolved = await load(fixture("walk/nested/deeper"))
-    expect(resolved.pureLibs).toEqual(["FAKE_NESTED_LIB"])
+    expect(resolved.pure).toEqual(["FAKE_NESTED_LIB"])
     expect(resolved.root).toBe(fixture("walk/nested"))
   })
 
   test("loads .mts, .js and .mjs configs", async () => {
-    expect((await load(fixture("mts-config"))).pureLibs).toEqual([
-      "FAKE_MTS_LIB",
-    ])
-    expect((await load(fixture("js-config"))).pureLibs).toEqual(["FAKE_JS_LIB"])
-    expect((await load(fixture("mjs-config"))).pureLibs).toEqual([
-      "FAKE_MJS_LIB",
-    ])
+    expect((await load(fixture("mts-config"))).pure).toEqual(["FAKE_MTS_LIB"])
+    expect((await load(fixture("js-config"))).pure).toEqual(["FAKE_JS_LIB"])
+    expect((await load(fixture("mjs-config"))).pure).toEqual(["FAKE_MJS_LIB"])
   })
 
   test("rejects a config without a default export, teaching the fix", async () => {
@@ -186,7 +182,7 @@ describe("importConfigDefault + the assembly sequence", () => {
       const resolved = await load(isolated)
       expect(resolved.configPath).toBeNull()
       expect(resolved.root).toBe(isolated)
-      expect(resolved.pureLibs).toEqual([])
+      expect(resolved.pure).toEqual([])
       expect(resolved.typeOnlyExempt).toBe(true)
     })
   })

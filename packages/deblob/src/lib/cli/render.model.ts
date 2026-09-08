@@ -115,7 +115,7 @@ const ruleCite = (rules: readonly number[]): string =>
 const layersMessage = (violation: LayersViolation, prefix: string): string => {
   const target = targetLabel(violation.target, prefix)
   if (violation.shape === "unclassified-lib") {
-    return `imports ${target} — unclassified third-party in a pure layer; declare it in pureLibs if it qualifies`
+    return `imports ${target} — unclassified third-party in a pure layer; list it under config key "pure" if it qualifies`
   }
   const { rules, importerLayer } = violation
   // rule 8 in the citation = this cell's type variant is exempt (06 ruling)

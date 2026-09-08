@@ -34,7 +34,7 @@ const resolve = (raw: unknown, flavors: FlavorRegistry = FLAVORS) =>
 
 describe("defineConfig", () => {
   test("is the identity — typing channel only", () => {
-    const config = { pureLibs: ["some-fake-lib"] }
+    const config = { pure: ["some-fake-lib"] }
     expect(defineConfig(config)).toBe(config)
   })
 })
@@ -46,7 +46,7 @@ describe("resolveConfig — defaults", () => {
     expect(resolved.configPath).toBe("/fixture-root/deblob.config.ts")
     expect(resolved.include).toEqual(DEFAULT_INCLUDE)
     expect(resolved.exclude).toEqual(EXCLUDE_BASELINE)
-    expect(resolved.pureLibs).toEqual([])
+    expect(resolved.pure).toEqual([])
     expect(resolved.typeOnlyExempt).toBe(true)
     expect(resolved.isAssembly("src/main.ts")).toBe(false)
   })
@@ -87,13 +87,19 @@ describe("resolveConfig — validation", () => {
 
   test("rejects an unknown key, naming it and the valid set", () => {
     expect(() => resolve({ SOME_MADE_UP_KEY: true })).toThrowError(
-      /SOME_MADE_UP_KEY.*flavor.*assembly.*include.*exclude.*pureLibs.*typeOnlyExempt/s,
+      /SOME_MADE_UP_KEY.*flavor.*assembly.*include.*exclude.*pure.*typeOnlyExempt/s,
     )
   })
 
   test("rejects the plausible typo through the same path", () => {
-    expect(() => resolve({ pureLib: ["some-fake-lib"] })).toThrowError(
-      /unknown key "pureLib"/,
+    expect(() => resolve({ pures: ["some-fake-lib"] })).toThrowError(
+      /unknown key "pures"/,
+    )
+  })
+
+  test("rejects the pre-0.0.5 key by its new name — renamed, never aliased", () => {
+    expect(() => resolve({ pureLibs: ["some-fake-lib"] })).toThrowError(
+      /"pureLibs" was renamed "pure"/,
     )
   })
 
@@ -398,8 +404,8 @@ describe("resolveConfig — coverage keys", () => {
     ])
   })
 
-  test("passes pureLibs through untouched", () => {
-    const resolved = resolve({ pureLibs: ["some-fake-lib", "node:path"] })
-    expect(resolved.pureLibs).toEqual(["some-fake-lib", "node:path"])
+  test("passes `pure` through untouched", () => {
+    const resolved = resolve({ pure: ["some-fake-lib", "node:path"] })
+    expect(resolved.pure).toEqual(["some-fake-lib", "node:path"])
   })
 })

@@ -1,3 +1,3 @@
 export default {
-  pureLibs: ["FAKE_JS_LIB"],
+  pure: ["FAKE_JS_LIB"],
 }

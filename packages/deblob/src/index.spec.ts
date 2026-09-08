@@ -4,7 +4,7 @@ import { defineConfig } from "./index.ts"
 
 describe("public surface", () => {
   test("exports defineConfig", () => {
-    const config = { pureLibs: ["some-fake-lib"] }
+    const config = { pure: ["some-fake-lib"] }
     expect(defineConfig(config)).toBe(config)
   })
 })

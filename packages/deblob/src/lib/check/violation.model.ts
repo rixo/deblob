@@ -39,9 +39,9 @@ export type LayersViolation = {
     }
   | {
       /**
-       * A lib neither builtin-classified nor in `pureLibs`, reached from a pure
+       * A lib neither builtin-classified nor in `pure`, reached from a pure
        * layer — the default-concrete surfacing mechanism (escape hatch: declare
-       * it in `pureLibs`).
+       * it in `pure`).
        */
       shape: "unclassified-lib"
     }

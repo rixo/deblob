@@ -188,7 +188,7 @@ describe("deblob check", () => {
     expect(err).toContain('config key "external"')
   })
 
-  test("external repo: declared patterns land leaves (no unresolved), pureLibs ratifies by pattern", async () => {
+  test("external repo: declared patterns land leaves (no unresolved), `pure` ratifies by pattern", async () => {
     const { code, out, err } = await run(["check"], { cwd: externalDir })
     expect(err).toBe("")
     expect(code).toBe(1)
@@ -205,7 +205,7 @@ describe("deblob check", () => {
     expect(out).toContain("src/consumer.service.ts")
     expect(out).toContain("imports @fixture/billing/checkout.service")
     expect(out).toContain("assembly-only; import type is fine (rules 6, 8)")
-    // …not from assembly; the model entry is green with no pureLibs line, and
+    // …not from assembly; the model entry is green with no `pure` line, and
     // the disclosed adapter of the other sibling is unlabeled — no rule-7 seal
     expect(out).not.toContain("totals.model")
     expect(out).not.toContain("gateway.adapter")

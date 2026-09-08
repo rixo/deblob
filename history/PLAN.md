@@ -17,15 +17,16 @@
   evidenced.
 - **CLI 0.0.x** — chapter in flight: `history/20260710_cli/` (chapter PLAN
   carries decisions, status, the standing release roadmap — read it first when
-  resuming). Steps 01–13 landed (v0 check surface, resolution integrity,
-  declared externals, cross-package layers); 0.0.4 published 2026-09-08 (0.0.2
-  on 2026-07-24, 0.0.3 on 2026-09-02); version stance: 0.0.x until maturity or
-  adoption pressure, 0.1.0 = the channel switch (minor = breaking thereafter).
-  Next ruled work rides 0.0.x cuts: version-pinned rule URLs (storefront pass
-  and package LICENSE closed 2026-07-25). Companion, ruled to the `deblob docs`
-  command family: derived-view staleness check — diff `docs/` sections against
-  `source:` stamps in `skills/*/knowledge|references/`; stamp-text ↔ heading
-  matching rule to spec.
+  resuming). Steps 01–14 landed (v0 check surface, resolution integrity,
+  declared externals, cross-package layers, the `pure` key rename — 0.0.5
+  headline); 0.0.4 published 2026-09-08 (0.0.2 on 2026-07-24, 0.0.3 on
+  2026-09-02); version stance: 0.0.x until maturity or adoption pressure, 0.1.0
+  = the channel switch (minor = breaking thereafter). Next ruled work rides
+  0.0.x cuts: version-pinned rule URLs (storefront pass and package LICENSE
+  closed 2026-07-25). Companion, ruled to the `deblob docs` command family:
+  derived-view staleness check — diff `docs/` sections against `source:` stamps
+  in `skills/*/knowledge|references/`; stamp-text ↔ heading matching rule to
+  spec.
 - **Review-slicing skill** — dogfooded 2026-07-23 on step-10's own diff, verdict
   positive (better, more engaging review — rixo). Graduation next, a fresh
   session: chapter in the skills lineage; first ruling = name (the

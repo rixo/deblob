@@ -70,7 +70,7 @@ import { defineConfig } from "deblob"
 export default defineConfig({
   include: ["src/**"],
   assembly: ["src/main.ts"],
-  pureLibs: ["zod"],
+  pure: ["zod"],
 })
 ```
 
@@ -82,7 +82,7 @@ The eleven keys, all optional:
 | `assembly`       | `[]`                      | Globs designating composition roots — privilege is declared, not presumed                                                           |
 | `include`        | `["**"]`                  | Coverage globs; under-coverage is a silent hole, so the default covers everything                                                   |
 | `exclude`        | `[]`                      | Appended to a non-removable baseline (`node_modules`, `dist`, …); never replaces it                                                 |
-| `pureLibs`       | `[]`                      | Rule-4 allowlist: package names, builtin specifiers, and declared `external` patterns ratified as pure                              |
+| `pure`           | `[]`                      | Rule-4 allowlist: package names, builtin specifiers, and declared `external` patterns ratified as pure                              |
 | `typeOnlyExempt` | flavor's stance (`true`)  | `false` = strict: type-only imports lose their rule-8 exemption; knobs only tighten canon                                           |
 | `tsconfig`       | `tsconfig.json` at root   | The tsconfig feeding resolution (`paths` aliases); a path, or `false` to disable — a declared path that doesn't exist fails loud    |
 | `alias`          | `{}`                      | Resolver aliases living outside tsconfig (bundler config); teaches resolution, never suppresses failures                            |
@@ -111,7 +111,7 @@ A module the environment provides with nothing on disk — a vite plugin serving
 specifier — is declared, not aliased: `external` holds patterns over the
 specifier as written, and a match is a known leaf. Resolvable packages need no
 entry. A declared external counts concrete by default; to ratify it pure, list
-the same pattern in `pureLibs` — the pattern is the leaf's identity, matched
+the same pattern in `pure` — the pattern is the leaf's identity, matched
 verbatim like a package name. Patterns are not path globs (a specifier is one
 string): `**` matches any characters, `/` included — `$theme:**` is the whole
 namespace — and `*` matches anything but `/`. Not covered yet: teaching the
@@ -123,8 +123,8 @@ sealed: each package's gate covers its own interior, and a package declaring
 `"deblob": {}` in its package.json claims that the stock naming rule holds on
 its exports surface — `@repo/billing/checkout.service` is a service, sealed to
 assembly for every consumer; `@repo/billing/totals.model` is a model, pure for
-your model layer with no `pureLibs` line. Flavors classify locally; layers
-travel: the consumer reads results, never the producer's machinery, and only for
+your model layer with no `pure` line. Flavors classify locally; layers travel:
+the consumer reads results, never the producer's machinery, and only for
 subpaths the producer's exports map lists — an import that reaches around the
 map is unlabeled, as any deep import. The claim is trusted the way the code is —
 you already run it and trust its versioning; a stale field is a stale semver, no

@@ -110,7 +110,7 @@ export type EdgeTarget =
       type: "external"
       specifier: string
       /**
-       * The leaf's purity identity, what `pureLibs` entries match: the
+       * The leaf's purity identity, what `pure` entries match: the
        * bare-specifier package name (`zod`, `node:path`), or for a declared
        * external the pattern that matched (`$theme:**`) — `null` when the leaf
        * is a file outside the coverage set.

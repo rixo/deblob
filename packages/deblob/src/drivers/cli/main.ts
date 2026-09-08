@@ -112,7 +112,7 @@ const DETECTORS: Record<
   dag: (graph) => checkDag(graph),
   layers: (graph, config) =>
     checkLayers(graph, {
-      pureLibs: config.pureLibs,
+      pure: config.pure,
       typeOnlyExempt: config.typeOnlyExempt,
     }),
   private: (graph) => checkPrivate(graph),

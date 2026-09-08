@@ -49,7 +49,7 @@ import { defineConfig } from "deblob"
 export default defineConfig({
   include: ["src/**"],
   assembly: ["src/main.ts"], // composition roots — privilege is declared
-  pureLibs: ["zod"], // rule-4 allowlist — trusted, not verified
+  pure: ["zod"], // rule-4 allowlist — trusted, not verified
 })
 ```
 
@@ -58,10 +58,9 @@ bundler-only aliases go in the `alias` key; modules the environment provides
 with nothing on disk (`$theme/config` from a vite plugin, `cloudflare:workers`)
 go in `external` as specifier patterns — not path globs: `**` crosses `/`
 (`$theme:**` = the namespace), `*` does not; a declared external is concrete
-unless its pattern is also in `pureLibs`. An unresolvable import fails `check`
-with exit 2 — the graph would be incomplete, so the run refuses to certify. Full
-key reference: the installed package's own README
-(`node_modules/deblob/README.md`).
+unless its pattern is also in `pure`. An unresolvable import fails `check` with
+exit 2 — the graph would be incomplete, so the run refuses to certify. Full key
+reference: the installed package's own README (`node_modules/deblob/README.md`).
 
 ## Monorepos
 
@@ -141,18 +140,18 @@ assembly.
   no `alias` key (yarn PnP untested). A sibling's `.service`/`.adapter` subpath
   is assembly-only for you (rules 6/7, `import type` exempt) — import it from
   assembly or go through your own port
-  ([crossing-services](crossing-services.md)); never add it to `pureLibs`. A
-  sibling's `.model`/`.port` subpath is pure for your model layer with no
-  `pureLibs` line: the claim is trusted the way the code is.
+  ([crossing-services](crossing-services.md)); never add it to `pure`. A
+  sibling's `.model`/`.port` subpath is pure for your model layer with no `pure`
+  line: the claim is trusted the way the code is.
 - **Override** — `externalLayers` maps specifier patterns to layers by hand:
   identity for packages declaring nothing, and it wins over a producer's field.
-  Reviewed like `pureLibs`. Mapping a subpath to `blob` revokes a claim you do
-  not buy.
+  Reviewed like `pure`. Mapping a subpath to `blob` revokes a claim you do not
+  buy.
 - The config's `assembly` globs designate composition roots at home; they never
   silence rule 2 on a re-export barrel — an unlabeled entry fronting a service
   or adapter is exactly what `surface` fires on. The field's `assembly` list is
   the word for that, because it seals the subpath abroad. Both deserve
-  `pureLibs`-grade review.
+  `pure`-grade review.
 - The external-treatment premise assumes imports go through the package
   boundary. Deep imports into sibling source (`@scope/lib/src/…`) resolve
   outside the run root and become unlabeled external leaves — the producer's

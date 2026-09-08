@@ -67,16 +67,16 @@ until the feature set and maturity feel satisfying — or consumer pressure
 (adoption in real projects) demands version structure first. At that switch, 0.x
 becomes the channel and minor denotes breaking changes; 0.1.0 is the
 channel-opening cut, not the next milestone. Remaining ruled work, rides 0.0.x
-cuts as ready — version-pinned rule URLs (Ideas item). README storefront pass:
-closed 2026-07-25 (rixo) — audit passed, no prose change; a drafted Track record
-section was rejected at review (n=1 case study reads as lab report, not
-storefront — over-disclosure is its own noise). Testimonial stays banked here;
-README use reconsidered only if dogfood runs accumulate (n=3 reads as evidence,
-n=1 as an excuse), likely as a linked field-notes doc, not README body. MIT
-LICENSE text file into the package: landed 2026-07-25
-(`packages/deblob/LICENSE`, npm auto-includes — tarball verified; code MIT, docs
-stay CC BY 4.0 per the root README split). Still out of scope until demanded:
-JSON/SARIF, status, vite driver, presets, docs family.
+cuts as ready — version-pinned rule URLs (Ideas item); the `pure` key rename
+(14) is the 0.0.5 headline. README storefront pass: closed 2026-07-25 (rixo) —
+audit passed, no prose change; a drafted Track record section was rejected at
+review (n=1 case study reads as lab report, not storefront — over-disclosure is
+its own noise). Testimonial stays banked here; README use reconsidered only if
+dogfood runs accumulate (n=3 reads as evidence, n=1 as an excuse), likely as a
+linked field-notes doc, not README body. MIT LICENSE text file into the package:
+landed 2026-07-25 (`packages/deblob/LICENSE`, npm auto-includes — tarball
+verified; code MIT, docs stay CC BY 4.0 per the root README split). Still out of
+scope until demanded: JSON/SARIF, status, vite driver, presets, docs family.
 
 Chapter scratch. Opened from the 2026-07-10 evening session (decisions + engine
 research below), recovered from stash and formally opened 2026-07-17, folded
@@ -364,6 +364,16 @@ identity).
   ratifies it verbatim like a package name — no new matching semantics. Declares
   what the thing is, never mutes the failure: unmatched specifiers still exit 2.
   No wildcard guard — a tool does what it is told.
+- `13_cross-package-layers` — **landed 2026-09-08** (0.0.4), spec:
+  [13_cross-package-layers/SPEC.md](./13_cross-package-layers/SPEC.md); layer
+  identity crosses the package boundary (producer `deblob` field, consumer
+  `externalLayers` patch, `check surface`), the seal holds.
+- `14_pure-key` — **landed 2026-09-09**, spec:
+  [14_pure-key/SPEC.md](./14_pure-key/SPEC.md); the rule-4 allowlist key renamed
+  `pureLibs` → `pure` (ratified 2026-09-09, rixo: bare-word grammar of its
+  neighbours, and "Libs" already wrong for builtins, `external` patterns and the
+  banked granular form). Renamed, never aliased — a stale key fails loud with
+  the new name. Rides the 0.0.5 cut.
 
 README-driven UX fiction banked (2026-07-17):
 [research/help-screens.md](./research/help-screens.md) (intended `--help` +
