@@ -25,15 +25,20 @@ describe("parseCli", () => {
         action: {
           command: "check",
           checks: KNOWN_CHECKS,
+          explicit: false,
           explain: false,
           explainOnly: false,
         },
       })
     })
 
-    it("check with names runs the named subset, argv order kept", () => {
+    it("check with names runs that subset, argv order kept; `explicit` records that check names were passed on the command line rather than defaulted", () => {
       expect(parseCli(["check", "ports", "layers"])).toMatchObject({
-        action: { command: "check", checks: ["ports", "layers"] },
+        action: {
+          command: "check",
+          checks: ["ports", "layers"],
+          explicit: true,
+        },
       })
     })
 

@@ -259,19 +259,48 @@ const dagBlock = (
   return lines
 }
 
-export type GraphStats = {
+/** The inventory both commands share: what the tree is, by size. */
+export type InventoryStats = {
   files: number
-  edges: number
   /** Total covered bytes — shown so blob % reads as size-computed. */
   totalBytes: number
   blobPercent: number
+  /** Distinct service roots — what the layer rules govern. */
+  services: number
 }
 
+export type GraphStats = InventoryStats & {
+  /** Import edges, one per importing file → target pair. */
+  imports: number
+  /**
+   * The exports claim the surface check reached; `null` = no `deblob` field, or
+   * `surface` not among the checks run — the segment is absent, and its absence
+   * is the diff a dropped field makes in a CI log.
+   */
+  surface: { checked: number; disclosed: number } | null
+}
+
+/**
+ * `exports 7 checked, 2 disclosed` — the verb is the caller's: bare says
+ * `claimed` (nothing verified there), check says `checked`. Zero disclosed is
+ * the common case and prints nothing.
+ */
+const exportsSegment = (
+  count: number,
+  verb: string,
+  disclosed: number,
+): string =>
+  `exports ${count} ${verb}${disclosed > 0 ? `, ${disclosed} disclosed` : ""}`
+
+/**
+ * The inventory line: verdict first, then the flagship metric by size — same
+ * shape as the bare headline, so the two commands read as one instrument.
+ */
 const summaryLine = (
   violations: readonly Violation[],
-  stats: GraphStats,
+  stats: InventoryStats,
 ): string => {
-  const trailer = `${plural(stats.files, "file")} · ${formatSize(stats.totalBytes)} · ${stats.blobPercent}% blob · ${plural(stats.edges, "edge")}`
+  const trailer = `${plural(stats.files, "file")} · ${formatSize(stats.totalBytes)} · ${stats.blobPercent}% blob`
   if (violations.length === 0) return `0 violations · ${trailer}`
   const counts = KNOWN_CHECKS.flatMap((check) => {
     const count = violations.filter(
@@ -283,13 +312,34 @@ const summaryLine = (
 }
 
 /**
+ * The coverage line: what the rules govern, what the graph holds, what the
+ * claim covers. Diffable as one unit in a CI log — a renamed service, a dropped
+ * field, a retracted subpath each move it.
+ */
+const coverageLine = (stats: GraphStats): string =>
+  [
+    plural(stats.services, "service"),
+    plural(stats.imports, "import"),
+    ...(stats.surface === null
+      ? []
+      : [
+          exportsSegment(
+            stats.surface.checked,
+            "checked",
+            stats.surface.disclosed,
+          ),
+        ]),
+  ].join(" · ")
+
+/**
  * The check output: grouped service → file → tagged lines, cycle findings as
  * blocks in their bucket — `cross-service` after the named services, `blob`
  * last (findings on unlabeled files, the flagship term on first contact) — then
- * summary and one footer hint to the teaching channel. Fully deterministic —
- * goldens and CI diffs stay stable. Every path prints whole under `pathPrefix`
- * (the runner's cwd → config-root hop, `""` when they coincide) so terminal
- * ctrl+click resolves from where the user ran the command.
+ * the summary line, the coverage line, and one footer hint to the teaching
+ * channel. Fully deterministic — goldens and CI diffs stay stable. Every path
+ * prints whole under `pathPrefix` (the runner's cwd → config-root hop, `""`
+ * when they coincide) so terminal ctrl+click resolves from where the user ran
+ * the command.
  */
 export const renderCheckResults = (
   violations: readonly Violation[],
@@ -397,7 +447,7 @@ export const renderCheckResults = (
     lines.push("")
   }
 
-  lines.push(summaryLine(violations, stats))
+  lines.push(summaryLine(violations, stats), coverageLine(stats))
 
   if (violations.length > 0) {
     const rules = [...new Set(violations.flatMap((v) => v.rules))].sort(
@@ -442,6 +492,14 @@ export const renderUnresolved = (
   )
   return `${lines.join("\n")}\n`
 }
+
+/**
+ * `check surface` named by hand on a package with no `deblob` field: the check
+ * had nothing to check, and a pass it never ran must not read as a pass.
+ * Stderr, exit stays 0 — nothing is demanded from a package that did not opt
+ * in; the default run says the same thing by printing no exports segment.
+ */
+export const SURFACE_NOT_CLAIMED = `surface: no "deblob" field in package.json — nothing to check; declaring is opting in ("deblob": {})\n`
 
 /**
  * Exports subpaths the surface check could not reach through any of their
@@ -546,13 +604,16 @@ export type BareStatus = {
   version: string
   provenance: string
   /** `null` = the config broke: the lines needing it are skipped, exit stays 0. */
-  stats: {
-    fileCount: number
-    /** Total covered bytes — shown so blob % reads as size-computed. */
-    totalBytes: number
-    blobPercent: number
-    serviceCount: number
-  } | null
+  stats:
+    | (InventoryStats & {
+        /**
+         * The `deblob` field's claim as written, tallied at scan speed; `null`
+         * = no field (or a field this version cannot read — its teaching error
+         * went to stderr, the segment is skipped, exit stays 0).
+         */
+        surface: { claimed: number; disclosed: number } | null
+      })
+    | null
 }
 
 /** Bare `deblob` — status + discovery, never diagnosis. Exit 0 territory. */
@@ -564,9 +625,20 @@ export const renderBareStatus = (status: BareStatus, colors: Colors): string =>
       ? []
       : [
           colors.strong(
-            `  ${plural(status.stats.fileCount, "file")} · ${formatSize(status.stats.totalBytes)} · ${status.stats.blobPercent}% blob`,
+            `  ${plural(status.stats.files, "file")} · ${formatSize(status.stats.totalBytes)} · ${status.stats.blobPercent}% blob`,
           ),
-          `  ${plural(status.stats.serviceCount, "service")}`,
+          `  ${[
+            plural(status.stats.services, "service"),
+            ...(status.stats.surface === null
+              ? []
+              : [
+                  exportsSegment(
+                    status.stats.surface.claimed,
+                    "claimed",
+                    status.stats.surface.disclosed,
+                  ),
+                ]),
+          ].join(" · ")}`,
           "",
         ]),
     "Commands",

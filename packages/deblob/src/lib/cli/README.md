@@ -15,13 +15,18 @@ pin out. The process, streams, and exit codes belong to the driver.
   name) to rule numbers.
 - `renderCheckResults(violations, stats, colors, pathPrefix)` — the check
   listing: findings grouped and sorted deterministically, each with its cited
-  rules, the footer with the graph stats and the fired rules as a pasteable
-  `explain` invocation.
+  rules, then the summary line (verdict + inventory: files, size, blob %), the
+  coverage line (services, imports, and `exports N checked, M disclosed` when a
+  `deblob` claim was checked — absent otherwise, so a dropped field is a visible
+  diff), and the fired rules as a pasteable `explain` invocation. `GraphStats`
+  carries the numbers; `InventoryStats` is the half both commands share.
 - `renderUnresolved(entries, colors, prefix)` and
   `renderUnverified(entries, colors, prefix)` — the two stderr blocks of an
-  uncertifiable run, remedies included.
+  uncertifiable run, remedies included. `SURFACE_NOT_CLAIMED` — the one-line
+  stderr note for `check surface` named by hand on a package with no field.
 - `renderBareStatus(status, colors)` — the informational headline: version,
-  provenance, blob percentage by size, service count.
+  provenance, blob percentage by size, then service count and the field's claim
+  as written (`exports N claimed, M disclosed`), when there is one.
 - `renderExplain(entries, colors)` — rule rationale plus shipped cards.
 - `HELP`, `CHECK_HELP` — the help screens as literals, so docs cannot drift from
   the binary.

@@ -20,7 +20,9 @@ import {
   renderUnresolved,
   renderUnverified,
   sizeStatsOf,
+  SURFACE_NOT_CLAIMED,
 } from "./render.model.ts"
+import type { GraphStats } from "./render.model.ts"
 
 const layersViolation = (
   overrides: Partial<LayersViolation> = {},
@@ -83,11 +85,13 @@ const portsViolation = (
     ...overrides,
   }) as PortsViolation
 
-const STATS = {
+const STATS: GraphStats = {
   files: 214,
-  edges: 380,
   totalBytes: 218 * 1024,
   blobPercent: 25,
+  services: 12,
+  imports: 380,
+  surface: null,
 }
 
 describe("renderCheckResults", () => {
@@ -109,7 +113,8 @@ describe("renderCheckResults", () => {
         "    layers   imports node:fs — service layer cannot depend on concrete",
         "             (rule 4)",
         "",
-        "2 violations (1 layers, 1 private) · 214 files · 218kb · 25% blob · 380 edges",
+        "2 violations (1 layers, 1 private) · 214 files · 218kb · 25% blob",
+        "12 services · 380 imports",
         "why: deblob explain 4 12 · or rerun with --explain",
         "",
       ].join("\n"),
@@ -152,9 +157,34 @@ describe("renderCheckResults", () => {
     expect(output).toContain("imports node:fs —")
   })
 
-  it("a clean run is one summary line, no footer", () => {
+  it("a clean run is the summary and coverage lines, no footer", () => {
     expect(renderCheckResults([], STATS, NO_COLORS)).toBe(
-      "0 violations · 214 files · 218kb · 25% blob · 380 edges\n",
+      "0 violations · 214 files · 218kb · 25% blob\n12 services · 380 imports\n",
+    )
+  })
+
+  it("coverage line: the exports segment exists iff a claim was checked, disclosed only when nonzero", () => {
+    const claimed = { ...STATS, surface: { checked: 7, disclosed: 2 } }
+    expect(renderCheckResults([], claimed, NO_COLORS)).toContain(
+      "\n12 services · 380 imports · exports 7 checked, 2 disclosed\n",
+    )
+    const undisclosed = { ...STATS, surface: { checked: 1, disclosed: 0 } }
+    expect(renderCheckResults([], undisclosed, NO_COLORS)).toContain(
+      "\n12 services · 380 imports · exports 1 checked\n",
+    )
+    // singulars
+    expect(
+      renderCheckResults(
+        [],
+        { ...STATS, services: 1, imports: 1, surface: null },
+        NO_COLORS,
+      ),
+    ).toContain("\n1 service · 1 import\n")
+  })
+
+  it("the no-field note names the opt-in — one stderr line, the driver keeps exit 0", () => {
+    expect(SURFACE_NOT_CLAIMED).toBe(
+      'surface: no "deblob" field in package.json — nothing to check; declaring is opting in ("deblob": {})\n',
     )
   })
 
@@ -556,7 +586,8 @@ describe("renderCheckResults", () => {
           "           services must form a DAG (rule 13); see the sharing",
           "           progression",
           "",
-          "1 violation (1 dag) · 214 files · 218kb · 25% blob · 380 edges",
+          "1 violation (1 dag) · 214 files · 218kb · 25% blob",
+          "12 services · 380 imports",
           "why: deblob explain 13 · or rerun with --explain",
           "",
         ].join("\n"),
@@ -699,10 +730,11 @@ describe("bare status", () => {
         version: "0.0.1",
         provenance: provenanceOf("deblob.config.ts", "ts-suffixes-factories"),
         stats: {
-          fileCount: 1872,
+          files: 1872,
           totalBytes: 4404019,
           blobPercent: 78,
-          serviceCount: 3,
+          services: 3,
+          surface: { claimed: 9, disclosed: 2 },
         },
       },
       NO_COLORS,
@@ -712,7 +744,7 @@ describe("bare status", () => {
         "deblob 0.0.1 · deblob.config.ts (flavor: ts-suffixes-factories)",
         "",
         "  1,872 files · 4.2mb · 78% blob",
-        "  3 services",
+        "  3 services · exports 9 claimed, 2 disclosed",
         "",
         "Commands",
         "  deblob check [what...]      run architecture checks",
@@ -730,17 +762,37 @@ describe("bare status", () => {
         version: "0.0.1",
         provenance: provenanceOf(null, "ts-suffixes-factories"),
         stats: {
-          fileCount: 1,
+          files: 1,
           totalBytes: 2048,
           blobPercent: 100,
-          serviceCount: 1,
+          services: 1,
+          surface: null,
         },
       },
       NO_COLORS,
     )
     expect(output).toContain("no config (defaults)")
     expect(output).toContain("1 file · 2kb ·")
+    // no field: the line ends at the service count
     expect(output).toContain("1 service\n")
+  })
+
+  it("a claim with nothing disclosed prints the count alone", () => {
+    const output = renderBareStatus(
+      {
+        version: "0.0.1",
+        provenance: provenanceOf(null, "ts-suffixes-factories"),
+        stats: {
+          files: 4,
+          totalBytes: 2048,
+          blobPercent: 0,
+          services: 2,
+          surface: { claimed: 3, disclosed: 0 },
+        },
+      },
+      NO_COLORS,
+    )
+    expect(output).toContain("  2 services · exports 3 claimed\n")
   })
 
   it("formatSize: kb below 1000kb, mb above, no trailing .0", () => {

@@ -17,9 +17,10 @@ import { checkDag } from "../../lib/check/dag.model.ts"
 import { checkLayers } from "../../lib/check/layers.model.ts"
 import { checkPorts } from "../../lib/check/ports.model.ts"
 import { checkPrivate } from "../../lib/check/private.model.ts"
-import { checkSurface } from "../../lib/check/surface.model.ts"
+import { checkSurface, tallySurface } from "../../lib/check/surface.model.ts"
 import type {
   PackageSurface,
+  ResolveSurfaceOptions,
   SurfaceReport,
 } from "../../lib/check/surface.model.ts"
 import type { Violation } from "../../lib/check/violation.model.ts"
@@ -41,8 +42,9 @@ import {
   renderUnresolved,
   renderUnverified,
   sizeStatsOf,
+  SURFACE_NOT_CLAIMED,
 } from "../../lib/cli/render.model.ts"
-import type { Colors } from "../../lib/cli/render.model.ts"
+import type { Colors, GraphStats } from "../../lib/cli/render.model.ts"
 import { asConfigError } from "../../lib/config/config.model.ts"
 import { resolveConfig } from "../../lib/config/config.service.ts"
 import type { ResolvedConfig } from "../../lib/config/config.service.ts"
@@ -130,13 +132,25 @@ const runSurface = (
 ): SurfaceReport =>
   checkSurface(graph, surface, {
     classifyEntry: classifyStockEntry,
-    mirror: config.mirror,
-    // both carve-outs: retracted and designated-wiring subpaths alike
-    disclosed: specifierMatcher([
-      ...(surface?.blob ?? []),
-      ...(surface?.assembly ?? []),
-    ]),
+    ...resolveOptionsFor(config, surface),
   })
+
+/** The reach half of the surface options — what bare tallies with. */
+const resolveOptionsFor = (
+  config: ResolvedConfig,
+  surface: PackageSurface | null,
+): ResolveSurfaceOptions => ({
+  mirror: config.mirror,
+  // both carve-outs: retracted and designated-wiring subpaths alike
+  disclosed: specifierMatcher([
+    ...(surface?.blob ?? []),
+    ...(surface?.assembly ?? []),
+  ]),
+})
+
+/** Distinct service roots over the covered set — what the layer rules govern. */
+const serviceCountOf = (roots: Iterable<string | null>): number =>
+  new Set([...roots].filter((root) => root !== null)).size
 
 /**
  * The load → resolve sequence — assembly's own job (arch §Assembly: read
@@ -191,11 +205,15 @@ const runStatus = async (io: MainIo, parsed: ParsedCli, colors: Colors) => {
   const isBlob = (path: string): boolean =>
     !config.isAssembly(path) && classificationOf(path).layer === "blob"
   const sizes = statSizes(config.root, files)
-  const serviceRoots = new Set(
-    files
-      .map((path) => classificationOf(path).serviceRoot)
-      .filter((root) => root !== null),
-  )
+  // the field's claim, tallied at scan speed — no parse; a field this version
+  // cannot read teaches on stderr and the segment is skipped: bare stays 0
+  let surface: PackageSurface | null
+  try {
+    surface = readPackageSurface(config.root)
+  } catch (error) {
+    io.stderr.write(`${asConfigError(error).message}\n`)
+    surface = null
+  }
   io.stdout.write(
     renderBareStatus(
       {
@@ -207,11 +225,21 @@ const runStatus = async (io: MainIo, parsed: ParsedCli, colors: Colors) => {
           config.flavorName,
         ),
         stats: {
-          fileCount: files.length,
+          files: files.length,
           ...sizeStatsOf(
             sizes.map(({ path, size }) => ({ size, blob: isBlob(path) })),
           ),
-          serviceCount: serviceRoots.size,
+          services: serviceCountOf(
+            files.map((path) => classificationOf(path).serviceRoot),
+          ),
+          surface:
+            surface === null
+              ? null
+              : tallySurface(
+                  surface,
+                  files,
+                  resolveOptionsFor(config, surface),
+                ),
         },
       },
       colors,
@@ -267,18 +295,18 @@ const runCheck = async (
     externalLayerOf: (specifier) =>
       config.externalLayers(specifier) ?? packageMeta.layerOf(specifier),
   })
-  const surfaceReport = action.checks.includes("surface")
+  const surfaceRan = action.checks.includes("surface")
+  const surfaceReport: SurfaceReport = surfaceRan
     ? runSurface(graph, config, surface)
-    : { violations: [], unverified: [] }
+    : { violations: [], unverified: [], checked: 0, disclosed: 0 }
   const violations = action.checks.flatMap((check) =>
     check === "surface"
       ? surfaceReport.violations
       : DETECTORS[check](graph, config),
   )
   const sizes = statSizes(config.root, files)
-  const stats = {
+  const stats: GraphStats = {
     files: graph.modules.size,
-    edges: graph.edges.length,
     ...sizeStatsOf(
       sizes.map(({ path, size }) => ({
         size,
@@ -286,6 +314,15 @@ const runCheck = async (
         blob: (graph.modules.get(path) as ModuleNode).layer === "blob",
       })),
     ),
+    services: serviceCountOf(
+      [...graph.modules.values()].map((node) => node.serviceRoot),
+    ),
+    imports: graph.edges.length,
+    // the segment exists iff a claim was checked — its absence is the signal
+    surface:
+      surfaceRan && surface !== null
+        ? { checked: surfaceReport.checked, disclosed: surfaceReport.disclosed }
+        : null,
   }
 
   const listing = renderCheckResults(
@@ -314,6 +351,10 @@ const runCheck = async (
     io.stdout.write(
       explanations === "" ? listing : `${listing}\n${explanations}`,
     )
+  }
+  // `surface` named by hand, nothing to check: say so, never a silent pass
+  if (action.explicit && surfaceRan && surface === null) {
+    io.stderr.write(SURFACE_NOT_CLAIMED)
   }
   // the uncertifiable lanes — both print when both apply, exit 2
   const prefix = pathPrefixOf(io.cwd, config.root)

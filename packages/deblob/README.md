@@ -18,17 +18,24 @@ deblob explain <topic...>    explain rules or checks (4, layers, ...)
 ```
 
 - **`deblob`** prints the inventory — file count, total size, blob %
-  (size-weighted, hence the size in the headline), and service count — plus
-  where to go next. Informational by contract: always exits 0, so a stray run
-  can never fail a build.
+  (size-weighted, hence the size in the headline), then service count and, for a
+  package declaring the `deblob` field, its exports claim as written
+  (`exports 9 claimed, 2 disclosed`) — plus where to go next. Informational by
+  contract: always exits 0, so a stray run can never fail a build.
 - **`deblob check`** is the gate. Checks: `dag` (service cycles over every
   import kind, runtime module cycles — rules 13, 14), `layers` (dependency
   matrix, rules 1, 4–9), `private` (rule 12), `barrels` (rule 2), `ports` (rule
   10), `surface` (the exports map matches the layers it fronts — only for
   packages declaring `"deblob": {}` in package.json; rules 2, 3). All run over
-  one shared import graph. Exit codes: `0` clean, `1` violations found, `2`
-  usage or config error — and the two uncertifiable runs: an import that did not
-  resolve, an exports entry `surface` could not reach.
+  one shared import graph. The summary is two lines: the verdict with the
+  inventory (`0 violations · 58 files · 300kb · 10% blob`), then coverage
+  (`4 services · 181 imports · exports 7 checked, 2 disclosed`) — the exports
+  segment exists only when a claim was checked, so a field dropped in a merge is
+  a visible diff in the CI log, not a gate that went quiet. Naming `surface` by
+  hand on a package with no field prints one stderr line saying nothing was
+  checked. Exit codes: `0` clean, `1` violations found, `2` usage or config
+  error — and the two uncertifiable runs: an import that did not resolve, an
+  exports entry `surface` could not reach.
 - **`deblob explain rule-4`** prints the rule's rationale and the shipped
   knowledge card — offline, version-matched with the binary. Several topics at
   once work too: the check footer prints the fired rules as a pasteable

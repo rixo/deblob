@@ -7,7 +7,7 @@ import type {
   Layer,
 } from "../extraction/graph.model.ts"
 import type { PackageSurface } from "./surface.model.ts"
-import { checkSurface } from "./surface.model.ts"
+import { checkSurface, resolveSurface, tallySurface } from "./surface.model.ts"
 
 type NodeSpec = {
   layer: Layer
@@ -72,6 +72,8 @@ describe("checkSurface", () => {
   it("yields nothing for a null surface — no field, no claim, no check", () => {
     const g = graph({ "src/checkout.service.ts": { layer: "service" } })
     expect(checkSurface(g, null, options)).toEqual({
+      checked: 0,
+      disclosed: 0,
       violations: [],
       unverified: [],
     })
@@ -137,6 +139,8 @@ describe("checkSurface", () => {
       ],
     })
     expect(checkSurface(g, green, options)).toEqual({
+      checked: 1,
+      disclosed: 0,
       violations: [],
       unverified: [],
     })
@@ -159,6 +163,8 @@ describe("checkSurface", () => {
     const g = graph({})
     const s = surface({ "./checkout.service": ["dist/stripe.adapter.js"] })
     expect(checkSurface(g, s, options)).toEqual({
+      checked: 0,
+      disclosed: 0,
       violations: [],
       unverified: [
         {
@@ -220,6 +226,8 @@ describe("checkSurface", () => {
       "dist/cjs": "src",
     }
     expect(checkSurface(g, s, { ...options, mirror })).toEqual({
+      checked: 2,
+      disclosed: 0,
       violations: [],
       unverified: [],
     })
@@ -232,6 +240,8 @@ describe("checkSurface", () => {
       "./legacy": ["build/legacy/index.js", "lib/legacy.ts"],
     })
     expect(checkSurface(g, s, options)).toEqual({
+      checked: 1,
+      disclosed: 0,
       violations: [],
       unverified: [
         // one entry for the subpath, every target that missed listed
@@ -264,6 +274,8 @@ describe("checkSurface", () => {
     })
     const s = surface({ "./x": ["dist/x.js"], "./types": ["dist/types.d.ts"] })
     expect(checkSurface(g, s, options)).toEqual({
+      checked: 2,
+      disclosed: 0,
       violations: [
         expect.objectContaining({
           shape: "unlabeled-front",
@@ -333,6 +345,8 @@ describe("checkSurface", () => {
       "./data": ["dist/data.json"],
     })
     expect(checkSurface(g, s, options)).toEqual({
+      checked: 0,
+      disclosed: 0,
       violations: [],
       unverified: [],
     })
@@ -359,6 +373,8 @@ describe("checkSurface", () => {
     const disclosed = (subpath: string) =>
       subpath === "." || subpath.startsWith("./legacy/")
     expect(checkSurface(g, s, { ...options, disclosed })).toEqual({
+      checked: 0,
+      disclosed: 2,
       violations: [],
       unverified: [],
     })
@@ -383,6 +399,8 @@ describe("checkSurface", () => {
       )
       const s = surface({ "./*": ["dist/*.js"] })
       expect(checkSurface(g, s, options)).toEqual({
+        checked: 4,
+        disclosed: 0,
         violations: [
           expect.objectContaining({
             rules: [2],
@@ -477,6 +495,8 @@ describe("checkSurface", () => {
       const g = graph({ "lib/x.ts": { layer: "blob" } })
       const s = surface({ "./*": ["dist/*.js"], "./out/*": ["out/*.js"] })
       expect(checkSurface(g, s, options)).toEqual({
+        checked: 0,
+        disclosed: 0,
         violations: [],
         unverified: [
           {
@@ -557,7 +577,7 @@ describe("checkSurface", () => {
       const s = surface({ "./legacy/*": ["dist/legacy/*.js"] })
       const disclosed = (subpath: string) => subpath.startsWith("./legacy/")
       expect(checkSurface(g, s, { ...options, mirror: {}, disclosed })).toEqual(
-        { violations: [], unverified: [] },
+        { violations: [], unverified: [], checked: 0, disclosed: 1 },
       )
     })
 
@@ -583,6 +603,8 @@ describe("checkSurface", () => {
       // `@pkg/checkout.service.js` resolves through "./*" to dist/checkout.service.js
       const s = surface({ "./*": ["dist/*"], "./x/*": ["dist/x/*"] })
       expect(checkSurface(g, s, options)).toEqual({
+        checked: 2,
+        disclosed: 0,
         violations: [],
         unverified: [
           {
@@ -617,6 +639,8 @@ describe("checkSurface", () => {
       })
       const s = surface({ "./*/*": ["dist/*.js"] })
       expect(checkSurface(g, s, options)).toEqual({
+        checked: 0,
+        disclosed: 0,
         violations: [],
         unverified: [],
       })
@@ -820,6 +844,8 @@ describe("checkSurface", () => {
     const g = graph({})
     const s = surface({ ".": ["dist/index.js"] })
     expect(checkSurface(g, s, options)).toEqual({
+      checked: 0,
+      disclosed: 0,
       violations: [],
       unverified: [
         {
@@ -928,5 +954,95 @@ describe("checkSurface", () => {
     ])
     const s = surface({ ".": ["src/index.ts"] })
     expect(checkSurface(g, s, options).violations).toEqual([])
+  })
+})
+
+describe("resolveSurface / tallySurface — the claim counted, no graph", () => {
+  const reachOptions = { mirror: { dist: "src" }, disclosed: () => false }
+
+  it("reaches over a covered path list — one entry per concrete subpath, every module its targets land on", () => {
+    const covered = [
+      "src/checkout.service.ts",
+      "src/totals.model.ts",
+      "src/stripe.adapter.ts",
+    ]
+    const s = surface({
+      "./checkout.service": [
+        "dist/checkout.service.js",
+        "dist/checkout.service.d.ts",
+      ],
+      "./*.model": ["dist/*.model.js"],
+      "./gone": ["dist/gone.js"],
+      "./package.json": ["package.json"],
+    })
+    expect(resolveSurface(s, covered, reachOptions)).toEqual({
+      reached: [
+        {
+          subpath: "./checkout.service",
+          // two conditions, one module — the first target names it
+          modules: [
+            {
+              path: "src/checkout.service.ts",
+              exported: "dist/checkout.service.js",
+            },
+          ],
+        },
+        {
+          subpath: "./totals.model",
+          modules: [
+            { path: "src/totals.model.ts", exported: "dist/totals.model.js" },
+          ],
+        },
+      ],
+      unverified: [
+        {
+          subpath: "./gone",
+          targets: [
+            {
+              target: "dist/gone.js",
+              mapped: "src/gone",
+              mirror: { root: "dist", source: "src" },
+              candidates: [],
+            },
+          ],
+        },
+      ],
+      disclosed: 0,
+    })
+  })
+
+  it("the tally claims what is reached and what is not — bare never diagnoses; carve-outs count once as written, once per concrete", () => {
+    const covered = [
+      "src/api.ts",
+      "src/legacy/old.ts",
+      "src/checkout.service.ts",
+    ]
+    const s = surface({
+      "./*": ["dist/*.js"],
+      "./vendor/*": ["dist/vendor/*.js"],
+      "./gone": ["dist/gone.js"],
+      "./*/*": ["dist/*.js"],
+      "./styles.css": ["dist/styles.css"],
+    })
+    const disclosed = (subpath: string) =>
+      subpath.startsWith("./legacy/") || subpath === "./vendor/*"
+    // reached: ./api, ./checkout.service; unverified: ./gone; disclosed: the
+    // vendor key as written + ./legacy/old after expansion; the two-star key
+    // and the stylesheet count nowhere
+    expect(tallySurface(s, covered, { ...reachOptions, disclosed })).toEqual({
+      claimed: 3,
+      disclosed: 2,
+    })
+    // the check's coverage is the same count minus what it could not reach
+    const g = graph({
+      "src/api.ts": { layer: "assembly", serviceRoot: "src" },
+      "src/legacy/old.ts": { layer: "assembly", serviceRoot: "src" },
+      "src/checkout.service.ts": { layer: "service", serviceRoot: "src" },
+    })
+    const report = checkSurface(g, s, { ...options, disclosed })
+    expect({ checked: report.checked, disclosed: report.disclosed }).toEqual({
+      checked: 2,
+      disclosed: 2,
+    })
   })
 })

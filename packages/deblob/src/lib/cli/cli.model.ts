@@ -43,6 +43,11 @@ export type CliAction =
   | {
       command: "check"
       checks: readonly CheckName[]
+      /**
+       * Check names were passed on the command line; `false` = none given,
+       * `checks` is the full default set.
+       */
+      explicit: boolean
       explain: boolean
       explainOnly: boolean
     }
@@ -155,6 +160,7 @@ export const parseCli = (argv: readonly string[]): ParsedCli | UsageError => {
     return withAction({
       command: "check",
       checks: names.length > 0 ? (names as CheckName[]) : KNOWN_CHECKS,
+      explicit: names.length > 0,
       explain: values.explain ?? false,
       explainOnly: values["explain-only"] ?? false,
     })

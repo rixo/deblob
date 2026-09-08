@@ -162,11 +162,11 @@ describe("deblob check", () => {
     expect(err).toContain('"rule-999"')
   })
 
-  it("clean repo: one summary line, exit 0", async () => {
+  it("clean repo: the summary and coverage lines, no exports segment without a field, exit 0", async () => {
     const { code, out } = await run(["check"], { cwd: cleanDir })
     expect(code).toBe(0)
     expect(out).toMatch(
-      /^0 violations · \d+ files · \d+kb · \d+% blob · \d+ edges\n$/,
+      /^0 violations · \d+ files · \d+kb · \d+% blob\n\d+ services? · \d+ imports\n$/,
     )
   })
 
@@ -224,6 +224,9 @@ describe("deblob check", () => {
     expect(err).toBe("")
     expect(code).toBe(0)
     expect(out).not.toContain("surface")
+    // the claim is visible on the coverage line: two subpaths checked, the
+    // designated root carved out
+    expect(out).toContain("· exports 2 checked, 1 disclosed\n")
   })
 
   it("externalLayers: blob revokes a sibling's model claim — back to unlabeled, rule 4 fires", async () => {
@@ -243,6 +246,7 @@ describe("deblob check", () => {
     expect(err).toBe("")
     expect(code).toBe(0)
     expect(out).not.toContain("surface")
+    expect(out).toContain("· exports 0 checked, 2 disclosed\n")
   })
 
   it("externalLayers patch wins over the producer field — reviewer of record", async () => {
@@ -272,6 +276,7 @@ describe("deblob check", () => {
     )
     // the truthful subpath stays silent
     expect(out).toContain("2 violations (2 surface)")
+    expect(out).toContain("· exports 3 checked\n")
   })
 
   it("a field key this version cannot honor: exit 2, loud at home, never silent", async () => {
@@ -293,6 +298,7 @@ describe("deblob check", () => {
     // the suffixed subpaths reach their sources and match; package.json is
     // not a module target
     expect(out).toContain("1 violation (1 surface)")
+    expect(out).toContain("· exports 3 checked\n")
   })
 
   it("pattern export: the star expands over src/ through the mirror — the unlabeled concrete subpath fires, the suffixed ones match", async () => {
@@ -304,12 +310,16 @@ describe("deblob check", () => {
       'is exported as "./api" (as dist/api.js) — an unlabeled entry fronting service (src/checkout.service.ts)',
     )
     expect(out).toContain("1 violation (1 surface)")
+    // the star bound three stems — coverage counts concrete subpaths
+    expect(out).toContain("· exports 3 checked\n")
   })
 
   it("unverified surface: an entry under no mirror root cannot be certified — stderr block, exit 2, until mapped", async () => {
     const { code, out, err } = await run(["check"], { cwd: unverifiedDir })
     expect(code).toBe(2)
     expect(out).not.toContain("surface")
+    // the claim reached nothing — the line says so, the block says why
+    expect(out).toContain("· exports 0 checked\n")
     expect(err).toContain(
       "surface unverified — 1 entry could not be reached; the claim cannot be certified",
     )
@@ -328,6 +338,7 @@ describe("deblob check", () => {
     })
     expect(mapped.err).toBe("")
     expect(mapped.code).toBe(0)
+    expect(mapped.out).toContain("· exports 1 checked\n")
   })
 
   it("broken config: teaching error on stderr, exit 2", async () => {
@@ -335,6 +346,26 @@ describe("deblob check", () => {
     expect(code).toBe(2)
     expect(out).toBe("")
     expect(err).toContain("deblob.config.ts")
+  })
+
+  it("check surface named by hand on a package with no field: one stderr note, no exports segment, exit 0 — a pass it never ran does not read as a pass", async () => {
+    const named = await run(["check", "surface"], { cwd: cleanDir })
+    expect(named.code).toBe(0)
+    expect(named.err).toBe(
+      'surface: no "deblob" field in package.json — nothing to check; declaring is opting in ("deblob": {})\n',
+    )
+    expect(named.out).not.toContain("exports")
+    // the default run says the same by omission — nothing demanded of a
+    // package that did not opt in
+    const all = await run(["check"], { cwd: cleanDir })
+    expect(all.err).toBe("")
+    // named on a declaring package: no note, the segment as usual
+    const declared = await run(["check", "surface"], { cwd: billingDir })
+    expect(declared.err).toBe("")
+    expect(declared.out).toContain("· exports 2 checked, 1 disclosed\n")
+    // surface left out of the selection: nothing checked, no segment
+    const others = await run(["check", "layers"], { cwd: billingDir })
+    expect(others.out).not.toContain("exports")
   })
 
   it("--explain appends the crash course for every fired rule", async () => {
@@ -358,11 +389,11 @@ describe("deblob check", () => {
   it("--explain on a clean repo adds nothing", async () => {
     const { out } = await run(["check", "--explain"], { cwd: cleanDir })
     expect(out).toMatch(
-      /^0 violations · \d+ files · \d+kb · \d+% blob · \d+ edges\n$/,
+      /^0 violations · \d+ files · \d+kb · \d+% blob\n\d+ services? · \d+ imports\n$/,
     )
     const only = await run(["check", "--explain-only"], { cwd: cleanDir })
     expect(only.out).toMatch(
-      /^0 violations · \d+ files · \d+kb · \d+% blob · \d+ edges\n$/,
+      /^0 violations · \d+ files · \d+kb · \d+% blob\n\d+ services? · \d+ imports\n$/,
     )
   })
 
@@ -419,6 +450,24 @@ describe("bare deblob — status, always exit 0", () => {
     } finally {
       await rm(temp, { recursive: true, force: true })
     }
+  })
+
+  it("a declaring package: the claim tallied at scan speed — claimed, not checked", async () => {
+    const { code, out, err } = await run([], { cwd: billingDir })
+    expect(code).toBe(0)
+    expect(err).toBe("")
+    expect(out).toContain("  1 service · exports 2 claimed, 1 disclosed\n")
+    // a claim the check cannot certify is still the claim as written
+    const unverified = await run([], { cwd: unverifiedDir })
+    expect(unverified.out).toContain("· exports 1 claimed\n")
+  })
+
+  it("a field this version cannot read: the teaching line on stderr, the segment skipped, still exit 0", async () => {
+    const { code, out, err } = await run([], { cwd: fieldNewerDir })
+    expect(code).toBe(0)
+    expect(err).toContain('honors "blob" and "assembly" only')
+    expect(out).toContain("% blob")
+    expect(out).not.toContain("exports")
   })
 
   it("broken config: stderr teaching error, stat lines skipped, still exit 0", async () => {

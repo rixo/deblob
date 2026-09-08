@@ -128,6 +128,36 @@ nothing. The two words mean different things to a consumer — `blob` says
 "wiring, import it only from wiring" — and the producer picks which its entry
 is. Shipped in 0.0.4 so the field's first public grammar carries both words.
 
+Ruled at the 0.0.4 cut (2026-09-08, rixo; raised by the trial agent's closing
+review) — **a claim that holds must talk back**. A passing claim printed
+nothing, and neither did a missing one: a declaring package and a package with
+no field produced byte-identical summaries, and `deblob check surface` on the
+latter reported success rather than "nothing to check". Everywhere else the tool
+refuses silence (unresolved imports and unreachable entries both exit 2); here a
+field dropped in a merge left CI green while the boundary stopped being checked,
+and nobody found out because there was never a number to change. A summary token
+had been rejected the day before (not obvious what it meant, not clear what it
+bought); this is the second ask, with both objections answered: the words are
+the reader's, and what it buys is a diff. The summary is now two lines, the same
+shape for both commands — the verdict with the inventory
+(`0 violations · 58 files · 300kb · 10% blob`), then coverage
+(`4 services · 181 imports · exports 7 checked, 2 disclosed`). `edges` became
+`imports` (the count is one per importing file → target pair; nobody reading a
+summary counts statements), the service count joined the check line (what the
+layer rules govern; free from the graph), and the exports segment exists only
+when a claim was checked — absence is the signal, and a package that did not opt
+in is nagged by nothing. Bare prints the same shape with `claimed` for the verb:
+it tallies the exports map at scan speed against the covered file list (the
+reach half of the surface check, split out as `resolveSurface` — no parse, the
+09 ruling holds) and never diagnoses, so a claim the check could not certify
+still counts as claimed; on a run the check certifies, `claimed` equals
+`checked`. Counted per concrete subpath: a star key counts every module it
+binds, keys with no module target and dead two-star keys count nowhere, a
+carve-out counts once as written or once per concrete subpath it trims. Naming
+`surface` by hand with no field prints one stderr line saying nothing was
+checked, exit 0. Supersedes the 09 trailer ruling
+(`N violations · F files · E edges`).
+
 ## Goal
 
 A cross-package import edge carries the target's layer when the target declares
@@ -277,27 +307,30 @@ above is a check on _facts_, not a nanny on config).
   `ConfigError`. Producer-side config, never in the field: consumers never look
   at the resolved file, and the field carries claims, not how they are checked.
 - `checkSurface(graph, surface, { classifyEntry, mirror, disclosed })` returns
-  `{ violations, unverified }` — one `unverified` entry per subpath the graph
-  reached through none of its module targets, carrying the subpath and its
-  `targets`, each with the target as written, the extensionless path the lookup
-  tried (`mapped`), the mirror that produced it
-  (`mirror: { root, source } | null` — null when the target sat under no root
-  and was looked up as itself), and the covered modules found at `mapped`
-  (`candidates` — empty when none, two or more when the stem is ambiguous). A
-  pattern key expanding through none of its targets is one entry as itself; a
-  pattern key expanding through any target contributes its concrete subpaths and
-  nothing for the targets that did not. A declaration file at a stem describes
-  its sibling module and is not a second source: `src/x.d.ts` beside `src/x.js`
-  reaches the `.js` (the `.d.ts` stays its own covered node for the other
-  checks); alone, the declaration is the module (a types-only entry). Two
-  non-declaration files at one stem (`src/x.ts` beside `src/x.js`) are the
-  ambiguity the mirror never settles: the block names them and the remedy is
-  `exclude` on the twin — an explicit entries map is the captured escape.
-  Non-module targets (extension not in the module set nor its built counterparts
-  — `.js`/`.mjs`/`.cjs`/`.jsx`, `.ts`/`.mts`/`.cts`/`.tsx`, `.d.ts` and its
-  variants) are skipped before any of this. A violation reached through the
-  mirror cites the **source** file (`file` = the reached node — the fix site,
-  clickable), and its message names the built target it is exported as. A
+  `{ violations, unverified, checked, disclosed }` (the counts landed at the
+  0.0.4 cut: concrete subpaths judged, subpaths carved out; the reach half is
+  `resolveSurface(surface, covered, { mirror, disclosed })` over a covered path
+  list, and `tallySurface` folds it into `{ claimed, disclosed }` for bare) —
+  one `unverified` entry per subpath the graph reached through none of its
+  module targets, carrying the subpath and its `targets`, each with the target
+  as written, the extensionless path the lookup tried (`mapped`), the mirror
+  that produced it (`mirror: { root, source } | null` — null when the target sat
+  under no root and was looked up as itself), and the covered modules found at
+  `mapped` (`candidates` — empty when none, two or more when the stem is
+  ambiguous). A pattern key expanding through none of its targets is one entry
+  as itself; a pattern key expanding through any target contributes its concrete
+  subpaths and nothing for the targets that did not. A declaration file at a
+  stem describes its sibling module and is not a second source: `src/x.d.ts`
+  beside `src/x.js` reaches the `.js` (the `.d.ts` stays its own covered node
+  for the other checks); alone, the declaration is the module (a types-only
+  entry). Two non-declaration files at one stem (`src/x.ts` beside `src/x.js`)
+  are the ambiguity the mirror never settles: the block names them and the
+  remedy is `exclude` on the twin — an explicit entries map is the captured
+  escape. Non-module targets (extension not in the module set nor its built
+  counterparts — `.js`/`.mjs`/`.cjs`/`.jsx`, `.ts`/`.mts`/`.cts`/`.tsx`, `.d.ts`
+  and its variants) are skipped before any of this. A violation reached through
+  the mirror cites the **source** file (`file` = the reached node — the fix
+  site, clickable), and its message names the built target it is exported as. A
   violation reached through a pattern carries the concrete subpath and concrete
   target (`subpath: "./api"`, `exported: "dist/api.js"`) — the pattern itself
   never appears in a violation, only in an unverified entry when it matched
@@ -340,6 +373,15 @@ above is a check on _facts_, not a nanny on config).
 - Exit path: violations print to stdout as today; unverified entries print to
   stderr after them, the twin of the resolution-failure block, exit 2, the
   resolution-failure class.
+- Summary (ruled at the 0.0.4 cut): two lines, verdict + inventory then coverage
+  — `N violations (…) · F files · S · B% blob` /
+  `S services · I imports · exports C checked, D disclosed`; the exports segment
+  only when `surface` ran over a field, `, D disclosed` only when nonzero.
+  Bare's second line: `S services · exports C claimed, D disclosed` under the
+  same rules. `check surface` named by hand with no field: one stderr line
+  (`surface: no "deblob" field in package.json — nothing to check; declaring is opting in ("deblob": {})`),
+  exit 0. The parsed check action carries `explicit` (checks named on the
+  command line) for it.
 - Messages — the words, pinned here so the goldens have an authority. Existing
   surface violations keep their sentences
   (`is exported as "." — the entry claims service, the file is adapters; a declared surface must match the facts`
@@ -469,6 +511,22 @@ above is a check on _facts_, not a nanny on config).
   shape under an undeclared root — the unverified block, exit 2; a disclosing
   package: laundering root listed in `blob` green at home, its disclosed
   suffixed subpath unlabeled from the consumer.
+- Summary counts (0.0.4 cut): every whole-report pin in the surface spec carries
+  `checked`/`disclosed`; `resolveSurface` pinned over a bare path list (two
+  conditions landing on one module count once, a miss lands in `unverified`);
+  the tally pinned as claimed = reached + unverified with carve-outs counted
+  once as written and once per trimmed concrete subpath, the two-star key and a
+  stylesheet counting nowhere, and `checked` equal to `claimed` minus the misses
+  on the same map. Renderer: the two-line shape, the segment present iff a claim
+  was checked, `disclosed` omitted at zero, singulars. CLI: every declaring
+  fixture asserts its segment (`2 checked, 1 disclosed` for the
+  assembly-designating sibling, `0 checked, 2 disclosed` for the disclosing one,
+  `3 checked` through the mirror and through the star, `0 checked` beside the
+  unverified block and `1 checked` once mapped); `check surface` named on a
+  field-less package → the stderr note, exit 0, silent on the default run and on
+  a declaring package; bare on a declaring package prints `claimed`, on the
+  unverified one still claims, on a field it cannot read teaches on stderr and
+  stays 0.
 - Coverage bar unchanged (100% / four axes).
 
 ## Implementation
@@ -538,6 +596,10 @@ producer gate), `field-newer/` (unhonorable key, exit 2).
   cross, trust is the dependency model, `externalLayers: blob` revokes; one
   sentence on drift (a stale published field is a stale semver, no worse); two
   on pattern entries and the mirror as a promise (`build: false` for bundles).
+  At the 0.0.4 cut: the two-line summary described on both commands, with the
+  absent-segment-is-the-diff sentence; `lib/cli` and `lib/check` READMEs carry
+  the new exports (`InventoryStats`, `SURFACE_NOT_CLAIMED`, `resolveSurface`,
+  `tallySurface`, the report counts).
 - `skills/deblob/references/setup.md`: monorepo section rewritten — sibling
   identity via the `deblob` field / suffixed subpaths; published packages: the
   default mirror covers a one-to-one build, `build` names another root, `blob`

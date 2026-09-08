@@ -31,8 +31,16 @@ One function per check, all over `ImportGraph` from `extraction`:
   Node resolves them) and judged: a suffixed subpath must front a file of that
   layer (rule 3), an unsuffixed one must not front a service or adapter,
   directly or through re-export chains (rule 2). Returns
-  `{ violations, unverified }` — an entry the graph cannot reach is not a
-  violation but a claim the run cannot certify.
+  `{ violations, unverified, checked, disclosed }` — an entry the graph cannot
+  reach is not a violation but a claim the run cannot certify; the two counts
+  are the claim's coverage (concrete subpaths judged) and the field's
+  carve-outs, for the summary line.
+- `resolveSurface(surface, covered, { mirror, disclosed })` — the reach half on
+  its own: the exports map against a covered path list, no graph. Returns the
+  reached entries (subpath → modules), the unverified ones, and the disclosed
+  count. `tallySurface(...)` folds that into `{ claimed, disclosed }` for the
+  bare status — claimed counts reached and unverified alike, since bare never
+  diagnoses.
 - `violation.model.ts` — the violation shapes, one structured value per finding
   carrying every fact rendering needs.
 

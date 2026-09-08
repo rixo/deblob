@@ -20,6 +20,12 @@
  * assembly is a designation everywhere, never a verified fact, and abroad it
  * seals the subpath to the consumer's wiring, so nothing escapes through it.
  * Pure: classified graph + parsed surface in, violations + unverified out.
+ *
+ * Two halves: `resolveSurface` reaches (exports map against a covered path set
+ * — the bare status tallies the claim from it, no parse), `checkSurface` judges
+ * what was reached. Both report the counts the summary lines print: what the
+ * claim covers and what the field carved out — a claim that holds is otherwise
+ * invisible, and so is a claim that is no longer there.
  */
 
 import type {
@@ -89,10 +95,54 @@ export type UnverifiedEntry = {
   targets: readonly UnverifiedTarget[]
 }
 
+/** The reach half of the options — no judgment, so no `classifyEntry`. */
+export type ResolveSurfaceOptions = Pick<
+  CheckSurfaceOptions,
+  "mirror" | "disclosed"
+>
+
+/**
+ * One concrete subpath the covered set reaches: every module any of its targets
+ * lands on, each with the target as written (conditions are one claim in
+ * several build forms — a hybrid build's declarations and bundle may land on
+ * different modules, each judged under the same subpath).
+ */
+export type ReachedEntry = {
+  subpath: string
+  modules: readonly { path: string; exported: string }[]
+}
+
+/**
+ * The exports map resolved against a covered file set — no graph, no parse: the
+ * claim as it stands. `reached` — one entry per concrete subpath a module
+ * target lands on; `unverified` — subpaths no target reaches; `disclosed` — how
+ * many subpaths the field carved out (a key retracted as written counts once, a
+ * concrete subpath a disclosure catches after expansion counts once). Keys with
+ * no module target and dead two-star keys count nowhere: there is no claim in
+ * them. The bare status tallies from this; `checkSurface` judges from it.
+ */
+export type SurfaceResolution = {
+  reached: ReachedEntry[]
+  unverified: UnverifiedEntry[]
+  disclosed: number
+}
+
 export type SurfaceReport = {
   violations: SurfaceViolation[]
   unverified: UnverifiedEntry[]
+  /** Concrete subpaths judged — the claim's coverage (`reached` above). */
+  checked: number
+  /** Subpaths the field carved out (`blob`, `assembly`) — never judged. */
+  disclosed: number
 }
+
+/**
+ * The claim as the bare status prints it: `claimed` = every subpath the field
+ * covers, reached or not (bare never diagnoses — what it cannot certify is
+ * `check`'s word), `disclosed` = the carve-outs. On a run the check certifies,
+ * `claimed` equals `checked`.
+ */
+export type SurfaceTally = { claimed: number; disclosed: number }
 
 /**
  * What an exports target can be for this check to have a word: a module in
@@ -124,19 +174,26 @@ const stripExtension = (path: string): string => {
 
 const COMPOSITION: ReadonlySet<Layer> = new Set(["service", "adapters"])
 
-export const checkSurface = (
-  graph: ImportGraph,
-  surface: PackageSurface | null,
-  options: CheckSurfaceOptions,
-): SurfaceReport => {
-  if (surface === null) return { violations: [], unverified: [] }
-  const { classifyEntry, mirror, disclosed } = options
-  const violations: SurfaceViolation[] = []
+/**
+ * The exports map against the covered set: which module each subpath reaches,
+ * which subpaths reach nothing, how many the field carved out. Reach only —
+ * layers are never consulted, so a covered path list is enough (the bare status
+ * runs this at scan speed; `checkSurface` runs it over the graph's nodes, the
+ * same set by extraction's contract).
+ */
+export const resolveSurface = (
+  surface: PackageSurface,
+  covered: Iterable<string>,
+  options: ResolveSurfaceOptions,
+): SurfaceResolution => {
+  const { mirror, disclosed } = options
+  const reached: ReachedEntry[] = []
   const unverified: UnverifiedEntry[] = []
+  let disclosedCount = 0
 
   // covered modules by extensionless path — the lookup the mirror lands in
   const byStem = new Map<string, string[]>()
-  for (const path of graph.modules.keys()) {
+  for (const path of covered) {
     const stem = stripExtension(path)
     byStem.set(stem, [...(byStem.get(stem) ?? []), path])
   }
@@ -180,44 +237,6 @@ export const checkSurface = (
     return picked !== undefined && picked !== null
       ? { path: picked }
       : { unverified: { target, mapped, mirror: through, candidates: hits } }
-  }
-
-  // re-export adjacency, in-coverage only — the closure never parses outward
-  const reExports = new Map<string, string[]>()
-  for (const edge of graph.edges) {
-    if (!edge.reExport || edge.to.type !== "module") continue
-    const list = reExports.get(edge.from) ?? []
-    reExports.set(edge.from, list)
-    list.push(edge.to.path)
-  }
-
-  /**
-   * Composition units reachable from `start` through re-export chains — the
-   * fronting closure. Traversal stops at each composition unit found (its own
-   * re-exports are its own, in-set-policed business); the lexicographically
-   * smallest hit keeps the finding deterministic.
-   */
-  const frontedThrough = (
-    start: string,
-  ): { path: string; layer: Layer } | null => {
-    const seen = new Set([start])
-    const queue = [start]
-    const fronted: { path: string; layer: Layer }[] = []
-    for (const from of queue) {
-      for (const path of reExports.get(from) ?? []) {
-        if (seen.has(path)) continue
-        seen.add(path)
-        // every module edge target is a graph node — extraction's contract
-        const layer = (graph.modules.get(path) as { layer: Layer }).layer
-        if (COMPOSITION.has(layer)) {
-          fronted.push({ path, layer })
-        } else {
-          queue.push(path)
-        }
-      }
-    }
-    fronted.sort((a, b) => (a.path < b.path ? -1 : 1))
-    return fronted[0] ?? null
   }
 
   // Node's key resolution over the map: a file reachable through two keys
@@ -264,6 +283,146 @@ export const checkSurface = (
     return entries.length > 0
       ? { entries }
       : { unverified: { target, mapped, mirror: through, candidates: [] } }
+  }
+
+  for (const { subpath, targets } of surface.subpaths) {
+    // a key with two stars never matches in Node — no consumer reaches it,
+    // nothing to certify (the non-module case again)
+    if (subpath.indexOf("*") !== subpath.lastIndexOf("*")) continue
+    // a key disclosed as written is retracted whole — a pattern key under a
+    // `**` disclosure never expands, so it cannot land unverified for matching
+    // nothing (a literal key is caught here too, before any lookup)
+    if (disclosed(subpath)) {
+      disclosedCount += 1
+      continue
+    }
+    // package.json, stylesheets: not modules, nothing to say either way —
+    // except a target ending in the star (`./dist/*`): the consumer supplies
+    // the extension, the verdict is the same whichever it is
+    const moduleTargets = [...new Set(targets)].filter(
+      (target) =>
+        moduleExtensionOf(target) !== undefined || target.endsWith("*"),
+    )
+    // concrete subpath → its module targets (a literal key is its own concrete
+    // subpath; a pattern key contributes what each pattern target expands to);
+    // a pattern target expanding to nothing is a miss for the key itself
+    const concrete = new Map<string, string[]>()
+    const keyMisses: UnverifiedTarget[] = []
+    for (const target of moduleTargets) {
+      if (subpath.includes("*") && target.includes("*")) {
+        const expanded = expand(subpath, target)
+        if ("unverified" in expanded) {
+          keyMisses.push(expanded.unverified)
+          continue
+        }
+        for (const entry of expanded.entries) {
+          concrete.set(entry.subpath, [
+            ...(concrete.get(entry.subpath) ?? []),
+            entry.target,
+          ])
+        }
+      } else {
+        concrete.set(subpath, [...(concrete.get(subpath) ?? []), target])
+      }
+    }
+    if (concrete.size === 0 && keyMisses.length > 0) {
+      unverified.push({ subpath, targets: keyMisses })
+    }
+    // one verdict per concrete subpath: judged once per module any of its
+    // targets reaches (conditions are one claim in several build forms — the
+    // first target reaching a module names it); unverified only when every
+    // target missed
+    for (const [entrySubpath, entryTargets] of concrete) {
+      if (disclosed(entrySubpath)) {
+        disclosedCount += 1
+        continue
+      }
+      const landed = new Map<string, string>()
+      const misses: UnverifiedTarget[] = []
+      for (const target of entryTargets) {
+        const result = reach(target)
+        if ("unverified" in result) {
+          misses.push(result.unverified)
+        } else if (!landed.has(result.path)) {
+          landed.set(result.path, target)
+        }
+      }
+      if (landed.size === 0) {
+        unverified.push({ subpath: entrySubpath, targets: misses })
+        continue
+      }
+      reached.push({
+        subpath: entrySubpath,
+        modules: [...landed].map(([path, exported]) => ({ path, exported })),
+      })
+    }
+  }
+
+  return { reached, unverified, disclosed: disclosedCount }
+}
+
+/** The bare status's count of the claim — see `SurfaceTally`. */
+export const tallySurface = (
+  surface: PackageSurface,
+  covered: Iterable<string>,
+  options: ResolveSurfaceOptions,
+): SurfaceTally => {
+  const { reached, unverified, disclosed } = resolveSurface(
+    surface,
+    covered,
+    options,
+  )
+  return { claimed: reached.length + unverified.length, disclosed }
+}
+
+export const checkSurface = (
+  graph: ImportGraph,
+  surface: PackageSurface | null,
+  options: CheckSurfaceOptions,
+): SurfaceReport => {
+  if (surface === null) {
+    return { violations: [], unverified: [], checked: 0, disclosed: 0 }
+  }
+  const { classifyEntry } = options
+  const resolution = resolveSurface(surface, graph.modules.keys(), options)
+  const violations: SurfaceViolation[] = []
+
+  // re-export adjacency, in-coverage only — the closure never parses outward
+  const reExports = new Map<string, string[]>()
+  for (const edge of graph.edges) {
+    if (!edge.reExport || edge.to.type !== "module") continue
+    const list = reExports.get(edge.from) ?? []
+    reExports.set(edge.from, list)
+    list.push(edge.to.path)
+  }
+
+  /**
+   * Composition units reachable from `start` through re-export chains — the
+   * fronting closure. Traversal stops at each composition unit found (its own
+   * re-exports are its own, in-set-policed business); the lexicographically
+   * smallest hit keeps the finding deterministic.
+   */
+  const frontedThrough = (
+    start: string,
+  ): { path: string; layer: Layer } | null => {
+    const seen = new Set([start])
+    const queue = [start]
+    const fronted: { path: string; layer: Layer }[] = []
+    for (const from of queue) {
+      for (const path of reExports.get(from) ?? []) {
+        if (seen.has(path)) continue
+        seen.add(path)
+        // every module edge target is a graph node — extraction's contract
+        const layer = (graph.modules.get(path) as { layer: Layer }).layer
+        if (COMPOSITION.has(layer)) {
+          fronted.push({ path, layer })
+        } else {
+          queue.push(path)
+        }
+      }
+    }
+    fronted.sort((a, b) => (a.path < b.path ? -1 : 1))
+    return fronted[0] ?? null
   }
 
   /** The verdict on one concrete entry reaching a covered module. */
@@ -316,69 +475,17 @@ export const checkSurface = (
     }
   }
 
-  for (const { subpath, targets } of surface.subpaths) {
-    // a key with two stars never matches in Node — no consumer reaches it,
-    // nothing to certify (the non-module case again)
-    if (subpath.indexOf("*") !== subpath.lastIndexOf("*")) continue
-    // a key disclosed as written is retracted whole — a pattern key under a
-    // `**` disclosure never expands, so it cannot land unverified for matching
-    // nothing (a literal key is caught here too, before any lookup)
-    if (disclosed(subpath)) continue
-    // package.json, stylesheets: not modules, nothing to say either way —
-    // except a target ending in the star (`./dist/*`): the consumer supplies
-    // the extension, the verdict is the same whichever it is
-    const moduleTargets = [...new Set(targets)].filter(
-      (target) =>
-        moduleExtensionOf(target) !== undefined || target.endsWith("*"),
-    )
-    // concrete subpath → its module targets (a literal key is its own concrete
-    // subpath; a pattern key contributes what each pattern target expands to);
-    // a pattern target expanding to nothing is a miss for the key itself
-    const concrete = new Map<string, string[]>()
-    const keyMisses: UnverifiedTarget[] = []
-    for (const target of moduleTargets) {
-      if (subpath.includes("*") && target.includes("*")) {
-        const expanded = expand(subpath, target)
-        if ("unverified" in expanded) {
-          keyMisses.push(expanded.unverified)
-          continue
-        }
-        for (const entry of expanded.entries) {
-          concrete.set(entry.subpath, [
-            ...(concrete.get(entry.subpath) ?? []),
-            entry.target,
-          ])
-        }
-      } else {
-        concrete.set(subpath, [...(concrete.get(subpath) ?? []), target])
-      }
-    }
-    if (concrete.size === 0 && keyMisses.length > 0) {
-      unverified.push({ subpath, targets: keyMisses })
-    }
-    // one verdict per concrete subpath: judged once per module any of its
-    // targets reaches (conditions are one claim in several build forms — the
-    // first target reaching a module names it); unverified only when every
-    // target missed
-    for (const [entrySubpath, entryTargets] of concrete) {
-      if (disclosed(entrySubpath)) continue
-      const reached = new Map<string, string>()
-      const misses: UnverifiedTarget[] = []
-      for (const target of entryTargets) {
-        const result = reach(target)
-        if ("unverified" in result) {
-          misses.push(result.unverified)
-        } else if (!reached.has(result.path)) {
-          reached.set(result.path, target)
-        }
-      }
-      if (reached.size === 0) {
-        unverified.push({ subpath: entrySubpath, targets: misses })
-        continue
-      }
-      for (const [path, target] of reached) judge(entrySubpath, target, path)
+  // one verdict per module a concrete subpath reaches, in resolution order
+  for (const entry of resolution.reached) {
+    for (const { path, exported } of entry.modules) {
+      judge(entry.subpath, exported, path)
     }
   }
 
-  return { violations, unverified }
+  return {
+    violations,
+    unverified: resolution.unverified,
+    checked: resolution.reached.length,
+    disclosed: resolution.disclosed,
+  }
 }
