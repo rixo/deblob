@@ -8,9 +8,9 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - run: pnpm install --frozen-lockfile
@@ -34,7 +34,7 @@ jobs:
       # real clone (with .git) instead of a REST download. LEFTHOOK=0 was
       # tried first and is ignored by lefthook 2.x install.
       - run: apk add --no-cache git
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # container user vs workspace owner — git refuses "dubious ownership"
       # without this, and the lefthook prepare runs git
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -49,9 +49,9 @@ jobs:
   wasm-fallback:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - run: pnpm install --frozen-lockfile
