@@ -468,6 +468,59 @@ doesn't check:
 
 ### Ideas
 
+- **Adapters implement ports — the contract's origin check** (2026-09-08, field;
+  still to be refined) — an adapter implementing an interface declared in a
+  `.model.ts` passes every check: adapters may import model, and the matrix sees
+  edges, not `implements`. Field case, a logger: the port was filed as a model
+  because its null implementation (a no-op object — the classic null adapter)
+  needed a home a port cannot give, and the mislabel propagated — a validation
+  model consuming the logger stayed a model instead of becoming a service, two
+  adapters built that service themselves, and a default parameter statically
+  wired the null logger. Not a cheat: every adapter was dutifully annotated,
+  which is exactly what makes the shape visible. Ruled in discussion the same
+  day (rixo): the check is the **positive** form — every `.adapter.ts` has at
+  least one exported value whose declared type (factory return type, const
+  annotation, `implements`) resolves to a port: a covered `.port.ts`, or a
+  subpath the producer's field classifies port. Adapters only (a service's
+  return type is its own inbound API). Third-party contracts are the outside's
+  shape, never the port — a driver adapter returns the framework's type and
+  takes our port as a parameter — so they count for nothing either way.
+  Rejected: the import-level form (an adapter with no edge to any port) — an
+  adapter's dependencies are ports too, so nearly every real adapter passes it
+  regardless of what it implements; and per-annotation judgment with a
+  value-shape heuristic — moot under the positive form (`(): ConfigModel` is
+  fine when another export returns a port). Unannotated exports are invisible
+  under structural typing and stay so: the check catches the misunderstanding,
+  not sabotage — code written to evade the parser is out of scope by choice.
+  Needs the engine port to carry import bindings (local name → specifier) and a
+  per-file contracts fact; folds into `check ports` under a new rule ("adapters
+  implement ports", slugged at birth — see the rule-names card). The message
+  names both exits: the interface is a port that leaked into model (the model
+  now describes effects or orchestration — move it), or it is genuine knowledge
+  (a strategy of pure functions, a data shape) and the file is model, drop the
+  adapter suffix; the fork is about the contract, not the implementation in hand
+  (`silentLog` touches nothing, `Log` has a console implementation, so `Log` is
+  a port and the silent one an adapter). Companion fact for the explain card:
+  once the null implementation carries its adapter suffix, a default parameter
+  reaching for it fires rule 7 at the importer — the mislabel is what hid the
+  static wiring from the gate. Follow-up, own step: the **flavor-strict form** —
+  `ts-suffixes-factories` owns the adapter grammar
+  `<qualifier>-<port-name>.adapter.ts`, so it can say which port the file claims
+  and demand that one (multi-word names: try every split against the port stems;
+  a single-segment name has no port segment, the canon check takes over).
+  Through the flavor port, like `classifyEntry`: another flavor contributes
+  nothing and the canon check still runs. Sequenced after the rule-names chapter
+  below: the rule is slugged at birth, so the slug grammar is ruled before this
+  rule is born.
+- **Rule names beside rule numbers** (2026-09-08, rixo) — numbers are chapter
+  and verse: nobody remembers rule 4, everybody remembers `no-unused-vars`.
+  Numbers stay as identity (doc anchors, pinned URLs, the footer's pasteable
+  `explain 4 12`); a kebab slug per rule becomes the human-facing token in the
+  violation line (`(service-purity)` for `(rule 4)`), the footer, the cards, and
+  the explain topic grammar (check names already resolve there). First ruling at
+  open: the slug grammar (two or three words, names the constraint not the
+  layer); every new rule gets its slug at birth so it never needs the rename. A
+  chapter of its own: every citation site, the rules summary, the goldens.
 - **A word for generated output — "no source to check" is not "I decline to
   claim"** (2026-09-07, at the 0.0.4 trial) — a package whose surface is built
   from a manifest (`dist/js/*`, no `src/` twin, ever) can only disclose
