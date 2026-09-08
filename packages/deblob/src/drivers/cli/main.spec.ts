@@ -460,11 +460,17 @@ describe("bin shim (child process smoke)", () => {
         stdout: execFileSync(process.execPath, [bin, ...args], {
           cwd,
           encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
         }),
+        stderr: "",
       }
     } catch (error) {
-      const failed = error as { status: number; stdout: string }
-      return { status: failed.status, stdout: failed.stdout }
+      const failed = error as { status: number; stdout: string; stderr: string }
+      return {
+        status: failed.status,
+        stdout: failed.stdout,
+        stderr: failed.stderr,
+      }
     }
   }
 
@@ -476,5 +482,15 @@ describe("bin shim (child process smoke)", () => {
     const check = spawn(["check", "layers"], violatingDir)
     expect(check.status).toBe(1)
     expect(check.stdout).toContain("pdf-render.service.ts")
+  })
+
+  it("an ESM .ts config under a CommonJS-typed package teaches the .mts rename — only Node's own loader shows it", () => {
+    // npm 11's `npm init -y` writes "type": "commonjs"; the in-process suite
+    // loads configs through vitest and never sees this — the shim does
+    const check = spawn(["check"], here("__fixtures__/cjs-typed"))
+    expect(check.status).toBe(2)
+    expect(check.stderr.replace(/\n +/g, " ")).toMatch(
+      /deblob\.config\.ts is written as ESM but loaded as CommonJS.*rename it deblob\.config\.mts.*"type": "module"/s,
+    )
   })
 })

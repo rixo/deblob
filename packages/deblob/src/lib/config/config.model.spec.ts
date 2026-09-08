@@ -42,6 +42,32 @@ describe("configImportErrorMessage", () => {
     expect(message).toMatch(/deblob\.config\.ts/)
   })
 
+  it("teaches the .mts rename when ESM syntax was read as CommonJS", () => {
+    const error = new SyntaxError("Unexpected token 'export'")
+    const message = configImportErrorMessage(error, "/repo/deblob.config.ts")
+    expect(message).toMatch(/loaded as CommonJS/)
+    expect(message).toMatch(/rename it deblob\.config\.mts/)
+    expect(message).toMatch(/"type": "module"/)
+    // the .js twin gets its own modern name
+    expect(
+      configImportErrorMessage(
+        new SyntaxError("Cannot use import statement outside a module"),
+        "/repo/deblob.config.js",
+      ),
+    ).toMatch(/rename it deblob\.config\.mjs/)
+    // an .mts never reads as CommonJS — some other syntax error, plain path
+    expect(configImportErrorMessage(error, "/repo/deblob.config.mts")).toMatch(
+      /^failed to load/,
+    )
+    // a non-syntax error with that text is not the shape either
+    expect(
+      configImportErrorMessage(
+        new Error("Unexpected token 'export'"),
+        "/repo/deblob.config.ts",
+      ),
+    ).toMatch(/^failed to load/)
+  })
+
   it("names the config path on any other failure", () => {
     const message = configImportErrorMessage(
       new Error("SOME_FAKE_EVALUATION_FAILURE"),

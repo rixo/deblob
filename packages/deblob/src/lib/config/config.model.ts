@@ -60,12 +60,35 @@ export const COVERAGE_EXTENSIONS: readonly string[] = [
 export const hasCoverageExtension = (path: string): boolean =>
   COVERAGE_EXTENSIONS.some((extension) => path.endsWith(extension))
 
+/**
+ * ESM syntax read as CommonJS — a `.ts`/`.js` config under a package.json
+ * saying `"type": "commonjs"` (npm 11's `npm init -y` default). Node throws a
+ * bare SyntaxError with no code; the token names the shape.
+ */
+const isEsmReadAsCommonJs = (error: unknown, configPath: string): boolean =>
+  error instanceof SyntaxError &&
+  /Unexpected token 'export'|Cannot use import statement/.test(error.message) &&
+  /\.[tj]s$/.test(configPath)
+
 export const configImportErrorMessage = (
   error: unknown,
   configPath: string,
-): string =>
-  (error as { code?: unknown } | null | undefined)?.code ===
-  "ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX"
-    ? `${configPath} uses non-erasable TypeScript syntax (enum, namespace, parameter properties) — ` +
+): string => {
+  if (
+    (error as { code?: unknown } | null | undefined)?.code ===
+    "ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX"
+  ) {
+    return (
+      `${configPath} uses non-erasable TypeScript syntax (enum, namespace, parameter properties) — ` +
       `Node loads configs by stripping types only; keep the config erasable`
-    : `failed to load ${configPath}`
+    )
+  }
+  if (isEsmReadAsCommonJs(error, configPath)) {
+    const modern = configPath.replace(/\.([tj])s$/, ".m$1s")
+    return (
+      `${configPath} is written as ESM but loaded as CommonJS — the nearest package.json has no "type": "module" — ` +
+      `rename it ${modern.split(/[\\/]/).pop() as string} (discovered too), or set "type": "module"`
+    )
+  }
+  return `failed to load ${configPath}`
+}

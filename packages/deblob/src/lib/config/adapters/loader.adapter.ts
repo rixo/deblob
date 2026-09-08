@@ -17,6 +17,7 @@ import { ConfigError, configImportErrorMessage } from "../config.model.ts"
 
 const CONFIG_FILENAMES = [
   "deblob.config.ts",
+  "deblob.config.mts",
   "deblob.config.js",
   "deblob.config.mjs",
 ]

@@ -54,7 +54,8 @@ refinement).
 Optional. No config file at all resolves to honest defaults: the stock
 `ts-suffixes-factories` flavor, whole-tree coverage. When you need one,
 `deblob.config.ts` at the project root (TS loads natively — Node ≥ 22.18,
-erasable syntax only):
+erasable syntax only; under a `"type": "commonjs"` package, npm's default, name
+it `deblob.config.mts`):
 
 ```ts
 import { defineConfig } from "deblob"

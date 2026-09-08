@@ -142,7 +142,10 @@ describe("importConfigDefault + the assembly sequence", () => {
     expect(resolved.root).toBe(fixture("walk/nested"))
   })
 
-  it("loads .js and .mjs configs", async () => {
+  it("loads .mts, .js and .mjs configs", async () => {
+    expect((await load(fixture("mts-config"))).pureLibs).toEqual([
+      "FAKE_MTS_LIB",
+    ])
     expect((await load(fixture("js-config"))).pureLibs).toEqual(["FAKE_JS_LIB"])
     expect((await load(fixture("mjs-config"))).pureLibs).toEqual([
       "FAKE_MJS_LIB",
