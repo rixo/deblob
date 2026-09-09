@@ -17,7 +17,19 @@ captured: 2026-07-11
   has the pattern, arch doesn't).
 - **(F3) Distributed assembly** (context providers mid-tree) breaks assembly's
   "outermost" slot — non-assembly code imports assembly nodes; formalism lacks
-  interleaved/nested-assembly placement.
+  interleaved/nested-assembly placement. Field sighting (2026-09-09): a frontend
+  library's context module instantiates singletons at load (a default value, a
+  dev-only warner bound to `console`, a marker from `import.meta.url`), reads
+  ambient context (the framework's `getContext`, request-local storage on the
+  server, a DOM script tag on the client) and hands the result to whatever asks
+  — no injection point, the public API is a no-argument accessor. Not a service
+  (impure, nothing injected), not an adapter (no port behind it), not assembly
+  (library code imports it). The repo writes `.context.ts` as intent; the tool
+  prints it under blob, which is the honest verdict today and costs nothing. The
+  resolution here decides whether that is a named row or blob with a documentary
+  suffix. Smaller, same family: `.assembly` / `.driver` filenames are
+  intent-only too — designation is config, never suffix, by design — worth one
+  sentence in the docs so nobody expects the suffix to act.
 
 Inward protection stands solid (nothing inner imports UI; UI wiring services =
 assembly hat) — the holes are all about the UI zone's internal structure.
@@ -50,7 +62,13 @@ here as the two Ideas below.
   `ReadonlyMap`/`Readonly` annotation — `Object.freeze` is a no-op on Map/Set
   internals), exported live instances; ambient access (`Date.now`,
   `Math.random`, `globalThis`) is callable-name detectable, no import to see.
-  Earns its place through its own future card.
+  Earns its place through its own future card. First field sighting
+  (2026-09-09): a `.service.ts` holding a `let cache` at module scope and
+  serving ambient context passed every lane — the matrix sees edges, nothing
+  reads a module's top level — and was caught only because a runtime cycle
+  happened to pass through it; its counterpart, same shape and unsuffixed,
+  printed under blob and said nothing wrong. The narrow first cut (top-level
+  `let`/`var` in model, service and port files) would have fired on it.
 - **`.pure.ts` strict-flavor sublayer** — a flavor could add a
   referentially-transparent row below model with a tighter matrix line (knobs
   only tighten canon — legal without touching anything). Repairs the lost "model
