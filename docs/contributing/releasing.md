@@ -44,8 +44,10 @@ Everything before `publish` is rehearsable; only the last step is outward.
 8. **Verify** — `npm view deblob version` returns the new number; optionally a
    fresh `npm i deblob` smoke.
 
-## Standing roadmap items that ride release steps
+## What a release step carries since 0.0.5
 
-- **Version-pinned rule URLs** (chapter PLAN, Ideas): `canonicalRuleUrl` targets
-  `blob/main`; once wired, each release pins `blob/vX.Y.Z` at this step so
-  shipped citations survive main drift. Unwired as of 0.0.3.
+- **Version-pinned rule URLs** (wired at 0.0.5, rule-names chapter): every rule
+  URL the binary prints is `blob/v<version>/docs/architecture.md#<slug>`, the
+  version read from package.json. A published binary therefore cites a tag that
+  must exist — step 6 (tag, pushed) runs before step 7 (publish), never after. A
+  dev build cites a tag that does not exist yet; that is expected.
