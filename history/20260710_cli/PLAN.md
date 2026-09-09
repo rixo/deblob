@@ -67,16 +67,17 @@ until the feature set and maturity feel satisfying — or consumer pressure
 (adoption in real projects) demands version structure first. At that switch, 0.x
 becomes the channel and minor denotes breaking changes; 0.1.0 is the
 channel-opening cut, not the next milestone. Remaining ruled work, rides 0.0.x
-cuts as ready — version-pinned rule URLs (Ideas item); the `pure` key rename
-(14) is the 0.0.5 headline. README storefront pass: closed 2026-07-25 (rixo) —
-audit passed, no prose change; a drafted Track record section was rejected at
-review (n=1 case study reads as lab report, not storefront — over-disclosure is
-its own noise). Testimonial stays banked here; README use reconsidered only if
-dogfood runs accumulate (n=3 reads as evidence, n=1 as an excuse), likely as a
-linked field-notes doc, not README body. MIT LICENSE text file into the package:
-landed 2026-07-25 (`packages/deblob/LICENSE`, npm auto-includes — tarball
-verified; code MIT, docs stay CC BY 4.0 per the root README split). Still out of
-scope until demanded: JSON/SARIF, status, vite driver, presets, docs family.
+cuts as ready — version-pinned rule URLs (folded into the rule-names chapter,
+2026-09-08); the `pure` key rename (14) is the 0.0.5 headline. README storefront
+pass: closed 2026-07-25 (rixo) — audit passed, no prose change; a drafted Track
+record section was rejected at review (n=1 case study reads as lab report, not
+storefront — over-disclosure is its own noise). Testimonial stays banked here;
+README use reconsidered only if dogfood runs accumulate (n=3 reads as evidence,
+n=1 as an excuse), likely as a linked field-notes doc, not README body. MIT
+LICENSE text file into the package: landed 2026-07-25
+(`packages/deblob/LICENSE`, npm auto-includes — tarball verified; code MIT, docs
+stay CC BY 4.0 per the root README split). Still out of scope until demanded:
+JSON/SARIF, status, vite driver, presets, docs family.
 
 Chapter scratch. Opened from the 2026-07-10 evening session (decisions + engine
 research below), recovered from stash and formally opened 2026-07-17, folded
@@ -503,34 +504,26 @@ doesn't check:
   under structural typing and stay so: the check catches the misunderstanding,
   not sabotage — code written to evade the parser is out of scope by choice.
   Needs the engine port to carry import bindings (local name → specifier) and a
-  per-file contracts fact; folds into `check ports` under a new rule ("adapters
-  implement ports", slugged at birth — see the rule-names card). The message
-  names both exits: the interface is a port that leaked into model (the model
-  now describes effects or orchestration — move it), or it is genuine knowledge
-  (a strategy of pure functions, a data shape) and the file is model, drop the
-  adapter suffix; the fork is about the contract, not the implementation in hand
-  (`silentLog` touches nothing, `Log` has a console implementation, so `Log` is
-  a port and the silent one an adapter). Companion fact for the explain card:
-  once the null implementation carries its adapter suffix, a default parameter
-  reaching for it fires rule 7 at the importer — the mislabel is what hid the
-  static wiring from the gate. Follow-up, own step: the **flavor-strict form** —
+  per-file contracts fact; folds into `check ports` under a new rule
+  (`adapter-implements-port`, slugged at birth — grammar ruled in the rule-names
+  chapter, `history/20260908_rule-names/`). The message names both exits: the
+  interface is a port that leaked into model (the model now describes effects or
+  orchestration — move it), or it is genuine knowledge (a strategy of pure
+  functions, a data shape) and the file is model, drop the adapter suffix; the
+  fork is about the contract, not the implementation in hand (`silentLog`
+  touches nothing, `Log` has a console implementation, so `Log` is a port and
+  the silent one an adapter). Companion fact for the explain card: once the null
+  implementation carries its adapter suffix, a default parameter reaching for it
+  fires rule 7 at the importer — the mislabel is what hid the static wiring from
+  the gate. Follow-up, own step: the **flavor-strict form** —
   `ts-suffixes-factories` owns the adapter grammar
   `<qualifier>-<port-name>.adapter.ts`, so it can say which port the file claims
   and demand that one (multi-word names: try every split against the port stems;
   a single-segment name has no port segment, the canon check takes over).
   Through the flavor port, like `classifyEntry`: another flavor contributes
-  nothing and the canon check still runs. Sequenced after the rule-names chapter
-  below: the rule is slugged at birth, so the slug grammar is ruled before this
-  rule is born.
-- **Rule names beside rule numbers** (2026-09-08, rixo) — numbers are chapter
-  and verse: nobody remembers rule 4, everybody remembers `no-unused-vars`.
-  Numbers stay as identity (doc anchors, pinned URLs, the footer's pasteable
-  `explain 4 12`); a kebab slug per rule becomes the human-facing token in the
-  violation line (`(service-purity)` for `(rule 4)`), the footer, the cards, and
-  the explain topic grammar (check names already resolve there). First ruling at
-  open: the slug grammar (two or three words, names the constraint not the
-  layer); every new rule gets its slug at birth so it never needs the rename. A
-  chapter of its own: every citation site, the rules summary, the goldens.
+  nothing and the canon check still runs. Sequenced after the rule-names
+  chapter: the rule is slugged at birth, so the slug grammar is ruled before
+  this rule is born.
 - **A word for generated output — "no source to check" is not "I decline to
   claim"** (2026-09-07, at the 0.0.4 trial) — a package whose surface is built
   from a manifest (`dist/js/*`, no `src/` twin, ever) can only disclose

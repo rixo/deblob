@@ -8,6 +8,10 @@
 
 ## Future
 
+- **Rule names** — chapter in flight: `history/20260908_rule-names/` (level 1,
+  SPEC only). Slugs as the rule identity across every surface, numbers gone (no
+  compat table, ruled at the seam); version-pinned rule URLs folded in. Kin,
+  waiting on it: the adapters-implement-ports rule (Ideas, CLI chapter board).
 - **Skills gates** — chapter `history/20260708_skills/` consolidated
   (2026-07-24); what remains is the two deferred manual gates (2026-07-17,
   rixo): local plugin load (`claude --plugin-dir <repo>`) and per-skill
@@ -21,12 +25,12 @@
   declared externals, cross-package layers, the `pure` key rename — 0.0.5
   headline); 0.0.4 published 2026-09-08 (0.0.2 on 2026-07-24, 0.0.3 on
   2026-09-02); version stance: 0.0.x until maturity or adoption pressure, 0.1.0
-  = the channel switch (minor = breaking thereafter). Next ruled work rides
-  0.0.x cuts: version-pinned rule URLs (storefront pass and package LICENSE
-  closed 2026-07-25). Companion, ruled to the `deblob docs` command family:
-  derived-view staleness check — diff `docs/` sections against `source:` stamps
-  in `skills/*/knowledge|references/`; stamp-text ↔ heading matching rule to
-  spec.
+  = the channel switch (minor = breaking thereafter). Version-pinned rule URLs
+  folded into the rule-names chapter (2026-09-08); storefront pass and package
+  LICENSE closed 2026-07-25. Companion, ruled to the `deblob docs` command
+  family: derived-view staleness check — diff `docs/` sections against `source:`
+  stamps in `skills/*/knowledge|references/`; stamp-text ↔ heading matching rule
+  to spec.
 - **Review-slicing skill** — dogfooded 2026-07-23 on step-10's own diff, verdict
   positive (better, more engaging review — rixo). Graduation next, a fresh
   session: chapter in the skills lineage; first ruling = name (the
