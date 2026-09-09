@@ -415,7 +415,7 @@ export const main = async (io: MainIo): Promise<number> => {
         // with the line that says where the names are
         const numbered = unknown.some(isRuleNumber)
         io.stderr.write(
-          `unknown ${unknown.length === 1 ? "topic" : "topics"} ${unknown.map((topic) => `"${topic}"`).join(", ")} — rule names (service-purity) or check names: ${KNOWN_CHECKS.join(", ")}${numbered ? "\nrule numbers are gone since 0.0.5: rules are named — deblob check prints the names, deblob explain <check> lists a check's" : ""}\n`,
+          `unknown ${unknown.length === 1 ? "topic" : "topics"} ${unknown.map((topic) => `"${topic}"`).join(", ")} — rule names (service-purity) or check names: ${KNOWN_CHECKS.join(", ")}${numbered ? "\nrule numbers are gone since 0.0.6: rules are named — deblob check prints the names, deblob explain <check> lists a check's" : ""}\n`,
         )
         return 2
       }

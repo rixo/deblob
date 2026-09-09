@@ -21,15 +21,16 @@
   declared externals, cross-package layers, the `pure` key rename); rule names
   landed as their own chapter (`history/20260908_rule-names/`, 2026-09-09: slugs
   as the rule identity, numbers gone, rule URLs pinned to the release tag) — the
-  `pure` rename and the slugs are 0.0.5's headline, one migration; 0.0.4
-  published 2026-09-08 (0.0.2 on 2026-07-24, 0.0.3 on 2026-09-02); version
-  stance: 0.0.x until maturity or adoption pressure, 0.1.0 = the channel switch
-  (minor = breaking thereafter). Storefront pass and package LICENSE closed
-  2026-07-25. Kin, unblocked by the slugs: the adapters-implement-ports rule
-  (Ideas, CLI chapter board). Companion, ruled to the `deblob docs` command
-  family: derived-view staleness check — diff `docs/` sections against `source:`
-  stamps in `skills/*/knowledge|references/`; stamp-text ↔ heading matching rule
-  to spec.
+  `pure` rename and the slugs are 0.0.6's headline, one migration (0.0.5 was
+  tagged 2026-09-09 and never published: the canary's read of its tarball
+  renamed two slugs first); 0.0.4 published 2026-09-08 (0.0.2 on 2026-07-24,
+  0.0.3 on 2026-09-02); version stance: 0.0.x until maturity or adoption
+  pressure, 0.1.0 = the channel switch (minor = breaking thereafter). Storefront
+  pass and package LICENSE closed 2026-07-25. Kin, unblocked by the slugs: the
+  adapters-implement-ports rule (Ideas, CLI chapter board). Companion, ruled to
+  the `deblob docs` command family: derived-view staleness check — diff `docs/`
+  sections against `source:` stamps in `skills/*/knowledge|references/`;
+  stamp-text ↔ heading matching rule to spec.
 - **Review-slicing skill** — dogfooded 2026-07-23 on step-10's own diff, verdict
   positive (better, more engaging review — rixo). Graduation next, a fresh
   session: chapter in the skills lineage; first ruling = name (the

@@ -363,11 +363,11 @@ export const resolveConfig = (
   }
   const record = raw as Record<string, unknown>
 
-  // the one renamed key (0.0.5): a stale config fails loud with the new name —
+  // the one renamed key (0.0.6): a stale config fails loud with the new name —
   // never silently accepted under the old one
   if ("pureLibs" in record) {
     throw new ConfigError(
-      `config key "pureLibs" was renamed "pure" in 0.0.5 — same values, new name`,
+      `config key "pureLibs" was renamed "pure" in 0.0.6 — same values, new name`,
     )
   }
 

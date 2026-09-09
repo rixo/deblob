@@ -69,13 +69,14 @@ becomes the channel and minor denotes breaking changes; 0.1.0 is the
 channel-opening cut, not the next milestone. Remaining ruled work, rides 0.0.x
 cuts as ready. Version-pinned rule URLs landed with the rule-names chapter
 (`history/20260908_rule-names/`, 2026-09-09); the `pure` key rename (14) and the
-rule slugs are the 0.0.5 headline, one migration. README storefront pass: closed
-2026-07-25 (rixo) — audit passed, no prose change; a drafted Track record
-section was rejected at review (n=1 case study reads as lab report, not
-storefront — over-disclosure is its own noise). Testimonial stays banked here;
-README use reconsidered only if dogfood runs accumulate (n=3 reads as evidence,
-n=1 as an excuse), likely as a linked field-notes doc, not README body. MIT
-LICENSE text file into the package: landed 2026-07-25
+rule slugs are the 0.0.6 headline, one migration (0.0.5: tagged, never published
+— two slugs renamed on canary feedback before the cut went out). README
+storefront pass: closed 2026-07-25 (rixo) — audit passed, no prose change; a
+drafted Track record section was rejected at review (n=1 case study reads as lab
+report, not storefront — over-disclosure is its own noise). Testimonial stays
+banked here; README use reconsidered only if dogfood runs accumulate (n=3 reads
+as evidence, n=1 as an excuse), likely as a linked field-notes doc, not README
+body. MIT LICENSE text file into the package: landed 2026-07-25
 (`packages/deblob/LICENSE`, npm auto-includes — tarball verified; code MIT, docs
 stay CC BY 4.0 per the root README split). Still out of scope until demanded:
 JSON/SARIF, status, vite driver, presets, docs family.
@@ -375,7 +376,7 @@ identity).
   `pureLibs` → `pure` (ratified 2026-09-09, rixo: bare-word grammar of its
   neighbours, and "Libs" already wrong for builtins, `external` patterns and the
   banked granular form). Renamed, never aliased — a stale key fails loud with
-  the new name. Rides the 0.0.5 cut.
+  the new name. Rides the 0.0.6 cut.
 
 README-driven UX fiction banked (2026-07-17):
 [research/help-screens.md](./research/help-screens.md) (intended `--help` +

@@ -97,7 +97,7 @@ describe("resolveConfig — validation", () => {
     )
   })
 
-  test("rejects the pre-0.0.5 key by its new name — renamed, never aliased", () => {
+  test("rejects the pre-0.0.6 key by its new name — renamed, never aliased", () => {
     expect(() => resolve({ pureLibs: ["some-fake-lib"] })).toThrowError(
       /"pureLibs" was renamed "pure"/,
     )

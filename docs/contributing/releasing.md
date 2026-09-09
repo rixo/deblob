@@ -51,3 +51,7 @@ Everything before `publish` is rehearsable; only the last step is outward.
   version read from package.json. A published binary therefore cites a tag that
   must exist — step 6 (tag, pushed) runs before step 7 (publish), never after. A
   dev build cites a tag that does not exist yet; that is expected.
+- **A tag is not a release** (0.0.5, 2026-09-10): feedback that lands between
+  step 6 and step 7 means a new version, not a moved tag — the tag is public the
+  moment it is pushed, and a fix is one more commit. `v0.0.5` exists with no npm
+  release behind it; 0.0.6 is what shipped.

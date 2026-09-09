@@ -182,7 +182,7 @@ describe("deblob check", () => {
       expect(code).toBe(2)
       expect(out).toBe("")
       expect(err).toContain(`unknown topic "${topic}"`)
-      expect(err).toContain("rule numbers are gone since 0.0.5")
+      expect(err).toContain("rule numbers are gone since 0.0.6")
       expect(err).toContain("deblob check prints the names")
       expect(err).toContain("deblob explain <check>")
     }
