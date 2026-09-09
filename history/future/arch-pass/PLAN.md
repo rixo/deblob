@@ -57,10 +57,10 @@ here as the two Ideas below.
 
 ### Ideas (from the model-abstractness landing)
 
-- **`check state` detector** — rule 17 is now AST-decidable: top-level
-  `let`/`var`, module-root mutable collections (write-detection, or `const` +
-  `ReadonlyMap`/`Readonly` annotation — `Object.freeze` is a no-op on Map/Set
-  internals), exported live instances; ambient access (`Date.now`,
+- **`check state` detector** — `stateless-modules` is now AST-decidable:
+  top-level `let`/`var`, module-root mutable collections (write-detection, or
+  `const` + `ReadonlyMap`/`Readonly` annotation — `Object.freeze` is a no-op on
+  Map/Set internals), exported live instances; ambient access (`Date.now`,
   `Math.random`, `globalThis`) is callable-name detectable, no import to see.
   Earns its place through its own future card. First field sighting
   (2026-09-09): a `.service.ts` holding a `let cache` at module scope and
@@ -74,29 +74,29 @@ here as the two Ideas below.
   only tighten canon — legal without touching anything). Repairs the lost "model
   = RT" reviewer shortcut for teams that want it. Idea only, not pursued.
 
-## Rule-why touches — 13 and 6/7
+## Rule-why touches — `no-service-cycle` and the assembly-only seals
 
-(2026-07-22/23, from the rule-13 raison-d'être discussion — material and the
-full-read audit behind it in
+(2026-07-22/23, from the `no-service-cycle` raison-d'être discussion — material
+and the full-read audit behind it in
 [research/nesting-packaging.md](research/nesting-packaging.md) §15–16. Scope
 deliberately narrow: the sweep judged the other rules' one-line whys
-proportionate — 2/12's full sections exist because those rules are
-counter-intuitive house choices, not a bar for the rest. No doc-wide rationale
-mandate. Both touches are _connections_ of rationale canon already states — zero
-new claims.)
+proportionate — `layer-in-path` / `private-sealed`'s full sections exist because
+those rules are counter-intuitive house choices, not a bar for the rest. No
+doc-wide rationale mandate. Both touches are _connections_ of rationale canon
+already states — zero new claims.)
 
-- **Rule 13 (§acyclic)**: canon states the value level elsewhere, unconnected —
-  "the architecture's whole point — that internals are free to move" (§
-  internal-seam testing) and "each can be moved independently" (§Sharing).
-  Connect it at the rule: rule 13 is that whole-point sentence at package scale
-  — refactorability is evolvability, a DAG-clean graph keeps every move's blast
-  radius bounded; cycle = symptom of a misplaced fact, repair = move it to its
-  owner. Extraction framing stays; §15 is source material, not copy; wording
-  judged at touch time, rixo gates.
-- **Rules 6/7**: justified circularly on the page ("composition unit — must be
-  composed by assembly"). The rationale is substantial one section away (§IoC:
-  central control, visible wiring, code splitting, testability) — attach with a
-  cross-ref sentence, not new argument.
+- **`no-service-cycle` (§acyclic)**: canon states the value level elsewhere,
+  unconnected — "the architecture's whole point — that internals are free to
+  move" (§ internal-seam testing) and "each can be moved independently"
+  (§Sharing). Connect it at the rule: `no-service-cycle` is that whole-point
+  sentence at package scale — refactorability is evolvability, a DAG-clean graph
+  keeps every move's blast radius bounded; cycle = symptom of a misplaced fact,
+  repair = move it to its owner. Extraction framing stays; §15 is source
+  material, not copy; wording judged at touch time, rixo gates.
+- **`service-assembly-only` / `adapter-assembly-only`**: justified circularly on
+  the page ("composition unit — must be composed by assembly"). The rationale is
+  substantial one section away (§IoC: central control, visible wiring, code
+  splitting, testability) — attach with a cross-ref sentence, not new argument.
 
 ## Accumulated doc touches
 
@@ -107,16 +107,17 @@ new claims.)
   §Nesting; kind asymmetry + wiring-placement line in the acyclic section):
   Nesting DAG implications spelled out — direction law (nested-adapter edges
   point up via the port; parent stays import-blind to its children; only the
-  cycle trap is documented today). Rule 10 stands as written: ports are types
-  only — an earlier softening idea was a misreading, since reverted in the
-  guide.
+  cycle trap is documented today). `ports-types-only` stands as written: ports
+  are types only — an earlier softening idea was a misreading, since reverted in
+  the guide.
 - Port-type examples (`FsPort`, `LoggerPort`, `IconSourcePort`) predate the
   name-by-role ruling (2026-07-08, skills chapter step 02: bare role names,
   qualify only to disambiguate) — rename, then propagate to the arch cards
   mirroring them (layer-ports, crossing-services ref).
 - **Owned by the cli chapter, listed here for inventory completeness** (both
   land with the cli layers detector step, 2026-07-17 rulings — see
-  `20260710_cli/` PLAN + violation catalog): (a) rule 4 purity-is-declared
-  clarification — prose reads permissive, ruled default-concrete; (b) rules 6/7
+  `20260710_cli/` PLAN + violation catalog): (a) `service-purity`
+  purity-is-declared clarification — prose reads permissive, ruled
+  default-concrete; (b) `service-assembly-only` / `adapter-assembly-only`
   enumeration gains blob — "only assembly" covers it, the "not by …" list omits
   it; ruled: composition/privacy seals bind blob as importer.

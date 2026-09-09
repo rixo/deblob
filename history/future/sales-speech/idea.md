@@ -39,8 +39,9 @@ Each pillar is a lens that turns a principle into a house decision:
     and tests are more readable than code (canon's
     tests-written-for-the-reviewer section); through-public means the tests must
     make sense as behavior statements. The coverage bar is a pillar-1 decision,
-    not a quality fetish — same connection-shape as the rule-13 raison d'être
-    found this session (standing decision, value-level why attached late).
+    not a quality fetish — same connection-shape as the `no-service-cycle`
+    raison d'être found this session (standing decision, value-level why
+    attached late).
   - _System 2 attention is the scarce input_ → review slicing
     (`../review-slicing/` — working alias deblob-review-carbon; the suffix
     instinct won): slice by reviewable concerns.

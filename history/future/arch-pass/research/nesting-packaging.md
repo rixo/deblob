@@ -72,32 +72,34 @@ Mechanics pins (stock flavor, `ts-suffixes-factories-flavor.adapter.ts`):
 
 Protection scales with the claim made. Three rules partition the territory:
 
-- **Rule 8 (layer matrix)** guards the _behavior seam_, everywhere,
+- **`type-only-exempt` (layer matrix)** guards the _behavior seam_, everywhere,
   boundary-blind. `service → adapters` at runtime is forbidden even
-  intra-service (`layers.model.ts` matrix; the cell cites rule 1). Type imports
-  into `service`/`adapters` targets are exempt (`TYPE_EXEMPT_TARGETS` — an
-  adapter's exported type is a contract shape). `service → service` is rule 6
-  everywhere — including across services; only assembly imports service modules.
-  Runtime into ports is rule 10 everywhere — ports are types.
-- **Rule 13 (service DAG)** guards the _package boundary_ — where one was
-  declared. Counts **every import kind** (type edges included: `import type`
+  intra-service (`layers.model.ts` matrix; the cell cites `inward-deps`). Type
+  imports into `service`/`adapters` targets are exempt (`TYPE_EXEMPT_TARGETS` —
+  an adapter's exported type is a contract shape). `service → service` is
+  `service-assembly-only` everywhere — including across services; only assembly
+  imports service modules. Runtime into ports is `ports-types-only` everywhere —
+  ports are types.
+- **`no-service-cycle` (service DAG)** guards the _package boundary_ — where one
+  was declared. Counts **every import kind** (type edges included: `import type`
   from B means A cannot build without B's sources — extraction independence
   holds for types). One finding per SCC, witness cycle carried.
-- **Rule 14 (runtime module cycles)** is a separate guarantee (ESM hazard,
-  runtime edges only), untouched by everything in this note.
+- **`no-runtime-cycle` (runtime module cycles)** is a separate guarantee (ESM
+  hazard, runtime edges only), untouched by everything in this note.
 
-### The flat-adapter protection inventory (what rule 8 does and doesn't cover)
+### The flat-adapter protection inventory (what `type-only-exempt` does and doesn't cover)
 
 For `billing/adapters/stripe.adapter.ts` (flat file, billing-owned):
 
-- `billing.service → stripe.adapter` **runtime**: rule 8 fires. Protected.
+- `billing.service → stripe.adapter` **runtime**: `type-only-exempt` fires.
+  Protected.
 - Same, **type-only**: legal — deliberate exemption.
 - Wire shapes grown into a sibling `billing/adapters/stripe-wire.model.ts`:
   suffix makes it layer _model_, `adapters/` collapses → it is simply a billing
   model file. `billing.service →` it at runtime: green. Full reach-in, nothing
   fires.
-- Hide the shapes under `billing/private/`: rule 9 grants _service_ access to
-  own private too. Still green.
+- Hide the shapes under `billing/private/`: `private-exempt` grants _service_
+  access to own private too. Still green.
 
 So intra-service, swappability protection = exactly one seam: runtime import of
 the `.adapter.ts` file itself. "An adapter's own model" does not exist as a
@@ -110,14 +112,15 @@ is one dir, one commit, when stripe→paypal day comes. The dir adapter
 `billing/stripe/` made the claim — own root — so the tool defends the whole
 boundary, model included, because the blast radius would be cross-package.
 Nesting an adapter into its own dir when its internals grow is _how you buy_ the
-extra protection. Rule 8 guards the behavior seam everywhere; rule 13 guards the
-package boundary where one was declared. The two-rule split tracks blast radius.
+extra protection. `type-only-exempt` guards the behavior seam everywhere;
+`no-service-cycle` guards the package boundary where one was declared. The
+two-rule split tracks blast radius.
 
 ## 4. The canonical trap, and the chain form
 
 Nested-adapter form (canon §Nesting's trap paragraph): adapter type-imports
 parent's port (up, as designed); parent `.service.ts` runtime-imports the
-adapter's model. Matrix-legal on both edges; rule-13 cycle.
+adapter's model. Matrix-legal on both edges; `no-service-cycle` cycle.
 
 Chain form — worth docs space because there is **no file cycle anywhere**:
 
@@ -126,12 +129,12 @@ user/user.service.ts  →  user/id/id.model.ts     (service→model: legal)
 user/id/id.model.ts   →  user/user.model.ts      (model→model: legal)
 ```
 
-It's a chain (`user.model` imports nothing of `id`), rule 14 silent, every edge
-rule-8 green. Contraction: `user → id` and `id → user` — 2-node service cycle,
-rule 13 fires. And should: extract `id` alone — needs `user.model`; extract
-`user` without `id` — `user.service` needs it. The "shared vocabulary" is one
-vocabulary smeared across two dirs that each claim independence. Two dirs, one
-knot.
+It's a chain (`user.model` imports nothing of `id`), `no-runtime-cycle` silent,
+every edge `type-only-exempt` green. Contraction: `user → id` and `id → user` —
+2-node service cycle, `no-service-cycle` fires. And should: extract `id` alone —
+needs `user.model`; extract `user` without `id` — `user.service` needs it. The
+"shared vocabulary" is one vocabulary smeared across two dirs that each claim
+independence. Two dirs, one knot.
 
 The repair options for exactly this shape (pick a direction):
 
@@ -175,8 +178,8 @@ src/billing/
 `stripe.adapter ⇢ billing/ports/payment.port`; `stripe.adapter → billing.model`
 (maps wire → vocab); `stripe.adapter → stripe.model`. `billing/** → stripe/**`:
 **nothing**. One service edge, stripe→billing. Wiring: `main.ts` (unowned) or
-specs via test-purpose fixture adapters (rule 16) — never billing's own files
-importing stripe.
+specs via test-purpose fixture adapters (`test-setup-assembly`) — never
+billing's own files importing stripe.
 
 ### Pattern 3 — namespace folder (no parent node)
 
@@ -254,25 +257,26 @@ src/
 Cross-family vocab: one direction, no back edge. Cross-family _behavior_:
 `main.ts` builds user's use cases (injecting its children), then passes
 `getUser` (or an inline wrap) into orders' `customer.port` slot. No adapter may
-import a service (rule 6), so service-to-service plumbing is assembly's job —
-main's, not an adapter's.
+import a service (`service-assembly-only`), so service-to-service plumbing is
+assembly's job — main's, not an adapter's.
 
 Hiding variant: move `identity/ account/ auth/ kernel/` under `user/private/` —
-same internal edges, private check blocks outside reach-in, rule 9 grants
-`user.service` access. Only `user.model` surface remains public. Usual
+same internal edges, private check blocks outside reach-in, `private-exempt`
+grants `user.service` access. Only `user.model` surface remains public. Usual
 `private/` discipline cost.
 
 ## 6. Facades split by effect
 
-Rule 6 makes every service module import-invisible: `service→service`,
-`adapters→service`, `blob→service` all forbidden; only assembly imports
-services. Consequences:
+`service-assembly-only` makes every service module import-invisible:
+`service→service`, `adapters→service`, `blob→service` all forbidden; only
+assembly imports services. Consequences:
 
 - **Effectful facade is free.** The rest of the app never sees children's
   services _by construction_: use cases travel by injection, wired at the
   composition root. Operational hiding needs zero structure.
 - **The pure surface is the model** — vocabulary _and_ pure domain logic. The
-  seals (6, 10, 7/8) make model the entire importable runtime surface of a
+  seals (`service-assembly-only`, `ports-types-only`, `adapter-assembly-only` /
+  `type-only-exempt`) make model the entire importable runtime surface of a
   service family. "What the rest of the app sees" = model layer, full stop.
 - Public-by-default means outsiders may also import a child's model directly
   (pattern 3/4) — that's not a leak unless you've chosen `private/` hiding.
@@ -299,7 +303,7 @@ root isn't a node, sharers are siblings, the sink must be one of them.
 
 Exactly one forbidden shape: **the same node as facade (points down) and
 vocabulary (pointed at)**. One node cannot be both sink and source over the same
-family. Rule 13 is the enforcement of that sentence.
+family. `no-service-cycle` is the enforcement of that sentence.
 
 A sink may depend outward-below (another family's model, pure libs, declared
 builtins) — it must be a sink relative to its _sharers_, not globally
@@ -308,14 +312,14 @@ law.
 
 ## 8. The containment proposal, priced
 
-The precise rule considered: in rule 13's service graph, erase edge A→B iff B's
-root is a strict descendant of A's root; keep the reverse. Well-defined at any
-depth (path-prefix predicate). Framed eventually as a _flavor_ decision: what is
-the packaging unit — the containing unit, or any layered dir. The trade-off as
-stated: model sharing maps to visible physical location (primitives: sibling /
-contains) vs extraction-independence enforced by the arch. The frequency
-economics (sharing vocabulary is daily; splitting a package is rare) genuinely
-favor contains as a default.
+The precise rule considered: in `no-service-cycle`'s service graph, erase edge
+A→B iff B's root is a strict descendant of A's root; keep the reverse.
+Well-defined at any depth (path-prefix predicate). Framed eventually as a
+_flavor_ decision: what is the packaging unit — the containing unit, or any
+layered dir. The trade-off as stated: model sharing maps to visible physical
+location (primitives: sibling / contains) vs extraction-independence enforced by
+the arch. The frequency economics (sharing vocabulary is daily; splitting a
+package is rare) genuinely favor contains as a default.
 
 **What it buys:**
 
@@ -341,7 +345,8 @@ favor contains as a default.
    _to_ flat-level protection, runtime-into-adapter-file only. Uniform,
    arguably. But then the stronger claim becomes unmakeable — see cost 4.)
 2. **Misplaced-wiring catch gone**: parent spec → real nested adapter is a down
-   edge, erased, green. Rule 16's fixture discipline loses enforcement.
+   edge, erased, green. `test-setup-assembly`'s fixture discipline loses
+   enforcement.
 3. **Per-node certification weakens**: green no longer means _this dir_ lifts
    out; only subtree-with-ancestors lifts. A reader can't tell whether `user/id`
    is independent without reading imports.
@@ -357,11 +362,12 @@ favor contains as a default.
    the moment it happens.
 6. Slope pressure (killed by an explicit firewall in discussion): belonging
    grants DAG freedom, **not** privacy penetration — `user → user/id/private`
-   stays illegal; rule 9/private key on attribution, untouched by 13's edge
-   construction. The public/private axis is orthogonal to the packaging axis.
+   stays illegal; `private-exempt`/private key on attribution, untouched by
+   `no-service-cycle`'s edge construction. The public/private axis is orthogonal
+   to the packaging axis.
 
-Unaffected either way: rule 14; rule 9/private; both real dogfood catches
-(`cli⇄explain`, `config⇄extraction` — sibling cycles).
+Unaffected either way: `no-runtime-cycle`; `private-exempt`/private; both real
+dogfood catches (`cli⇄explain`, `config⇄extraction` — sibling cycles).
 
 ### The fork inside "contains"
 
@@ -384,11 +390,11 @@ Flat's dissolve rule is "a root inside another root is absorbed by it." Applied
 fractally, absorption cascades to the _outermost_ root. Today `src/` carries no
 layer file, so top-level services are maximal roots and flat looks stable — but
 one stray `src/app.model.ts` marks `src` itself a root, every service becomes
-its descendant, everything dissolves into one package, and rule 13 goes silent
-**repo-wide**. One file, no finding, entire check disabled. Enforcement
-conditional on an absence; the rule's meaning depends on absolute position (top
-vs nested) — precisely what "learn once, applies at every level" forbids.
-Anti-fractal by construction.
+its descendant, everything dissolves into one package, and `no-service-cycle`
+goes silent **repo-wide**. One file, no finding, entire check disabled.
+Enforcement conditional on an absence; the rule's meaning depends on absolute
+position (top vs nested) — precisely what "learn once, applies at every level"
+forbids. Anti-fractal by construction.
 
 ### 9b. Contains-structured dies by ancestor-hub laundering
 
@@ -410,10 +416,10 @@ free both directions, everything launders through them.
 Worse, the hole sits on the **hottest path by design**: the entire buy of
 contains was "vocabulary in the parent, everyone points at it" — parent model
 files become the universal transit hub, exactly where sibling cycles will hide.
-Compare the ruled rule-13 non-goal (cycles through _unowned_ transit invisible):
-that hole is narrow and self-healing — each newly-carved service turns transit
-into real edges. This one is central and **anti-healing** — adoption of the
-pattern grows it.
+Compare the ruled `no-service-cycle` non-goal (cycles through _unowned_ transit
+invisible): that hole is narrow and self-healing — each newly-carved service
+turns transit into real edges. This one is central and **anti-healing** —
+adoption of the pattern grows it.
 
 Read honestly, direct-edges contains-structured is also _empty_: each child may
 depend on ancestor files which depend on other children, so nothing inside the
@@ -453,10 +459,10 @@ bought is the proof that the alternatives fail, not a change.
 
 ## 10. What the authorities say — and where we extend them
 
-Rule 13's lineage is Martin's **ADP** ("allow no cycles in the component
-dependency graph"), from the component principles (_Agile Software Development_
-/ _Clean Architecture_; arch doc cites Martin for the inward rule). Honest
-accounting: his bundled definitions lean _toward_ containment economics —
+`no-service-cycle`'s lineage is Martin's **ADP** ("allow no cycles in the
+component dependency graph"), from the component principles (_Agile Software
+Development_ / _Clean Architecture_; arch doc cites Martin for the inward rule).
+Honest accounting: his bundled definitions lean _toward_ containment economics —
 
 - **REP**: "the granule of reuse is the granule of release." A component is a
   releasable unit; a never-released nested dir makes no reuse claim → not a
@@ -466,8 +472,8 @@ accounting: his bundled definitions lean _toward_ containment economics —
 - His components **don't nest** (jars, gems, DLLs — flat), and component
   structure "evolves, splitting under reuse pressure" — default merge, promote
   on demand: the frequency argument nearly verbatim.
-- Swappability he'd assign to **DIP** at the interface — rules 8/10 territory,
-  not packaging.
+- Swappability he'd assign to **DIP** at the interface — `type-only-exempt` /
+  `ports-types-only` territory, not packaging.
 
 **Lakos** (_Large-Scale C++_, levelization) is the physical-design canon and
 settles the internal-structure question: a containment hierarchy (package groups
@@ -487,31 +493,32 @@ the checker must be sound.
 Wanting true merger — "this child is part of me, free intra-links, no claim" —
 remains expressible today by **taking the claim away**: fold the child's files
 into the parent's own layers (`user/model/id.model.ts` — grouping dirs attribute
-to the parent). One service, one claim, rule 8 governs inside; nothing to
-launder because there is no structure left to launder past.
+to the parent). One service, one claim, `type-only-exempt` governs inside;
+nothing to launder because there is no structure left to launder past.
 
 Open (unruled) flavor question, worth an arch-pass look: should a service-shaped
 dir under `parent/private/` attribute to the parent — opt-in merger via the
 privacy marker — instead of rooting itself as today? That would make containment
-**opt-in per child** (B where you mean B, A by default) with zero change to rule
-13 itself; merged, the layer matrix still governs inside (the trap edge becomes
-intra-service `service→model` — legal, and honestly so: no independence claim
-was ever made). Costs to weigh when picked up: rule 9's current mechanics,
-whether the merged child's `private/` still means anything, and the silent-merge
-footgun in opt-in form.
+**opt-in per child** (B where you mean B, A by default) with zero change to
+`no-service-cycle` itself; merged, the layer matrix still governs inside (the
+trap edge becomes intra-service `service→model` — legal, and honestly so: no
+independence claim was ever made). Costs to weigh when picked up:
+`private-exempt`'s current mechanics, whether the merged child's `private/`
+still means anything, and the silent-merge footgun in opt-in form.
 
 ## 12. Docs wording nits caught along the way
 
 - §Nesting "the parent stays import-blind to its children" reads more absolute
   than the rule: blindness is only _forced_ where the child points up (i.e.
   adapters — scoped there by the direction law's own framing). A component child
-  with no back edge may be freely imported by the parent; rule 13 fires on
-  cycles, not on direction per se. One word of scoping when the touch lands.
+  with no back edge may be freely imported by the parent; `no-service-cycle`
+  fires on cycles, not on direction per se. One word of scoping when the touch
+  lands.
 - "Expected direction child→parent" is adapter-scoped, derived from the port
   relation. Generic nesting has no single expected direction — the child's
   _role_ picks: adapter child → edges up, parent blind; component child → edges
-  down, child blind. Rule 13 enforces only the invariant common to both: one
-  direction per pair.
+  down, child blind. `no-service-cycle` enforces only the invariant common to
+  both: one direction per pair.
 - The trap deserves both forms in docs: nested-adapter form (canon's paragraph)
   _and_ the chain form (§4 — no file cycle at all), because the chain form is
   the one that defeats the "but there's no cycle!" objection.
@@ -560,7 +567,7 @@ nest files-beside-children _at all_ — importing that ban into a fractal
 filesystem architecture outlaws canon's own patterns. Not an unexplored branch;
 a dead one. Dir-semantics + explicit sinks stays the unique sound point.
 
-## 15. Why rule 13 at all — raison d'être (same-day continuation)
+## 15. Why `no-service-cycle` at all — raison d'être (same-day continuation)
 
 The challenge, run honestly: Martin's ADP governs _release units_ — separate
 artifact, version, package manager. The boundary is enforced by physics; the
@@ -570,39 +577,39 @@ physical wall. So why inflict the rule?
 **Because the checker is the missing wall.** Layer files are a claim mechanism
 cheaper than a package manager — and cheap claims need a checker or they are
 free lies. The rule is opt-in where ADP is not: blob is legal, cycles through
-blob are legal; adding layer files makes the claim, rule 13 holds you to the
-claim you made. Claim checking, not imposed discipline — the config decision's
-own words: tolerant of non-compliant code, intolerant of pretending.
+blob are legal; adding layer files makes the claim, `no-service-cycle` holds you
+to the claim you made. Claim checking, not imposed discipline — the config
+decision's own words: tolerant of non-compliant code, intolerant of pretending.
 
 **Value level — refactorability IS evolvability.** First formulation here was
 "extraction is rare, so the option's real product is placement discipline" —
 wrong picture (rixo, correcting): npm-style lift-out is rare, but _moving code
 around a codebase is nothing but rare_. Refactor is TDD's number-one selling
 point — red, green, refactor — and the more you can move for cheap, the more
-change you can absorb. Rule 13 is what keeps movement cheap at package scale: in
-a DAG-clean codebase every move has bounded blast radius; a knot makes every
-move inside it touch the whole knot. Canon already states the principle — "the
-architecture's whole point — that internals are free to move" (§ internal-seam
-testing) and the §Sharing kernel example's closing line "each can be moved
-independently" — it just never connects that sentence to rule 13. The
-misplacement reading rides on top: both dogfood catches (`ExplainEntry` in the
-renderer, `STOCK_FLAVOR_NAME` in config's model) were facts in the wrong home,
-cycle as symptom, repair = move the fact to its owner — cheap precisely because
-the graph was otherwise clean.
+change you can absorb. `no-service-cycle` is what keeps movement cheap at
+package scale: in a DAG-clean codebase every move has bounded blast radius; a
+knot makes every move inside it touch the whole knot. Canon already states the
+principle — "the architecture's whole point — that internals are free to move"
+(§ internal-seam testing) and the §Sharing kernel example's closing line "each
+can be moved independently" — it just never connects that sentence to
+`no-service-cycle`. The misplacement reading rides on top: both dogfood catches
+(`ExplainEntry` in the renderer, `STOCK_FLAVOR_NAME` in config's model) were
+facts in the wrong home, cycle as symptom, repair = move the fact to its owner —
+cheap precisely because the graph was otherwise clean.
 
-So the formulation (rixo, this discussion): **rule 13 is a forcing function
-against misplacement of concerns, observed through dependencies.** "Concern" is
-judgment, machine-invisible; edges are the only observable the tool has — the
-rule is the projection of "each fact has one home" onto the mechanical plane
-(consistent with the no-shaky-heuristics ruling: the tool never guesses
+So the formulation (rixo, this discussion): **`no-service-cycle` is a forcing
+function against misplacement of concerns, observed through dependencies.**
+"Concern" is judgment, machine-invisible; edges are the only observable the tool
+has — the rule is the projection of "each fact has one home" onto the mechanical
+plane (consistent with the no-shaky-heuristics ruling: the tool never guesses
 concerns, it checks their dependency shadow).
 
-Bounded claim, per the no-overselling rule: 13 catches only misplacement that
-manifests as _mutuality_ — a fact on the wrong side of a drawn line, creating
-two-way knowledge. Over-centralization passes green (a god-kernel everyone
-points at satisfies the sink invariant); one-way misplacement stays judgment
-territory, never mechanical. The unit-dissolving class of misplacement, not
-misplacement in general.
+Bounded claim, per the no-overselling rule: `no-service-cycle` catches only
+misplacement that manifests as _mutuality_ — a fact on the wrong side of a drawn
+line, creating two-way knowledge. Over-centralization passes green (a god-kernel
+everyone points at satisfies the sink invariant); one-way misplacement stays
+judgment territory, never mechanical. The unit-dissolving class of misplacement,
+not misplacement in general.
 
 Three altitudes, one rule — teaching wants them in this order: **value** (free
 movement / misplacement forcing function — names the daily payoff), **contract**
@@ -612,9 +619,9 @@ value level elsewhere, unconnected (see §16).
 
 ## 16. The canon gap — rationale audit (full read, 2026-07-22/23)
 
-What canon invokes for rule 13 (§acyclic): "neither can be extracted, moved, or
-reasoned about independently" — the extraction altitude; §15's value level
-absent _at the rule_. Martin appears only in the lineage footer, not as
+What canon invokes for `no-service-cycle` (§acyclic): "neither can be extracted,
+moved, or reasoned about independently" — the extraction altitude; §15's value
+level absent _at the rule_. Martin appears only in the lineage footer, not as
 authority — the argument is self-contained, but the framing is inherited whole
 from the release-unit world. The missing level only became visible through
 dogfood (findings resolving as misplacement repairs) — evidence canon couldn't
@@ -626,33 +633,37 @@ Full-read sweep (a first one-pass version got two calls wrong — corrected here
   "the architecture's whole point — that internals are free to move — gets
   neutralised by tests that pin them in place" (§ internal-seam testing), and
   §Sharing's kernel example closes "each can be moved independently." The
-  rule-13 touch is therefore a _connection_, not an addition: say at §acyclic
-  that this is the whole-point sentence operating at package scale. Zero new
-  claims.
-- **Rules 2 (barrels) and 12 (private/)**: full argued sections, alternatives
-  priced. Proportionate — counter-intuitive house choices need the defense.
-  Their length is NOT a bar for the rest; one-line whys are the right size for
-  rules whose rationale is uncontroversial (3, 4, 5, 8, 14, 15 fine as they
-  stand).
-- **Rules 10, 11**: fine, already symptom-framed ("runtime in a port file is a
-  sign the adapter hasn't been extracted yet") — §15's style in miniature.
-- **Rules 6/7 (composition)**: the one real page defect — circular: services
-  "can only be imported by assembly" because they are "composition units — must
-  be composed by assembly." The rationale is substantial one section away (§IoC:
-  central control, "no single place to see what's wired to what", code
-  splitting, testability; rule 4's untestability line) but never attached to the
-  rule. Fix = a cross-ref sentence, zero new argument. (On challenge the why
-  came instantly — coupling is how blob forms, hardwired bricks untestable,
-  entangled defects compound — a transcription gap: the author had it, the page
-  skipped attaching it.)
-- **Rule 17 (stateless)**: first-pass "thin" call was WRONG — §Test isolation
-  carries the why ("isolation is structural — the factory closure guarantees
-  it"; independent instances, no shared state). No touch needed.
+  `no-service-cycle` touch is therefore a _connection_, not an addition: say at
+  §acyclic that this is the whole-point sentence operating at package scale.
+  Zero new claims.
+- **`layer-in-path` (barrels) and `private-sealed` (private/)**: full argued
+  sections, alternatives priced. Proportionate — counter-intuitive house choices
+  need the defense. Their length is NOT a bar for the rest; one-line whys are
+  the right size for rules whose rationale is uncontroversial (`chain-purity`,
+  `service-purity`, `blob-quarantine`, `type-only-exempt`, `no-runtime-cycle`,
+  `test-through-contract` fine as they stand).
+- **`ports-types-only`, `unified-port`**: fine, already symptom-framed ("runtime
+  in a port file is a sign the adapter hasn't been extracted yet") — §15's style
+  in miniature.
+- **`service-assembly-only` / `adapter-assembly-only` (composition)**: the one
+  real page defect — circular: services "can only be imported by assembly"
+  because they are "composition units — must be composed by assembly." The
+  rationale is substantial one section away (§IoC: central control, "no single
+  place to see what's wired to what", code splitting, testability;
+  `service-purity`'s untestability line) but never attached to the rule. Fix = a
+  cross-ref sentence, zero new argument. (On challenge the why came instantly —
+  coupling is how blob forms, hardwired bricks untestable, entangled defects
+  compound — a transcription gap: the author had it, the page skipped attaching
+  it.)
+- **`stateless-modules` (stateless)**: first-pass "thin" call was WRONG — §Test
+  isolation carries the why ("isolation is structural — the factory closure
+  guarantees it"; independent instances, no shared state). No touch needed.
 
-The two gaps differ in kind: 6/7 = transcription (why internalized, page skipped
-the attachment). 13 = derivation (value level short even in discussion until
-dogfood supplied evidence) — though even there, canon held the whole-point
-sentence and just never wired it to the rule. Disposition: two scoped
-connection-touches listed in the arch-pass PLAN — deliberately NOT a doc-wide
-"every rule gets a rationale section" mandate; proportion is part of the house
-voice, and most rules are already the right size.
+The two gaps differ in kind: the assembly-only seals = transcription (why
+internalized, page skipped the attachment). `no-service-cycle` = derivation
+(value level short even in discussion until dogfood supplied evidence) — though
+even there, canon held the whole-point sentence and just never wired it to the
+rule. Disposition: two scoped connection-touches listed in the arch-pass PLAN —
+deliberately NOT a doc-wide "every rule gets a rationale section" mandate;
+proportion is part of the house voice, and most rules are already the right
+size.

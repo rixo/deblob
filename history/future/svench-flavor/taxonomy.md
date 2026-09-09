@@ -16,8 +16,8 @@ foundation" with a real second data point. Resolves the UI-zone holes F1–F3
 - **`setContext` IS the assembly act**: providers are assembly nodes,
   receive-and-provide components are _nested assembly_ (existing concept — not a
   new species; kills the "self-assembly service" puzzle).
-- **Pure component = pure-_factory_-like** (closed state = rule 17 closure
-  state), NOT model-like — model is stateless knowledge.
+- **Pure component = pure-_factory_-like** (closed state = `stateless-modules`
+  closure state), NOT model-like — model is stateless knowledge.
 - "Containers should be stores" is positive guidance (flavor guide preaching),
   not law; the enforceable negative: presentation-classified components must not
   import `.service.ts`/`.adapter.ts`/concrete, must not `setContext`.

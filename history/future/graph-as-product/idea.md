@@ -5,7 +5,7 @@ captured: 2026-07-23
 # Graph-as-product — the certified skeleton as leverage, not just defense
 
 Banked from a live discussion (rixo + Fable, 2026-07-22/23 night, cli step 10
-era — same session as the rule-13 raison-d'être work in
+era — same session as the `no-service-cycle` raison-d'être work in
 `../arch-pass/research/nesting-packaging.md` §15–16). Idea card: not committed,
 not scoped; earns its place through the command-inventory rule (anything beyond
 the ruled v0 surface goes through a future card first — this is that card).
@@ -41,11 +41,11 @@ This card opens a sword shop beside the protection business: the offensive line
 is crutches for amnesia and prosthesis for shortsightedness (the two pillars,
 below).
 
-**The metaphor**: we guarantee bones, and — rule 13 ftw — we even guarantee a
-skeleton. We don't guarantee as much as functioning organs, but not as few as
-mere molecules either. And the tool knows the bones, the skeleton, and the names
-(user-provided) attached to them — and can extract and filter them to your
-liking in a blip, no intelligence needed, but for the query.
+**The metaphor**: we guarantee bones, and — `no-service-cycle` ftw — we even
+guarantee a skeleton. We don't guarantee as much as functioning organs, but not
+as few as mere molecules either. And the tool knows the bones, the skeleton, and
+the names (user-provided) attached to them — and can extract and filter them to
+your liking in a blip, no intelligence needed, but for the query.
 
 ## Why the potential is plausibly large (support, Fable)
 
@@ -69,8 +69,8 @@ guaranteed, names not.)
 architecture becomes _queryable_: a port is an open decision point, an adapter
 is one candidate commitment, assembly is the commitment site. "List this
 system's open and committed decisions" is a mechanical query. So is vendor blast
-radius — "what would migrating off X touch" — and rule 4 certifies the answer
-complete (concrete only ever lives in adapters).
+radius — "what would migrating off X touch" — and `service-purity` certifies the
+answer complete (concrete only ever lives in adapters).
 
 **Certified compression for agents.** The skeleton is a summary of the codebase
 that is safe to trust — normally summaries hallucinate or drift; this one is
@@ -100,10 +100,11 @@ been loved pre-AI. What changed is the economics, two pillars:
      cards) + names + blob map. Nothing to redraw.
    - DAG + import-invisibility make "zoom level k" **well-defined and
      sufficient**: to work on service X, load X plus the surfaces (model, ports)
-     of its downward closure — rules 6/7 certify implementations invisible to
-     consumers, rule 15 certifies contract = behavior spec. Small picture,
-     guaranteed not to lie; the guarantee is the whole game — a small picture
-     that might lie forces the redraw anyway.
+     of its downward closure — `service-assembly-only` / `adapter-assembly-only`
+     certify implementations invisible to consumers, `test-through-contract`
+     certifies contract = behavior spec. Small picture, guaranteed not to lie;
+     the guarantee is the whole game — a small picture that might lie forces the
+     redraw anyway.
 
 Possibly related, unresolved (observation, rixo): agents are also lacunary in
 system thinking — instant gratification, solve the case, rarely go after the
@@ -135,7 +136,7 @@ deblob graph --depth=2     # nesting as the zoom axis — see below
 ```
 
 **`--depth` — where the containment instinct finally meets its dulcinée** (rixo,
-at closing). The containment semantics were ruled out of rule 13 (see
+at closing). The containment semantics were ruled out of `no-service-cycle` (see
 `../arch-pass/research/nesting-packaging.md` §8–9): nesting is filing, not
 architecture, and the checker must ignore it. But filing is still _information_
 — someone put a service inside a service when it changes nothing in practice;
@@ -184,7 +185,8 @@ Further query sketches (illustrative only):
 - Portable-knowledge inventory: all model exports — guaranteed pure,
   vendor-free.
 - Commitment map: ports × adapters × assembly sites.
-- Vendor blast radius: adapters touching dependency X (complete per rule 4).
+- Vendor blast radius: adapters touching dependency X (complete per
+  `service-purity`).
 - Use-case catalog: service files with their declared needs.
 - Work partitioning: topo order, bounded contexts, SCC-free guarantees.
 - Skeleton view for onboarding — human or agent.
@@ -217,5 +219,5 @@ skeleton view, downward-closure surfaces, impact direction; nice-to-haves
   refinement and `deblob status` are the natural substrate steps).
 - Feeds/absorbs: `deblob status` future hop; possibly a `deblob map`/query
   family — ruled at graduation, not here.
-- Kin: `../arch-pass/research/nesting-packaging.md` §15 (rule 13's raison d'être
-  — the skeleton guarantee this idea leverages).
+- Kin: `../arch-pass/research/nesting-packaging.md` §15 (`no-service-cycle`'s
+  raison d'être — the skeleton guarantee this idea leverages).

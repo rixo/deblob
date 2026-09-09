@@ -133,8 +133,8 @@ commits-accompany-not-split law). Expect many-to-few:
   independently by rixo at review (the paragraph triggered the question before
   the note's flag was raised — converging evidence the scoping was needed).
   Feedback fix: two closing sentences scoping blindness to the upward relation,
-  component children freely importable, role picks direction, rule 13 enforces
-  one direction per pair. Rides slice 5.
+  component children freely importable, role picks direction, `no-service-cycle`
+  enforces one direction per pair. Rides slice 5.
 
 - Slice 6 (2026-07-23): sales-speech opening ("old pots — in reality, that's all
   we had") misrendered rixo's meaning — read as pots-as-constraint; intended:

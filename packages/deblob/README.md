@@ -99,8 +99,8 @@ Discovery walks upward from cwd; the nearest config wins and its directory
 becomes the project root. No merging, no inheritance. `-c/--config <path>`
 overrides the walk.
 
-A declared `pureLib` is trusted, not verified — the guarantee is only as good as
-the config review. Unlisted third-party imported from a pure layer fires as
+A declared `pure` entry is trusted, not verified — the guarantee is only as good
+as the config review. Unlisted third-party imported from a pure layer fires as
 unclassified: one config line fixes a false positive; the reverse default would
 be a silent hole.
 
