@@ -10,6 +10,8 @@ import type {
   UnverifiedTarget,
 } from "../check/surface.model.ts"
 import type { EdgeTarget, UnresolvedImport } from "../extraction/graph.model.ts"
+import type { RuleId } from "../check/rule.model.ts"
+import { isRuleId, ruleOrder } from "../check/rule.model.ts"
 import type {
   DagViolation,
   LayersViolation,
@@ -55,23 +57,23 @@ const plural = (count: number, noun: string, many = `${noun}s`): string =>
   `${formatCount(count)} ${count === 1 ? noun : many}`
 
 /**
- * A rule citation is one token — `(rule 5)` split across a wrap orphans the
- * number, and `grep "rule 5"` on the output stops matching. Merges the split
- * words back: `rule`/`rules` (with or without the paren) swallows the numbers
- * that follow, riding their commas.
+ * A multi-rule citation is one token — `(service-assembly-only,
+ * type-only-exempt)` split at its comma orphans the second slug, and a grep for
+ * the pair stops matching. Merges the split words back: an opening slug riding
+ * a comma swallows the slugs that follow, through the closing paren. A lone
+ * slug is one word already and needs nothing.
  */
 const mergeCiteTokens = (words: readonly string[]): string[] => {
   const merged: string[] = []
   for (let index = 0; index < words.length; index += 1) {
     let word = words[index] as string
-    if (/^\(?rules?$/.test(word)) {
-      while (
-        index + 1 < words.length &&
-        /^\d+[,;.)]*$/.test(words[index + 1] as string)
-      ) {
+    if (/^\([a-z-]+,$/.test(word) && isRuleId(word.slice(1, -1))) {
+      while (index + 1 < words.length) {
+        const next = words[index + 1] as string
+        if (!/^[a-z-]+[,)]$/.test(next) || !isRuleId(next.slice(0, -1))) break
         index += 1
-        word += ` ${words[index] as string}`
-        if (!(words[index] as string).endsWith(",")) break
+        word += ` ${next}`
+        if (next.endsWith(")")) break
       }
     }
     merged.push(word)
@@ -109,8 +111,15 @@ const targetLabel = (target: EdgeTarget, prefix: string): string =>
       ? `${target.specifier} (declared)`
       : target.specifier
 
-const ruleCite = (rules: readonly number[]): string =>
-  rules.length === 1 ? `rule ${rules[0]}` : `rules ${rules.join(", ")}`
+/**
+ * `(service-purity)` / `(service-purity, type-only-exempt)` — the slug is
+ * self-describing, no word "rule".
+ */
+const ruleCite = (rules: readonly RuleId[]): string => rules.join(", ")
+
+/** The sort wherever output orders rules — the summary's display order. */
+const byRuleOrder = (a: RuleId, b: RuleId): number =>
+  ruleOrder(a) - ruleOrder(b)
 
 const layersMessage = (violation: LayersViolation, prefix: string): string => {
   const target = targetLabel(violation.target, prefix)
@@ -118,16 +127,22 @@ const layersMessage = (violation: LayersViolation, prefix: string): string => {
     return `imports ${target} — unclassified third-party in a pure layer; list it under config key "pure" if it qualifies`
   }
   const { rules, importerLayer } = violation
-  // rule 8 in the citation = this cell's type variant is exempt (06 ruling)
-  const hint = rules.includes(8) ? "; import type is fine" : ""
-  if (rules.includes(6) || rules.includes(7)) {
-    const suffix = rules.includes(6) ? ".service.ts" : ".adapter.ts"
+  // type-only-exempt in the citation = this cell's type variant is exempt
+  // (06 ruling)
+  const hint = rules.includes("type-only-exempt") ? "; import type is fine" : ""
+  if (
+    rules.includes("service-assembly-only") ||
+    rules.includes("adapter-assembly-only")
+  ) {
+    const suffix = rules.includes("service-assembly-only")
+      ? ".service.ts"
+      : ".adapter.ts"
     return `imports ${target} — ${suffix} is assembly-only${hint}`
   }
-  if (rules.includes(5)) {
+  if (rules.includes("blob-quarantine")) {
     return `imports ${target} — only assembly may import blob; extract what you need`
   }
-  if (rules.includes(4)) {
+  if (rules.includes("service-purity")) {
     return importerLayer === "service"
       ? `imports ${target} — service layer cannot depend on concrete${hint}`
       : `imports ${target} — ${importerLayer} must stay pure${hint}`
@@ -236,7 +251,7 @@ const dagBlock = (
     }
     const wiring = violation.hops.some((hop) => hop.wiring)
     push(
-      `services must form a DAG (rule 13); see the sharing progression${
+      `services must form a DAG (no-service-cycle); see the sharing progression${
         wiring
           ? " — (wiring): use a fixture adapter, or move the wiring outside the service tree"
           : ""
@@ -244,7 +259,7 @@ const dagBlock = (
     )
   } else {
     push(
-      "runtime module cycle (rule 14) — works in dev, silently fails minified",
+      "runtime module cycle (no-runtime-cycle) — works in dev, silently fails minified",
     )
   }
   const entangled = violation.members.length - new Set(witness).size
@@ -375,12 +390,13 @@ export const renderCheckResults = (
     list.push(violation)
   }
 
-  // rule number first (13 before 14), then membership — stable block order
+  // rule first (no-service-cycle before no-runtime-cycle — the summary's
+  // order), then membership — stable block order
   const dagOrder = (list: readonly DagViolation[]): DagViolation[] =>
     [...list].sort((a, b) => {
-      const keyA = `${a.rules[0]} ${a.members.join(" ")}`
-      const keyB = `${b.rules[0]} ${b.members.join(" ")}`
-      return keyA < keyB ? -1 : 1
+      const rule = byRuleOrder(a.rules[0] as RuleId, b.rules[0] as RuleId)
+      if (rule !== 0) return rule
+      return a.members.join(" ") < b.members.join(" ") ? -1 : 1
     })
 
   const pushFileGroups = (root: string | null) => {
@@ -451,7 +467,7 @@ export const renderCheckResults = (
 
   if (violations.length > 0) {
     const rules = [...new Set(violations.flatMap((v) => v.rules))].sort(
-      (a, b) => a - b,
+      byRuleOrder,
     )
     lines.push(
       colors.dim(
@@ -683,7 +699,7 @@ export const renderExplain = (
   for (const entry of entries) {
     if (lines.length > 0) lines.push("", "···", "")
     lines.push(
-      colors.strong(`rule ${entry.rule} — ${lowerFirst(entry.title)}`),
+      colors.strong(`${entry.rule} — ${lowerFirst(entry.title)}`),
       "",
       ...wrapPlain(entry.body),
     )
@@ -706,19 +722,24 @@ export const HELP = `deblob — machine-checkable hexagonal architecture for Typ
 Usage
   deblob                       project status + discovery
   deblob check [what...]       run architecture checks (default: all)
-  deblob explain <topic...>    explain rules or checks (4, layers, ...)
+  deblob explain <topic...>    explain rules or checks (service-purity,
+                               layers, ...)
 
 Checks
   dag        service dependencies form a DAG; no module-level runtime
-             cycles (rules 13, 14)
+             cycles (no-service-cycle, no-runtime-cycle)
   layers     dependency matrix by layer suffix; type-only imports exempt
-             by default (rules 1, 4-9)
-  private    private/ is sealed outside its service (rule 12)
+             by default (inward-deps, service-purity, blob-quarantine,
+             service-assembly-only, adapter-assembly-only,
+             type-only-exempt, private-exempt)
+  private    private/ is sealed outside its service (private-sealed)
   barrels    the layer is visible in the import path — no index.ts
-             indirection (rule 2)
-  ports      port files are types only, no runtime exports (rule 10)
+             indirection (layer-in-path)
+  ports      port files are types only, no runtime exports
+             (ports-types-only)
   surface    the exports map matches the layers it fronts — only for
-             packages declaring "deblob": {} in package.json (rules 2, 3)
+             packages declaring "deblob": {} in package.json
+             (layer-in-path, chain-purity)
 
 Options
   -c, --config <path>    config file (default: nearest deblob.config.ts)
@@ -747,11 +768,11 @@ broken rule:
 
   layers  src/invoice/pdf-render.service.ts
     imports node:fs — the service layer cannot depend on concrete
-    implementations (rule 4)
+    implementations (service-purity)
 
 Type-only imports (import type / { type X }) are exempt from composition
-rules by default (rule 8) — a flavor axis: strict flavors opt out in
-deblob.config.ts. Unsuffixed files are blob: legal, unchecked except for
-cycles — labeling is adoption, not a prerequisite (rule 5 guards the
-boundary: only assembly may import blob).
+rules by default (type-only-exempt) — a flavor axis: strict flavors opt
+out in deblob.config.ts. Unsuffixed files are blob: legal, unchecked
+except for cycles — labeling is adoption, not a prerequisite
+(blob-quarantine guards the boundary: only assembly may import blob).
 `

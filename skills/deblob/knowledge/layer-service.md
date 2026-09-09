@@ -16,7 +16,7 @@ data. It orchestrates; it doesn't compute.
 - Factory function returning the API: `createIconsService({ source, store })` —
   one destructured object of dependencies, typed with port types.
 - **Module-level code stays stateless** — state lives inside the factory closure
-  (Rule 17). Each factory call = an independent instance.
+  (`stateless-modules`). Each factory call = an independent instance.
 - May import: model, ports. Never: adapters, other `.service.ts`, concrete I/O
   ([dependency-matrix](dependency-matrix.md)).
 - `.service.ts` is a composition unit: assembly-only import

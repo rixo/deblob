@@ -1,5 +1,7 @@
 ---
-source: docs/architecture.md § Testing through the contract (rules 15–16)
+source:
+  docs/architecture.md § Testing through the contract (`test-through-contract`,
+  `test-setup-assembly`)
 ---
 
 # Testing through the contract

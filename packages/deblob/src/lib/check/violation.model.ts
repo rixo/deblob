@@ -4,12 +4,12 @@
  */
 
 import type { EdgeTarget, Layer } from "../extraction/graph.model.ts"
+import type { RuleId } from "./rule.model.ts"
 
 /**
- * The rulebook the rule numbers cite. `arch` = architecture.md § Summary, the
- * only member in v0 — the discriminant is baked now because the shape freezes
- * once JSON/SARIF output ships; output may omit it while it stays
- * single-valued.
+ * The rulebook the rule ids cite. `arch` = architecture.md § Summary, the only
+ * member in v0 — the discriminant is baked now because the shape freezes once
+ * JSON/SARIF output ships; output may omit it while it stays single-valued.
  */
 export type Ruleset = "arch"
 
@@ -20,10 +20,10 @@ export type LayersViolation = {
   check: "layers"
   ruleset: Ruleset
   /**
-   * Cited rule numbers within the ruleset — a finding may cite two (6+8 when
-   * the hint is "import type is fine").
+   * Cited rules within the ruleset — a finding may cite two (the seal plus
+   * `type-only-exempt` when the hint is "import type is fine").
    */
-  rules: readonly number[]
+  rules: readonly RuleId[]
   /** The offending importer. */
   file: string
   /** Grouping key; `null` = the `blob` bucket. */
@@ -50,8 +50,11 @@ export type LayersViolation = {
 export type PrivateViolation = {
   check: "private"
   ruleset: Ruleset
-  /** Always cites 12 — packaging rule, no kind exemption, no hint variant. */
-  rules: readonly number[]
+  /**
+   * Always `private-sealed` — packaging rule, no kind exemption, no hint
+   * variant.
+   */
+  rules: readonly RuleId[]
   /** The offending importer. */
   file: string
   /** Grouping key; `null` = the `blob` bucket. */
@@ -67,8 +70,8 @@ export type PrivateViolation = {
 export type BarrelsViolation = {
   check: "barrels"
   ruleset: Ruleset
-  /** Always cites 2 — kind- and form-blind, no hint variant. */
-  rules: readonly number[]
+  /** Always `layer-in-path` — kind- and form-blind, no hint variant. */
+  rules: readonly RuleId[]
   /**
    * Attribution side: the index for `barrel-file`, the importer for
    * `index-import`.
@@ -84,8 +87,8 @@ export type BarrelsViolation = {
 export type PortsViolation = {
   check: "ports"
   ruleset: Ruleset
-  /** Always cites 10 — rule 10 read whole; no hint variant. */
-  rules: readonly number[]
+  /** Always `ports-types-only`, read whole; no hint variant. */
+  rules: readonly RuleId[]
   /**
    * Attribution side: the port for `runtime-export` / `runtime-import`, the
    * importer for `runtime-import-of-port`.
@@ -116,8 +119,11 @@ export type PortsViolation = {
 export type SurfaceViolation = {
   check: "surface"
   ruleset: Ruleset
-  /** 3 for a claim/actual mismatch, 2 for an unlabeled entry fronting one. */
-  rules: readonly number[]
+  /**
+   * `chain-purity` for a claim/actual mismatch, `layer-in-path` for an
+   * unlabeled entry fronting one.
+   */
+  rules: readonly RuleId[]
   /** The covered source module the entry reaches — the fix site. */
   file: string
   /** Grouping key; `null` = the `blob` bucket. */
@@ -169,8 +175,11 @@ export type ServiceHop = {
 export type DagViolation = {
   check: "dag"
   ruleset: Ruleset
-  /** 13 for service cycles, 14 for module cycles. */
-  rules: readonly number[]
+  /**
+   * `no-service-cycle` for service cycles, `no-runtime-cycle` for module
+   * cycles.
+   */
+  rules: readonly RuleId[]
   group: DagGroup
   /** The full SCC, sorted — the witness may be a shorter loop through it. */
   members: readonly string[]

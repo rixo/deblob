@@ -445,7 +445,7 @@ export const checkSurface = (
       if (node.layer !== claimed) {
         violations.push({
           ...base,
-          rules: [3],
+          rules: ["chain-purity"],
           shape: "claim-mismatch",
           claimed,
           actual: node.layer,
@@ -456,7 +456,7 @@ export const checkSurface = (
     if (COMPOSITION.has(node.layer)) {
       violations.push({
         ...base,
-        rules: [2],
+        rules: ["layer-in-path"],
         shape: "unlabeled-front",
         fronts: path,
         frontLayer: node.layer,
@@ -467,7 +467,7 @@ export const checkSurface = (
     if (front) {
       violations.push({
         ...base,
-        rules: [2],
+        rules: ["layer-in-path"],
         shape: "unlabeled-front",
         fronts: front.path,
         frontLayer: front.layer,

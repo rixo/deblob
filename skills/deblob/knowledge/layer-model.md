@@ -9,8 +9,8 @@ constants, self-contained factories, core business logic. The most constrained
 layer — and the most valuable: everything else is plumbing you can rewire; model
 is the investment you protect.
 
-The bar is **abstractness** — the opposite of rule 4's "concrete", not of
-"implemented": no contact with the world outside the computation (I/O, time,
+The bar is **abstractness** — the opposite of `service-purity`'s "concrete", not
+of "implemented": no contact with the world outside the computation (I/O, time,
 randomness, platform):
 
 - Depends on nothing outside the model layer — no ports, no concrete imports, no
@@ -18,10 +18,10 @@ randomness, platform):
   packaging) — but mind the DAG: [acyclic](acyclic.md).
 - No ambient environment access — time, randomness, `globalThis` are inputs
   passed by the caller, not discoveries.
-- Modules are stateless (rule 17) — no module-level mutable state, exported or
-  not (top-level `let`, unfrozen collections, anything a closure could capture
-  at module scope); state lives inside factories, and instances are created by
-  callers, never exported.
+- Modules are stateless (`stateless-modules`) — no module-level mutable state,
+  exported or not (top-level `let`, unfrozen collections, anything a closure
+  could capture at module scope); state lives inside factories, and instances
+  are created by callers, never exported.
 - **Self-contained factories are model code** — closure state is fine when the
   factory depends on nothing (domain machines, entities, dependency-free
   reactive stores). A factory taking a port or a service is a composition unit →

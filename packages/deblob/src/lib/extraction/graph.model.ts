@@ -61,16 +61,17 @@ export const specifierMatcher = (
 /**
  * What a flavor can say about a file. Source naming never yields `assembly` —
  * that is granted by the caller's designation matcher — but test naming does
- * (rule 16: test setup is assembly, and opinions live in the flavor); the
- * designation matcher still ORs on top for exotic naming.
+ * (`test-setup-assembly`, and opinions live in the flavor); the designation
+ * matcher still ORs on top for exotic naming.
  */
 export type FlavorLayer = Layer
 
 /**
- * One non-erasable top-level entry of a module — the fact rule 10 reads. `form`
- * is the declaration keyword as written (`const`, `function`, `enum`, …),
- * `"default"` for `export default` expressions, `"statement"` for any other
- * non-erasable statement; `name` is `null` where the grammar gives none.
+ * One non-erasable top-level entry of a module — the fact `ports-types-only`
+ * reads. `form` is the declaration keyword as written (`const`, `function`,
+ * `enum`, …), `"default"` for `export default` expressions, `"statement"` for
+ * any other non-erasable statement; `name` is `null` where the grammar gives
+ * none.
  */
 export type RuntimeEntry = {
   form: string

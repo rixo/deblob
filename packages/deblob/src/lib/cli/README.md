@@ -10,9 +10,10 @@ pin out. The process, streams, and exit codes belong to the driver.
   bare status run, `check` with its check selection and `--explain` /
   `--explain-only` / `--no-color` / `-c` flags, `explain <topic...>`, and help.
   Usage errors are values with teaching messages, never thrown.
-- `KNOWN_CHECKS`, `CHECK_RULES` — the check names and the rule numbers each one
-  cites; `rulesForTopic(topic)` maps an `explain` topic (a rule number, a check
-  name) to rule numbers.
+- `KNOWN_CHECKS`, `CHECK_RULES` — the check names and the rules each one cites;
+  `rulesForTopic(topic)` maps an `explain` topic (a check name, a rule slug) to
+  rules; `isRuleNumber(topic)` spots a 0.0.4-era number so the driver's refusal
+  can say rules are named now.
 - `renderCheckResults(violations, stats, colors, pathPrefix)` — the check
   listing: findings grouped and sorted deterministically, each with its cited
   rules, then the summary line (verdict + inventory: files, size, blob %), the

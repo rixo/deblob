@@ -1,9 +1,10 @@
 import { describe, expect, test } from "vitest"
 
-import { RULE_COUNT } from "../explain/rule-content.model.ts"
+import { RULE_IDS } from "../check/rule.model.ts"
 import {
   CHECK_RULES,
   KNOWN_CHECKS,
+  isRuleNumber,
   parseCli,
   rulesForTopic,
 } from "./cli.model.ts"
@@ -43,11 +44,16 @@ describe("parseCli", () => {
     })
 
     test("explain takes one or many topics — the check footer is pasteable", () => {
-      expect(parseCli(["explain", "rule-4"])).toMatchObject({
-        action: { command: "explain", topics: ["rule-4"] },
+      expect(parseCli(["explain", "service-purity"])).toMatchObject({
+        action: { command: "explain", topics: ["service-purity"] },
       })
-      expect(parseCli(["explain", "2", "5", "ports"])).toMatchObject({
-        action: { command: "explain", topics: ["2", "5", "ports"] },
+      expect(
+        parseCli(["explain", "layer-in-path", "blob-quarantine", "ports"]),
+      ).toMatchObject({
+        action: {
+          command: "explain",
+          topics: ["layer-in-path", "blob-quarantine", "ports"],
+        },
       })
     })
   })
@@ -130,9 +136,9 @@ describe("parseCli", () => {
 
     test("--explain outside check is a usage error", () => {
       expect(errorOf(["--explain"])).toContain("--explain")
-      expect(errorOf(["explain", "rule-4", "--explain-only"])).toContain(
-        "--explain-only",
-      )
+      expect(
+        errorOf(["explain", "service-purity", "--explain-only"]),
+      ).toContain("--explain-only")
     })
 
     test("--explain with --explain-only is contradictory", () => {
@@ -144,45 +150,62 @@ describe("parseCli", () => {
 })
 
 describe("rulesForTopic", () => {
-  test("resolves rule-N and bare N to the rule", () => {
-    expect(rulesForTopic("rule-4")).toEqual([4])
-    expect(rulesForTopic("4")).toEqual([4])
-    expect(rulesForTopic(`rule-${RULE_COUNT}`)).toEqual([RULE_COUNT])
+  test("resolves a slug to the rule — every one in the list", () => {
+    expect(rulesForTopic("service-purity")).toEqual(["service-purity"])
+    for (const id of RULE_IDS) expect(rulesForTopic(id)).toEqual([id])
   })
 
   test("resolves a check name to the rules it cites", () => {
     expect(rulesForTopic("layers")).toEqual(CHECK_RULES.layers)
-    expect(rulesForTopic("ports")).toEqual([10])
+    expect(rulesForTopic("ports")).toEqual(["ports-types-only"])
   })
 
-  test("rejects out-of-range rules and unknown topics", () => {
-    expect(rulesForTopic("rule-0")).toBeNull()
-    expect(rulesForTopic(`rule-${RULE_COUNT + 1}`)).toBeNull()
-    expect(rulesForTopic("0")).toBeNull()
-    expect(rulesForTopic("rule-04")).toBeNull()
+  test("rejects numbers (the 0.0.4 grammar), slug-shaped strangers, and anything else", () => {
+    expect(rulesForTopic("4")).toBeNull()
+    expect(rulesForTopic("rule-4")).toBeNull()
+    expect(rulesForTopic("some-made-up-rule")).toBeNull()
     expect(rulesForTopic("SOME_MADE_UP_TOPIC")).toBeNull()
   })
 })
 
+describe("isRuleNumber", () => {
+  test("spots the old citation forms, nothing else", () => {
+    expect(isRuleNumber("4")).toBe(true)
+    expect(isRuleNumber("rule-4")).toBe(true)
+    expect(isRuleNumber("999")).toBe(true)
+    expect(isRuleNumber("service-purity")).toBe(false)
+    expect(isRuleNumber("rule-x")).toBe(false)
+    expect(isRuleNumber("SOME_MADE_UP_TOPIC")).toBe(false)
+  })
+})
+
 describe("CHECK_RULES", () => {
-  test("pins the detector↔rule map, every rule in range", () => {
+  test("pins the detector↔rule map", () => {
     expect(CHECK_RULES).toEqual({
-      dag: [13, 14],
-      layers: [1, 4, 5, 6, 7, 8, 9],
-      private: [12],
-      barrels: [2],
-      ports: [10],
-      surface: [2, 3],
+      dag: ["no-service-cycle", "no-runtime-cycle"],
+      layers: [
+        "inward-deps",
+        "service-purity",
+        "blob-quarantine",
+        "service-assembly-only",
+        "adapter-assembly-only",
+        "type-only-exempt",
+        "private-exempt",
+      ],
+      private: ["private-sealed"],
+      barrels: ["layer-in-path"],
+      ports: ["ports-types-only"],
+      surface: ["layer-in-path", "chain-purity"],
     })
-    for (const rules of Object.values(CHECK_RULES)) {
-      for (const rule of rules) {
-        expect(rule).toBeGreaterThanOrEqual(1)
-        expect(rule).toBeLessThanOrEqual(RULE_COUNT)
-      }
-    }
   })
 
   test("keys are exactly the known checks", () => {
     expect(Object.keys(CHECK_RULES)).toEqual([...KNOWN_CHECKS])
+  })
+
+  test("no rule slug collides with a check name — the topic grammar resolves checks first", () => {
+    for (const id of RULE_IDS) {
+      expect(KNOWN_CHECKS as readonly string[]).not.toContain(id)
+    }
   })
 })

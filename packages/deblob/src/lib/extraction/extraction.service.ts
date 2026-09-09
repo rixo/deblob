@@ -38,8 +38,8 @@ export const createExtraction = ({
     files: readonly string[]
     /**
      * Assembly designation — ORs on top of the flavor's own classification
-     * (which grants assembly to test naming only, rule 16). The escape hatch
-     * for exotic naming; absent = the flavor's word is final.
+     * (which grants assembly to test naming only, `test-setup-assembly`). The
+     * escape hatch for exotic naming; absent = the flavor's word is final.
      */
     isAssembly?: (path: string) => boolean
     /**

@@ -2,8 +2,8 @@
  * Config vocabulary and defaults — the port-free half of the config surface:
  * error type, coverage constants, teaching messages. Resolution (which holds a
  * live `FlavorResolver`, a port shape) lives one layer out in
- * `config.service.ts` — the model may not know port shapes, rule 1 applied to
- * ourselves by our own check.
+ * `config.service.ts` — the model may not know port shapes, `inward-deps`
+ * applied to ourselves by our own check.
  */
 
 /** Config failures are teaching errors — never violations, never warnings. */

@@ -60,7 +60,7 @@ const lib = (specifier: string): EdgeTarget => ({
 })
 
 describe("checkDag", () => {
-  describe("service cycles (rule 13)", () => {
+  describe("service cycles (`no-service-cycle`)", () => {
     test("fires a 2-node runtime cycle with both carrying edges quoted", () => {
       const g = graph(
         {
@@ -93,7 +93,7 @@ describe("checkDag", () => {
         {
           check: "dag",
           ruleset: "arch",
-          rules: [13],
+          rules: ["no-service-cycle"],
           group: { kind: "cross-service" },
           members: ["billing", "orders"],
           shape: "service-cycle",
@@ -152,7 +152,7 @@ describe("checkDag", () => {
       )
       const [violation] = checkDag(g)
       expect(violation).toMatchObject({
-        rules: [13],
+        rules: ["no-service-cycle"],
         members: ["icons", "icons/manifest"],
         services: ["icons", "icons/manifest"],
       })
@@ -238,7 +238,7 @@ describe("checkDag", () => {
       )
       expect(checkDag(g)).toEqual([
         expect.objectContaining({
-          rules: [13],
+          rules: ["no-service-cycle"],
           hops: [
             expect.objectContaining({
               from: "icons",
@@ -270,7 +270,9 @@ describe("checkDag", () => {
           { from: "c/c.service.ts", to: mod("a/a.service.ts") },
         ],
       )
-      const violations = checkDag(g).filter((v) => v.rules.includes(13))
+      const violations = checkDag(g).filter((v) =>
+        v.rules.includes("no-service-cycle"),
+      )
       expect(violations).toHaveLength(1)
       expect(violations[0]).toMatchObject({
         members: ["a", "b", "c"],
@@ -296,7 +298,9 @@ describe("checkDag", () => {
           { from: "c/c.service.ts", to: mod("a/a.service.ts") },
         ],
       )
-      const violations = checkDag(g).filter((v) => v.rules.includes(13))
+      const violations = checkDag(g).filter((v) =>
+        v.rules.includes("no-service-cycle"),
+      )
       expect(violations).toHaveLength(1)
       expect(violations[0]).toMatchObject({
         members: ["a", "b", "c"],
@@ -321,7 +325,9 @@ describe("checkDag", () => {
           { from: "d/d.service.ts", to: mod("c/c.service.ts") },
         ],
       )
-      const violations = checkDag(g).filter((v) => v.rules.includes(13))
+      const violations = checkDag(g).filter((v) =>
+        v.rules.includes("no-service-cycle"),
+      )
       expect(violations).toHaveLength(2)
       expect(violations.map((v) => v.members)).toEqual([
         ["a", "b"],
@@ -342,7 +348,7 @@ describe("checkDag", () => {
       )
       expect(checkDag(g)).toEqual([
         expect.objectContaining({
-          rules: [13],
+          rules: ["no-service-cycle"],
           hops: [
             expect.objectContaining({ typeOnly: true }),
             expect.objectContaining({ typeOnly: true }),
@@ -433,7 +439,7 @@ describe("checkDag", () => {
     })
   })
 
-  describe("module cycles (rule 14)", () => {
+  describe("module cycles (`no-runtime-cycle`)", () => {
     test("fires a runtime cycle between two blob files, blob bucket", () => {
       const g = graph(
         {
@@ -449,7 +455,7 @@ describe("checkDag", () => {
         {
           check: "dag",
           ruleset: "arch",
-          rules: [14],
+          rules: ["no-runtime-cycle"],
           group: { kind: "blob" },
           members: ["lib/client.ts", "lib/fetchers.ts"],
           shape: "module-cycle",
@@ -471,7 +477,7 @@ describe("checkDag", () => {
       )
       expect(checkDag(g)).toEqual([
         expect.objectContaining({
-          rules: [14],
+          rules: ["no-runtime-cycle"],
           group: { kind: "service", root: "icons" },
         }),
       ])
@@ -490,13 +496,16 @@ describe("checkDag", () => {
       )
       const violations = checkDag(g)
       expect(violations).toHaveLength(2)
-      expect(violations.map((v) => v.rules)).toEqual([[13], [14]])
+      expect(violations.map((v) => v.rules)).toEqual([
+        ["no-service-cycle"],
+        ["no-runtime-cycle"],
+      ])
       expect(violations[1]).toMatchObject({
         group: { kind: "cross-service" },
       })
     })
 
-    test("fires through an unowned file while rule 13 stays silent — no service-edge transit", () => {
+    test("fires through an unowned file while `no-service-cycle` stays silent — no service-edge transit", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -512,7 +521,7 @@ describe("checkDag", () => {
       const violations = checkDag(g)
       expect(violations).toHaveLength(1)
       expect(violations[0]).toMatchObject({
-        rules: [14],
+        rules: ["no-runtime-cycle"],
         group: { kind: "cross-service" },
         files: ["a/x.model.ts", "lib/util.ts", "b/y.model.ts"],
       })
@@ -554,7 +563,7 @@ describe("checkDag", () => {
       ])
       expect(checkDag(g)).toEqual([
         expect.objectContaining({
-          rules: [14],
+          rules: ["no-runtime-cycle"],
           members: ["lib/loop.ts"],
           files: ["lib/loop.ts"],
         }),
@@ -574,7 +583,9 @@ describe("checkDag", () => {
             { from: "lib/b.ts", to: mod("lib/a.ts") },
           ],
         )
-        expect(checkDag(g)).toEqual([expect.objectContaining({ rules: [14] })])
+        expect(checkDag(g)).toEqual([
+          expect.objectContaining({ rules: ["no-runtime-cycle"] }),
+        ])
       },
     )
   })

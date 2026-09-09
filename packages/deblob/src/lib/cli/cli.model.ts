@@ -7,7 +7,8 @@
 
 import { parseArgs } from "node:util"
 
-import { RULE_COUNT } from "../explain/rule-content.model.ts"
+import type { RuleId } from "../check/rule.model.ts"
+import { isRuleId } from "../check/rule.model.ts"
 
 /** Checks, help order = run order. */
 export const KNOWN_CHECKS = [
@@ -26,13 +27,21 @@ export type CheckName = (typeof KNOWN_CHECKS)[number]
  * PLAN's coverage table made code. Mirrors the citations the detectors can emit
  * (pinned against them in the spec).
  */
-export const CHECK_RULES: Readonly<Record<CheckName, readonly number[]>> = {
-  dag: [13, 14],
-  layers: [1, 4, 5, 6, 7, 8, 9],
-  private: [12],
-  barrels: [2],
-  ports: [10],
-  surface: [2, 3],
+export const CHECK_RULES: Readonly<Record<CheckName, readonly RuleId[]>> = {
+  dag: ["no-service-cycle", "no-runtime-cycle"],
+  layers: [
+    "inward-deps",
+    "service-purity",
+    "blob-quarantine",
+    "service-assembly-only",
+    "adapter-assembly-only",
+    "type-only-exempt",
+    "private-exempt",
+  ],
+  private: ["private-sealed"],
+  barrels: ["layer-in-path"],
+  ports: ["ports-types-only"],
+  surface: ["layer-in-path", "chain-purity"],
 }
 
 export type CliAction =
@@ -68,17 +77,22 @@ const isKnownCheck = (name: string): name is CheckName =>
   (KNOWN_CHECKS as readonly string[]).includes(name)
 
 /**
- * Explain topics: `rule-N`, bare `N` (the check footer cites bare numbers), or
- * a check name → the rules it cites. `null` = unknown topic.
+ * Explain topics: a check name → the rules it cites, or a rule slug (the check
+ * footer prints them). Check names resolve first; the spec forbids a slug from
+ * colliding with one. `null` = unknown topic.
  */
-export const rulesForTopic = (topic: string): readonly number[] | null => {
-  const match = /^(?:rule-)?([1-9][0-9]*)$/.exec(topic)
-  if (match) {
-    const rule = Number(match[1])
-    return rule >= 1 && rule <= RULE_COUNT ? [rule] : null
-  }
-  return isKnownCheck(topic) ? CHECK_RULES[topic] : null
+export const rulesForTopic = (topic: string): readonly RuleId[] | null => {
+  if (isKnownCheck(topic)) return CHECK_RULES[topic]
+  return isRuleId(topic) ? [topic] : null
 }
+
+/**
+ * A topic shaped like a 0.0.2–0.0.4 citation (`4`, `rule-4`): unknown like any
+ * other, but its refusal teaches that rules are named now. Old logs and specs
+ * are the only source of such a topic — a number never resolves.
+ */
+export const isRuleNumber = (topic: string): boolean =>
+  /^(?:rule-)?[0-9]+$/.test(topic)
 
 export const parseCli = (argv: readonly string[]): ParsedCli | UsageError => {
   let parsed
@@ -173,7 +187,7 @@ export const parseCli = (argv: readonly string[]): ParsedCli | UsageError => {
     if (topics.length === 0) {
       return {
         error:
-          "explain needs a topic — rules (rule-4, or plain numbers as the check footer prints them) or check names (layers)",
+          "explain needs a topic — rule names (service-purity, as the check footer prints them) or check names (layers)",
       }
     }
     return withAction({ command: "explain", topics })

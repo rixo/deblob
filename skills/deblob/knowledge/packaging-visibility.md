@@ -15,9 +15,9 @@ source:
 - **Everything not under `private/` is public.** Aligns with the language (JS is
   public-by-default at every level) and with reality (90%+ of a service's
   contents are designed for external consumption).
-- **`private/` is the only visibility boundary** (Rule 12). Nothing outside the
-  containing service imports from it — **types included** (packaging rule; the
-  type-only exemption is composition-scoped only). Applies fractally:
+- **`private/` is the only visibility boundary** (`private-sealed`). Nothing
+  outside the containing service imports from it — **types included** (packaging
+  rule; the type-only exemption is composition-scoped only). Applies fractally:
   `private/model.ts`, `private/child-service/`.
 - The tradeoff is owned: public-by-default demands awareness of what you export.
   The alternatives are worse — barrels (rules unenforceable), a `public/`

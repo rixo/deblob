@@ -1,4 +1,4 @@
-// the crossed service identity seals this to assembly (rule 6)
+// the crossed service identity seals this to assembly (service-assembly-only)
 import { createCheckoutService } from "@fixture/billing/checkout.service"
 // the crossed model claim is pure for this importer — no `pure` line
 import { SOME_MADE_UP_RATE } from "@fixture/billing/totals.model"

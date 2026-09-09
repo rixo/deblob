@@ -23,9 +23,12 @@ import type {
   ResolveSurfaceOptions,
   SurfaceReport,
 } from "../../lib/check/surface.model.ts"
+import type { RuleId } from "../../lib/check/rule.model.ts"
+import { ruleOrder } from "../../lib/check/rule.model.ts"
 import type { Violation } from "../../lib/check/violation.model.ts"
 import type { CheckName, ParsedCli } from "../../lib/cli/cli.model.ts"
 import {
+  isRuleNumber,
   parseCli,
   rulesForTopic,
   KNOWN_CHECKS,
@@ -98,6 +101,10 @@ export type MainIo = {
   stderr: Writer
   env: Readonly<Record<string, string | undefined>>
 }
+
+/** The sort wherever output orders rules — the summary's display order. */
+const byRuleOrder = (a: RuleId, b: RuleId): number =>
+  ruleOrder(a) - ruleOrder(b)
 
 const colorsFor = (io: MainIo, noColor: boolean): Colors => {
   if (noColor || (io.env["NO_COLOR"] ?? "") !== "") return NO_COLORS
@@ -332,7 +339,7 @@ const runCheck = async (
     pathPrefixOf(io.cwd, config.root),
   )
   const firedRules = [...new Set(violations.flatMap((v) => v.rules))].sort(
-    (a, b) => a - b,
+    byRuleOrder,
   )
   const explanations =
     (action.explain || action.explainOnly) && firedRules.length > 0
@@ -340,6 +347,7 @@ const runCheck = async (
           readExplainEntries({
             contentRoot: CONTENT_ROOT,
             rules: firedRules,
+            version: VERSION,
           }),
           colors,
         )
@@ -395,7 +403,7 @@ export const main = async (io: MainIo): Promise<number> => {
     case "check":
       return runCheck(io, parsed, action, colors)
     case "explain": {
-      const rules = new Set<number>()
+      const rules = new Set<RuleId>()
       const unknown = action.topics.filter((topic) => {
         const topicRules = rulesForTopic(topic)
         if (topicRules === null) return true
@@ -403,8 +411,11 @@ export const main = async (io: MainIo): Promise<number> => {
         return false
       })
       if (unknown.length > 0) {
+        // a number is a 0.0.4-era citation: refused like any unknown topic,
+        // with the line that says where the names are
+        const numbered = unknown.some(isRuleNumber)
         io.stderr.write(
-          `unknown ${unknown.length === 1 ? "topic" : "topics"} ${unknown.map((topic) => `"${topic}"`).join(", ")} — rules (rule-4 or plain 4) or check names: ${KNOWN_CHECKS.join(", ")}\n`,
+          `unknown ${unknown.length === 1 ? "topic" : "topics"} ${unknown.map((topic) => `"${topic}"`).join(", ")} — rule names (service-purity) or check names: ${KNOWN_CHECKS.join(", ")}${numbered ? "\nrule numbers are gone since 0.0.5: rules are named — deblob check prints the names, deblob explain <check> lists a check's" : ""}\n`,
         )
         return 2
       }
@@ -412,7 +423,8 @@ export const main = async (io: MainIo): Promise<number> => {
         renderExplain(
           readExplainEntries({
             contentRoot: CONTENT_ROOT,
-            rules: [...rules].sort((a, b) => a - b),
+            rules: [...rules].sort(byRuleOrder),
+            version: VERSION,
           }),
           colors,
         ),

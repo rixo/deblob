@@ -1,5 +1,7 @@
 ---
-source: docs/architecture.md § The acyclic dependency rule (rules 13–14)
+source:
+  docs/architecture.md § The acyclic dependency rule (`no-service-cycle`,
+  `no-runtime-cycle`)
 ---
 
 # The acyclic dependency rule
@@ -13,7 +15,7 @@ plus B.service→A.model is still a cycle, and neither service can be extracted,
 moved, or reasoned about independently. When a cycle threatens, apply the
 sharing progression ([sharing](sharing.md)). Type-only imports count as edges
 here (packaging, not composition — see [composition-rules](composition-rules.md)
-rule 8).
+`type-only-exempt`).
 
 **Module level (sanity).** No circular runtime imports between files, even
 within one service: circular ESM typically works in dev and **silently fails in

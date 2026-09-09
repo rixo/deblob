@@ -1,8 +1,8 @@
 /**
- * `check ports` — rule 10 read whole: ports are inert, so runtime content in a
- * port file and runtime edges incident to one — either end — are defects. No
- * options: rule 10 has no exemption axis. Pure: classified graph in, violation
- * set out — no IO, no formatting, no ordering.
+ * `check ports` — `ports-types-only` read whole: ports are inert, so runtime
+ * content in a port file and runtime edges incident to one — either end — are
+ * defects. No options: `ports-types-only` has no exemption axis. Pure:
+ * classified graph in, violation set out — no IO, no formatting, no ordering.
  */
 
 import type { ImportGraph, ModuleNode } from "../extraction/graph.model.ts"
@@ -27,7 +27,7 @@ export const checkPorts = (graph: ImportGraph): PortsViolation[] => {
       violations.push({
         check: "ports",
         ruleset: "arch",
-        rules: [10],
+        rules: ["ports-types-only"],
         file: node.path,
         serviceRoot: node.serviceRoot,
         shape: "runtime-export",
@@ -50,7 +50,7 @@ export const checkPorts = (graph: ImportGraph): PortsViolation[] => {
       violations.push({
         check: "ports",
         ruleset: "arch",
-        rules: [10],
+        rules: ["ports-types-only"],
         file: importer.path,
         serviceRoot: importer.serviceRoot,
         shape: "runtime-import",
@@ -60,7 +60,7 @@ export const checkPorts = (graph: ImportGraph): PortsViolation[] => {
       violations.push({
         check: "ports",
         ruleset: "arch",
-        rules: [10],
+        rules: ["ports-types-only"],
         file: importer.path,
         serviceRoot: importer.serviceRoot,
         shape: "runtime-import-of-port",

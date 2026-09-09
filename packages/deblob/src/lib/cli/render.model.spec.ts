@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest"
 
+import type { RuleId } from "../check/rule.model.ts"
 import type {
   BarrelsViolation,
   DagViolation,
@@ -29,7 +30,7 @@ const layersViolation = (
 ): LayersViolation => ({
   check: "layers",
   ruleset: "arch",
-  rules: [4],
+  rules: ["service-purity"],
   file: "src/invoice/pdf-render.service.ts",
   serviceRoot: "src/invoice",
   importerLayer: "service",
@@ -48,7 +49,7 @@ const layersViolation = (
 const privateViolation = (): PrivateViolation => ({
   check: "private",
   ruleset: "arch",
-  rules: [12],
+  rules: ["private-sealed"],
   file: "src/billing/stripe.adapter.ts",
   serviceRoot: "src/billing",
   target: { type: "module", path: "src/invoice/private/totals.ts" },
@@ -61,7 +62,7 @@ const barrelsViolation = (
 ): BarrelsViolation => ({
   check: "barrels",
   ruleset: "arch",
-  rules: [2],
+  rules: ["layer-in-path"],
   file: "src/invoice/index.ts",
   serviceRoot: "src/invoice",
   target: { type: "module", path: "src/invoice/pdf-render.service.ts" },
@@ -75,7 +76,7 @@ const portsViolation = (
   ({
     check: "ports",
     ruleset: "arch",
-    rules: [10],
+    rules: ["ports-types-only"],
     file: "src/invoice/ports/renderer.ts",
     serviceRoot: "src/invoice",
     shape: "runtime-export",
@@ -106,23 +107,24 @@ describe("renderCheckResults", () => {
         "src/billing",
         "  src/billing/stripe.adapter.ts",
         "    private  imports src/invoice/private/totals.ts — private/ is sealed",
-        "             outside its service (rule 12)",
+        "             outside its service (private-sealed)",
         "",
         "src/invoice",
         "  src/invoice/pdf-render.service.ts",
         "    layers   imports node:fs — service layer cannot depend on concrete",
-        "             (rule 4)",
+        "             (service-purity)",
         "",
         "2 violations (1 layers, 1 private) · 214 files · 218kb · 25% blob",
         "12 services · 380 imports",
-        "why: deblob explain 4 12 · or rerun with --explain",
+        "why: deblob explain service-purity private-sealed · or rerun with --explain",
         "",
       ].join("\n"),
     )
   })
 
-  test("rule citations never split across wrapped lines", () => {
-    // slide the citation over the wrap boundary — no orphaned "(rule" / "8)"
+  test("a multi-rule citation never splits across wrapped lines", () => {
+    // slide the citation over the wrap boundary — the list stays whole on one
+    // line, never "(service-assembly-only," orphaned from "type-only-exempt)"
     for (let pad = 0; pad <= 60; pad += 1) {
       const target = {
         type: "module",
@@ -130,17 +132,41 @@ describe("renderCheckResults", () => {
       } as const
       const output = renderCheckResults(
         [
-          layersViolation({ rules: [5], target }),
-          layersViolation({ rules: [6, 8], target }),
+          layersViolation({ rules: ["blob-quarantine"], target }),
+          layersViolation({
+            rules: ["service-assembly-only", "type-only-exempt"],
+            target,
+          }),
         ],
         STATS,
         NO_COLORS,
       )
-      for (const line of output.split("\n")) {
-        expect(line).not.toMatch(/\(?rules?$/)
-        expect(line).not.toMatch(/^\s*\d+[,)]/)
-      }
+      const lines = output.split("\n")
+      expect(
+        lines.some((line) =>
+          line.endsWith("(service-assembly-only, type-only-exempt)"),
+        ),
+        output,
+      ).toBe(true)
+      expect(lines.some((line) => line.endsWith("(blob-quarantine)"))).toBe(
+        true,
+      )
     }
+  })
+
+  test("the footer orders rules as the summary does, not alphabetically", () => {
+    const output = renderCheckResults(
+      [
+        privateViolation(),
+        layersViolation({ rules: ["service-purity", "type-only-exempt"] }),
+        barrelsViolation(),
+      ],
+      STATS,
+      NO_COLORS,
+    )
+    expect(output).toContain(
+      "why: deblob explain layer-in-path service-purity type-only-exempt private-sealed · or rerun with --explain",
+    )
   })
 
   test("pathPrefix lands on every module path, never on package specifiers", () => {
@@ -269,10 +295,10 @@ describe("renderCheckResults", () => {
         " ",
       )
 
-    test("seal violations carry the import-type hint when rule 8 is cited", () => {
+    test("seal violations carry the import-type hint when type-only-exempt is cited", () => {
       const output = message(
         layersViolation({
-          rules: [6, 8],
+          rules: ["service-assembly-only", "type-only-exempt"],
           file: "src/billing/invoice-client.service.ts",
           serviceRoot: "src/billing",
           target: {
@@ -284,25 +310,26 @@ describe("renderCheckResults", () => {
       )
       expect(output).toContain(".service.ts is assembly-only")
       expect(output).toContain("import type is fine")
-      expect(output).toContain("(rules 6, 8)")
+      expect(output).toContain("(service-assembly-only, type-only-exempt)")
     })
 
     test("seal violations without the exemption carry no hint", () => {
       const output = message(
         layersViolation({
-          rules: [7],
+          rules: ["adapter-assembly-only"],
           target: { type: "module", path: "src/billing/stripe.adapter.ts" },
           targetClass: "adapters",
         }),
       )
       expect(output).toContain(".adapter.ts is assembly-only")
       expect(output).not.toContain("import type is fine")
+      expect(output).toContain("(adapter-assembly-only)")
     })
 
     test("blob target cites the extraction remedy", () => {
       const output = message(
         layersViolation({
-          rules: [5],
+          rules: ["blob-quarantine"],
           target: { type: "module", path: "src/lib/helpers.ts" },
           targetClass: "blob",
         }),
@@ -313,7 +340,7 @@ describe("renderCheckResults", () => {
     test("model purity wording differs from the service one", () => {
       const output = message(
         layersViolation({
-          rules: [1, 4],
+          rules: ["inward-deps", "service-purity"],
           file: "src/invoice/model/totals.model.ts",
           importerLayer: "model",
         }),
@@ -324,7 +351,7 @@ describe("renderCheckResults", () => {
     test("a matrix cell outside the named wordings falls back to the generic form", () => {
       const output = message(
         layersViolation({
-          rules: [1],
+          rules: ["inward-deps"],
           file: "src/invoice/fs-store.adapter.ts",
           importerLayer: "adapters",
           target: { type: "module", path: "src/main.ts" },
@@ -337,7 +364,7 @@ describe("renderCheckResults", () => {
     test("model inward-only cell names its allowed set", () => {
       const output = message(
         layersViolation({
-          rules: [1],
+          rules: ["inward-deps"],
           file: "src/invoice/model/schedule.model.ts",
           importerLayer: "model",
           target: { type: "module", path: "src/invoice/renderer.port.ts" },
@@ -350,7 +377,7 @@ describe("renderCheckResults", () => {
     test("inward-only cells name the allowed set", () => {
       const output = message(
         layersViolation({
-          rules: [1],
+          rules: ["inward-deps"],
           file: "src/invoice/ports/renderer.ts",
           importerLayer: "ports",
           target: {
@@ -366,7 +393,7 @@ describe("renderCheckResults", () => {
     test("unclassified lib points at the `pure` escape hatch", () => {
       const output = message(
         layersViolation({
-          rules: [4],
+          rules: ["service-purity"],
           shape: "unclassified-lib",
           target: {
             type: "external",
@@ -384,7 +411,7 @@ describe("renderCheckResults", () => {
     test("marks a declared external leaf so the cell reads as declared, not a resolver accident", () => {
       const output = message(
         layersViolation({
-          rules: [4, 8],
+          rules: ["service-purity", "type-only-exempt"],
           target: {
             type: "external",
             specifier: "$made-up:tokens.scss",
@@ -401,7 +428,7 @@ describe("renderCheckResults", () => {
       const output = message({
         check: "surface",
         ruleset: "arch",
-        rules: [3],
+        rules: ["chain-purity"],
         file: "src/stripe.adapter.ts",
         serviceRoot: "src",
         subpath: "./totals.model",
@@ -413,7 +440,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain('is exported as "./totals.model" —')
       expect(output).toContain("claims model")
       expect(output).toContain("the file is adapters")
-      expect(output).toContain("(rule 3)")
+      expect(output).toContain("(chain-purity)")
     })
 
     test("names the built target a source wears when reached through the mirror", () => {
@@ -421,7 +448,7 @@ describe("renderCheckResults", () => {
         {
           check: "surface",
           ruleset: "arch",
-          rules: [2],
+          rules: ["layer-in-path"],
           file: "src/index.ts",
           serviceRoot: "src",
           subpath: ".",
@@ -440,7 +467,7 @@ describe("renderCheckResults", () => {
       const direct = message({
         check: "surface",
         ruleset: "arch",
-        rules: [2],
+        rules: ["layer-in-path"],
         file: "src/checkout.service.ts",
         serviceRoot: "src",
         subpath: "./checkout",
@@ -453,7 +480,7 @@ describe("renderCheckResults", () => {
       const chained = message({
         check: "surface",
         ruleset: "arch",
-        rules: [2],
+        rules: ["layer-in-path"],
         file: "src/index.ts",
         serviceRoot: "src",
         subpath: ".",
@@ -463,7 +490,7 @@ describe("renderCheckResults", () => {
         frontLayer: "service",
       })
       expect(chained).toContain("fronting service (src/checkout.service.ts)")
-      expect(chained).toContain("(rule 2)")
+      expect(chained).toContain("(layer-in-path)")
     })
 
     test("barrel shapes: re-export at the index, direct-import remedy at the importer", () => {
@@ -531,7 +558,7 @@ describe("renderCheckResults", () => {
       ({
         check: "dag",
         ruleset: "arch",
-        rules: [13],
+        rules: ["no-service-cycle"],
         group: { kind: "cross-service" },
         members: ["src/billing", "src/orders"],
         shape: "service-cycle",
@@ -565,7 +592,7 @@ describe("renderCheckResults", () => {
       ({
         check: "dag",
         ruleset: "arch",
-        rules: [14],
+        rules: ["no-runtime-cycle"],
         group: { kind: "blob" },
         members: ["src/lib/api/client.ts", "src/lib/utils/fetchers.ts"],
         shape: "module-cycle",
@@ -583,18 +610,18 @@ describe("renderCheckResults", () => {
           "           src/orders/model/order.ts)",
           "           orders → billing (src/orders/checkout.service.ts →",
           "           src/billing/ports/payment.ts)",
-          "           services must form a DAG (rule 13); see the sharing",
+          "           services must form a DAG (no-service-cycle); see the sharing",
           "           progression",
           "",
           "1 violation (1 dag) · 214 files · 218kb · 25% blob",
           "12 services · 380 imports",
-          "why: deblob explain 13 · or rerun with --explain",
+          "why: deblob explain no-service-cycle · or rerun with --explain",
           "",
         ].join("\n"),
       )
     })
 
-    test("orders blocks in a bucket by rule, then membership", () => {
+    test("orders blocks in a bucket by rule (the summary's order), then membership", () => {
       const output = renderCheckResults(
         [
           moduleCycle({
@@ -622,6 +649,22 @@ describe("renderCheckResults", () => {
       expect(reversed).toBe(output)
     })
 
+    test("same-rule blocks in a bucket order by membership, either input order", () => {
+      const early = moduleCycle({
+        members: ["src/lib/aaa.ts", "src/lib/bbb.ts"],
+        files: ["src/lib/aaa.ts", "src/lib/bbb.ts"],
+      } as Partial<DagViolation>)
+      const late = moduleCycle({
+        members: ["src/lib/yyy.ts", "src/lib/zzz.ts"],
+        files: ["src/lib/yyy.ts", "src/lib/zzz.ts"],
+      } as Partial<DagViolation>)
+      const output = renderCheckResults([late, early], STATS, NO_COLORS)
+      expect(output.indexOf("src/lib/aaa.ts ⇄")).toBeLessThan(
+        output.indexOf("src/lib/yyy.ts ⇄"),
+      )
+      expect(renderCheckResults([early, late], STATS, NO_COLORS)).toBe(output)
+    })
+
     test("renders the module cycle in the blob bucket, last", () => {
       const output = renderCheckResults(
         [moduleCycle(), serviceCycle()],
@@ -634,7 +677,7 @@ describe("renderCheckResults", () => {
         "  dag      src/lib/api/client.ts ⇄ src/lib/utils/fetchers.ts",
       )
       expect(output).toContain(
-        "runtime module cycle (rule 14) — works in dev, silently fails",
+        "runtime module cycle (no-runtime-cycle) — works in dev,",
       )
     })
 
@@ -1023,22 +1066,26 @@ describe("renderUnverified", () => {
 })
 
 describe("renderExplain", () => {
-  const entry = (rule: number, cards: { slug: string; text: string }[]) => ({
+  const entry = (rule: RuleId, cards: { slug: string; text: string }[]) => ({
     rule,
     title: "Some made-up rule title",
     body: "Body of the made-up rule, short enough to stay one line.",
     cards,
-    url: `https://github.com/rixo/deblob/blob/main/docs/architecture.md#rule-${rule}`,
+    url: `https://github.com/rixo/deblob/blob/v9.9.9-made-up/docs/architecture.md#${rule}`,
   })
 
-  test("prints heading (lowercased title), body, card, url", () => {
+  test("prints heading (slug — lowercased title), body, card, the url as given", () => {
     const output = renderExplain(
-      [entry(4, [{ slug: "made-up-card", text: "# Card\n\ncard body\n" }])],
+      [
+        entry("service-purity", [
+          { slug: "made-up-card", text: "# Card\n\ncard body\n" },
+        ]),
+      ],
       NO_COLORS,
     )
     expect(output).toBe(
       [
-        "rule 4 — some made-up rule title",
+        "service-purity — some made-up rule title",
         "",
         "Body of the made-up rule, short enough to stay one line.",
         "",
@@ -1049,7 +1096,7 @@ describe("renderExplain", () => {
         "card body",
         "",
         "full text:",
-        "https://github.com/rixo/deblob/blob/main/docs/architecture.md#rule-4",
+        "https://github.com/rixo/deblob/blob/v9.9.9-made-up/docs/architecture.md#service-purity",
         "",
       ].join("\n"),
     )
@@ -1058,7 +1105,10 @@ describe("renderExplain", () => {
   test("a card cited by several rules prints once, later citations point up", () => {
     const shared = { slug: "shared-card", text: "shared card body" }
     const output = renderExplain(
-      [entry(6, [shared]), entry(7, [shared])],
+      [
+        entry("service-assembly-only", [shared]),
+        entry("adapter-assembly-only", [shared]),
+      ],
       NO_COLORS,
     )
     expect(output.match(/shared card body/g)).toHaveLength(1)
@@ -1066,11 +1116,29 @@ describe("renderExplain", () => {
     expect(output).toContain("···")
   })
 
+  test("only a rule list rides the wrap whole — a paren list of other words wraps like prose", () => {
+    // 54 + " (service-purity," fills the width exactly; the next token decides
+    const lead = "x".repeat(54)
+    const firstLineOf = (tail: string) =>
+      renderExplain(
+        [{ ...entry("inward-deps", []), body: `${lead} ${tail} end` }],
+        NO_COLORS,
+      ).split("\n")[2] as string
+    expect(firstLineOf("(service-purity, type-only-exempt)")).toBe(lead)
+    expect(firstLineOf("(service-purity, made-up)")).toBe(
+      `${lead} (service-purity,`,
+    )
+    expect(firstLineOf("(service-purity, 42)")).toBe(`${lead} (service-purity,`)
+  })
+
   test("wraps a long body at the output width", () => {
-    const long = entry(1, [])
+    const long = entry("inward-deps", [])
     long.body = Array.from({ length: 30 }, () => "word").join(" ")
     const output = renderExplain([long], NO_COLORS)
+    // the URL is one token and never wraps — a pinned URL with a slug
+    // anchor runs past the width by design
     for (const line of output.split("\n")) {
+      if (line.startsWith("https://")) continue
       expect(line.length).toBeLessThanOrEqual(72)
     }
   })
@@ -1108,5 +1176,13 @@ describe("help screens", () => {
   test("both help screens carry dag — the fiction's full check list", () => {
     expect(HELP).toContain("dag        service dependencies form a DAG")
     expect(CHECK_HELP).toContain("deblob check dag layers")
+  })
+
+  test("help screens cite rules by slug, never by number", () => {
+    for (const screen of [HELP, CHECK_HELP]) {
+      expect(screen).not.toMatch(/\brules? [0-9]/)
+    }
+    expect(HELP).toContain("(private-sealed)")
+    expect(CHECK_HELP).toContain("(service-purity)")
   })
 })

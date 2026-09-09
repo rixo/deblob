@@ -1,5 +1,5 @@
 ---
-source: docs/architecture.md § Summary (rules 6–11)
+source: docs/architecture.md § Summary, composition rules
 ---
 
 # Composition rules

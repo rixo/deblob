@@ -171,8 +171,8 @@ The questions every implementer hits in the first week, answered from the
   the moment it does. The reverse flows freely: ports use model types at will
   (`model < ports`). And no runtime code, ever — no constants, no enums, no
   functions, no defaults: runtime in a port file means a model or adapter
-  extraction is pending (Rule 10). Runtime companions (discriminant constants,
-  type guards) are model code.
+  extraction is pending (`ports-types-only`). Runtime companions (discriminant
+  constants, type guards) are model code.
 - **Type-only imports are exempt from composition rules — not from packaging
   rules.** `import type { IconsService } from "../icons/icons.service"` is legal
   anywhere; so is the `IconsService["list"]` shorthand, and `Pick` to scope a
@@ -186,9 +186,9 @@ The questions every implementer hits in the first week, answered from the
 ## 5. No barrels — and what packaging does instead
 
 **Within the codebase: there is no `index.ts`. No exceptions.** (Architecture
-Rule 2: the layer must be visible in the import path; a barrel erases it.) A
-feature barrel re-exporting model + service + adapters is tech debt to be
-deblob'd, not a convenience.
+rule `layer-in-path`: the layer must be visible in the import path; a barrel
+erases it.) A feature barrel re-exporting model + service + adapters is tech
+debt to be deblob'd, not a convenience.
 
 At the **package boundary**, the intent is the same — named subpaths keep the
 layer visible at package scale:

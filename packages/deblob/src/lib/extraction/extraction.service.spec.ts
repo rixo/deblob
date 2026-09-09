@@ -379,7 +379,7 @@ describe("extractGraph over the forms fixture", () => {
     expect(graph.modules.get("src/dep.ts")).toMatchObject({ layer: "blob" })
   })
 
-  describe("runtime content — the fact rule 10 reads", () => {
+  describe("runtime content — the fact ports-types-only reads", () => {
     test("collects every non-erasable top-level entry, statement order", () => {
       const graph = extractForms()
       expect(

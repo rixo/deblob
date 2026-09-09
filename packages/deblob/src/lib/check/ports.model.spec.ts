@@ -70,7 +70,7 @@ const entry = (overrides: Partial<RuntimeEntry> = {}): RuntimeEntry => ({
 })
 
 describe("checkPorts", () => {
-  describe("runtime-export — runtime content in a port file (rule 10)", () => {
+  describe("runtime-export — runtime content in a port file (`ports-types-only`)", () => {
     test("fires on a runtime export, carrying the declaration's form and name", () => {
       const g = graph({
         "invoice/ports/renderer.ts": {
@@ -83,7 +83,7 @@ describe("checkPorts", () => {
         {
           check: "ports",
           ruleset: "arch",
-          rules: [10],
+          rules: ["ports-types-only"],
           file: "invoice/ports/renderer.ts",
           serviceRoot: "invoice",
           shape: "runtime-export",
@@ -119,7 +119,7 @@ describe("checkPorts", () => {
     })
 
     test.each(["model", "service", "adapters", "assembly", "blob"] as const)(
-      "stays green on runtime content in a %s file — rule 10 binds ports only",
+      "stays green on runtime content in a %s file — `ports-types-only` binds ports only",
       (layer) => {
         const g = graph({
           "invoice/thing.ts": {
@@ -133,7 +133,7 @@ describe("checkPorts", () => {
     )
   })
 
-  describe("runtime-import — a runtime edge out of a port file (rule 10)", () => {
+  describe("runtime-import — a runtime edge out of a port file (`ports-types-only`)", () => {
     const port = (
       to: EdgeTarget,
       edge: Partial<EdgeSpec> = {},
@@ -162,7 +162,7 @@ describe("checkPorts", () => {
         {
           check: "ports",
           ruleset: "arch",
-          rules: [10],
+          rules: ["ports-types-only"],
           file: "invoice/ports/renderer.ts",
           serviceRoot: "invoice",
           shape: "runtime-import",
@@ -236,7 +236,7 @@ describe("checkPorts", () => {
     })
   })
 
-  describe("runtime-import-of-port — a runtime edge into a port file (rule 10)", () => {
+  describe("runtime-import-of-port — a runtime edge into a port file (`ports-types-only`)", () => {
     const importOfPort = (
       from: string,
       spec: NodeSpec,
@@ -262,7 +262,7 @@ describe("checkPorts", () => {
         {
           check: "ports",
           ruleset: "arch",
-          rules: [10],
+          rules: ["ports-types-only"],
           file: "invoice/invoice.service.ts",
           serviceRoot: "invoice",
           shape: "runtime-import-of-port",
@@ -327,7 +327,7 @@ describe("checkPorts", () => {
     })
   })
 
-  describe("the shapes partition rule 10", () => {
+  describe("the shapes partition `ports-types-only`", () => {
     test("port → port runtime yields exactly one finding, at the acting port", () => {
       const g = graph(
         {

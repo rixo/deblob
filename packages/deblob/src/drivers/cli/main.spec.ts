@@ -1,4 +1,5 @@
 import { execFileSync, execSync } from "node:child_process"
+import { readFileSync } from "node:fs"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -12,6 +13,11 @@ const here = (path: string): string =>
   fileURLToPath(new URL(path, import.meta.url))
 
 const packageRoot = here("../../..")
+const VERSION = (
+  JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")) as {
+    version: string
+  }
+).version
 const violatingDir = here("__fixtures__/violating")
 const cleanDir = here("__fixtures__/clean")
 const brokenConfigDir = here("../../lib/config/__fixtures__/throws")
@@ -130,36 +136,56 @@ describe("deblob check", () => {
     expect(out).toContain("cross-service")
     expect(out).toContain("src/billing ⇄ src/invoice")
     expect(out).toContain("(type-only)")
-    expect(out).toContain("runtime module cycle (rule 14)")
+    expect(out).toContain("runtime module cycle (no-runtime-cycle)")
     expect(out).not.toContain("private/ is sealed")
   })
 
-  test("explain dag prints rules 13 and 14, shared card once", async () => {
+  test("explain dag prints both cycle rules, shared card once", async () => {
     const { code, out } = await run(["explain", "dag"])
     expect(code).toBe(0)
-    expect(out).toContain("rule 13 —")
-    expect(out).toContain("rule 14 —")
+    expect(out).toContain("no-service-cycle —")
+    expect(out).toContain("no-runtime-cycle —")
     expect(out).toContain("card: acyclic")
     expect(out).toContain("card: acyclic — shown above")
   })
 
   test("explain swallows the footer's whole rule list in one run", async () => {
-    const { code, out } = await run(["explain", "2", "10", "barrels"])
+    const { code, out } = await run([
+      "explain",
+      "layer-in-path",
+      "ports-types-only",
+      "barrels",
+    ])
     expect(code).toBe(0)
-    expect(out).toContain("rule 2 —")
-    expect(out).toContain("rule 10 —")
+    expect(out).toContain("layer-in-path —")
+    expect(out).toContain("ports-types-only —")
   })
 
   test("unknown topics among several: exit 2, every offender named", async () => {
     const { code, err } = await run([
       "explain",
-      "4",
+      "service-purity",
       "SOME_MADE_UP_TOPIC",
-      "rule-999",
+      "some-made-up-rule",
     ])
     expect(code).toBe(2)
     expect(err).toContain('"SOME_MADE_UP_TOPIC"')
-    expect(err).toContain('"rule-999"')
+    expect(err).toContain('"some-made-up-rule"')
+    expect(err).not.toContain('"service-purity"')
+    // no number among them: no lecture about numbers
+    expect(err).not.toContain("rule numbers")
+  })
+
+  test("a 0.0.4-era number is refused with the line that says rules are named now", async () => {
+    for (const topic of ["4", "rule-4"]) {
+      const { code, out, err } = await run(["explain", topic])
+      expect(code).toBe(2)
+      expect(out).toBe("")
+      expect(err).toContain(`unknown topic "${topic}"`)
+      expect(err).toContain("rule numbers are gone since 0.0.5")
+      expect(err).toContain("deblob check prints the names")
+      expect(err).toContain("deblob explain <check>")
+    }
   })
 
   test("clean repo: the summary and coverage lines, no exports segment without a field, exit 0", async () => {
@@ -204,16 +230,19 @@ describe("deblob check", () => {
     // the service entry fires from the consumer's service…
     expect(out).toContain("src/consumer.service.ts")
     expect(out).toContain("imports @fixture/billing/checkout.service")
-    expect(out).toContain("assembly-only; import type is fine (rules 6, 8)")
+    expect(out.replace(/\n +/g, " ")).toContain(
+      "assembly-only; import type is fine (service-assembly-only, type-only-exempt)",
+    )
     // …not from assembly; the model entry is green with no `pure` line, and
-    // the disclosed adapter of the other sibling is unlabeled — no rule-7 seal
+    // the disclosed adapter of the other sibling is unlabeled — no
+    // adapter-assembly-only seal
     expect(out).not.toContain("totals.model")
     expect(out).not.toContain("gateway.adapter")
     // the sibling's declared-assembly entry is wiring: sealed to the
     // consumer's wiring — fires from the adapter, silent from main.ts
     expect(out).toContain("src/report.adapter.ts")
     expect(out.replace(/\n +/g, " ")).toContain(
-      "imports @fixture/billing/run — adapters may not import assembly (rule 1)",
+      "imports @fixture/billing/run — adapters may not import assembly (inward-deps)",
     )
     expect(out).not.toContain("src/main.ts")
     expect(out).toContain("2 violations (2 layers)")
@@ -229,7 +258,7 @@ describe("deblob check", () => {
     expect(out).toContain("· exports 2 checked, 1 disclosed\n")
   })
 
-  test("externalLayers: blob revokes a sibling's model claim — back to unlabeled, rule 4 fires", async () => {
+  test("externalLayers: blob revokes a sibling's model claim — back to unlabeled, service-purity fires", async () => {
     const { code, out } = await run(
       ["check", "layers", "-c", "revoked.config.ts"],
       { cwd: awareDir },
@@ -256,10 +285,9 @@ describe("deblob check", () => {
     )
     expect(code).toBe(1)
     // assembly-crossed, not service-crossed: the patch reclassified the entry
-    expect(out).toContain(
-      "imports @fixture/billing/checkout.service — service may not",
+    expect(out.replace(/\n +/g, " ")).toContain(
+      "imports @fixture/billing/checkout.service — service may not import assembly (inward-deps)",
     )
-    expect(out).toContain("import assembly (rule 1)")
   })
 
   test("declaring package: surface verifies the exports claims at the producer's own gate", async () => {
@@ -372,18 +400,25 @@ describe("deblob check", () => {
     const { code, out } = await run(["check", "--explain"])
     expect(code).toBe(1)
     expect(out).toContain("pdf-render.service.ts")
-    expect(out).toContain("rule 2 —")
-    expect(out).toContain("rule 4 —")
-    expect(out).toContain("rule 10 —")
-    expect(out).toContain("rule 12 —")
+    expect(out).toContain("layer-in-path —")
+    expect(out).toContain("service-purity —")
+    expect(out).toContain("ports-types-only —")
+    expect(out).toContain("private-sealed —")
     expect(out).toContain("card: dependency-matrix")
+    // entries follow the summary's order, not the checks' run order
+    expect(out.indexOf("layer-in-path —")).toBeLessThan(
+      out.indexOf("service-purity —"),
+    )
+    expect(out.indexOf("service-purity —")).toBeLessThan(
+      out.indexOf("private-sealed —"),
+    )
   })
 
   test("--explain-only prints the explanations without the listing", async () => {
     const { code, out } = await run(["check", "--explain-only"])
     expect(code).toBe(1)
     expect(out).not.toContain("pdf-render.service.ts")
-    expect(out).toContain("rule 4 —")
+    expect(out).toContain("service-purity —")
   })
 
   test("--explain on a clean repo adds nothing", async () => {
@@ -408,26 +443,20 @@ describe("deblob check", () => {
 })
 
 describe("deblob explain", () => {
-  test("rule-4: summary excerpt, card, canonical URL, exit 0", async () => {
-    const { code, out } = await run(["explain", "rule-4"])
+  test("a slug: summary excerpt, card, the URL pinned to this package's version, exit 0", async () => {
+    const { code, out } = await run(["explain", "service-purity"])
     expect(code).toBe(0)
-    expect(out).toContain("rule 4 — service cannot depend on concrete")
+    expect(out).toContain("service-purity — service cannot depend on concrete")
     expect(out).toContain("card: dependency-matrix")
     expect(out).toContain(
-      "https://github.com/rixo/deblob/blob/main/docs/architecture.md#rule-4",
-    )
-  })
-
-  test("bare number and rule-N resolve identically", async () => {
-    expect((await run(["explain", "4"])).out).toBe(
-      (await run(["explain", "rule-4"])).out,
+      `https://github.com/rixo/deblob/blob/v${VERSION}/docs/architecture.md#service-purity`,
     )
   })
 
   test("a check name explains each of its rules, shared card shown once", async () => {
     const { code, out } = await run(["explain", "private"])
     expect(code).toBe(0)
-    expect(out).toContain("rule 12 —")
+    expect(out).toContain("private-sealed —")
   })
 })
 

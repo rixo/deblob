@@ -1,12 +1,12 @@
 /**
  * Config resolution — `deblob.config.ts` as data, validated loudly and turned
  * into everything a run consumes. Service layer, not model: `ResolvedConfig`
- * holds a live `FlavorResolver` (a port shape the model may not know — rule 1,
- * surfaced by our own first self-check). Pure all the same: raw value in,
- * resolved value out, `ConfigError` with teaching messages. Loading (discovery
- * walk, native import) and scanning stay in the adapters; assembly owns the
- * load → resolve sequence (arch §Assembly, literally) and injects the stock
- * flavor registry — a flavor is an adapter, and neither this service nor
+ * holds a live `FlavorResolver` (a port shape the model may not know —
+ * `inward-deps`, surfaced by our own first self-check). Pure all the same: raw
+ * value in, resolved value out, `ConfigError` with teaching messages. Loading
+ * (discovery walk, native import) and scanning stay in the adapters; assembly
+ * owns the load → resolve sequence (arch §Assembly, literally) and injects the
+ * stock flavor registry — a flavor is an adapter, and neither this service nor
  * another adapter may import one.
  */
 
@@ -36,7 +36,7 @@ export type DeblobConfig = {
    * Assembly designation — globs (root-relative POSIX) whose matches wear the
    * assembly hat: their row in the matrix, nothing else. Privilege is per-edge,
    * never transitive. Default: `[]` — no designation; an undeclared composition
-   * root classifies blob and its service imports fire rule 6.
+   * root classifies blob and its service imports fire `service-assembly-only`.
    */
   assembly?: readonly string[]
   /**
@@ -51,14 +51,15 @@ export type DeblobConfig = {
    */
   exclude?: readonly string[]
   /**
-   * Rule-4 allowlist: package names and builtin specifiers whose imports count
-   * as pure. Unlisted third-party imported from a pure layer fires as
-   * unclassified — purity is declared, not presumed. Default: `[]`.
+   * `service-purity` allowlist: package names and builtin specifiers whose
+   * imports count as pure. Unlisted third-party imported from a pure layer
+   * fires as unclassified — purity is declared, not presumed. Default: `[]`.
    */
   pure?: readonly string[]
   /**
-   * Rule-8 stance override: `false` = strict, type-only imports lose their
-   * exemption. Default comes from the flavor (absent = `true`, canon).
+   * `type-only-exempt` stance override: `false` = strict, type-only imports
+   * lose their exemption. Default comes from the flavor (absent = `true`,
+   * canon).
    */
   typeOnlyExempt?: boolean
   /**

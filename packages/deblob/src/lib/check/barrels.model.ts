@@ -1,10 +1,10 @@
 /**
- * `check barrels` — rule 2, layer visibility in the import path. Two shapes: an
- * index re-exporting layered files fires at the index (`barrel-file`), a
- * labeled layer importing through an index fires at the importer
- * (`index-import`). Kind- and form-blind (rule 8 exempts composition rules
- * only). Pure: classified graph in, violation set out — no IO, no formatting,
- * no ordering.
+ * `check barrels` — `layer-in-path`, layer visibility in the import path. Two
+ * shapes: an index re-exporting layered files fires at the index
+ * (`barrel-file`), a labeled layer importing through an index fires at the
+ * importer (`index-import`). Kind- and form-blind (`type-only-exempt` exempts
+ * composition rules only). Pure: classified graph in, violation set out — no
+ * IO, no formatting, no ordering.
  */
 
 import type {
@@ -27,7 +27,7 @@ const isIndex = (path: string): boolean => {
   return INDEX_BASENAME.test(slash === -1 ? path : path.slice(slash + 1))
 }
 
-/** The layers whose visibility rule 2 protects — closed union. */
+/** The layers whose visibility `layer-in-path` protects — closed union. */
 const LAYERED: ReadonlySet<Layer> = new Set([
   "model",
   "ports",
@@ -82,7 +82,7 @@ export const checkBarrels = (
       violations.push({
         check: "barrels",
         ruleset: "arch",
-        rules: [2],
+        rules: ["layer-in-path"],
         file: importer.path,
         serviceRoot: importer.serviceRoot,
         target: edge.to,
@@ -96,7 +96,7 @@ export const checkBarrels = (
       violations.push({
         check: "barrels",
         ruleset: "arch",
-        rules: [2],
+        rules: ["layer-in-path"],
         file: importer.path,
         serviceRoot: importer.serviceRoot,
         target: edge.to,

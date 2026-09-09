@@ -61,7 +61,7 @@ const lib = (specifier: string): EdgeTarget => ({
 })
 
 describe("checkPrivate", () => {
-  describe("foreign private/ imports fire (rule 12)", () => {
+  describe("foreign private/ imports fire (`private-sealed`)", () => {
     test("fires when another service reaches into a private/ subtree", () => {
       const g = graph(
         {
@@ -86,7 +86,7 @@ describe("checkPrivate", () => {
         {
           check: "private",
           ruleset: "arch",
-          rules: [12],
+          rules: ["private-sealed"],
           file: "billing/stripe.adapter.ts",
           serviceRoot: "billing",
           target: mod("invoice/private/totals.ts"),
@@ -96,7 +96,7 @@ describe("checkPrivate", () => {
       ])
     })
 
-    test("fires for a top-level blob importer — blob binds under rule 12", () => {
+    test("fires for a top-level blob importer — blob binds under `private-sealed`", () => {
       const g = graph(
         {
           "lib/helpers.ts": { layer: "blob" },
@@ -110,7 +110,7 @@ describe("checkPrivate", () => {
       )
       expect(checkPrivate(g)).toEqual([
         expect.objectContaining({
-          rules: [12],
+          rules: ["private-sealed"],
           file: "lib/helpers.ts",
           serviceRoot: null,
           boundary: "invoice/private",
@@ -131,7 +131,10 @@ describe("checkPrivate", () => {
         [{ from: "main.spec.ts", to: mod("invoice/private/totals.ts") }],
       )
       expect(checkPrivate(g)).toEqual([
-        expect.objectContaining({ rules: [12], file: "main.spec.ts" }),
+        expect.objectContaining({
+          rules: ["private-sealed"],
+          file: "main.spec.ts",
+        }),
       ])
     })
 
@@ -157,7 +160,7 @@ describe("checkPrivate", () => {
       )
       expect(checkPrivate(g)).toEqual([
         expect.objectContaining({
-          rules: [12],
+          rules: ["private-sealed"],
           boundary: "invoice/private",
           owner: "invoice",
         }),
@@ -190,7 +193,7 @@ describe("checkPrivate", () => {
     })
   })
 
-  describe("every edge kind and form fires — packaging rule, rule 8 does not apply", () => {
+  describe("every edge kind and form fires — packaging rule, `type-only-exempt` does not apply", () => {
     test.each(["runtime", "type"] as const)("fires on a %s edge", (kind) => {
       const g = graph(
         {
@@ -210,7 +213,7 @@ describe("checkPrivate", () => {
         ],
       )
       expect(checkPrivate(g)).toEqual([
-        expect.objectContaining({ rules: [12] }),
+        expect.objectContaining({ rules: ["private-sealed"] }),
       ])
     })
 
@@ -233,7 +236,7 @@ describe("checkPrivate", () => {
         ],
       )
       expect(checkPrivate(g)).toEqual([
-        expect.objectContaining({ rules: [12] }),
+        expect.objectContaining({ rules: ["private-sealed"] }),
       ])
     })
   })

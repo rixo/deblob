@@ -14,7 +14,8 @@ constraints, or CI says exactly which rule broke and why. Unlabeled code is
 ```
 deblob                       project status + discovery
 deblob check [what...]       run architecture checks (default: all)
-deblob explain <topic...>    explain rules or checks (4, layers, ...)
+deblob explain <topic...>    explain rules or checks (service-purity,
+                             layers, ...)
 ```
 
 - **`deblob`** prints the inventory — file count, total size, blob %
@@ -23,12 +24,15 @@ deblob explain <topic...>    explain rules or checks (4, layers, ...)
   (`exports 9 claimed, 2 disclosed`) — plus where to go next. Informational by
   contract: always exits 0, so a stray run can never fail a build.
 - **`deblob check`** is the gate. Checks: `dag` (service cycles over every
-  import kind, runtime module cycles — rules 13, 14), `layers` (dependency
-  matrix, rules 1, 4–9), `private` (rule 12), `barrels` (rule 2), `ports` (rule
-  10), `surface` (the exports map matches the layers it fronts — only for
-  packages declaring `"deblob": {}` in package.json; rules 2, 3). All run over
-  one shared import graph. The summary is two lines: the verdict with the
-  inventory (`0 violations · 58 files · 300kb · 10% blob`), then coverage
+  import kind, runtime module cycles — `no-service-cycle`, `no-runtime-cycle`),
+  `layers` (the dependency matrix — `inward-deps`, `service-purity`,
+  `blob-quarantine`, `service-assembly-only`, `adapter-assembly-only`,
+  `type-only-exempt`, `private-exempt`), `private` (`private-sealed`), `barrels`
+  (`layer-in-path`), `ports` (`ports-types-only`), `surface` (the exports map
+  matches the layers it fronts — only for packages declaring `"deblob": {}` in
+  package.json; `layer-in-path`, `chain-purity`). All run over one shared import
+  graph. The summary is two lines: the verdict with the inventory
+  (`0 violations · 58 files · 300kb · 10% blob`), then coverage
   (`4 services · 181 imports · exports 7 checked, 2 disclosed`) — the exports
   segment exists only when a claim was checked, so a field dropped in a merge is
   a visible diff in the CI log, not a gate that went quiet. Naming `surface` by
@@ -36,11 +40,12 @@ deblob explain <topic...>    explain rules or checks (4, layers, ...)
   checked. Exit codes: `0` clean, `1` violations found, `2` usage or config
   error — and the two uncertifiable runs: an import that did not resolve, an
   exports entry `surface` could not reach.
-- **`deblob explain rule-4`** prints the rule's rationale and the shipped
-  knowledge card — offline, version-matched with the binary. Several topics at
-  once work too: the check footer prints the fired rules as a pasteable
-  `deblob explain 4 12 13`. `deblob check --explain` appends the explanation of
-  every rule that fired; a CI log becomes self-teaching in one run.
+- **`deblob explain service-purity`** prints the rule's rationale and the
+  shipped knowledge card — offline, version-matched with the binary. Several
+  topics at once work too: the check footer prints the fired rules as a
+  pasteable `deblob explain service-purity private-sealed no-service-cycle`.
+  `deblob check --explain` appends the explanation of every rule that fired; a
+  CI log becomes self-teaching in one run.
 
 Violations cite their rule and print the offending edge:
 
@@ -48,7 +53,7 @@ Violations cite their rule and print the offending edge:
 src/invoice
   src/invoice/pdf-render.service.ts
     layers   imports node:fs — service layer cannot depend on concrete;
-             import type is fine (rules 4, 8)
+             import type is fine (service-purity, type-only-exempt)
 ```
 
 Not in v0, on purpose: autofix (not deblob's job — fixing belongs to whoever
@@ -82,8 +87,8 @@ The eleven keys, all optional:
 | `assembly`       | `[]`                      | Globs designating composition roots — privilege is declared, not presumed                                                           |
 | `include`        | `["**"]`                  | Coverage globs; under-coverage is a silent hole, so the default covers everything                                                   |
 | `exclude`        | `[]`                      | Appended to a non-removable baseline (`node_modules`, `dist`, …); never replaces it                                                 |
-| `pure`           | `[]`                      | Rule-4 allowlist: package names, builtin specifiers, and declared `external` patterns ratified as pure                              |
-| `typeOnlyExempt` | flavor's stance (`true`)  | `false` = strict: type-only imports lose their rule-8 exemption; knobs only tighten canon                                           |
+| `pure`           | `[]`                      | `service-purity` allowlist: package names, builtin specifiers, and declared `external` patterns ratified as pure                    |
+| `typeOnlyExempt` | flavor's stance (`true`)  | `false` = strict: type-only imports lose the `type-only-exempt` exemption; knobs only tighten canon                                 |
 | `tsconfig`       | `tsconfig.json` at root   | The tsconfig feeding resolution (`paths` aliases); a path, or `false` to disable — a declared path that doesn't exist fails loud    |
 | `alias`          | `{}`                      | Resolver aliases living outside tsconfig (bundler config); teaches resolution, never suppresses failures                            |
 | `external`       | `[]`                      | Specifier patterns the environment provides with nothing on disk (`$theme:**`, `cloudflare:*`) — matches are leaves, never resolved |

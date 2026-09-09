@@ -3,9 +3,9 @@ import { join, posix } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, test } from "vitest"
 
+import { RULE_IDS } from "../check/rule.model.ts"
 import {
   RULE_CARDS,
-  RULE_COUNT,
   canonicalRuleUrl,
   collectMdLinks,
   extractRulesSummary,
@@ -18,12 +18,11 @@ const architectureMd = () =>
   readFileSync(join(repoRoot, "docs/architecture.md"), "utf8")
 
 describe("rule mapping", () => {
-  test("is total over the summary's numbering, every rule with at least one card", () => {
-    for (let rule = 1; rule <= RULE_COUNT; rule += 1) {
-      expect(RULE_CARDS[rule], `rule ${rule}`).toBeDefined()
-      expect(RULE_CARDS[rule]!.length).toBeGreaterThan(0)
+  test("is total over the rule list, every rule with at least one card", () => {
+    expect(Object.keys(RULE_CARDS).sort()).toEqual([...RULE_IDS].sort())
+    for (const id of RULE_IDS) {
+      expect(RULE_CARDS[id].length, id).toBeGreaterThan(0)
     }
-    expect(Object.keys(RULE_CARDS)).toHaveLength(RULE_COUNT)
   })
 
   test("names only cards that exist in the repo", () => {
@@ -34,19 +33,23 @@ describe("rule mapping", () => {
     }
   })
 
-  test("builds the canonical anchor URL for a rule", () => {
-    expect(canonicalRuleUrl(4)).toBe(
-      "https://github.com/rixo/deblob/blob/main/docs/architecture.md#rule-4",
+  test("pins the rule's URL to the binary's own release tag", () => {
+    expect(canonicalRuleUrl("service-purity", "0.0.5")).toBe(
+      "https://github.com/rixo/deblob/blob/v0.0.5/docs/architecture.md#service-purity",
     )
   })
 })
 
 describe("architecture.md anchors", () => {
-  test("carries a #rule-N anchor for every rule of the summary", () => {
+  test("carries a slug anchor for every rule, in the list's order, and no numbered one", () => {
     const summary = extractRulesSummary(architectureMd())
-    for (let rule = 1; rule <= RULE_COUNT; rule += 1) {
-      expect(summary).toContain(`<a id="rule-${rule}"></a>`)
-    }
+    const positions = RULE_IDS.map((id) => {
+      const at = summary.indexOf(`<a id="${id}"></a>`)
+      expect(at, id).toBeGreaterThan(-1)
+      return at
+    })
+    expect(positions).toEqual([...positions].sort((a, b) => a - b))
+    expect(summary).not.toMatch(/<a id="rule-\d+">/)
   })
 
   test("throws loudly when the summary section is missing", () => {
@@ -56,8 +59,8 @@ describe("architecture.md anchors", () => {
   })
 
   test("extracts to end of document when the summary is the last section", () => {
-    expect(extractRulesSummary("intro\n### Summary\n1. rule")).toBe(
-      "### Summary\n1. rule",
+    expect(extractRulesSummary("intro\n### Summary\n- rule")).toBe(
+      "### Summary\n- rule",
     )
   })
 })
@@ -68,52 +71,59 @@ describe("ruleSummaryOf", () => {
     "",
     "**Layer rules:**",
     "",
-    '1. <a id="rule-1"></a>**Some made-up first rule** —',
-    "   body of the first rule, wrapped",
-    "   across lines.",
-    '2. <a id="rule-2"></a>**Title with trailing period inside bold.** Body',
-    "   with a [link label](#fragment) stripped to its text.",
+    '- <a id="inward-deps"></a>`inward-deps` — **Some made-up first rule** —',
+    "  body of the first rule, wrapped",
+    "  across lines.",
+    '- <a id="layer-in-path"></a>`layer-in-path` —',
+    "  **Title with trailing period inside bold.** Body",
+    "  with a [link label](#fragment) stripped to its text.",
     "",
     "**Another section:**",
     "",
-    '3. <a id="rule-3"></a>**Last rule** — last body.',
+    '- <a id="chain-purity"></a>`chain-purity` — **Last rule** — last body.',
   ].join("\n")
 
-  test("splits title from body, joins the wrap, strips the anchor", () => {
-    expect(ruleSummaryOf(summary, 1)).toEqual({
+  test("splits title from body, joins the wrap, strips the anchor and the slug token", () => {
+    expect(ruleSummaryOf(summary, "inward-deps")).toEqual({
       title: "Some made-up first rule",
       body: "body of the first rule, wrapped across lines.",
     })
   })
 
   test("drops the title's trailing period and inline-link syntax", () => {
-    expect(ruleSummaryOf(summary, 2)).toEqual({
+    expect(ruleSummaryOf(summary, "layer-in-path")).toEqual({
       title: "Title with trailing period inside bold",
       body: "Body with a link label stripped to its text.",
     })
   })
 
   test("reads an entry ended by a section header or end of text", () => {
-    expect(ruleSummaryOf(summary, 3).body).toBe("last body.")
+    expect(ruleSummaryOf(summary, "chain-purity").body).toBe("last body.")
   })
 
   test("throws on a missing anchor", () => {
-    expect(() => ruleSummaryOf(summary, 9)).toThrow(/no anchor for rule 9/)
+    expect(() => ruleSummaryOf(summary, "stateless-modules")).toThrow(
+      /no anchor for stateless-modules/,
+    )
   })
 
   test("throws on an entry without a bold title", () => {
     expect(() =>
-      ruleSummaryOf('5. <a id="rule-5"></a>no bold here', 5),
+      ruleSummaryOf(
+        '- <a id="blob-quarantine"></a>`blob-quarantine` — no bold here',
+        "blob-quarantine",
+      ),
     ).toThrow(/no bold title/)
   })
 
   test("parses every real rule out of the shipped excerpt", () => {
     const real = extractRulesSummary(architectureMd())
-    for (let rule = 1; rule <= RULE_COUNT; rule += 1) {
-      const entry = ruleSummaryOf(real, rule)
-      expect(entry.title.length, `rule ${rule}`).toBeGreaterThan(0)
-      expect(entry.body.length, `rule ${rule}`).toBeGreaterThan(0)
+    for (const id of RULE_IDS) {
+      const entry = ruleSummaryOf(real, id)
+      expect(entry.title.length, id).toBeGreaterThan(0)
+      expect(entry.body.length, id).toBeGreaterThan(0)
       expect(entry.body).not.toContain("<a id=")
+      expect(entry.title, id).not.toMatch(/^`[a-z-]+`/)
     }
   })
 })
@@ -143,26 +153,32 @@ describe("card links", () => {
   })
 })
 
-describe("knowledge INDEX rule ranges", () => {
-  test("shows each mapped range on its card's row", () => {
+describe("knowledge INDEX rule names", () => {
+  test("lists every rule's slug on its card's row", () => {
     const index = readFileSync(
       join(repoRoot, "skills/deblob/knowledge/INDEX.md"),
       "utf8",
     )
-    const rows: [card: string, range: string][] = [
-      ["dependency-matrix", "1–5"],
-      ["composition-rules", "6–11"],
-      ["packaging-visibility", "12"],
-      ["acyclic", "13–14"],
-      ["testing-contract", "15"],
-      ["testing-isolation", "16"],
+    const rows = [
+      "dependency-matrix",
+      "composition-rules",
+      "packaging-visibility",
+      "acyclic",
+      "testing-contract",
+      "testing-isolation",
     ]
-    for (const [cardName, range] of rows) {
+    for (const cardName of rows) {
       const row = index
         .split("\n")
         .find((line) => line.includes(`[${cardName}]`))
       expect(row, cardName).toBeDefined()
-      expect(row, cardName).toContain(range)
+      const cited = RULE_IDS.filter((id) =>
+        RULE_CARDS[id].some((path) => path.endsWith(`/${cardName}.md`)),
+      )
+      expect(cited.length, cardName).toBeGreaterThan(0)
+      for (const id of cited) {
+        expect(row, `${cardName} ← ${id}`).toContain(`\`${id}\``)
+      }
     }
   })
 })

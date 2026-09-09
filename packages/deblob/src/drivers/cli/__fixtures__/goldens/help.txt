@@ -3,19 +3,24 @@ deblob — machine-checkable hexagonal architecture for TypeScript/ESM
 Usage
   deblob                       project status + discovery
   deblob check [what...]       run architecture checks (default: all)
-  deblob explain <topic...>    explain rules or checks (4, layers, ...)
+  deblob explain <topic...>    explain rules or checks (service-purity,
+                               layers, ...)
 
 Checks
   dag        service dependencies form a DAG; no module-level runtime
-             cycles (rules 13, 14)
+             cycles (no-service-cycle, no-runtime-cycle)
   layers     dependency matrix by layer suffix; type-only imports exempt
-             by default (rules 1, 4-9)
-  private    private/ is sealed outside its service (rule 12)
+             by default (inward-deps, service-purity, blob-quarantine,
+             service-assembly-only, adapter-assembly-only,
+             type-only-exempt, private-exempt)
+  private    private/ is sealed outside its service (private-sealed)
   barrels    the layer is visible in the import path — no index.ts
-             indirection (rule 2)
-  ports      port files are types only, no runtime exports (rule 10)
+             indirection (layer-in-path)
+  ports      port files are types only, no runtime exports
+             (ports-types-only)
   surface    the exports map matches the layers it fronts — only for
-             packages declaring "deblob": {} in package.json (rules 2, 3)
+             packages declaring "deblob": {} in package.json
+             (layer-in-path, chain-purity)
 
 Options
   -c, --config <path>    config file (default: nearest deblob.config.ts)

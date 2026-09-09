@@ -1,5 +1,5 @@
 ---
-source: docs/architecture.md § The dependency matrix, § Summary (rules 1–5)
+source: docs/architecture.md § The dependency matrix, § Summary, layer rules
 ---
 
 # The dependency matrix

@@ -61,7 +61,7 @@ const lib = (specifier: string): EdgeTarget => ({
 })
 
 describe("checkBarrels", () => {
-  describe("barrel-file fires — an index re-exporting layered files (rule 2)", () => {
+  describe("barrel-file fires — an index re-exporting layered files (`layer-in-path`)", () => {
     test("fires at the index for a re-exported service file — the catalog line", () => {
       const g = graph(
         {
@@ -83,7 +83,7 @@ describe("checkBarrels", () => {
         {
           check: "barrels",
           ruleset: "arch",
-          rules: [2],
+          rules: ["layer-in-path"],
           file: "invoice/index.ts",
           serviceRoot: "invoice",
           target: mod("invoice/pdf-render.service.ts"),
@@ -118,7 +118,7 @@ describe("checkBarrels", () => {
       ])
     })
 
-    test("fires on a type-only re-export — rule 2 is kind-blind", () => {
+    test("fires on a type-only re-export — `layer-in-path` is kind-blind", () => {
       const g = graph(
         {
           "invoice/index.ts": { layer: "blob", serviceRoot: "invoice" },
@@ -137,7 +137,10 @@ describe("checkBarrels", () => {
         ],
       )
       expect(checkBarrels(g)).toEqual([
-        expect.objectContaining({ shape: "barrel-file", rules: [2] }),
+        expect.objectContaining({
+          shape: "barrel-file",
+          rules: ["layer-in-path"],
+        }),
       ])
     })
 
@@ -260,7 +263,7 @@ describe("checkBarrels", () => {
     })
   })
 
-  describe("index-import fires — a labeled layer importing through an index (rule 2)", () => {
+  describe("index-import fires — a labeled layer importing through an index (`layer-in-path`)", () => {
     test("fires at the importer for a service's directory import — the catalog line", () => {
       const g = graph(
         {
@@ -281,7 +284,7 @@ describe("checkBarrels", () => {
         {
           check: "barrels",
           ruleset: "arch",
-          rules: [2],
+          rules: ["layer-in-path"],
           file: "billing/refund.service.ts",
           serviceRoot: "billing",
           target: mod("invoice/index.ts"),
@@ -325,13 +328,16 @@ describe("checkBarrels", () => {
         ],
       )
       expect(checkBarrels(g)).toEqual([
-        expect.objectContaining({ shape: "index-import", rules: [2] }),
+        expect.objectContaining({
+          shape: "index-import",
+          rules: ["layer-in-path"],
+        }),
       ])
     })
   })
 
   describe("index-import stays green", () => {
-    test("exempts a blob importer — rule 2 binds guarantees, blob makes none", () => {
+    test("exempts a blob importer — `layer-in-path` binds guarantees, blob makes none", () => {
       const g = graph(
         {
           "lib/helpers.ts": { layer: "blob" },

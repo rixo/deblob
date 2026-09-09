@@ -67,10 +67,11 @@ until the feature set and maturity feel satisfying — or consumer pressure
 (adoption in real projects) demands version structure first. At that switch, 0.x
 becomes the channel and minor denotes breaking changes; 0.1.0 is the
 channel-opening cut, not the next milestone. Remaining ruled work, rides 0.0.x
-cuts as ready — version-pinned rule URLs (folded into the rule-names chapter,
-2026-09-08); the `pure` key rename (14) is the 0.0.5 headline. README storefront
-pass: closed 2026-07-25 (rixo) — audit passed, no prose change; a drafted Track
-record section was rejected at review (n=1 case study reads as lab report, not
+cuts as ready. Version-pinned rule URLs landed with the rule-names chapter
+(`history/20260908_rule-names/`, 2026-09-09); the `pure` key rename (14) and the
+rule slugs are the 0.0.5 headline, one migration. README storefront pass: closed
+2026-07-25 (rixo) — audit passed, no prose change; a drafted Track record
+section was rejected at review (n=1 case study reads as lab report, not
 storefront — over-disclosure is its own noise). Testimonial stays banked here;
 README use reconsidered only if dogfood runs accumulate (n=3 reads as evidence,
 n=1 as an excuse), likely as a linked field-notes doc, not README body. MIT
@@ -643,10 +644,6 @@ doesn't check:
   flavor-exclusive / presets-combinable orthogonality may not survive two
   presets holding classification opinions. Renegotiate the boundary when presets
   graduate — e.g. presets contribute classification hooks the flavor arbitrates.
-- **Version-pinned rule URLs** (2026-07-20) — `canonicalRuleUrl` targets
-  `blob/main`; once published, a release's URLs should pin its own tag
-  (`blob/vX.Y.Z`) so shipped citations survive main drift. Wire at release step:
-  version from package.json, anchor-stability check per tag.
 - **Blob % beyond file count** (2026-07-21, at 05 review; metric ruled same day)
   — file count weights a 5-line file like a 2000-line monster and rewards
   splitting. Ruled: the canonical blob % is **by file size (~chars)** — one

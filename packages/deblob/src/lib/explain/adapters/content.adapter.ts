@@ -1,12 +1,14 @@
 /**
  * Reads the shipped teaching content (dist/content, built by build-content)
  * into explain entries. `contentRoot` is injected: the bin anchors it next to
- * its own compiled location, tests point at fixtures.
+ * its own compiled location, tests point at fixtures. `version` is the binary's
+ * own — the URL each entry prints is pinned to its release tag.
  */
 
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
+import type { RuleId } from "../../check/rule.model.ts"
 import type { ExplainEntry } from "../rule-content.model.ts"
 import {
   RULE_CARDS,
@@ -20,9 +22,11 @@ const slugOf = (cardPath: string): string =>
 export const readExplainEntries = ({
   contentRoot,
   rules,
+  version,
 }: {
   contentRoot: string
-  rules: readonly number[]
+  rules: readonly RuleId[]
+  version: string
 }): ExplainEntry[] => {
   const summary = readFileSync(
     join(contentRoot, "docs/rules-summary.md"),
@@ -34,13 +38,11 @@ export const readExplainEntries = ({
       rule,
       title,
       body,
-      // mapping totality over 1–RULE_COUNT is spec-enforced; out-of-range
-      // rules died on the summary lookup above
-      cards: (RULE_CARDS[rule] as readonly string[]).map((cardPath) => ({
+      cards: RULE_CARDS[rule].map((cardPath) => ({
         slug: slugOf(cardPath),
         text: readFileSync(join(contentRoot, cardPath), "utf8"),
       })),
-      url: canonicalRuleUrl(rule),
+      url: canonicalRuleUrl(rule, version),
     }
   })
 }

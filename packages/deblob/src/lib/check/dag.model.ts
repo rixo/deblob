@@ -1,10 +1,10 @@
 /**
- * `check dag` — rules 13 and 14, the acyclic rule at both levels. Service
- * cycles count every import kind (extraction independence holds for types);
- * module cycles count runtime edges only (the ESM hazard). One finding per
- * strongly connected component, carrying the full membership and a
- * deterministic shortest witness cycle. Pure: classified graph in, violation
- * set out — no IO, no formatting, no ordering beyond determinism.
+ * `check dag` — `no-service-cycle` and `no-runtime-cycle`, the acyclic rule at
+ * both levels. Service cycles count every import kind (extraction independence
+ * holds for types); module cycles count runtime edges only (the ESM hazard).
+ * One finding per strongly connected component, carrying the full membership
+ * and a deterministic shortest witness cycle. Pure: classified graph in,
+ * violation set out — no IO, no formatting, no ordering beyond determinism.
  */
 
 import type { ImportGraph, ModuleNode } from "../extraction/graph.model.ts"
@@ -151,7 +151,7 @@ const groupOf = (graph: ImportGraph, members: readonly string[]): DagGroup => {
 export const checkDag = (graph: ImportGraph): DagViolation[] => {
   const violations: DagViolation[] = []
 
-  // ---- rule 13: the service digraph, every edge kind, owned files only ----
+  // ---- `no-service-cycle`: the service digraph, every edge kind, owned files only ----
   const pairs = new Map<string, Map<string, ServicePair>>()
   const serviceNodes = new Set<string>()
   for (const node of graph.modules.values()) {
@@ -210,7 +210,7 @@ export const checkDag = (graph: ImportGraph): DagViolation[] => {
     violations.push({
       check: "dag",
       ruleset: "arch",
-      rules: [13],
+      rules: ["no-service-cycle"],
       group: { kind: "cross-service" },
       members,
       shape: "service-cycle",
@@ -219,7 +219,7 @@ export const checkDag = (graph: ImportGraph): DagViolation[] => {
     })
   }
 
-  // ---- rule 14: the runtime module digraph, every parsed file ----
+  // ---- `no-runtime-cycle`: the runtime module digraph, every parsed file ----
   const runtimeTargets = new Map<string, Set<string>>()
   for (const path of graph.modules.keys()) runtimeTargets.set(path, new Set())
   for (const edge of graph.edges) {
@@ -238,7 +238,7 @@ export const checkDag = (graph: ImportGraph): DagViolation[] => {
     violations.push({
       check: "dag",
       ruleset: "arch",
-      rules: [14],
+      rules: ["no-runtime-cycle"],
       group: groupOf(graph, members),
       members,
       shape: "module-cycle",

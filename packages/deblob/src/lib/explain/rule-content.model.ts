@@ -1,18 +1,21 @@
 /**
- * Rule-number resolution — one mapping, two consumers: the knowledge INDEX
- * rule-range column and the `deblob explain` lookup (CLI step). Rule numbers
- * are architecture.md § Summary's numbering; anchors `#rule-N` live there.
+ * Rule content — one rule id to what `deblob explain` teaches about it: the
+ * knowledge cards (editorial), the pinned URL, and the parser that reads a
+ * rule's entry out of architecture.md § Summary. Identity lives with its
+ * producers, in `check/rule.model.ts`; this is the explain-side companion.
  *
  * Card paths are relative to the package's `content/` dir, which mirrors the
  * repo layout so verbatim copies keep their relative cross-links resolvable.
  */
+
+import type { RuleId } from "../check/rule.model.ts"
 
 /** One shipped knowledge card, resolved for printing. */
 export type ExplainCard = { slug: string; text: string }
 
 /** One rule's teaching bundle — what `deblob explain` renders. */
 export type ExplainEntry = {
-  rule: number
+  rule: RuleId
   title: string
   body: string
   cards: readonly ExplainCard[]
@@ -21,41 +24,43 @@ export type ExplainEntry = {
 
 const card = (name: string): string => `skills/deblob/knowledge/${name}.md`
 
-export const RULE_COUNT = 17
-
 /**
  * Hand-authored on purpose: which card explains a rule is editorial judgment —
- * nothing to derive it from (anchors carry numbers, not card assignments). This
- * mapping is the single source of truth; the knowledge INDEX's Rules column is
- * tested against it, and the spec enforces totality over 1–RULE_COUNT and an
- * anchor per rule, so drift in any direction fails the suite.
+ * nothing to derive it from. Total over `RuleId` by construction (the record
+ * type); the knowledge INDEX's Rules column is tested against it, so drift in
+ * either direction fails the suite.
  */
-export const RULE_CARDS: Readonly<Record<number, readonly string[]>> = {
-  1: [card("dependency-matrix")],
-  2: [card("dependency-matrix")],
-  3: [card("dependency-matrix")],
-  4: [card("dependency-matrix")],
-  5: [card("dependency-matrix")],
-  6: [card("composition-rules")],
-  7: [card("composition-rules")],
-  8: [card("composition-rules")],
-  9: [card("composition-rules")],
-  10: [card("composition-rules")],
-  11: [card("composition-rules")],
-  12: [card("packaging-visibility")],
-  13: [card("acyclic")],
-  14: [card("acyclic")],
-  15: [card("testing-contract")],
-  16: [card("testing-isolation")],
+export const RULE_CARDS: Readonly<Record<RuleId, readonly string[]>> = {
+  "inward-deps": [card("dependency-matrix")],
+  "layer-in-path": [card("dependency-matrix")],
+  "chain-purity": [card("dependency-matrix")],
+  "service-purity": [card("dependency-matrix")],
+  "blob-quarantine": [card("dependency-matrix")],
+  "service-assembly-only": [card("composition-rules")],
+  "adapter-assembly-only": [card("composition-rules")],
+  "type-only-exempt": [card("composition-rules")],
+  "private-exempt": [card("composition-rules")],
+  "ports-types-only": [card("composition-rules")],
+  "unified-port": [card("composition-rules")],
+  "private-sealed": [card("packaging-visibility")],
+  "no-service-cycle": [card("acyclic")],
+  "no-runtime-cycle": [card("acyclic")],
+  "test-through-contract": [card("testing-contract")],
+  "test-setup-assembly": [card("testing-isolation")],
   // service discipline — no v0 detector cites it, but the mapping stays
-  // total over the summary's numbering so a stray citation still resolves
-  17: [card("layer-service")],
+  // total over the summary so a stray citation still resolves
+  "stateless-modules": [card("layer-service")],
 }
 
-// `main` until first publish — released versions should pin their own tag so
-// shipped citations survive main drift (PLAN § Future).
-export const canonicalRuleUrl = (rule: number): string =>
-  `https://github.com/rixo/deblob/blob/main/docs/architecture.md#rule-${rule}`
+/**
+ * The rule's full text, pinned to the binary's own release tag so a shipped
+ * citation survives main drift. `version` is the package's — the bin reads it
+ * for `--version` and hands it down. A dev build cites a tag that does not
+ * exist yet; the release flow tags before it publishes, so every published
+ * binary's URLs resolve.
+ */
+export const canonicalRuleUrl = (rule: RuleId, version: string): string =>
+  `https://github.com/rixo/deblob/blob/v${version}/docs/architecture.md#${rule}`
 
 /**
  * Relative md link targets of a card (fragment links excluded) — the edges the
@@ -69,31 +74,35 @@ export const collectMdLinks = (markdown: string): string[] =>
 export type RuleSummary = { title: string; body: string }
 
 /**
- * One rule's entry out of the shipped rules-summary excerpt: `title` from the
- * bold span (trailing period dropped — the explain heading recases it), `body`
- * the rest, whitespace collapsed, anchor tags and inline-link syntax stripped.
+ * One rule's entry out of the shipped rules-summary excerpt: located by its
+ * slug anchor, `title` from the bold span (trailing period dropped — the
+ * explain heading recases it), `body` the rest, whitespace collapsed, the
+ * anchor, the leading slug token and inline-link syntax stripped.
  */
-export const ruleSummaryOf = (summaryMd: string, rule: number): RuleSummary => {
+export const ruleSummaryOf = (summaryMd: string, rule: RuleId): RuleSummary => {
   const lines = summaryMd.split("\n")
-  const anchor = `<a id="rule-${rule}"></a>`
+  const anchor = `<a id="${rule}"></a>`
   const start = lines.findIndex((line) => line.includes(anchor))
   if (start === -1) {
-    throw new Error(`rules summary has no anchor for rule ${rule}`)
+    throw new Error(`rules summary has no anchor for ${rule}`)
   }
   const end = lines.findIndex(
-    (line, index) => index > start && /^\s*(?:\d+\. |\*\*)/.test(line),
+    // the next entry or a family header, both at column 0 — a wrapped line
+    // is indented, even when it opens with the bold title
+    (line, index) => index > start && /^(?:- |\*\*)/.test(line),
   )
   const text = lines
     .slice(start, end === -1 ? lines.length : end)
     .join(" ")
-    .replace(/^\s*\d+\.\s*/, "")
+    .replace(/^\s*-\s*/, "")
     .replace(anchor, "")
+    .replace(/^\s*`[a-z-]+`\s*—\s*/, "")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/\s+/g, " ")
     .trim()
   const match = /^\*\*(.+?)\*\*\s*(?:—\s*)?(.*)$/s.exec(text)
   if (!match) {
-    throw new Error(`rule ${rule} summary entry has no bold title`)
+    throw new Error(`${rule} summary entry has no bold title`)
   }
   return {
     title: (match[1] as string).replace(/\.$/, "").trim(),

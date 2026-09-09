@@ -23,9 +23,9 @@ const LAYER_SUFFIX =
   /\.(model|port|service|adapter)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
 
 /**
- * Rule 16 — test setup is assembly; test naming is this flavor's opinion (same
- * extension set as layer suffixes). Closed carve-out: `__tests__/` and other
- * directory conventions stay to the config's `assembly` escape hatch.
+ * `test-setup-assembly` — test naming is this flavor's opinion (same extension
+ * set as layer suffixes). Closed carve-out: `__tests__/` and other directory
+ * conventions stay to the config's `assembly` escape hatch.
  */
 const TEST_SUFFIX = /\.(?:spec|test)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
 

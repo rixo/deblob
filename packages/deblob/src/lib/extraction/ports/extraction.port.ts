@@ -17,7 +17,7 @@ export type ImportRecord = {
   form: EdgeForm
   /**
    * True when this occurrence re-exports (`export ... from`, any form) — the
-   * fact rule 2 reads; plain imports never set it.
+   * fact `layer-in-path` reads; plain imports never set it.
    */
   reExport: boolean
   /**
@@ -32,9 +32,10 @@ export type ImportRecord = {
 export type FileExtraction = {
   imports: readonly ImportRecord[]
   /**
-   * Non-erasable top-level entries, statement order — the fact rule 10 reads.
-   * Erasable forms (`import type` / `export type`, interfaces, type aliases,
-   * ambient `declare`) and import/re-export statements are never listed.
+   * Non-erasable top-level entries, statement order — the fact
+   * `ports-types-only` reads. Erasable forms (`import type` / `export type`,
+   * interfaces, type aliases, ambient `declare`) and import/re-export
+   * statements are never listed.
    */
   runtimeContent: readonly RuntimeEntry[]
 }

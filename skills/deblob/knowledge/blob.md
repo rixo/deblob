@@ -1,5 +1,5 @@
 ---
-source: docs/architecture.md (intro, Rules 5)
+source: docs/architecture.md (intro, `blob-quarantine`)
 ---
 
 # The blob — and why the project is called deblob
@@ -14,9 +14,10 @@ ruled for yet, owned as debt until distillation places it.
   suffixless IS the blob — it shrinks as extraction proceeds.
 - **Deblobbing = fighting codebase entropy, methodically.** Growth pushes code
   toward tangle; every extraction pulls it back into layers with guarantees.
-- Hard rule while blob exists: **only assembly may import it** (Rule 5).
-  Anything else importing blob contaminates a layer that promised guarantees —
-  the label becomes a lie. See [dependency-matrix](dependency-matrix.md).
+- Hard rule while blob exists: **only assembly may import it**
+  (`blob-quarantine`). Anything else importing blob contaminates a layer that
+  promised guarantees — the label becomes a lie. See
+  [dependency-matrix](dependency-matrix.md).
 - **Blob is not assembly** ([layer-assembly](layer-assembly.md)): blob is
   unqualified code owned as debt; assembly is code _ruled_ necessary for wiring.
   Logic stuffed into assembly is blob hiding under a label that seems to allow

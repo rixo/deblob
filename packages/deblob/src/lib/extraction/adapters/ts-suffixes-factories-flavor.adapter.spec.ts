@@ -134,7 +134,7 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  test("classifies test files as assembly — rule 16, the flavor's opinion", () => {
+  test("classifies test files as assembly — test-setup-assembly, the flavor's opinion", () => {
     const result = classify([
       "icons/icons.model.spec.ts",
       "icons/loader.test.ts",

@@ -8,10 +8,6 @@
 
 ## Future
 
-- **Rule names** — chapter in flight: `history/20260908_rule-names/` (level 1,
-  SPEC only). Slugs as the rule identity across every surface, numbers gone (no
-  compat table, ruled at the seam); version-pinned rule URLs folded in. Kin,
-  waiting on it: the adapters-implement-ports rule (Ideas, CLI chapter board).
 - **Skills gates** — chapter `history/20260708_skills/` consolidated
   (2026-07-24); what remains is the two deferred manual gates (2026-07-17,
   rixo): local plugin load (`claude --plugin-dir <repo>`) and per-skill
@@ -22,12 +18,15 @@
 - **CLI 0.0.x** — chapter in flight: `history/20260710_cli/` (chapter PLAN
   carries decisions, status, the standing release roadmap — read it first when
   resuming). Steps 01–14 landed (v0 check surface, resolution integrity,
-  declared externals, cross-package layers, the `pure` key rename — 0.0.5
-  headline); 0.0.4 published 2026-09-08 (0.0.2 on 2026-07-24, 0.0.3 on
-  2026-09-02); version stance: 0.0.x until maturity or adoption pressure, 0.1.0
-  = the channel switch (minor = breaking thereafter). Version-pinned rule URLs
-  folded into the rule-names chapter (2026-09-08); storefront pass and package
-  LICENSE closed 2026-07-25. Companion, ruled to the `deblob docs` command
+  declared externals, cross-package layers, the `pure` key rename); rule names
+  landed as their own chapter (`history/20260908_rule-names/`, 2026-09-09: slugs
+  as the rule identity, numbers gone, rule URLs pinned to the release tag) — the
+  `pure` rename and the slugs are 0.0.5's headline, one migration; 0.0.4
+  published 2026-09-08 (0.0.2 on 2026-07-24, 0.0.3 on 2026-09-02); version
+  stance: 0.0.x until maturity or adoption pressure, 0.1.0 = the channel switch
+  (minor = breaking thereafter). Storefront pass and package LICENSE closed
+  2026-07-25. Kin, unblocked by the slugs: the adapters-implement-ports rule
+  (Ideas, CLI chapter board). Companion, ruled to the `deblob docs` command
   family: derived-view staleness check — diff `docs/` sections against `source:`
   stamps in `skills/*/knowledge|references/`; stamp-text ↔ heading matching rule
   to spec.

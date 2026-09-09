@@ -11,11 +11,12 @@ Type-only contracts at the hexagon's boundary, **shaped to the inside's needs**
   contract**. Supporting types ride along only as contract pieces (parameter
   shape, result shape); a type that stands alone is domain vocabulary → model.
   Ports may use model types freely; never the reverse dependency.
-- **Zero runtime code** (Rule 10): no constants, no enums, no functions, no
-  defaults. Runtime in a port file = a model or adapter extraction is pending.
-- **One port, one interface** (Rule 11): every adapter of a port implements the
-  same interface and produces the same result shape. If the service can tell
-  which adapter it got, the port hasn't finished abstracting.
+- **Zero runtime code** (`ports-types-only`): no constants, no enums, no
+  functions, no defaults. Runtime in a port file = a model or adapter extraction
+  is pending.
+- **One port, one interface** (`unified-port`): every adapter of a port
+  implements the same interface and produces the same result shape. If the
+  service can tell which adapter it got, the port hasn't finished abstracting.
 - Port interfaces belong to the hexagon that defines them (outbound: what it
   needs; inbound: what it offers).
 

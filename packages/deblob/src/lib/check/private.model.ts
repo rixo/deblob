@@ -1,9 +1,9 @@
 /**
- * `check private` — rule 12, the visibility boundary. Every `private` path
- * segment defines one boundary; boundaries are independent and fractal. A
- * packaging rule: every edge kind and form binds (rule 8 exempts composition
- * rules only), so the check takes no options. Pure: classified graph in,
- * violation set out — no IO, no formatting, no ordering.
+ * `check private` — `private-sealed`, the visibility boundary. Every `private`
+ * path segment defines one boundary; boundaries are independent and fractal. A
+ * packaging rule: every edge kind and form binds (`type-only-exempt` exempts
+ * composition rules only), so the check takes no options. Pure: classified
+ * graph in, violation set out — no IO, no formatting, no ordering.
  */
 
 import type { ImportGraph, ModuleNode } from "../extraction/graph.model.ts"
@@ -30,8 +30,8 @@ const boundariesOf = (path: string): string[] => {
 
 /**
  * The nearest service-root ancestor of a boundary dir — grouping dirs collapse
- * through, since they are never roots. `null` = ownerless: rule 12 speaks of a
- * service's `private/`; a blob-owned one makes no claim.
+ * through, since they are never roots. `null` = ownerless: `private-sealed`
+ * speaks of a service's `private/`; a blob-owned one makes no claim.
  */
 const ownerOf = (
   boundary: string,
@@ -79,7 +79,7 @@ export const checkPrivate = (graph: ImportGraph): PrivateViolation[] => {
       violations.push({
         check: "private",
         ruleset: "arch",
-        rules: [12],
+        rules: ["private-sealed"],
         file: importer.path,
         serviceRoot: importer.serviceRoot,
         target: edge.to,

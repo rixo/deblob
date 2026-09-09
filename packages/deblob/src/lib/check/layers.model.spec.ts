@@ -91,7 +91,7 @@ const declaredLeaf = (specifier: string, pattern: string): EdgeTarget => ({
 })
 
 describe("checkLayers", () => {
-  describe("model and ports stay pure and inward (rules 1, 4)", () => {
+  describe("model and ports stay pure and inward (`inward-deps`, `service-purity`)", () => {
     test("fires 1+4 (8 hint) when model imports a concrete builtin", () => {
       const g = graph(
         {
@@ -103,7 +103,7 @@ describe("checkLayers", () => {
         {
           check: "layers",
           ruleset: "arch",
-          rules: [1, 4, 8],
+          rules: ["inward-deps", "service-purity", "type-only-exempt"],
           file: "invoice/model/totals.ts",
           serviceRoot: "invoice",
           importerLayer: "model",
@@ -133,10 +133,22 @@ describe("checkLayers", () => {
       // 8 hint rides composition-unit targets only — assembly and ports type
       // variants bind too, so their citations stay plain
       expect(checkLayers(g)).toEqual([
-        expect.objectContaining({ rules: [1, 8], targetClass: "service" }),
-        expect.objectContaining({ rules: [1, 8], targetClass: "adapters" }),
-        expect.objectContaining({ rules: [1], targetClass: "assembly" }),
-        expect.objectContaining({ rules: [1], targetClass: "ports" }),
+        expect.objectContaining({
+          rules: ["inward-deps", "type-only-exempt"],
+          targetClass: "service",
+        }),
+        expect.objectContaining({
+          rules: ["inward-deps", "type-only-exempt"],
+          targetClass: "adapters",
+        }),
+        expect.objectContaining({
+          rules: ["inward-deps"],
+          targetClass: "assembly",
+        }),
+        expect.objectContaining({
+          rules: ["inward-deps"],
+          targetClass: "ports",
+        }),
       ])
     })
 
@@ -161,7 +173,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: [1, 8],
+          rules: ["inward-deps", "type-only-exempt"],
           file: "invoice/ports/renderer.ts",
           shape: "matrix-cell",
           targetClass: "service",
@@ -176,7 +188,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: [1, 4, 8],
+          rules: ["inward-deps", "service-purity", "type-only-exempt"],
           shape: "matrix-cell",
           targetClass: "concrete",
         }),
@@ -184,7 +196,7 @@ describe("checkLayers", () => {
     })
   })
 
-  describe("service purity (rule 4)", () => {
+  describe("service purity (`service-purity`)", () => {
     test("fires 4 (8 hint) when service imports a concrete builtin", () => {
       const g = graph(
         {
@@ -197,7 +209,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: [4, 8],
+          rules: ["service-purity", "type-only-exempt"],
           file: "invoice/pdf-render.service.ts",
           shape: "matrix-cell",
           targetClass: "concrete",
@@ -226,7 +238,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: [1, 8],
+          rules: ["inward-deps", "type-only-exempt"],
           shape: "matrix-cell",
           targetClass: "adapters",
         }),
@@ -249,7 +261,7 @@ describe("checkLayers", () => {
       expect(found).toHaveLength(2)
       for (const violation of found) {
         expect(violation).toMatchObject({
-          rules: [1],
+          rules: ["inward-deps"],
           shape: "matrix-cell",
           targetClass: "assembly",
         })
@@ -257,7 +269,7 @@ describe("checkLayers", () => {
     })
   })
 
-  describe("composition seals (rules 6, 7 — rule 8 hint)", () => {
+  describe("composition seals (`service-assembly-only`, `adapter-assembly-only` — `type-only-exempt` hint)", () => {
     test.each(["service", "adapters", "blob"] as const)(
       "fires 6+8 when %s runtime-imports a service file",
       (importerLayer) => {
@@ -281,7 +293,7 @@ describe("checkLayers", () => {
         )
         expect(checkLayers(g)).toEqual([
           expect.objectContaining({
-            rules: [6, 8],
+            rules: ["service-assembly-only", "type-only-exempt"],
             file: "billing/client.ts",
             importerLayer,
             shape: "matrix-cell",
@@ -309,7 +321,7 @@ describe("checkLayers", () => {
         )
         expect(checkLayers(g)).toEqual([
           expect.objectContaining({
-            rules: [7, 8],
+            rules: ["adapter-assembly-only", "type-only-exempt"],
             importerLayer,
             shape: "matrix-cell",
             targetClass: "adapters",
@@ -319,7 +331,7 @@ describe("checkLayers", () => {
     )
   })
 
-  describe("blob seal (rule 5)", () => {
+  describe("blob seal (`blob-quarantine`)", () => {
     test.each(["model", "ports", "service", "adapters"] as const)(
       "fires 5 when %s imports blob",
       (importerLayer) => {
@@ -332,7 +344,7 @@ describe("checkLayers", () => {
         )
         expect(checkLayers(g)).toEqual([
           expect.objectContaining({
-            rules: [5],
+            rules: ["blob-quarantine"],
             importerLayer,
             shape: "matrix-cell",
             targetClass: "blob",
@@ -342,7 +354,7 @@ describe("checkLayers", () => {
     )
   })
 
-  describe("concrete classification (rule 4, default-concrete)", () => {
+  describe("concrete classification (`service-purity`, default-concrete)", () => {
     test("fires the unclassified violation for an unlisted lib from model", () => {
       const g = graph(
         {
@@ -357,7 +369,7 @@ describe("checkLayers", () => {
         {
           check: "layers",
           ruleset: "arch",
-          rules: [4, 8],
+          rules: ["service-purity", "type-only-exempt"],
           file: "invoice/model/schedule.ts",
           serviceRoot: "invoice",
           importerLayer: "model",
@@ -373,7 +385,10 @@ describe("checkLayers", () => {
         [{ from: "a/a.service.ts", to: lib("axios") }],
       )
       expect(checkLayers(g)).toEqual([
-        expect.objectContaining({ rules: [4, 8], shape: "unclassified-lib" }),
+        expect.objectContaining({
+          rules: ["service-purity", "type-only-exempt"],
+          shape: "unclassified-lib",
+        }),
       ])
     })
 
@@ -409,7 +424,9 @@ describe("checkLayers", () => {
         [{ from: "a/x.model.ts", to: lib("node:util") }],
       )
       expect(checkLayers(g)).toEqual([
-        expect.objectContaining({ rules: [1, 4, 8] }),
+        expect.objectContaining({
+          rules: ["inward-deps", "service-purity", "type-only-exempt"],
+        }),
       ])
       expect(checkLayers(g, { pure: ["node:util"] })).toEqual([])
     })
@@ -421,7 +438,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: [1, 4],
+          rules: ["inward-deps", "service-purity"],
           shape: "matrix-cell",
           targetClass: "concrete",
         }),
@@ -441,7 +458,7 @@ describe("checkLayers", () => {
         {
           check: "layers",
           ruleset: "arch",
-          rules: [1, 4, 8],
+          rules: ["inward-deps", "service-purity", "type-only-exempt"],
           file: "a/x.model.ts",
           serviceRoot: "a",
           importerLayer: "model",
@@ -458,7 +475,10 @@ describe("checkLayers", () => {
         [{ from: "a/a.service.ts", to: leaf }],
       )
       expect(checkLayers(g)).toEqual([
-        expect.objectContaining({ rules: [4, 8], targetClass: "concrete" }),
+        expect.objectContaining({
+          rules: ["service-purity", "type-only-exempt"],
+          targetClass: "concrete",
+        }),
       ])
     })
 
@@ -495,19 +515,23 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([])
       expect(checkLayers(g, { typeOnlyExempt: false })).toEqual([
-        expect.objectContaining({ rules: [1, 4], targetClass: "concrete" }),
+        expect.objectContaining({
+          rules: ["inward-deps", "service-purity"],
+          targetClass: "concrete",
+        }),
       ])
     })
   })
 
   describe("cross-package layers — identity crosses, the matrix applies in-set", () => {
     test.each([
-      // the exact in-set cells: inward-pointing rows cite 1, the seal rows 6
-      ["model", [1, 8]],
-      ["ports", [1, 8]],
-      ["service", [6, 8]],
-      ["adapters", [6, 8]],
-      ["blob", [6, 8]],
+      // the exact in-set cells: inward-pointing rows cite inward-deps, the
+      // seal rows service-assembly-only
+      ["model", ["inward-deps", "type-only-exempt"]],
+      ["ports", ["inward-deps", "type-only-exempt"]],
+      ["service", ["service-assembly-only", "type-only-exempt"]],
+      ["adapters", ["service-assembly-only", "type-only-exempt"]],
+      ["blob", ["service-assembly-only", "type-only-exempt"]],
     ] as const)(
       "fires when %s imports a crossed service entry — the in-set cell, rules %j",
       (importerLayer, rules) => {
@@ -543,7 +567,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: [7, 8],
+          rules: ["adapter-assembly-only", "type-only-exempt"],
           shape: "matrix-cell",
           targetClass: "adapters",
         }),
@@ -581,7 +605,7 @@ describe("checkLayers", () => {
         )
         expect(checkLayers(g)).toEqual([
           expect.objectContaining({
-            rules: [1],
+            rules: ["inward-deps"],
             importerLayer,
             shape: "matrix-cell",
             targetClass: "assembly",
@@ -597,7 +621,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    test("a crossed model claim is pure for the importer — the trust pin: rule 4 satisfied, no `pure` line", () => {
+    test("a crossed model claim is pure for the importer — the trust pin: `service-purity` satisfied, no `pure` line", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [
@@ -635,7 +659,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: [1],
+          rules: ["inward-deps"],
           shape: "matrix-cell",
           targetClass: "ports",
         }),
@@ -671,10 +695,16 @@ describe("checkLayers", () => {
       expect(checkLayers(g(service))).toEqual([])
       expect(checkLayers(g(adapters))).toEqual([])
       expect(checkLayers(g(assembly))).toEqual([
-        expect.objectContaining({ rules: [1], targetClass: "assembly" }),
+        expect.objectContaining({
+          rules: ["inward-deps"],
+          targetClass: "assembly",
+        }),
       ])
       expect(checkLayers(g(service), { typeOnlyExempt: false })).toEqual([
-        expect.objectContaining({ rules: [1], targetClass: "service" }),
+        expect.objectContaining({
+          rules: ["inward-deps"],
+          targetClass: "service",
+        }),
       ])
     })
 
@@ -691,12 +721,15 @@ describe("checkLayers", () => {
         [{ from: "a/a.service.ts", to: leaf }],
       )
       expect(checkLayers(g)).toEqual([
-        expect.objectContaining({ rules: [6, 8], targetClass: "service" }),
+        expect.objectContaining({
+          rules: ["service-assembly-only", "type-only-exempt"],
+          targetClass: "service",
+        }),
       ])
     })
   })
 
-  describe("rule 8 — per-cell type exemption and the strict opt-out", () => {
+  describe("`type-only-exempt` — per-cell type exemption and the strict opt-out", () => {
     test("ignores type-only imports of service and adapter files by default", () => {
       const g = graph(
         {
@@ -723,7 +756,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    test("lets model type-import a service — rule 8's example, legal anywhere", () => {
+    test("lets model type-import a service — `type-only-exempt`'s example, legal anywhere", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -766,7 +799,7 @@ describe("checkLayers", () => {
         )
         expect(checkLayers(g)).toEqual([
           expect.objectContaining({
-            rules: [5],
+            rules: ["blob-quarantine"],
             importerLayer,
             targetClass: "blob",
           }),
@@ -783,7 +816,10 @@ describe("checkLayers", () => {
         [{ from: "a/x.model.ts", to: mod("main.spec.ts"), kind: "type" }],
       )
       expect(checkLayers(g)).toEqual([
-        expect.objectContaining({ rules: [1], targetClass: "assembly" }),
+        expect.objectContaining({
+          rules: ["inward-deps"],
+          targetClass: "assembly",
+        }),
       ])
     })
 
@@ -799,7 +835,10 @@ describe("checkLayers", () => {
         ],
       )
       expect(checkLayers(g)).toEqual([
-        expect.objectContaining({ rules: [1, 4], targetClass: "concrete" }),
+        expect.objectContaining({
+          rules: ["inward-deps", "service-purity"],
+          targetClass: "concrete",
+        }),
       ])
     })
 
@@ -819,7 +858,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g, { typeOnlyExempt: false })).toEqual([
         expect.objectContaining({
-          rules: [6],
+          rules: ["service-assembly-only"],
           shape: "matrix-cell",
           targetClass: "service",
         }),
@@ -835,7 +874,7 @@ describe("checkLayers", () => {
         [{ from: "lib/helpers.ts", to: mod("invoice/i.service.ts") }],
       )
       expect(checkLayers(g, { typeOnlyExempt: false })).toEqual([
-        expect.objectContaining({ rules: [6] }),
+        expect.objectContaining({ rules: ["service-assembly-only"] }),
       ])
     })
 
@@ -857,14 +896,23 @@ describe("checkLayers", () => {
         ],
       )
       expect(checkLayers(g, { typeOnlyExempt: false })).toEqual([
-        expect.objectContaining({ rules: [1], targetClass: "service" }),
-        expect.objectContaining({ rules: [4], targetClass: "concrete" }),
-        expect.objectContaining({ rules: [4], shape: "unclassified-lib" }),
+        expect.objectContaining({
+          rules: ["inward-deps"],
+          targetClass: "service",
+        }),
+        expect.objectContaining({
+          rules: ["service-purity"],
+          targetClass: "concrete",
+        }),
+        expect.objectContaining({
+          rules: ["service-purity"],
+          shape: "unclassified-lib",
+        }),
       ])
     })
   })
 
-  describe("own-service private/ (rule 9)", () => {
+  describe("own-service private/ (`private-exempt`)", () => {
     test.each(["service", "adapters"] as const)(
       "lets %s import from its own service's private/",
       (importerLayer) => {
@@ -924,7 +972,9 @@ describe("checkLayers", () => {
         ],
       )
       expect(checkLayers(g)).toEqual([
-        expect.objectContaining({ rules: [6, 8] }),
+        expect.objectContaining({
+          rules: ["service-assembly-only", "type-only-exempt"],
+        }),
       ])
     })
   })

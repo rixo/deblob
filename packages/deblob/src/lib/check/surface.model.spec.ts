@@ -100,7 +100,7 @@ describe("checkSurface", () => {
       {
         check: "surface",
         ruleset: "arch",
-        rules: [3],
+        rules: ["chain-purity"],
         file: "src/stripe.adapter.ts",
         serviceRoot: "src",
         subpath: "./totals.model",
@@ -119,7 +119,7 @@ describe("checkSurface", () => {
     const s = surface({ "./checkout.service": ["src/index.ts"] })
     expect(checkSurface(g, s, options).violations).toEqual([
       expect.objectContaining({
-        rules: [3],
+        rules: ["chain-purity"],
         shape: "claim-mismatch",
         claimed: "service",
         actual: "assembly",
@@ -147,7 +147,7 @@ describe("checkSurface", () => {
     const lying = surface({ "./checkout.service": ["dist/stripe.adapter.mjs"] })
     expect(checkSurface(g, lying, options).violations).toEqual([
       expect.objectContaining({
-        rules: [3],
+        rules: ["chain-purity"],
         shape: "claim-mismatch",
         claimed: "service",
         actual: "adapters",
@@ -199,7 +199,7 @@ describe("checkSurface", () => {
     const s = surface({ ".": ["dist/index.js"] })
     expect(checkSurface(g, s, options).violations).toEqual([
       expect.objectContaining({
-        rules: [2],
+        rules: ["layer-in-path"],
         shape: "unlabeled-front",
         file: "src/index.ts",
         exported: "dist/index.js",
@@ -403,7 +403,7 @@ describe("checkSurface", () => {
         disclosed: 0,
         violations: [
           expect.objectContaining({
-            rules: [2],
+            rules: ["layer-in-path"],
             shape: "unlabeled-front",
             subpath: "./api",
             exported: "dist/api.js",
@@ -411,7 +411,7 @@ describe("checkSurface", () => {
             fronts: "src/checkout.service.ts",
           }),
           expect.objectContaining({
-            rules: [3],
+            rules: ["chain-purity"],
             shape: "claim-mismatch",
             subpath: "./deep/thing.model",
             exported: "dist/deep/thing.model.js",
@@ -696,7 +696,7 @@ describe("checkSurface", () => {
       {
         check: "surface",
         ruleset: "arch",
-        rules: [2],
+        rules: ["layer-in-path"],
         file: "src/checkout.service.ts",
         serviceRoot: "src",
         subpath: "./checkout",
@@ -731,7 +731,7 @@ describe("checkSurface", () => {
     const s = surface({ ".": ["src/index.ts"] })
     expect(checkSurface(g, s, options).violations).toEqual([
       expect.objectContaining({
-        rules: [2],
+        rules: ["layer-in-path"],
         shape: "unlabeled-front",
         file: "src/index.ts",
         fronts: "src/checkout.service.ts",

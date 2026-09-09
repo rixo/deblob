@@ -49,7 +49,7 @@ import { defineConfig } from "deblob"
 export default defineConfig({
   include: ["src/**"],
   assembly: ["src/main.ts"], // composition roots — privilege is declared
-  pure: ["zod"], // rule-4 allowlist — trusted, not verified
+  pure: ["zod"], // service-purity allowlist — trusted, not verified
 })
 ```
 
@@ -138,8 +138,8 @@ assembly.
 - **Consumer side** — nothing to configure. Workspaces (pnpm/npm/yarn)
   materialize siblings as node_modules symlinks and the resolver follows them;
   no `alias` key (yarn PnP untested). A sibling's `.service`/`.adapter` subpath
-  is assembly-only for you (rules 6/7, `import type` exempt) — import it from
-  assembly or go through your own port
+  is assembly-only for you (`service-assembly-only` / `adapter-assembly-only`,
+  `import type` exempt) — import it from assembly or go through your own port
   ([crossing-services](crossing-services.md)); never add it to `pure`. A
   sibling's `.model`/`.port` subpath is pure for your model layer with no `pure`
   line: the claim is trusted the way the code is.
@@ -148,9 +148,9 @@ assembly.
   Reviewed like `pure`. Mapping a subpath to `blob` revokes a claim you do not
   buy.
 - The config's `assembly` globs designate composition roots at home; they never
-  silence rule 2 on a re-export barrel — an unlabeled entry fronting a service
-  or adapter is exactly what `surface` fires on. The field's `assembly` list is
-  the word for that, because it seals the subpath abroad. Both deserve
+  silence `layer-in-path` on a re-export barrel — an unlabeled entry fronting a
+  service or adapter is exactly what `surface` fires on. The field's `assembly`
+  list is the word for that, because it seals the subpath abroad. Both deserve
   `pure`-grade review.
 - The external-treatment premise assumes imports go through the package
   boundary. Deep imports into sibling source (`@scope/lib/src/…`) resolve

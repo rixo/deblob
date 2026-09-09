@@ -23,16 +23,16 @@ cross-linked. Pick by the question you're holding.
 
 ## rules
 
-Rule numbers = architecture.md § Summary (`#rule-N` anchors); `deblob check`
-cites them.
+Rule names = architecture.md § Summary (`#<name>` anchors); `deblob check` cites
+them.
 
-| Question                                     | Card                                            | Rules |
-| -------------------------------------------- | ----------------------------------------------- | ----- |
-| Who may import what?                         | [dependency-matrix](dependency-matrix.md)       | 1–5   |
-| Who may import composition units? type-only? | [composition-rules](composition-rules.md)       | 6–11  |
-| Visibility, `private/`, why no barrels?      | [packaging-visibility](packaging-visibility.md) | 12    |
-| Cycles — service DAG, module level?          | [acyclic](acyclic.md)                           | 13–14 |
-| Nested services/adapters — what's allowed?   | [nesting](nesting.md)                           | —     |
+| Question                                     | Card                                            | Rules                                                                                                                      |
+| -------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Who may import what?                         | [dependency-matrix](dependency-matrix.md)       | `inward-deps`, `layer-in-path`, `chain-purity`, `service-purity`, `blob-quarantine`                                        |
+| Who may import composition units? type-only? | [composition-rules](composition-rules.md)       | `service-assembly-only`, `adapter-assembly-only`, `type-only-exempt`, `private-exempt`, `ports-types-only`, `unified-port` |
+| Visibility, `private/`, why no barrels?      | [packaging-visibility](packaging-visibility.md) | `private-sealed`                                                                                                           |
+| Cycles — service DAG, module level?          | [acyclic](acyclic.md)                           | `no-service-cycle`, `no-runtime-cycle`                                                                                     |
+| Nested services/adapters — what's allowed?   | [nesting](nesting.md)                           | —                                                                                                                          |
 
 ## lifecycle & patterns
 
@@ -47,12 +47,12 @@ cites them.
 
 ## testing
 
-| Question                           | Card                                      | Rules |
-| ---------------------------------- | ----------------------------------------- | ----- |
-| What do tests exercise and assert? | [testing-contract](testing-contract.md)   | 15    |
-| Test at internal seams?            | [testing-seams](testing-seams.md)         | —     |
-| Setup, fixtures, test factory?     | [testing-isolation](testing-isolation.md) | 16    |
-| Who are tests written for?         | [testing-reviewer](testing-reviewer.md)   | —     |
+| Question                           | Card                                      | Rules                   |
+| ---------------------------------- | ----------------------------------------- | ----------------------- |
+| What do tests exercise and assert? | [testing-contract](testing-contract.md)   | `test-through-contract` |
+| Test at internal seams?            | [testing-seams](testing-seams.md)         | —                       |
+| Setup, fixtures, test factory?     | [testing-isolation](testing-isolation.md) | `test-setup-assembly`   |
+| Who are tests written for?         | [testing-reviewer](testing-reviewer.md)   | —                       |
 
 ## Implementation — the guide's flavor (TS/ESM)
 
