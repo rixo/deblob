@@ -15,7 +15,7 @@ export type FlavorClassification = {
 
 export interface FlavorResolver {
   /**
-   * The flavor's type-only stance — its default for the `type-only-exempt` rule
+   * The flavor's type-only stance — its default for the `runtime-import` rule
    * (absent = exempt, canon's letter). The config key overrides either way; the
    * floor stays canon.
    */

@@ -1,9 +1,10 @@
 /**
  * `check private` — `private-sealed`, the visibility boundary. Every `private`
  * path segment defines one boundary; boundaries are independent and fractal. A
- * packaging rule: every edge kind and form binds (`type-only-exempt` exempts
- * composition rules only), so the check takes no options. Pure: classified
- * graph in, violation set out — no IO, no formatting, no ordering.
+ * packaging rule: every edge kind and form binds (`runtime-import`'s type
+ * exemption covers composition rules only), so the check takes no options.
+ * Pure: classified graph in, violation set out — no IO, no formatting, no
+ * ordering.
  */
 
 import type { ImportGraph, ModuleNode } from "../extraction/graph.model.ts"

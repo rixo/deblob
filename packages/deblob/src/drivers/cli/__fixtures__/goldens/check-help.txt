@@ -15,7 +15,7 @@ broken rule:
     implementations (service-purity)
 
 Type-only imports (import type / { type X }) are exempt from composition
-rules by default (type-only-exempt) — a flavor axis: strict flavors opt
+rules by default (runtime-import) — a flavor axis: strict flavors opt
 out in deblob.config.ts. Unsuffixed files are blob: legal, unchecked
 except for cycles — labeling is adoption, not a prerequisite
 (blob-quarantine guards the boundary: only assembly may import blob).

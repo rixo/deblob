@@ -7,10 +7,15 @@
  * Naming a rule (ruled at the rule-names chapter, 2026-09-08): two or three
  * kebab words; names the constraint, not the layer word alone; `no-` only where
  * the prohibition is the whole rule (cycles); siblings share a stem so they
- * sort and read together (`service-assembly-only` / `adapter-assembly-only`). A
- * rule born later is slugged in its own spec before its detector cites it, and
- * enters this list at its family's position. A slug is public API — renaming
- * one is a breaking change.
+ * sort and read together (`service-assembly-only` / `adapter-assembly-only`);
+ * names what the rule governs, never the escape hatch it grants
+ * (`runtime-import`, not `type-only-exempt` — a slug is read on a violation
+ * line, where the exemption is precisely what did not apply); never a check
+ * name (`layers`, `dag`, …) — `explain` resolves check names first in the same
+ * topic space, and `cli.model.spec.ts` fails on the overlap. A rule born later
+ * is slugged in its own spec before its detector cites it, and enters this list
+ * at its family's position. A slug is public API — renaming one is a breaking
+ * change.
  *
  * Order = architecture.md § Summary's display order, family by family; the sort
  * key wherever output orders rules.
@@ -25,8 +30,8 @@ export const RULE_IDS = [
   // composition rules
   "service-assembly-only",
   "adapter-assembly-only",
-  "type-only-exempt",
-  "private-exempt",
+  "runtime-import",
+  "public-unit",
   "ports-types-only",
   "unified-port",
   // packaging rules

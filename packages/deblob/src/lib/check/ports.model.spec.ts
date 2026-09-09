@@ -165,7 +165,7 @@ describe("checkPorts", () => {
           rules: ["ports-types-only"],
           file: "invoice/ports/renderer.ts",
           serviceRoot: "invoice",
-          shape: "runtime-import",
+          shape: "runtime-import-in-port",
           target: mod("invoice/dpi.model.ts"),
         },
       ])
@@ -184,7 +184,10 @@ describe("checkPorts", () => {
         },
       )
       expect(checkPorts(g)).toEqual([
-        expect.objectContaining({ shape: "runtime-import", target: to }),
+        expect.objectContaining({
+          shape: "runtime-import-in-port",
+          target: to,
+        }),
       ])
     })
 
@@ -192,7 +195,7 @@ describe("checkPorts", () => {
       const g = port(lib("zod"))
       expect(checkPorts(g)).toEqual([
         expect.objectContaining({
-          shape: "runtime-import",
+          shape: "runtime-import-in-port",
           target: lib("zod"),
         }),
       ])
@@ -201,7 +204,7 @@ describe("checkPorts", () => {
     test.each(["dynamic", "require"] as const)("fires on a %s edge", (form) => {
       const g = port(lib("zod"), { form })
       expect(checkPorts(g)).toEqual([
-        expect.objectContaining({ shape: "runtime-import" }),
+        expect.objectContaining({ shape: "runtime-import-in-port" }),
       ])
     })
 
@@ -217,7 +220,7 @@ describe("checkPorts", () => {
         },
       )
       expect(checkPorts(g)).toEqual([
-        expect.objectContaining({ shape: "runtime-import" }),
+        expect.objectContaining({ shape: "runtime-import-in-port" }),
       ])
     })
 
@@ -338,7 +341,7 @@ describe("checkPorts", () => {
       )
       expect(checkPorts(g)).toEqual([
         expect.objectContaining({
-          shape: "runtime-import",
+          shape: "runtime-import-in-port",
           file: "invoice/ports/a.ts",
         }),
       ])
@@ -357,7 +360,7 @@ describe("checkPorts", () => {
       )
       expect(checkPorts(g)).toEqual([
         expect.objectContaining({ shape: "runtime-export" }),
-        expect.objectContaining({ shape: "runtime-import" }),
+        expect.objectContaining({ shape: "runtime-import-in-port" }),
       ])
     })
   })

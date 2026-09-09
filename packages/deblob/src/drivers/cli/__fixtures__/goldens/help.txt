@@ -12,7 +12,7 @@ Checks
   layers     dependency matrix by layer suffix; type-only imports exempt
              by default (inward-deps, service-purity, blob-quarantine,
              service-assembly-only, adapter-assembly-only,
-             type-only-exempt, private-exempt)
+             runtime-import, public-unit)
   private    private/ is sealed outside its service (private-sealed)
   barrels    the layer is visible in the import path — no index.ts
              indirection (layer-in-path)

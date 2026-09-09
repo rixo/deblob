@@ -1,7 +1,7 @@
 /**
- * `check layers` — the dependency matrix by layer. `type-only-exempt` applies
- * per cell, not as a kind gate: a type-only edge is exempt iff its target owns
- * a contract shape (composition units in-set, builtins/packages external); blob
+ * `check layers` — the dependency matrix by layer. `runtime-import` applies per
+ * cell, not as a kind gate: a type-only edge is exempt iff its target owns a
+ * contract shape (composition units in-set, builtins/packages external); blob
  * and assembly targets bind every kind. An external leaf carrying a layer (a
  * sibling package's declared subpath) enters the same matrix as a target of
  * that layer; only an unlabeled external falls to the purity trichotomy. Pure:
@@ -26,9 +26,9 @@ export type CheckLayersOptions = {
    */
   pure?: readonly string[]
   /**
-   * The `type-only-exempt` stance: `true` (default) exempts type-only edges to
-   * targets owning a contract shape; `false` is the strict opt-out binding
-   * every kind — knobs only tighten canon.
+   * The type-only stance (`runtime-import`): `true` (default) exempts type-only
+   * edges to targets owning a contract shape; `false` is the strict opt-out
+   * binding every kind — knobs only tighten canon.
    */
   typeOnlyExempt?: boolean
 }
@@ -45,10 +45,9 @@ const PURE_BUILTINS: ReadonlySet<string> = new Set([
 type NonAssembly = Exclude<Layer, "assembly">
 
 /**
- * The in-set targets whose types are a contract (`type-only-exempt`'s
- * "contract's shape"): the composition units. Blob's shape is its
- * implementation and assembly is wiring — neither owns a contract, both bind
- * type edges.
+ * The in-set targets whose types are a contract (`runtime-import`'s "contract's
+ * shape"): the composition units. Blob's shape is its implementation and
+ * assembly is wiring — neither owns a contract, both bind type edges.
  */
 const TYPE_EXEMPT_TARGETS: ReadonlySet<Layer> = new Set(["service", "adapters"])
 
@@ -76,7 +75,7 @@ const classifyExternal = (
 
 /**
  * Rules cited for a forbidden module cell, `null` for a legal one — base
- * citations; the `type-only-exempt` hint ("import type is fine") is appended by
+ * citations; the `runtime-import` hint ("import type is fine") is appended by
  * the caller wherever the cell's type variant is exempt.
  */
 const moduleCellRules = (
@@ -107,7 +106,7 @@ const moduleCellRules = (
 }
 
 /**
- * `private-exempt`: service/adapters import freely from their own service's
+ * `public-unit`: service/adapters import freely from their own service's
  * `private/`.
  */
 const isOwnPrivate = (importer: ModuleNode, target: ModuleNode): boolean => {
@@ -170,9 +169,9 @@ export const checkLayers = (
       if (isOwnPrivate(importer, target)) continue
       const rules = moduleCellRules(importerLayer, target.layer)
       if (rules) {
-        // the `type-only-exempt` hint: "import type is fine" — only where that is true
+        // the `runtime-import` hint: "import type is fine" — only where that is true
         const cited: readonly RuleId[] = cellExempt
-          ? [...rules, "type-only-exempt"]
+          ? [...rules, "runtime-import"]
           : rules
         violations.push(matrixCell(importer, edge, target.layer, cited))
       }
@@ -193,7 +192,7 @@ export const checkLayers = (
       const rules = moduleCellRules(importerLayer, crossed)
       if (rules) {
         const cited: readonly RuleId[] = cellExempt
-          ? [...rules, "type-only-exempt"]
+          ? [...rules, "runtime-import"]
           : rules
         violations.push(matrixCell(importer, edge, crossed, cited))
       }
@@ -219,7 +218,7 @@ export const checkLayers = (
         check: "layers",
         ruleset: "arch",
         rules: externalExempt
-          ? ["service-purity", "type-only-exempt"]
+          ? ["service-purity", "runtime-import"]
           : ["service-purity"],
         file: importer.path,
         serviceRoot: importer.serviceRoot,
@@ -238,7 +237,7 @@ export const checkLayers = (
         importer,
         edge,
         "concrete",
-        externalExempt ? [...rules, "type-only-exempt"] : rules,
+        externalExempt ? [...rules, "runtime-import"] : rules,
       ),
     )
   }

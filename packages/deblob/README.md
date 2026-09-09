@@ -27,7 +27,7 @@ deblob explain <topic...>    explain rules or checks (service-purity,
   import kind, runtime module cycles — `no-service-cycle`, `no-runtime-cycle`),
   `layers` (the dependency matrix — `inward-deps`, `service-purity`,
   `blob-quarantine`, `service-assembly-only`, `adapter-assembly-only`,
-  `type-only-exempt`, `private-exempt`), `private` (`private-sealed`), `barrels`
+  `runtime-import`, `public-unit`), `private` (`private-sealed`), `barrels`
   (`layer-in-path`), `ports` (`ports-types-only`), `surface` (the exports map
   matches the layers it fronts — only for packages declaring `"deblob": {}` in
   package.json; `layer-in-path`, `chain-purity`). All run over one shared import
@@ -53,7 +53,7 @@ Violations cite their rule and print the offending edge:
 src/invoice
   src/invoice/pdf-render.service.ts
     layers   imports node:fs — service layer cannot depend on concrete;
-             import type is fine (service-purity, type-only-exempt)
+             import type is fine (service-purity, runtime-import)
 ```
 
 Not in v0, on purpose: autofix (not deblob's job — fixing belongs to whoever
@@ -88,7 +88,7 @@ The eleven keys, all optional:
 | `include`        | `["**"]`                  | Coverage globs; under-coverage is a silent hole, so the default covers everything                                                   |
 | `exclude`        | `[]`                      | Appended to a non-removable baseline (`node_modules`, `dist`, …); never replaces it                                                 |
 | `pure`           | `[]`                      | `service-purity` allowlist: package names, builtin specifiers, and declared `external` patterns ratified as pure                    |
-| `typeOnlyExempt` | flavor's stance (`true`)  | `false` = strict: type-only imports lose the `type-only-exempt` exemption; knobs only tighten canon                                 |
+| `typeOnlyExempt` | flavor's stance (`true`)  | `false` = strict: type-only imports lose their exemption under `runtime-import`; knobs only tighten canon                           |
 | `tsconfig`       | `tsconfig.json` at root   | The tsconfig feeding resolution (`paths` aliases); a path, or `false` to disable — a declared path that doesn't exist fails loud    |
 | `alias`          | `{}`                      | Resolver aliases living outside tsconfig (bundler config); teaches resolution, never suppresses failures                            |
 | `external`       | `[]`                      | Specifier patterns the environment provides with nothing on disk (`$theme:**`, `cloudflare:*`) — matches are leaves, never resolved |

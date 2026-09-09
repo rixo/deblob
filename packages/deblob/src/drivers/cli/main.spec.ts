@@ -231,7 +231,7 @@ describe("deblob check", () => {
     expect(out).toContain("src/consumer.service.ts")
     expect(out).toContain("imports @fixture/billing/checkout.service")
     expect(out.replace(/\n +/g, " ")).toContain(
-      "assembly-only; import type is fine (service-assembly-only, type-only-exempt)",
+      "assembly-only; import type is fine (service-assembly-only, runtime-import)",
     )
     // …not from assembly; the model entry is green with no `pure` line, and
     // the disclosed adapter of the other sibling is unlabeled — no

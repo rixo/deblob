@@ -61,8 +61,8 @@ Sibling rules share a stem so they sort and read together.
 | 5   | `blob-quarantine`       | Only assembly may import from blob                |
 | 6   | `service-assembly-only` | `.service.ts` can only be imported by assembly    |
 | 7   | `adapter-assembly-only` | `.adapter.ts` can only be imported by assembly    |
-| 8   | `type-only-exempt`      | Composition rules govern runtime imports          |
-| 9   | `private-exempt`        | Composition rules apply to public units only      |
+| 8   | `runtime-import`        | Composition rules govern runtime imports          |
+| 9   | `public-unit`           | Composition rules apply to public units only      |
 | 10  | `ports-types-only`      | Ports are types only                              |
 | 11  | `unified-port`          | One port, one interface                           |
 | 12  | `private-sealed`        | `private/` is the only visibility boundary        |
@@ -72,10 +72,16 @@ Sibling rules share a stem so they sort and read together.
 | 16  | `test-setup-assembly`   | Test setup is assembly                            |
 | 17  | `stateless-modules`     | Modules are stateless                             |
 
-`type-only-exempt` deliberately matches the config key `typeOnlyExempt` — the
-knob and the rule it relaxes share a name. `private-sealed` is what check-help
-already said in prose. Rules born later are slugged at birth in their own spec
-(first customer: `adapter-implements-port`, on the board).
+Amended 2026-09-10, before the first publish (the canary's read of the 0.0.5
+tarball): rows 8 and 9 were `type-only-exempt` and `private-exempt`. Both named
+the escape hatch, and a slug is read on a violation line, where the exemption is
+precisely what did not apply — `(service-assembly-only, type-only-exempt)`
+asserted the inverse of what fired. Renamed to what each rule governs; the
+grammar gains the clause "never the escape hatch". The config key
+`typeOnlyExempt` keeps its name: the knob names its stance, the slug names the
+rule. `private-sealed` is what check-help already said in prose. Rules born
+later are slugged at birth in their own spec (first customer:
+`adapter-implements-port`, on the board).
 
 ### The model — one list, one type
 
@@ -116,12 +122,12 @@ A typo in any of these is now a type error.
 ### Output
 
 - **Violation line**: `(service-purity)`; several:
-  `(service-purity, type-only-exempt)`. The word `rule` leaves the parenthesis —
+  `(service-purity, runtime-import)`. The word `rule` leaves the parenthesis —
   the slug is self-describing. The wrap-merge that kept `(rule 5)` unsplit keeps
   only the comma-list case: a slug is one token already; a list of slugs must
   not break between the comma and the next slug.
 - **Footer**:
-  `why: deblob explain service-purity type-only-exempt · or rerun with --explain`.
+  `why: deblob explain service-purity runtime-import · or rerun with --explain`.
   Longer than `explain 4 8`; the observed reflex was an agent pasting it, and a
   slug in the footer teaches where a number did not.
 - **Help screens** (`help`, `check --help`): every `(rule N)` becomes

@@ -21,7 +21,7 @@ export type LayersViolation = {
   ruleset: Ruleset
   /**
    * Cited rules within the ruleset — a finding may cite two (the seal plus
-   * `type-only-exempt` when the hint is "import type is fine").
+   * `runtime-import` when the hint is "import type is fine").
    */
   rules: readonly RuleId[]
   /** The offending importer. */
@@ -90,8 +90,8 @@ export type PortsViolation = {
   /** Always `ports-types-only`, read whole; no hint variant. */
   rules: readonly RuleId[]
   /**
-   * Attribution side: the port for `runtime-export` / `runtime-import`, the
-   * importer for `runtime-import-of-port`.
+   * Attribution side: the port for `runtime-export` / `runtime-import-in-port`,
+   * the importer for `runtime-import-of-port`.
    */
   file: string
   /** Grouping key; `null` = the `blob` bucket. */
@@ -106,7 +106,7 @@ export type PortsViolation = {
     }
   | {
       /** A runtime edge out of the port — target-blind. */
-      shape: "runtime-import"
+      shape: "runtime-import-in-port"
       target: EdgeTarget
     }
   | {

@@ -53,7 +53,7 @@ export const checkPorts = (graph: ImportGraph): PortsViolation[] => {
         rules: ["ports-types-only"],
         file: importer.path,
         serviceRoot: importer.serviceRoot,
-        shape: "runtime-import",
+        shape: "runtime-import-in-port",
         target: edge.to,
       })
     } else if (target?.layer === "ports") {

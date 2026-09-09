@@ -57,9 +57,9 @@ export type DeblobConfig = {
    */
   pure?: readonly string[]
   /**
-   * `type-only-exempt` stance override: `false` = strict, type-only imports
-   * lose their exemption. Default comes from the flavor (absent = `true`,
-   * canon).
+   * Type-only stance override (`runtime-import`): `false` = strict, type-only
+   * imports lose their exemption. Default comes from the flavor (absent =
+   * `true`, canon).
    */
   typeOnlyExempt?: boolean
   /**

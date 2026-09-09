@@ -103,7 +103,7 @@ describe("checkLayers", () => {
         {
           check: "layers",
           ruleset: "arch",
-          rules: ["inward-deps", "service-purity", "type-only-exempt"],
+          rules: ["inward-deps", "service-purity", "runtime-import"],
           file: "invoice/model/totals.ts",
           serviceRoot: "invoice",
           importerLayer: "model",
@@ -134,11 +134,11 @@ describe("checkLayers", () => {
       // variants bind too, so their citations stay plain
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: ["inward-deps", "type-only-exempt"],
+          rules: ["inward-deps", "runtime-import"],
           targetClass: "service",
         }),
         expect.objectContaining({
-          rules: ["inward-deps", "type-only-exempt"],
+          rules: ["inward-deps", "runtime-import"],
           targetClass: "adapters",
         }),
         expect.objectContaining({
@@ -173,7 +173,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: ["inward-deps", "type-only-exempt"],
+          rules: ["inward-deps", "runtime-import"],
           file: "invoice/ports/renderer.ts",
           shape: "matrix-cell",
           targetClass: "service",
@@ -188,7 +188,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: ["inward-deps", "service-purity", "type-only-exempt"],
+          rules: ["inward-deps", "service-purity", "runtime-import"],
           shape: "matrix-cell",
           targetClass: "concrete",
         }),
@@ -209,7 +209,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: ["service-purity", "type-only-exempt"],
+          rules: ["service-purity", "runtime-import"],
           file: "invoice/pdf-render.service.ts",
           shape: "matrix-cell",
           targetClass: "concrete",
@@ -238,7 +238,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: ["inward-deps", "type-only-exempt"],
+          rules: ["inward-deps", "runtime-import"],
           shape: "matrix-cell",
           targetClass: "adapters",
         }),
@@ -269,7 +269,7 @@ describe("checkLayers", () => {
     })
   })
 
-  describe("composition seals (`service-assembly-only`, `adapter-assembly-only` — `type-only-exempt` hint)", () => {
+  describe("composition seals (`service-assembly-only`, `adapter-assembly-only` — `runtime-import` hint)", () => {
     test.each(["service", "adapters", "blob"] as const)(
       "fires 6+8 when %s runtime-imports a service file",
       (importerLayer) => {
@@ -293,7 +293,7 @@ describe("checkLayers", () => {
         )
         expect(checkLayers(g)).toEqual([
           expect.objectContaining({
-            rules: ["service-assembly-only", "type-only-exempt"],
+            rules: ["service-assembly-only", "runtime-import"],
             file: "billing/client.ts",
             importerLayer,
             shape: "matrix-cell",
@@ -321,7 +321,7 @@ describe("checkLayers", () => {
         )
         expect(checkLayers(g)).toEqual([
           expect.objectContaining({
-            rules: ["adapter-assembly-only", "type-only-exempt"],
+            rules: ["adapter-assembly-only", "runtime-import"],
             importerLayer,
             shape: "matrix-cell",
             targetClass: "adapters",
@@ -369,7 +369,7 @@ describe("checkLayers", () => {
         {
           check: "layers",
           ruleset: "arch",
-          rules: ["service-purity", "type-only-exempt"],
+          rules: ["service-purity", "runtime-import"],
           file: "invoice/model/schedule.ts",
           serviceRoot: "invoice",
           importerLayer: "model",
@@ -386,7 +386,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: ["service-purity", "type-only-exempt"],
+          rules: ["service-purity", "runtime-import"],
           shape: "unclassified-lib",
         }),
       ])
@@ -425,7 +425,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: ["inward-deps", "service-purity", "type-only-exempt"],
+          rules: ["inward-deps", "service-purity", "runtime-import"],
         }),
       ])
       expect(checkLayers(g, { pure: ["node:util"] })).toEqual([])
@@ -458,7 +458,7 @@ describe("checkLayers", () => {
         {
           check: "layers",
           ruleset: "arch",
-          rules: ["inward-deps", "service-purity", "type-only-exempt"],
+          rules: ["inward-deps", "service-purity", "runtime-import"],
           file: "a/x.model.ts",
           serviceRoot: "a",
           importerLayer: "model",
@@ -476,7 +476,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: ["service-purity", "type-only-exempt"],
+          rules: ["service-purity", "runtime-import"],
           targetClass: "concrete",
         }),
       ])
@@ -527,11 +527,11 @@ describe("checkLayers", () => {
     test.each([
       // the exact in-set cells: inward-pointing rows cite inward-deps, the
       // seal rows service-assembly-only
-      ["model", ["inward-deps", "type-only-exempt"]],
-      ["ports", ["inward-deps", "type-only-exempt"]],
-      ["service", ["service-assembly-only", "type-only-exempt"]],
-      ["adapters", ["service-assembly-only", "type-only-exempt"]],
-      ["blob", ["service-assembly-only", "type-only-exempt"]],
+      ["model", ["inward-deps", "runtime-import"]],
+      ["ports", ["inward-deps", "runtime-import"]],
+      ["service", ["service-assembly-only", "runtime-import"]],
+      ["adapters", ["service-assembly-only", "runtime-import"]],
+      ["blob", ["service-assembly-only", "runtime-import"]],
     ] as const)(
       "fires when %s imports a crossed service entry — the in-set cell, rules %j",
       (importerLayer, rules) => {
@@ -567,7 +567,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: ["adapter-assembly-only", "type-only-exempt"],
+          rules: ["adapter-assembly-only", "runtime-import"],
           shape: "matrix-cell",
           targetClass: "adapters",
         }),
@@ -722,14 +722,14 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: ["service-assembly-only", "type-only-exempt"],
+          rules: ["service-assembly-only", "runtime-import"],
           targetClass: "service",
         }),
       ])
     })
   })
 
-  describe("`type-only-exempt` — per-cell type exemption and the strict opt-out", () => {
+  describe("`runtime-import` — per-cell type exemption and the strict opt-out", () => {
     test("ignores type-only imports of service and adapter files by default", () => {
       const g = graph(
         {
@@ -756,7 +756,7 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([])
     })
 
-    test("lets model type-import a service — `type-only-exempt`'s example, legal anywhere", () => {
+    test("lets model type-import a service — `runtime-import`'s example, legal anywhere", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -912,7 +912,7 @@ describe("checkLayers", () => {
     })
   })
 
-  describe("own-service private/ (`private-exempt`)", () => {
+  describe("own-service private/ (`public-unit`)", () => {
     test.each(["service", "adapters"] as const)(
       "lets %s import from its own service's private/",
       (importerLayer) => {
@@ -973,7 +973,7 @@ describe("checkLayers", () => {
       )
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
-          rules: ["service-assembly-only", "type-only-exempt"],
+          rules: ["service-assembly-only", "runtime-import"],
         }),
       ])
     })

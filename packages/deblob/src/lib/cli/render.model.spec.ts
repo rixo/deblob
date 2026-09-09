@@ -124,7 +124,7 @@ describe("renderCheckResults", () => {
 
   test("a multi-rule citation never splits across wrapped lines", () => {
     // slide the citation over the wrap boundary — the list stays whole on one
-    // line, never "(service-assembly-only," orphaned from "type-only-exempt)"
+    // line, never "(service-assembly-only," orphaned from "runtime-import)"
     for (let pad = 0; pad <= 60; pad += 1) {
       const target = {
         type: "module",
@@ -134,7 +134,7 @@ describe("renderCheckResults", () => {
         [
           layersViolation({ rules: ["blob-quarantine"], target }),
           layersViolation({
-            rules: ["service-assembly-only", "type-only-exempt"],
+            rules: ["service-assembly-only", "runtime-import"],
             target,
           }),
         ],
@@ -144,7 +144,7 @@ describe("renderCheckResults", () => {
       const lines = output.split("\n")
       expect(
         lines.some((line) =>
-          line.endsWith("(service-assembly-only, type-only-exempt)"),
+          line.endsWith("(service-assembly-only, runtime-import)"),
         ),
         output,
       ).toBe(true)
@@ -158,14 +158,14 @@ describe("renderCheckResults", () => {
     const output = renderCheckResults(
       [
         privateViolation(),
-        layersViolation({ rules: ["service-purity", "type-only-exempt"] }),
+        layersViolation({ rules: ["service-purity", "runtime-import"] }),
         barrelsViolation(),
       ],
       STATS,
       NO_COLORS,
     )
     expect(output).toContain(
-      "why: deblob explain layer-in-path service-purity type-only-exempt private-sealed · or rerun with --explain",
+      "why: deblob explain layer-in-path service-purity runtime-import private-sealed · or rerun with --explain",
     )
   })
 
@@ -295,10 +295,10 @@ describe("renderCheckResults", () => {
         " ",
       )
 
-    test("seal violations carry the import-type hint when type-only-exempt is cited", () => {
+    test("seal violations carry the import-type hint when runtime-import is cited", () => {
       const output = message(
         layersViolation({
-          rules: ["service-assembly-only", "type-only-exempt"],
+          rules: ["service-assembly-only", "runtime-import"],
           file: "src/billing/invoice-client.service.ts",
           serviceRoot: "src/billing",
           target: {
@@ -310,7 +310,7 @@ describe("renderCheckResults", () => {
       )
       expect(output).toContain(".service.ts is assembly-only")
       expect(output).toContain("import type is fine")
-      expect(output).toContain("(service-assembly-only, type-only-exempt)")
+      expect(output).toContain("(service-assembly-only, runtime-import)")
     })
 
     test("seal violations without the exemption carry no hint", () => {
@@ -411,7 +411,7 @@ describe("renderCheckResults", () => {
     test("marks a declared external leaf so the cell reads as declared, not a resolver accident", () => {
       const output = message(
         layersViolation({
-          rules: ["service-purity", "type-only-exempt"],
+          rules: ["service-purity", "runtime-import"],
           target: {
             type: "external",
             specifier: "$made-up:tokens.scss",
@@ -534,7 +534,7 @@ describe("renderCheckResults", () => {
       expect(
         message(
           portsViolation({
-            shape: "runtime-import",
+            shape: "runtime-import-in-port",
             target: { type: "module", path: "src/invoice/invoice.model.ts" },
           } as Partial<PortsViolation>),
         ),
@@ -1124,7 +1124,7 @@ describe("renderExplain", () => {
         [{ ...entry("inward-deps", []), body: `${lead} ${tail} end` }],
         NO_COLORS,
       ).split("\n")[2] as string
-    expect(firstLineOf("(service-purity, type-only-exempt)")).toBe(lead)
+    expect(firstLineOf("(service-purity, runtime-import)")).toBe(lead)
     expect(firstLineOf("(service-purity, made-up)")).toBe(
       `${lead} (service-purity,`,
     )

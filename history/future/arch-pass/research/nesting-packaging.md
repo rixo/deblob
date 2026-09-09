@@ -72,7 +72,7 @@ Mechanics pins (stock flavor, `ts-suffixes-factories-flavor.adapter.ts`):
 
 Protection scales with the claim made. Three rules partition the territory:
 
-- **`type-only-exempt` (layer matrix)** guards the _behavior seam_, everywhere,
+- **`runtime-import` (layer matrix)** guards the _behavior seam_, everywhere,
   boundary-blind. `service → adapters` at runtime is forbidden even
   intra-service (`layers.model.ts` matrix; the cell cites `inward-deps`). Type
   imports into `service`/`adapters` targets are exempt (`TYPE_EXEMPT_TARGETS` —
@@ -87,18 +87,18 @@ Protection scales with the claim made. Three rules partition the territory:
 - **`no-runtime-cycle` (runtime module cycles)** is a separate guarantee (ESM
   hazard, runtime edges only), untouched by everything in this note.
 
-### The flat-adapter protection inventory (what `type-only-exempt` does and doesn't cover)
+### The flat-adapter protection inventory (what `runtime-import` does and doesn't cover)
 
 For `billing/adapters/stripe.adapter.ts` (flat file, billing-owned):
 
-- `billing.service → stripe.adapter` **runtime**: `type-only-exempt` fires.
+- `billing.service → stripe.adapter` **runtime**: `runtime-import` fires.
   Protected.
 - Same, **type-only**: legal — deliberate exemption.
 - Wire shapes grown into a sibling `billing/adapters/stripe-wire.model.ts`:
   suffix makes it layer _model_, `adapters/` collapses → it is simply a billing
   model file. `billing.service →` it at runtime: green. Full reach-in, nothing
   fires.
-- Hide the shapes under `billing/private/`: `private-exempt` grants _service_
+- Hide the shapes under `billing/private/`: `public-unit` grants _service_
   access to own private too. Still green.
 
 So intra-service, swappability protection = exactly one seam: runtime import of
@@ -112,7 +112,7 @@ is one dir, one commit, when stripe→paypal day comes. The dir adapter
 `billing/stripe/` made the claim — own root — so the tool defends the whole
 boundary, model included, because the blast radius would be cross-package.
 Nesting an adapter into its own dir when its internals grow is _how you buy_ the
-extra protection. `type-only-exempt` guards the behavior seam everywhere;
+extra protection. `runtime-import` guards the behavior seam everywhere;
 `no-service-cycle` guards the package boundary where one was declared. The
 two-rule split tracks blast radius.
 
@@ -130,7 +130,7 @@ user/id/id.model.ts   →  user/user.model.ts      (model→model: legal)
 ```
 
 It's a chain (`user.model` imports nothing of `id`), `no-runtime-cycle` silent,
-every edge `type-only-exempt` green. Contraction: `user → id` and `id → user` —
+every edge `runtime-import` green. Contraction: `user → id` and `id → user` —
 2-node service cycle, `no-service-cycle` fires. And should: extract `id` alone —
 needs `user.model`; extract `user` without `id` — `user.service` needs it. The
 "shared vocabulary" is one vocabulary smeared across two dirs that each claim
@@ -261,8 +261,8 @@ import a service (`service-assembly-only`), so service-to-service plumbing is
 assembly's job — main's, not an adapter's.
 
 Hiding variant: move `identity/ account/ auth/ kernel/` under `user/private/` —
-same internal edges, private check blocks outside reach-in, `private-exempt`
-grants `user.service` access. Only `user.model` surface remains public. Usual
+same internal edges, private check blocks outside reach-in, `public-unit` grants
+`user.service` access. Only `user.model` surface remains public. Usual
 `private/` discipline cost.
 
 ## 6. Facades split by effect
@@ -276,7 +276,7 @@ assembly imports services. Consequences:
   composition root. Operational hiding needs zero structure.
 - **The pure surface is the model** — vocabulary _and_ pure domain logic. The
   seals (`service-assembly-only`, `ports-types-only`, `adapter-assembly-only` /
-  `type-only-exempt`) make model the entire importable runtime surface of a
+  `runtime-import`) make model the entire importable runtime surface of a
   service family. "What the rest of the app sees" = model layer, full stop.
 - Public-by-default means outsiders may also import a child's model directly
   (pattern 3/4) — that's not a leak unless you've chosen `private/` hiding.
@@ -362,11 +362,11 @@ package is rare) genuinely favor contains as a default.
    the moment it happens.
 6. Slope pressure (killed by an explicit firewall in discussion): belonging
    grants DAG freedom, **not** privacy penetration — `user → user/id/private`
-   stays illegal; `private-exempt`/private key on attribution, untouched by
+   stays illegal; `public-unit`/private key on attribution, untouched by
    `no-service-cycle`'s edge construction. The public/private axis is orthogonal
    to the packaging axis.
 
-Unaffected either way: `no-runtime-cycle`; `private-exempt`/private; both real
+Unaffected either way: `no-runtime-cycle`; `public-unit`/private; both real
 dogfood catches (`cli⇄explain`, `config⇄extraction` — sibling cycles).
 
 ### The fork inside "contains"
@@ -472,7 +472,7 @@ Honest accounting: his bundled definitions lean _toward_ containment economics �
 - His components **don't nest** (jars, gems, DLLs — flat), and component
   structure "evolves, splitting under reuse pressure" — default merge, promote
   on demand: the frequency argument nearly verbatim.
-- Swappability he'd assign to **DIP** at the interface — `type-only-exempt` /
+- Swappability he'd assign to **DIP** at the interface — `runtime-import` /
   `ports-types-only` territory, not packaging.
 
 **Lakos** (_Large-Scale C++_, levelization) is the physical-design canon and
@@ -493,8 +493,8 @@ the checker must be sound.
 Wanting true merger — "this child is part of me, free intra-links, no claim" —
 remains expressible today by **taking the claim away**: fold the child's files
 into the parent's own layers (`user/model/id.model.ts` — grouping dirs attribute
-to the parent). One service, one claim, `type-only-exempt` governs inside;
-nothing to launder because there is no structure left to launder past.
+to the parent). One service, one claim, `runtime-import` governs inside; nothing
+to launder because there is no structure left to launder past.
 
 Open (unruled) flavor question, worth an arch-pass look: should a service-shaped
 dir under `parent/private/` attribute to the parent — opt-in merger via the
@@ -503,8 +503,8 @@ privacy marker — instead of rooting itself as today? That would make containme
 `no-service-cycle` itself; merged, the layer matrix still governs inside (the
 trap edge becomes intra-service `service→model` — legal, and honestly so: no
 independence claim was ever made). Costs to weigh when picked up:
-`private-exempt`'s current mechanics, whether the merged child's `private/`
-still means anything, and the silent-merge footgun in opt-in form.
+`public-unit`'s current mechanics, whether the merged child's `private/` still
+means anything, and the silent-merge footgun in opt-in form.
 
 ## 12. Docs wording nits caught along the way
 
@@ -640,7 +640,7 @@ Full-read sweep (a first one-pass version got two calls wrong — corrected here
   sections, alternatives priced. Proportionate — counter-intuitive house choices
   need the defense. Their length is NOT a bar for the rest; one-line whys are
   the right size for rules whose rationale is uncontroversial (`chain-purity`,
-  `service-purity`, `blob-quarantine`, `type-only-exempt`, `no-runtime-cycle`,
+  `service-purity`, `blob-quarantine`, `runtime-import`, `no-runtime-cycle`,
   `test-through-contract` fine as they stand).
 - **`ports-types-only`, `unified-port`**: fine, already symptom-framed ("runtime
   in a port file is a sign the adapter hasn't been extracted yet") — §15's style

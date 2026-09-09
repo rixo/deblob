@@ -193,7 +193,7 @@ describe("checkPrivate", () => {
     })
   })
 
-  describe("every edge kind and form fires — packaging rule, `type-only-exempt` does not apply", () => {
+  describe("every edge kind and form fires — packaging rule, `runtime-import` does not apply", () => {
     test.each(["runtime", "type"] as const)("fires on a %s edge", (kind) => {
       const g = graph(
         {

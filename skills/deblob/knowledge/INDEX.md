@@ -26,13 +26,13 @@ cross-linked. Pick by the question you're holding.
 Rule names = architecture.md § Summary (`#<name>` anchors); `deblob check` cites
 them.
 
-| Question                                     | Card                                            | Rules                                                                                                                      |
-| -------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Who may import what?                         | [dependency-matrix](dependency-matrix.md)       | `inward-deps`, `layer-in-path`, `chain-purity`, `service-purity`, `blob-quarantine`                                        |
-| Who may import composition units? type-only? | [composition-rules](composition-rules.md)       | `service-assembly-only`, `adapter-assembly-only`, `type-only-exempt`, `private-exempt`, `ports-types-only`, `unified-port` |
-| Visibility, `private/`, why no barrels?      | [packaging-visibility](packaging-visibility.md) | `private-sealed`                                                                                                           |
-| Cycles — service DAG, module level?          | [acyclic](acyclic.md)                           | `no-service-cycle`, `no-runtime-cycle`                                                                                     |
-| Nested services/adapters — what's allowed?   | [nesting](nesting.md)                           | —                                                                                                                          |
+| Question                                     | Card                                            | Rules                                                                                                                 |
+| -------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Who may import what?                         | [dependency-matrix](dependency-matrix.md)       | `inward-deps`, `layer-in-path`, `chain-purity`, `service-purity`, `blob-quarantine`                                   |
+| Who may import composition units? type-only? | [composition-rules](composition-rules.md)       | `service-assembly-only`, `adapter-assembly-only`, `runtime-import`, `public-unit`, `ports-types-only`, `unified-port` |
+| Visibility, `private/`, why no barrels?      | [packaging-visibility](packaging-visibility.md) | `private-sealed`                                                                                                      |
+| Cycles — service DAG, module level?          | [acyclic](acyclic.md)                           | `no-service-cycle`, `no-runtime-cycle`                                                                                |
+| Nested services/adapters — what's allowed?   | [nesting](nesting.md)                           | —                                                                                                                     |
 
 ## lifecycle & patterns
 

@@ -2,9 +2,9 @@
  * `check barrels` — `layer-in-path`, layer visibility in the import path. Two
  * shapes: an index re-exporting layered files fires at the index
  * (`barrel-file`), a labeled layer importing through an index fires at the
- * importer (`index-import`). Kind- and form-blind (`type-only-exempt` exempts
- * composition rules only). Pure: classified graph in, violation set out — no
- * IO, no formatting, no ordering.
+ * importer (`index-import`). Kind- and form-blind (`runtime-import`'s type
+ * exemption covers composition rules only). Pure: classified graph in,
+ * violation set out — no IO, no formatting, no ordering.
  */
 
 import type {

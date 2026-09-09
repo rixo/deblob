@@ -58,7 +58,7 @@ const plural = (count: number, noun: string, many = `${noun}s`): string =>
 
 /**
  * A multi-rule citation is one token — `(service-assembly-only,
- * type-only-exempt)` split at its comma orphans the second slug, and a grep for
+ * runtime-import)` split at its comma orphans the second slug, and a grep for
  * the pair stops matching. Merges the split words back: an opening slug riding
  * a comma swallows the slugs that follow, through the closing paren. A lone
  * slug is one word already and needs nothing.
@@ -112,7 +112,7 @@ const targetLabel = (target: EdgeTarget, prefix: string): string =>
       : target.specifier
 
 /**
- * `(service-purity)` / `(service-purity, type-only-exempt)` — the slug is
+ * `(service-purity)` / `(service-purity, runtime-import)` — the slug is
  * self-describing, no word "rule".
  */
 const ruleCite = (rules: readonly RuleId[]): string => rules.join(", ")
@@ -127,9 +127,9 @@ const layersMessage = (violation: LayersViolation, prefix: string): string => {
     return `imports ${target} — unclassified third-party in a pure layer; list it under config key "pure" if it qualifies`
   }
   const { rules, importerLayer } = violation
-  // type-only-exempt in the citation = this cell's type variant is exempt
+  // runtime-import in the citation = this cell's type variant is exempt
   // (06 ruling)
-  const hint = rules.includes("type-only-exempt") ? "; import type is fine" : ""
+  const hint = rules.includes("runtime-import") ? "; import type is fine" : ""
   if (
     rules.includes("service-assembly-only") ||
     rules.includes("adapter-assembly-only")
@@ -167,7 +167,7 @@ const portsMessage = (violation: PortsViolation, prefix: string): string => {
     return `${lead} — ports are types only; runtime belongs in an adapter or model`
   }
   const target = targetLabel(violation.target, prefix)
-  return violation.shape === "runtime-import"
+  return violation.shape === "runtime-import-in-port"
     ? `imports ${target} at runtime — a port needs no runtime imports; add the type keyword or move the code`
     : `imports ${target} at runtime — a types-only file supplies no runtime binding; add the type keyword`
 }
@@ -731,7 +731,7 @@ Checks
   layers     dependency matrix by layer suffix; type-only imports exempt
              by default (inward-deps, service-purity, blob-quarantine,
              service-assembly-only, adapter-assembly-only,
-             type-only-exempt, private-exempt)
+             runtime-import, public-unit)
   private    private/ is sealed outside its service (private-sealed)
   barrels    the layer is visible in the import path — no index.ts
              indirection (layer-in-path)
@@ -771,7 +771,7 @@ broken rule:
     implementations (service-purity)
 
 Type-only imports (import type / { type X }) are exempt from composition
-rules by default (type-only-exempt) — a flavor axis: strict flavors opt
+rules by default (runtime-import) — a flavor axis: strict flavors opt
 out in deblob.config.ts. Unsuffixed files are blob: legal, unchecked
 except for cycles — labeling is adoption, not a prerequisite
 (blob-quarantine guards the boundary: only assembly may import blob).

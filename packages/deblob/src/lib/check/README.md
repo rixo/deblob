@@ -14,11 +14,11 @@ One function per check, all over `ImportGraph` from `extraction`:
   cycle.
 - `checkLayers(graph, { pure?, typeOnlyExempt? })` — the dependency matrix:
   `inward-deps`, `service-purity`, `blob-quarantine`, `service-assembly-only`,
-  `adapter-assembly-only`, `type-only-exempt`, `private-exempt`. Per-cell
-  `type-only-exempt`: a type-only edge is exempt where the target owns a
-  contract shape. An external leaf carrying a layer enters the matrix as a
-  target of that layer; an unlabeled external falls to the purity trichotomy
-  (pure / concrete / unclassified) that `pure` decides.
+  `adapter-assembly-only`, `runtime-import`, `public-unit`. Per-cell
+  `runtime-import`: a type-only edge is exempt where the target owns a contract
+  shape. An external leaf carrying a layer enters the matrix as a target of that
+  layer; an unlabeled external falls to the purity trichotomy (pure / concrete /
+  unclassified) that `pure` decides.
 - `checkPrivate(graph)` — `private-sealed`. Every `private` path segment is one
   boundary; every edge kind and form binds.
 - `checkBarrels(graph, { tolerateBlobReexport? })` — `layer-in-path`. An index

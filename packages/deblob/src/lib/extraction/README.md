@@ -47,8 +47,8 @@ declared one; absent, it is unlabeled.
 - `ports/flavor.port.ts` — `FlavorResolver`: `classify(files)` maps the whole
   coverage set to layer, service root, and privacy at once (path-only,
   set-based); optional `classifyEntry(subpath)` is the naming rule read across
-  package boundaries; optional `typeOnlyExempt` is the flavor's
-  `type-only-exempt` stance.
+  package boundaries; optional `typeOnlyExempt` is the flavor's type-only stance
+  (`runtime-import`).
 
 ## Adapters
 

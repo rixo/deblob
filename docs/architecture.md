@@ -253,7 +253,7 @@ Suffixless files are blob — no layer declaration, no layer guarantees.
 
 **Composition rule:** public `.service.ts` and `.adapter.ts` can only be
 imported by assembly. (Files under `private/` are not subject to this rule.
-Type-only imports are also exempt — see `type-only-exempt`.)
+Type-only imports are also exempt — see `runtime-import`.)
 
 Outer layers are allowed to contain inner-layer code (model logic in a
 `.service.ts` file is fine — it just inherits the stricter consumption
@@ -609,7 +609,7 @@ import" entry means neither rule forbids it.
 | **Assembly** | Anything                                          | —                                                 |
 
 The matrix governs **runtime imports**. Type-only imports (`import type`) are
-exempt from composition rules — see `type-only-exempt`. "Concrete" means
+exempt from composition rules — see `runtime-import`. "Concrete" means
 platform/IO code: `node:fs`, HTTP clients, database drivers (`service-purity`).
 Pure, deterministic third-party libraries count as model-layer code.
 
@@ -684,7 +684,8 @@ tooling. Both are hard requirements.
   contaminates a layer that was supposed to have guarantees. (Blob importing
   blob is fine — only a layer that makes a guarantee can break one, and blob and
   assembly claim none. Type-only imports included — blob has no contract shape
-  to depend on; `type-only-exempt` covers composition rules only.)
+  to depend on; `runtime-import`'s type exemption covers composition rules
+  only.)
 
 **Composition rules:**
 
@@ -694,15 +695,15 @@ tooling. Both are hard requirements.
 - <a id="adapter-assembly-only"></a>`adapter-assembly-only` — **`.adapter.ts`
   can only be imported by assembly** — not by model, ports, service, other
   adapters, or blob.
-- <a id="type-only-exempt"></a>`type-only-exempt` — **Composition rules govern
+- <a id="runtime-import"></a>`runtime-import` — **Composition rules govern
   runtime imports — type-only imports are exempt.** Depending on a contract's
   shape is not depending on its implementation.
   `import type { IconsServiceAPI } from '../icons/service'` is legal anywhere;
   `import { createIconsService }` remains assembly-only. This also covers the
   `SomeService["method"]` shorthand (see
   [Port derivation](#port-derivation--the-dialect-trap)).
-- <a id="private-exempt"></a>`private-exempt` — **Composition rules apply to
-  public composition units only** — within `private/`, internal composition is
+- <a id="public-unit"></a>`public-unit` — **Composition rules apply to public
+  composition units only** — within `private/`, internal composition is
   unrestricted. `.service.ts` and `.adapter.ts` may freely import from
   `private/` files of their own service.
 - <a id="ports-types-only"></a>`ports-types-only` — **Ports are types only** —
@@ -719,8 +720,8 @@ tooling. Both are hard requirements.
 - <a id="private-sealed"></a>`private-sealed` — **`private/` is the only
   visibility boundary** — nothing outside a service may import from its
   `private/` directory. (Type-only imports included — visibility is ownership,
-  not implementation coupling; `type-only-exempt` covers composition rules
-  only.)
+  not implementation coupling; `runtime-import`'s type exemption covers
+  composition rules only.)
 - <a id="no-service-cycle"></a>`no-service-cycle` — **No circular dependencies
   between services** — DAG, enforced by tooling in CI. (Every import kind
   counts, type-only included — extraction independence holds for types;
@@ -1052,7 +1053,7 @@ that concern.
 **When the interface isn't extracted yet**: `FsService["readFile"]` is valid
 shorthand. You are not coupling to a service — you are referencing the port it
 implements, currently co-located with its type. This is a type-only reference,
-legal under `type-only-exempt`. Extract when needed (circular dependency,
+legal under `runtime-import`. Extract when needed (circular dependency,
 cross-package sharing).
 
 **The smell**: restating a signature that already exists elsewhere. Every
