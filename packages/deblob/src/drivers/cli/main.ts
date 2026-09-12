@@ -51,7 +51,10 @@ import {
 } from "../../lib/cli/render.model.ts"
 import type { Colors, GraphStats } from "../../lib/cli/render.model.ts"
 import { asConfigError } from "../../lib/config/config.model.ts"
-import { resolveConfig } from "../../lib/config/config.service.ts"
+import {
+  overlayLocalConfig,
+  resolveConfig,
+} from "../../lib/config/config.service.ts"
 import type {
   ReaderRegistry,
   ResolvedConfig,
@@ -196,24 +199,36 @@ const loadFor = async (
   parsed: ParsedCli,
   loader: Deps["loader"],
 ): Promise<ResolvedConfig> => {
-  const configPath =
+  const found =
     parsed.config === null
       ? await loader.discoverConfig(io.cwd)
       : await loader.explicitConfigPath(io.cwd, parsed.config)
-  if (configPath === null) {
+  if (found === null) {
     return resolveConfig(
       {},
       {
         root: resolve(io.cwd),
         configPath: null,
+        localPath: null,
         flavors: STOCK_FLAVORS,
         readers: STOCK_READERS,
       },
     )
   }
-  return resolveConfig(await importConfigDefault(configPath), {
-    root: dirname(configPath),
+  const { root, configPath, localPath } = found
+  const base = configPath === null ? {} : await importConfigDefault(configPath)
+  const raw =
+    localPath === null
+      ? base
+      : overlayLocalConfig(
+          base,
+          await loader.readLocalConfig(localPath),
+          localPath,
+        )
+  return resolveConfig(raw, {
+    root,
     configPath,
+    localPath,
     flavors: STOCK_FLAVORS,
     readers: STOCK_READERS,
   })
@@ -295,9 +310,16 @@ const runStatus = async (
       {
         version: VERSION,
         provenance: provenanceOf(
-          config.configPath === null
-            ? null
-            : relative(io.cwd, config.configPath),
+          {
+            configPath:
+              config.configPath === null
+                ? null
+                : relative(io.cwd, config.configPath),
+            localPath:
+              config.localPath === null
+                ? null
+                : relative(io.cwd, config.localPath),
+          },
           config.flavorName,
         ),
         stats: {

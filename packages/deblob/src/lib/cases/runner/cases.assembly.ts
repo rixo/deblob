@@ -107,6 +107,7 @@ export const assembleCase = (files: Case["files"]) => {
       const resolved = resolveConfig(config, {
         root: CASE_ROOT,
         configPath: null,
+        localPath: null,
         flavors: STOCK_FLAVORS,
         readers: STOCK_READERS,
       })

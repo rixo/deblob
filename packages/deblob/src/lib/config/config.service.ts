@@ -160,6 +160,14 @@ export type DeblobConfig = {
    * `"dist"`.
    */
   build?: string | false | { mirror: Readonly<Record<string, string>> }
+  /**
+   * The viewer's projects: directories, each a deblob project of its own
+   * (config discovery starts there), paths relative to the declaring file's
+   * directory. Committed, a monorepo root lists the projects its viewer shows;
+   * in `deblob.local.json` beside the config, one machine lists its checkouts.
+   * Default: `{ projects: [] }` — the viewer shows the current project alone.
+   */
+  view?: { projects?: readonly string[] }
 }
 
 /** Identity — the typing channel for `deblob.config.ts` authors. */
@@ -170,6 +178,8 @@ export type ResolvedConfig = {
   root: string
   /** `null` for a configless run — provenance the runner surfaces. */
   configPath: string | null
+  /** The `deblob.local.json` overlaid on the config; `null` when none. */
+  localPath: string | null
   flavor: FlavorResolver
   /**
    * Provenance label: the stock name, or `"custom"` for a config-supplied
@@ -226,6 +236,8 @@ export type ResolvedConfig = {
    * without trailing slash; `{}` = no mirror.
    */
   mirror: Readonly<Record<string, string>>
+  /** The viewer's projects, absolute paths; `[]` = the current project alone. */
+  view: { projects: readonly string[] }
 }
 
 /** Stock flavors, name → factory — injected by assembly (flavors are adapters). */
@@ -255,7 +267,10 @@ const KNOWN_KEYS = [
   "external",
   "externalLayers",
   "build",
+  "view",
 ] as const
+
+const VIEW_KEYS = ["projects"] as const
 
 const DEFAULT_MIRROR: Readonly<Record<string, string>> = { dist: "src" }
 
@@ -470,6 +485,66 @@ const aliasOf = (
   )
 }
 
+/** `view` validated and its project paths made absolute. */
+const viewOf = (
+  value: unknown,
+  root: string,
+): { projects: readonly string[] } => {
+  if (value === undefined) return { projects: [] }
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new ConfigError(
+      `config key "view" must be an object ({ projects: [...] })`,
+    )
+  }
+  const record = value as Record<string, unknown>
+  for (const key of Object.keys(record)) {
+    if (!(VIEW_KEYS as readonly string[]).includes(key)) {
+      throw new ConfigError(
+        `unknown key "${key}" in config key "view" — valid keys: ${VIEW_KEYS.join(", ")}`,
+      )
+    }
+  }
+  const projects = record["projects"]
+  if (projects === undefined) return { projects: [] }
+  if (!isStringArray(projects)) {
+    throw new ConfigError(
+      `config key "view.projects" must be an array of directory paths (relative to the config file)`,
+    )
+  }
+  return { projects: projects.map((entry) => resolve(root, entry)) }
+}
+
+/**
+ * `deblob.local.json` over the config: per top-level key, local wins, arrays
+ * and objects replace. The local value must be an object of known keys; a
+ * failure names the local file, since the merged value cannot. The result is a
+ * raw config for `resolveConfig`, which validates every key's shape.
+ */
+export const overlayLocalConfig = (
+  base: unknown,
+  local: unknown,
+  localPath: string,
+): unknown => {
+  if (typeof base !== "object" || base === null || Array.isArray(base)) {
+    throw new ConfigError(
+      `deblob config must be an object (the default export of deblob.config.ts)`,
+    )
+  }
+  if (typeof local !== "object" || local === null || Array.isArray(local)) {
+    throw new ConfigError(
+      `${localPath} must hold an object — the same keys as deblob.config.ts, as JSON`,
+    )
+  }
+  for (const key of Object.keys(local)) {
+    if (!(KNOWN_KEYS as readonly string[]).includes(key)) {
+      throw new ConfigError(
+        `unknown key "${key}" in ${localPath} — valid keys: ${KNOWN_KEYS.join(", ")}`,
+      )
+    }
+  }
+  return { ...base, ...local }
+}
+
 const flavorOf = (
   value: unknown,
   flavors: FlavorRegistry,
@@ -510,6 +585,7 @@ export const resolveConfig = (
   context: {
     root: string
     configPath: string | null
+    localPath: string | null
     flavors: FlavorRegistry
     readers: ReaderRegistry
   },
@@ -578,6 +654,7 @@ export const resolveConfig = (
   return {
     root: context.root,
     configPath: context.configPath,
+    localPath: context.localPath,
     flavor,
     flavorName,
     isAssembly,
@@ -603,5 +680,6 @@ export const resolveConfig = (
     external: externalMatcherOf(stringArrayKey(record, "external") ?? []),
     externalLayers: externalLayersOf(record["externalLayers"]),
     mirror: mirrorOf(record["build"]),
+    view: viewOf(record["view"], context.root),
   }
 }

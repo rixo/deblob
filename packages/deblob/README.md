@@ -80,7 +80,7 @@ export default defineConfig({
 })
 ```
 
-The eleven keys, all optional:
+The twelve keys, all optional:
 
 | Key              | Default                   | Meaning                                                                                                                             |
 | ---------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -95,10 +95,14 @@ The eleven keys, all optional:
 | `external`       | `[]`                      | Specifier patterns the environment provides with nothing on disk (`$theme:**`, `cloudflare:*`) — matches are leaves, never resolved |
 | `externalLayers` | `{}`                      | Specifier pattern → layer: cross-package identity declared by hand; wins over a producer's `deblob` field — `blob` revokes a claim  |
 | `build`          | `"dist"`                  | The output directory mirroring `src/` one-to-one, so `surface` reaches source through built exports; `{ mirror: {…} }` for several  |
+| `view`           | `{ projects: [] }`        | The viewer's projects: directories, each a deblob project of its own, relative to the declaring file — a monorepo root lists them   |
 
 Discovery walks upward from cwd; the nearest config wins and its directory
-becomes the project root. No merging, no inheritance. `-c/--config <path>`
-overrides the walk.
+becomes the project root. No merging, no inheritance across directories. One
+overlay in the same directory: a `deblob.local.json` beside the config holds the
+same keys as JSON and wins per key (arrays and objects replace, never merge) —
+the machine-local part of a config, gitignored by convention, named in the bare
+status line whenever it was read. `-c/--config <path>` overrides the walk.
 
 A declared `pure` entry is trusted, not verified — the guarantee is only as good
 as the config review. Unlisted third-party imported from a pure layer fires as

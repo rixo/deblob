@@ -1108,12 +1108,42 @@ describe("renderCheckResults", () => {
   })
 })
 
+describe("provenanceOf", () => {
+  test("names every file the run read, joined with +, or the defaults", () => {
+    const flavor = "ts-suffixes-factories"
+    expect(provenanceOf({ configPath: null, localPath: null }, flavor)).toBe(
+      "no config (defaults)",
+    )
+    expect(
+      provenanceOf({ configPath: "deblob.config.ts", localPath: null }, flavor),
+    ).toBe("deblob.config.ts (flavor: ts-suffixes-factories)")
+    expect(
+      provenanceOf(
+        { configPath: "deblob.config.ts", localPath: "deblob.local.json" },
+        flavor,
+      ),
+    ).toBe(
+      "deblob.config.ts + deblob.local.json (flavor: ts-suffixes-factories)",
+    )
+    // a lone overlay is a configless project that still read a file
+    expect(
+      provenanceOf(
+        { configPath: null, localPath: "deblob.local.json" },
+        flavor,
+      ),
+    ).toBe("deblob.local.json (flavor: ts-suffixes-factories)")
+  })
+})
+
 describe("bare status", () => {
   it("renders the fiction's block with the full check-list hint", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
-        provenance: provenanceOf("deblob.config.ts", "ts-suffixes-factories"),
+        provenance: provenanceOf(
+          { configPath: "deblob.config.ts", localPath: null },
+          "ts-suffixes-factories",
+        ),
         stats: {
           files: 1872,
           totalBytes: 4404019,
@@ -1145,7 +1175,10 @@ describe("bare status", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
-        provenance: provenanceOf(null, "ts-suffixes-factories"),
+        provenance: provenanceOf(
+          { configPath: null, localPath: null },
+          "ts-suffixes-factories",
+        ),
         stats: {
           files: 1,
           totalBytes: 2048,
@@ -1166,7 +1199,10 @@ describe("bare status", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
-        provenance: provenanceOf(null, "ts-suffixes-factories"),
+        provenance: provenanceOf(
+          { configPath: null, localPath: null },
+          "ts-suffixes-factories",
+        ),
         stats: {
           files: 4,
           totalBytes: 2048,

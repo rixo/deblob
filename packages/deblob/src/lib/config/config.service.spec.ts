@@ -9,7 +9,11 @@ import {
   EXCLUDE_BASELINE,
 } from "./config.model.ts"
 import type { FlavorRegistry, ReaderRegistry } from "./config.service.ts"
-import { defineConfig, resolveConfig } from "./config.service.ts"
+import {
+  defineConfig,
+  overlayLocalConfig,
+  resolveConfig,
+} from "./config.service.ts"
 
 const fakeFlavor = (
   overrides: Partial<FlavorResolver> = {},
@@ -48,6 +52,7 @@ const resolve = (
   resolveConfig(raw, {
     root: "/fixture-root",
     configPath: "/fixture-root/deblob.config.ts",
+    localPath: null,
     flavors,
     readers,
   })
@@ -104,11 +109,26 @@ describe("resolveConfig — defaults", () => {
       {
         root: "/somewhere",
         configPath: null,
+        localPath: null,
         flavors: FLAVORS,
         readers: READERS,
       },
     )
     expect(resolved.configPath).toBeNull()
+  })
+
+  test("carries the overlay's provenance as given", () => {
+    const resolved = resolveConfig(
+      {},
+      {
+        root: "/somewhere",
+        configPath: "/somewhere/deblob.config.ts",
+        localPath: "/somewhere/deblob.local.json",
+        flavors: FLAVORS,
+        readers: READERS,
+      },
+    )
+    expect(resolved.localPath).toBe("/somewhere/deblob.local.json")
   })
 })
 
@@ -578,5 +598,101 @@ describe("resolveConfig — coverage keys", () => {
   test("passes `pure` through untouched", () => {
     const resolved = resolve({ pure: ["some-fake-lib", "node:path"] })
     expect(resolved.pure).toEqual(["some-fake-lib", "node:path"])
+  })
+})
+
+describe("resolveConfig — view", () => {
+  test("defaults to no projects: absent key, empty object, absent list alike", () => {
+    expect(resolve({}).view).toEqual({ projects: [] })
+    expect(resolve({ view: {} }).view).toEqual({ projects: [] })
+    expect(resolve({ view: { projects: [] } }).view).toEqual({ projects: [] })
+  })
+
+  test("resolves project paths against the config root, absolute passed through", () => {
+    const resolved = resolve({
+      view: { projects: ["../FAKE_SIBLING", "packages/FAKE_PKG", "/FAKE_ABS"] },
+    })
+    expect(resolved.view.projects).toEqual([
+      "/FAKE_SIBLING",
+      "/fixture-root/packages/FAKE_PKG",
+      "/FAKE_ABS",
+    ])
+  })
+
+  test("rejects a non-object view, naming the key", () => {
+    for (const view of ["src", ["src"], 42, null]) {
+      expect(() => resolve({ view })).toThrowError(
+        /config key "view" must be an object/,
+      )
+    }
+  })
+
+  test("rejects an unknown sub-key, naming it and the valid set", () => {
+    expect(() => resolve({ view: { SOME_MADE_UP_SUBKEY: [] } })).toThrowError(
+      /unknown key "SOME_MADE_UP_SUBKEY" in config key "view".*projects/s,
+    )
+  })
+
+  test("rejects a projects value that is not an array of strings", () => {
+    for (const projects of ["src", [42], { a: "src" }]) {
+      expect(() => resolve({ view: { projects } })).toThrowError(
+        /config key "view\.projects" must be an array of directory paths/,
+      )
+    }
+  })
+})
+
+describe("overlayLocalConfig", () => {
+  const LOCAL = "/fixture-root/deblob.local.json"
+
+  test("merges per top-level key, local winning", () => {
+    expect(
+      overlayLocalConfig(
+        { include: ["src/**"], pure: ["FAKE_BASE_LIB"] },
+        { pure: ["FAKE_LOCAL_LIB"] },
+        LOCAL,
+      ),
+    ).toEqual({ include: ["src/**"], pure: ["FAKE_LOCAL_LIB"] })
+  })
+
+  test("replaces arrays and objects whole — no deep merge, no concatenation", () => {
+    expect(
+      overlayLocalConfig(
+        { view: { projects: ["FAKE_COMMITTED"] }, alias: { "@a": "./a" } },
+        { view: { projects: ["FAKE_LOCAL"] } },
+        LOCAL,
+      ),
+    ).toEqual({ view: { projects: ["FAKE_LOCAL"] }, alias: { "@a": "./a" } })
+  })
+
+  test("the merged value resolves like any config — view paths absolute", () => {
+    const merged = overlayLocalConfig(
+      {},
+      { view: { projects: ["../FAKE_CHECKOUT"] } },
+      LOCAL,
+    )
+    expect(resolve(merged).view.projects).toEqual(["/FAKE_CHECKOUT"])
+  })
+
+  test("rejects a non-object local value, naming the local file", () => {
+    for (const local of [["x"], "x", 42, null]) {
+      expect(() => overlayLocalConfig({}, local, LOCAL)).toThrowError(
+        /deblob\.local\.json must hold an object/,
+      )
+    }
+  })
+
+  test("rejects an unknown local key, naming the local file and the valid set", () => {
+    expect(() =>
+      overlayLocalConfig({}, { SOME_MADE_UP_KEY: true }, LOCAL),
+    ).toThrowError(
+      /unknown key "SOME_MADE_UP_KEY" in \/fixture-root\/deblob\.local\.json.*view/s,
+    )
+  })
+
+  test("rejects a non-object base — the config file's own failure, not the overlay's", () => {
+    expect(() => overlayLocalConfig(42, {}, LOCAL)).toThrowError(
+      /deblob config must be an object/,
+    )
   })
 })

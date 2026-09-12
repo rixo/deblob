@@ -21,6 +21,17 @@ const CONFIG_FILENAMES = [
   "deblob.config.mjs",
 ]
 
+/** The machine-local overlay, beside the config — never committed. */
+const LOCAL_FILENAME = "deblob.local.json"
+
+/** What discovery found in one directory: at least one of the two files. */
+export type DiscoveredConfig = {
+  /** The directory holding the files — the config root. */
+  root: string
+  configPath: string | null
+  localPath: string | null
+}
+
 /**
  * The fs-reading half, over the port. `importConfigDefault` stays outside: a
  * platform call, no port reads it.
@@ -30,12 +41,22 @@ export const createConfigLoader = ({
 }: {
   fs: Pick<Fs, "exists" | "readFile">
 }) => {
+  /** The overlay beside a config file, when present. */
+  const localConfigBeside = async (dir: string): Promise<string | null> => {
+    const localPath = join(dir, LOCAL_FILENAME)
+    return (await fs.exists(localPath)) ? localPath : null
+  }
+
   /**
-   * Upward walk from `cwd`, nearest config wins — placement freedom with the
-   * no-inheritance ban intact: one config, never a stack. Two config files in
-   * one directory is ambiguity, not precedence.
+   * Upward walk from `cwd`, nearest wins — placement freedom with the
+   * no-inheritance ban intact: one directory, never a stack. The walk stops at
+   * the first directory holding a config file or a `deblob.local.json`: a lone
+   * local file is a configless project with an overlay, never ignored. Two
+   * config files in one directory is ambiguity, not precedence.
    */
-  const discoverConfig = async (cwd: string): Promise<string | null> => {
+  const discoverConfig = async (
+    cwd: string,
+  ): Promise<DiscoveredConfig | null> => {
     for (let dir = resolve(cwd); ;) {
       const found = await Promise.all(
         CONFIG_FILENAMES.map((name) => fs.exists(join(dir, name))),
@@ -47,7 +68,14 @@ export const createConfigLoader = ({
           `${dir} contains ${present.join(" and ")} — keep exactly one deblob config per directory`,
         )
       }
-      if (single) return join(dir, single)
+      const localPath = await localConfigBeside(dir)
+      if (single || localPath) {
+        return {
+          root: dir,
+          configPath: single ? join(dir, single) : null,
+          localPath,
+        }
+      }
       const parent = dirname(dir)
       if (parent === dir) return null
       dir = parent
@@ -56,19 +84,33 @@ export const createConfigLoader = ({
 
   /**
    * `-c/--config`: exact file, discovery walk skipped; missing = teaching
-   * error.
+   * error. The overlay is still looked up beside it.
    */
   const explicitConfigPath = async (
     cwd: string,
     path: string,
-  ): Promise<string> => {
+  ): Promise<DiscoveredConfig> => {
     const configPath = resolve(cwd, path)
     if (!(await fs.exists(configPath))) {
       throw new ConfigError(
         `--config points at ${path}, which does not exist (resolved from ${cwd})`,
       )
     }
-    return configPath
+    const root = dirname(configPath)
+    return { root, configPath, localPath: await localConfigBeside(root) }
+  }
+
+  /**
+   * The overlay's JSON, raw; unparseable fails loud with the path — and so does
+   * one gone since discovery, read as the empty text it now is.
+   */
+  const readLocalConfig = async (localPath: string): Promise<unknown> => {
+    const text = await fs.readFile(localPath)
+    try {
+      return JSON.parse(text ?? "")
+    } catch (error) {
+      throw new ConfigError(`failed to parse ${localPath}`, { cause: error })
+    }
   }
 
   /**
@@ -182,6 +224,7 @@ export const createConfigLoader = ({
   return {
     discoverConfig,
     explicitConfigPath,
+    readLocalConfig,
     tsconfigPathOf,
     readPackageSurface,
   }

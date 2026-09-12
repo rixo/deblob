@@ -1,6 +1,6 @@
 import { execFileSync, execSync } from "node:child_process"
 import { readFileSync } from "node:fs"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -498,6 +498,34 @@ describe("bare deblob — status, always exit 0", () => {
       expect(out).toContain("no config (defaults)")
       expect(out).toContain("0 files · 0kb · 0% blob")
       expect(out).toContain("0 services")
+    } finally {
+      await rm(temp, { recursive: true, force: true })
+    }
+  })
+
+  test("a local overlay beside the config: provenance names both files", async () => {
+    const temp = await mkdtemp(join(tmpdir(), "deblob-bare-local-"))
+    try {
+      await writeFile(join(temp, "deblob.config.ts"), "export default {}\n")
+      await writeFile(join(temp, "deblob.local.json"), "{}\n")
+      const { code, out } = await run([], { cwd: temp })
+      expect(code).toBe(0)
+      expect(out).toContain(
+        "deblob.config.ts + deblob.local.json (flavor: ts-suffixes-factories)",
+      )
+    } finally {
+      await rm(temp, { recursive: true, force: true })
+    }
+  })
+
+  test("a lone local file: configless with an overlay, provenance names it", async () => {
+    const temp = await mkdtemp(join(tmpdir(), "deblob-bare-lone-local-"))
+    try {
+      await writeFile(join(temp, "deblob.local.json"), "{}\n")
+      const { code, out } = await run([], { cwd: temp })
+      expect(code).toBe(0)
+      expect(out).toContain("deblob.local.json (flavor: ts-suffixes-factories)")
+      expect(out).not.toContain("deblob.config.ts")
     } finally {
       await rm(temp, { recursive: true, force: true })
     }

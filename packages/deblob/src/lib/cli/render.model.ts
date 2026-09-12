@@ -778,14 +778,21 @@ export const renderUnverified = (
   return `${lines.join("\n")}\n`
 }
 
-/** `deblob.config.ts (flavor: ts-suffixes-factories)` / `no config (defaults)` */
+/**
+ * `deblob.config.ts (flavor: ts-suffixes-factories)` / `no config (defaults)`;
+ * the overlay joins with `+` when present — a run under a local file says so.
+ */
 export const provenanceOf = (
-  configPath: string | null,
+  paths: { configPath: string | null; localPath: string | null },
   flavorName: string,
-): string =>
-  configPath === null
+): string => {
+  const files = [paths.configPath, paths.localPath].filter(
+    (path) => path !== null,
+  )
+  return files.length === 0
     ? "no config (defaults)"
-    : `${configPath} (flavor: ${flavorName})`
+    : `${files.join(" + ")} (flavor: ${flavorName})`
+}
 
 /** `125952` → `123kb`, `5242880` → `5mb` — the headline's size unit. */
 export const formatSize = (bytes: number): string => {

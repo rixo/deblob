@@ -46,6 +46,14 @@
   CLI. Consequence: the data half is a function first (snapshot of a project), a
   server second; dev server, `deblob view` and the corpus test call the same
   function. The map's layout leg (headless browser) is the map step's problem.
+- **The viewer's own code does not inherit `deblob`'s laundering (2026-09-13).**
+  Found at step 02 in the CLI's config wiring (`02_config-overlay/SPEC.md` §
+  Findings); the fix in `deblob` is deferred, the rules bind the new package
+  from its first I/O: the entry wires and makes one service call per trigger,
+  never calls an adapter, never orchestrates; every adapter implements a port
+  and comes from a factory; filesystem access goes through an fs port,
+  promise-only, with a node adapter and a memory adapter for tests — sync needs
+  a stated case, laziness is not one.
 
 ## Steps
 

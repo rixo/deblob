@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -8,13 +8,14 @@ import { afterAll, describe, expect, test } from "vitest"
 import type { FlavorResolver } from "../../extraction/ports/flavor.port.ts"
 import { STOCK_FLAVOR_NAME } from "../../extraction/stock-flavor.model.ts"
 import { ConfigError } from "../config.model.ts"
-import { resolveConfig } from "../config.service.ts"
+import { overlayLocalConfig, resolveConfig } from "../config.service.ts"
 import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
 import { createConfigLoader, importConfigDefault } from "./loader.adapter.ts"
 
 const {
   discoverConfig,
   explicitConfigPath,
+  readLocalConfig,
   tsconfigPathOf,
   readPackageSurface,
 } = createConfigLoader({ fs: createNodeFs() })
@@ -38,32 +39,47 @@ const READERS = {}
 
 /** The assembly sequence (main's loadFor), composed here for the fixture cases. */
 const load = async (cwd: string) => {
-  const configPath = await discoverConfig(cwd)
-  if (configPath === null) {
+  const found = await discoverConfig(cwd)
+  if (found === null) {
     return resolveConfig(
       {},
-      { root: cwd, configPath: null, flavors: FLAVORS, readers: READERS },
+      {
+        root: cwd,
+        configPath: null,
+        localPath: null,
+        flavors: FLAVORS,
+        readers: READERS,
+      },
     )
   }
-  return resolveConfig(await importConfigDefault(configPath), {
-    root: dirname(configPath),
+  const { root, configPath, localPath } = found
+  const base = configPath === null ? {} : await importConfigDefault(configPath)
+  const raw =
+    localPath === null
+      ? base
+      : overlayLocalConfig(base, await readLocalConfig(localPath), localPath)
+  return resolveConfig(raw, {
+    root,
     configPath,
+    localPath,
     flavors: FLAVORS,
     readers: READERS,
   })
 }
 
 describe("discoverConfig", () => {
-  test("finds the config in cwd", async () => {
-    expect(await discoverConfig(fixture("walk"))).toBe(
-      join(fixture("walk"), "deblob.config.ts"),
-    )
+  test("finds the config in cwd — its directory is the root, no overlay beside it", async () => {
+    expect(await discoverConfig(fixture("walk"))).toEqual({
+      root: fixture("walk"),
+      configPath: join(fixture("walk"), "deblob.config.ts"),
+      localPath: null,
+    })
   })
 
   test("walks up to the nearest config — never past it", async () => {
-    expect(await discoverConfig(fixture("walk/nested/deeper"))).toBe(
-      join(fixture("walk/nested"), "deblob.config.ts"),
-    )
+    expect(
+      (await discoverConfig(fixture("walk/nested/deeper")))?.configPath,
+    ).toBe(join(fixture("walk/nested"), "deblob.config.ts"))
   })
 
   test("rejects two config files in one directory as ambiguity", async () => {
@@ -76,18 +92,127 @@ describe("discoverConfig", () => {
 describe("explicitConfigPath", () => {
   test("resolves a relative path from cwd, absolute passed through", async () => {
     const absolute = join(fixture("walk"), "deblob.config.ts")
+    const expected = {
+      root: fixture("walk"),
+      configPath: absolute,
+      localPath: null,
+    }
     expect(
       await explicitConfigPath(fixture("walk/nested"), "../deblob.config.ts"),
-    ).toBe(absolute)
+    ).toEqual(expected)
     expect(
       await explicitConfigPath(fixture("walk/nested/deeper"), absolute),
-    ).toBe(absolute)
+    ).toEqual(expected)
   })
 
   test("a missing explicit path is a teaching error, never a silent fallback", async () => {
     await expect(
       explicitConfigPath(fixture("walk"), "SOME_MADE_UP_PATH.config.ts"),
     ).rejects.toThrowError(/SOME_MADE_UP_PATH.*does not exist/s)
+  })
+})
+
+describe("the local overlay — deblob.local.json beside the config", () => {
+  const roots: string[] = []
+  const makeRoot = async (
+    files: Readonly<Record<string, string>>,
+  ): Promise<string> => {
+    const root = await mkdtemp(join(tmpdir(), "deblob-local-"))
+    roots.push(root)
+    for (const [name, content] of Object.entries(files)) {
+      await writeFile(join(root, name), content)
+    }
+    return root
+  }
+  afterAll(() =>
+    Promise.all(
+      roots.map((root) => rm(root, { recursive: true, force: true })),
+    ),
+  )
+
+  const CONFIG = `export default { pure: ["FAKE_BASE_LIB"], include: ["src/**"] }\n`
+
+  test("discovery reports both files; the merged value resolves, local winning per key", async () => {
+    const root = await makeRoot({
+      "deblob.config.ts": CONFIG,
+      "deblob.local.json": JSON.stringify({
+        pure: ["FAKE_LOCAL_LIB"],
+        view: { projects: ["../FAKE_CHECKOUT"] },
+      }),
+    })
+    expect(await discoverConfig(root)).toEqual({
+      root,
+      configPath: join(root, "deblob.config.ts"),
+      localPath: join(root, "deblob.local.json"),
+    })
+    const resolved = await load(root)
+    expect(resolved.localPath).toBe(join(root, "deblob.local.json"))
+    expect(resolved.pure).toEqual(["FAKE_LOCAL_LIB"])
+    expect(resolved.include).toEqual(["src/**"])
+    expect(resolved.view.projects).toEqual([
+      join(dirname(root), "FAKE_CHECKOUT"),
+    ])
+  })
+
+  test("a lone local file is a configless project with an overlay — found, never ignored", async () => {
+    const root = await makeRoot({
+      "deblob.local.json": JSON.stringify({ view: { projects: ["FAKE_PKG"] } }),
+    })
+    expect(await discoverConfig(join(root))).toEqual({
+      root,
+      configPath: null,
+      localPath: join(root, "deblob.local.json"),
+    })
+    const resolved = await load(root)
+    expect(resolved.configPath).toBeNull()
+    expect(resolved.view.projects).toEqual([join(root, "FAKE_PKG")])
+  })
+
+  test("the walk stops at the lone local file, never past it to an ancestor config", async () => {
+    const root = await makeRoot({ "deblob.config.ts": CONFIG })
+    const nested = join(root, "nested")
+    await mkdir(nested)
+    await writeFile(join(nested, "deblob.local.json"), "{}")
+    expect((await discoverConfig(nested))?.root).toBe(nested)
+  })
+
+  test("-c finds the overlay beside the explicit config", async () => {
+    const root = await makeRoot({
+      "deblob.config.ts": CONFIG,
+      "deblob.local.json": "{}",
+    })
+    expect((await explicitConfigPath(root, "deblob.config.ts")).localPath).toBe(
+      join(root, "deblob.local.json"),
+    )
+  })
+
+  test("a local file gone since discovery fails the same way, naming it", async () => {
+    const root = await makeRoot({})
+    await expect(
+      readLocalConfig(join(root, "deblob.local.json")),
+    ).rejects.toThrowError(`failed to parse ${join(root, "deblob.local.json")}`)
+  })
+
+  test("an unparseable local file fails loud, naming it, cause preserved", async () => {
+    const root = await makeRoot({ "deblob.local.json": "{ not json" })
+    const failure = await load(root).then(
+      () => null,
+      (error: unknown) => error,
+    )
+    expect(failure).toBeInstanceOf(ConfigError)
+    expect((failure as ConfigError).message).toBe(
+      `failed to parse ${join(root, "deblob.local.json")}`,
+    )
+    expect((failure as ConfigError).cause).toBeInstanceOf(SyntaxError)
+  })
+
+  test("a local key the config vocabulary lacks fails naming the local file", async () => {
+    const root = await makeRoot({
+      "deblob.local.json": JSON.stringify({ SOME_MADE_UP_KEY: 1 }),
+    })
+    await expect(load(root)).rejects.toThrowError(
+      /unknown key "SOME_MADE_UP_KEY" in .*deblob\.local\.json/,
+    )
   })
 })
 
