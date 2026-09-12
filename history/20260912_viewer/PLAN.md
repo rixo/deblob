@@ -1,0 +1,92 @@
+# Chapter PLAN — viewer
+
+## Decisions (2026-09-12, rixo)
+
+- **SPA on Vite, plain Svelte, no SvelteKit.** The delivery shapes ahead (CLI
+  static server, middleware, Vite plugin) are all "serve a bundle plus a data
+  source"; a Vite build is exactly that bundle. Kit's router, server layer and
+  adapters would be worked around in every host. SSR is wanted and out of reach;
+  accepted.
+- **Two packages, one dependency direction.** `@deblob/viewer` is the UI and
+  never imports `deblob`. Extraction, the static server, the watcher and later
+  the middleware and Vite plugin live in `deblob`, which depends on the viewer
+  for its bundle. A third package (middleware + watcher) is not created until
+  something demands it.
+- **The UI's only input is a stream of whole snapshots, from step 01.** Static
+  is a stream of one; live is a stream of many. The watcher is a second source
+  later, not a rewrite: reactivity in the bones from the first component.
+- **Live push over WebSocket**, not server-sent events. Mature, everybody's
+  default, no detour.
+- **Our dev cycle is the product's data half.** Vite dev serves the UI with HMR
+  (svelte-hmr, rixo's own — the loop is closed). Data comes from the same
+  extract-watch-push half the future Vite plugin exposes; building the dev cycle
+  builds that half. Wrinkle: the viewer devDepends on `deblob` for it while
+  `deblob` depends on the viewer at runtime — opposite directions, dev vs
+  runtime, pnpm handles it.
+- **Projects come from config, never from the command line.** A `view.projects`
+  key in `deblob.config.ts`: directories, each a deblob project with its own
+  config discovery starting there, paths relative to the declaring file. Two
+  uses, one key: committed, a monorepo root listing the projects its viewer
+  shows; local, a `deblob.local.json` beside the config listing checkouts on one
+  machine. The local file is a partial config with the same keys and the same
+  validation (a typo fails on the existing unknown-key error), found by the same
+  discovery, merged per top-level key with local winning and arrays replacing,
+  gitignored by convention, JSON because it is data. No `deblob view <dir>`: the
+  list covers the need. `deblob view` with no configured projects shows the
+  current project alone. The in-app project switch is the server knowing the
+  whole list; no restart.
+- **Testing, three loops over one input.** Manual exploration: the dev server
+  over the configured projects, `deblob` itself and real checkouts, daily.
+  Corpus test: a directory of banked snapshots, the test iterates over whatever
+  is there and asserts invariants true of any snapshot (mounts, every service
+  appears, counts match, nothing throws) — one operation, not one test per
+  codebase; in the repo only `deblob`'s own, private ones only in a gitignored
+  corpus directory. Self-extract in CI: `deblob`'s snapshot is extracted at test
+  time through the data half rather than banked as a golden that churns with the
+  CLI. Consequence: the data half is a function first (snapshot of a project), a
+  server second; dev server, `deblob view` and the corpus test call the same
+  function. The map's layout leg (headless browser) is the map step's problem.
+
+## Steps
+
+1. `01_package/` — the package exists: Svelte on Vite, the snapshot source, one
+   component, the reactivity test, checker dogfooded, CI wired.
+
+Candidates after 01, rixo sizes each: the config overlay and `view.projects` (a
+`deblob` config step, small); the data half (snapshot of a project, watch,
+WebSocket push) with the corpus test, as the dev cycle; `deblob view` serving
+the built bundle; the map (ELK in a worker, tween, the bake-off's interaction
+requirements).
+
+## Open
+
+- **Data contract.** What the viewer asks for is the viewer's to define and
+  `deblob`'s dump to conform to. Not settled; step 01 ships a stamp only.
+- **Driver layer rulings** happening in the main checkout (driver vs assembly,
+  "1 trigger = 1 use case", `drivers` config key). They may change what the
+  viewer shows. Not settled here.
+- **The UI zone in the checker.** `.svelte` files are `parsed: false` nodes, so
+  they are blob and their imports are invisible. The viewer's dogfood is honest
+  about that; the resolution is the arch-pass card's F1–F3 hole, not this
+  chapter's.
+- **`svelte-check` against TypeScript 7.** Tried at step 01 (4.7.6): it refuses
+  to start on TS 7 alone and asks for TS 6 installed beside it under an alias
+  (`@typescript/native@npm:typescript@7`) plus a `--tsgo` flag. Not taken: a
+  dual-TypeScript install is not a step 01 call. Until it is, `tsc --noEmit`
+  types the `.ts` sources and `.svelte` script blocks go untyped.
+- **Optional peer or regular dependency** of `deblob` on the viewer: decided
+  when the bundle size is known.
+
+## Future
+
+### Ideas
+
+- **Baked static build** (2026-09-12) — the snapshot written into the HTML, no
+  server after delivery; the "prod / staging" flow. Same input, stream of one.
+- **Middleware and Vite plugin** (2026-09-12) — thin exports of `deblob`
+  wrapping "extract, serve bundle, push"; a package of their own only if they
+  leave `deblob`.
+- **Review list as the product** (2026-09-12) — spec, spec diff, services and
+  their primary use cases as they appear, tests as the review surface; a diff
+  reviewer closer to VS Code's than GitLab's, staging a hunk once reviewed.
+  rixo's direction, not ruled.

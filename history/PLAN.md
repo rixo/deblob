@@ -54,6 +54,12 @@
   step carries the gate questions — trigger → use-case table at the spec gate,
   owning suites read per trigger at the test gate, "the driver sequences
   nothing" in the guide.
+- **Viewer** — chapter in flight: `history/20260912_viewer/` (opened 2026-09-12
+  on branch `viewer`; chapter PLAN carries the decisions — SPA on Vite, two
+  packages, snapshot stream, WebSocket — and the open questions).
+  `@deblob/viewer`, launched as `deblob view`. Grew out of the two spikes and
+  the graph-as-product card (`future/graph-as-product/`), which stays: the query
+  family and the product reframe are not absorbed by the viewer.
 - **Review-slicing skill** — dogfooded 2026-07-23 on step-10's own diff, verdict
   positive (better, more engaging review — rixo). Graduation next, a fresh
   session: chapter in the skills lineage; first ruling = name (the
