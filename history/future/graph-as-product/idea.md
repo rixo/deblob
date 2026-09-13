@@ -221,3 +221,12 @@ skeleton view, downward-closure surfaces, impact direction; nice-to-haves
   family — ruled at graduation, not here.
 - Kin: `../arch-pass/research/nesting-packaging.md` §15 (`no-service-cycle`'s
   raison d'être — the skeleton guarantee this idea leverages).
+- Research: [research/dots-2026-09-11.md](research/dots-2026-09-11.md) — the
+  verb grammar, plan-as-graph-diff, the viz spike, test titles as behavior; each
+  dot marked verified / inferred / hypothesis, and the spike ledger.
+- Research:
+  [research/driver-extraction-2026-09-12.md](research/driver-extraction-2026-09-12.md)
+  — rixo's brief for trigger adapters (naming, triggers with file and function,
+  variants, local deps), assembly's closed role list, and the product evolution
+  it implies: the missing driver layer, its config declaration, the trigger →
+  primary-use-case relation.

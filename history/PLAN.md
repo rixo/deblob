@@ -31,6 +31,20 @@
   board). Companion, ruled to the `deblob docs` command family: derived-view
   staleness check — diff `docs/` sections against `source:` stamps in
   `skills/*/knowledge|references/`; stamp-text ↔ heading matching rule to spec.
+- **Placement debt** — chapter opened 2026-09-10:
+  `history/20260910_placement-debt/` (GOAL, PLAN, step 01 spec drafted; rulings
+  pending at the seam). Born from a service-cutting audit of the package: green
+  checks, two placement defects the checker cannot see — shared knowledge filed
+  under its first consumer (the manifest claim, the check registry) and a run
+  with no service (orchestration in `main.ts`, no fs port, sync by contagion,
+  three port-less adapters). Sequenced before the adapters-implement-ports rule
+  (CLI board, Ideas): the rule is born over a dogfood that passes it. Carries
+  the laundering finding (agents routing logic into assembly past the verdict)
+  with levers to rule. Terrain confirmed the class 2026-09-11 (the partner CLI,
+  nine steps green, verbs sequenced in the driver — "a trigger with no owning
+  use case"): a fifth step carries the gate questions — trigger → use-case table
+  at the spec gate, owning suites read per trigger at the test gate, "the driver
+  sequences nothing" in the guide.
 - **Review-slicing skill** — dogfooded 2026-07-23 on step-10's own diff, verdict
   positive (better, more engaging review — rixo). Graduation next, a fresh
   session: chapter in the skills lineage; first ruling = name (the
@@ -68,7 +82,16 @@
   CI-checked against the territory). Discovery + work organization, agent food;
   type-system precedent (act 2 = language server for architecture). Idea +
   honest ledger banked → `future/graph-as-product/` — blocked: mechanical base
-  first (JSON output, `deblob status` are the substrate).
+  first (JSON output, `deblob status` are the substrate). Spike 2026-09-11
+  (`spike/graph-viz`, throwaway worktree, deblob on itself): tests legibility
+  and a plan overlay before the bricks are promoted; the day's dots with their
+  standing → `future/graph-as-product/research/dots-2026-09-11.md`. 2026-09-12
+  the spike turned on the product: rixo's brief for trigger adapters and the
+  driver layer it implies (config-declared drivers, assembly reduced to
+  initialize / wire / trigger-by-calling, trigger → primary use case as a
+  relation the checker can see) →
+  `future/graph-as-product/research/driver-extraction-2026-09-12.md`; feeds
+  arch-pass F1 and the placement-debt chapter.
 - **Svench flavor guide** — second implementation guide, proves "several valid
   guides, one foundation"; taxonomy sketch banked → `future/svench-flavor/` —
   blocked: factory-injection guide stabilizes first.

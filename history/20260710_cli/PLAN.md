@@ -526,6 +526,16 @@ doesn't check:
   nothing and the canon check still runs. Sequenced after the rule-names
   chapter: the rule is slugged at birth, so the slug grammar is ruled before
   this rule is born.
+- **Flavor check: composition units export a `create*` factory** (2026-09-11,
+  from the graph-viz spike) — one factory per composition unit is the flavor's
+  second identity axis (guide §2, `create<Name><Kind>`), prescribed and never
+  enforced. A `.service.ts` or `.adapter.ts` whose exports hold no `create*`
+  function is either a utility bag or an I/O function only assembly calls — both
+  placement-debt shapes; across two codebases the only such files were our own
+  (`config.service.ts`, the three port-less adapters). Mechanical, exports-only,
+  no body analysis; through the flavor port like the strict form above. Kin of
+  `adapter-implements-port`, same sequencing: born after the placement-debt
+  chapter makes the dogfood pass it. Stashed, not scoped.
 - **A word for generated output — "no source to check" is not "I decline to
   claim"** (2026-09-07, at the 0.0.4 trial) — a package whose surface is built
   from a manifest (`dist/js/*`, no `src/` twin, ever) can only disclose

@@ -11,7 +11,11 @@ captured: 2026-07-11
 - **(F1) Drivers are missing from the dependency matrix** — "a driver is an
   adapter like any other" + the Adapters row (no adapter→adapter imports) makes
   every component tree a matrix violation; drivers need their own row or the
-  equivalence is false.
+  equivalence is false. Evidence and an expected shape for the row, 2026-09-12:
+  `../graph-as-product/research/driver-extraction-2026-09-12.md` — a driver
+  declaration in config next to `assembly`, trigger adapters that name the files
+  they cover and the service function each trigger calls, assembly left with
+  initialize / wire / trigger-by-calling.
 - **(F2) "Separation is conceptual, enforced by convention" presents a gap as
   settled** — the arch's one overselling spot; needs an honest-gaps note (sdd.md
   has the pattern, arch doesn't).
