@@ -12,10 +12,9 @@ all shared code (model, ports, pure functions):
 2. **Multiple consumers, one direction** — direct import from the other's
    model/ports. Fine while strictly one-directional.
 3. **Cycle threatened** — extract a **kernel**: a shared service holding the
-   common concepts (model and/or service-layer code, no composition units). Both
-   consumers import it; the DAG stays clean. Alternative when the shared surface
-   is large and growing: **merge** — two services that constantly want each
-   other are often one service with two concerns.
+   common concepts. Both consumers import it; the DAG stays clean. Alternative
+   when the shared surface is large and growing: **merge** — two services that
+   constantly want each other are often one service with two concerns.
 4. **Kernel grows consumer-specific concerns — red alert.** The kernel sits
    upstream; it must not know its consumers. Smell: optional fields or union
    branches serving one consumer. **Litmus: delete consumer B entirely — does

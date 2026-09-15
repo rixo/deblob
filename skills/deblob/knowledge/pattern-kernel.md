@@ -5,9 +5,7 @@ source: docs/architecture.md § Patterns, Kernel
 # Kernel — shared concepts with governance
 
 A service holding shared domain concepts, typically extracted to prevent
-dependency cycles between consumers ([sharing](sharing.md), step 3). Pure model,
-or service-layer code — **no composition units** (once it has those, it's a full
-service, possibly anti-corruption infrastructure, not a kernel).
+dependency cycles between consumers ([sharing](sharing.md), step 3).
 
 - The domain doesn't have to be "business" — it has to be **coherent**. Business
   (`Provider`, `Theme`) and technical (`util/vite.ts`, `util/path.ts`) kernels

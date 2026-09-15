@@ -39,12 +39,16 @@ answers that. Violations should be visible by shape, not only by reasoning.
 
 One of this architecture's practical benefits: it is methodically retrofitable.
 The story goes like this — you have a working prototype — rough, messy code, all
-in a blob. You separate concerns into services (packaging, interdependencies).
-Then from each service, use cases surface into `.service.ts`, types and pure
-functions into `.model.ts`. The extensionless files left over? That's the blob —
-code no layer has been ruled for yet, owned as debt. It shrinks as extraction
-proceeds. The architecture doesn't require a greenfield start; it reveals itself
-in existing code under the pressure of testing.
+in a blob. You make the cut: a facade service whose use cases are the entry's
+commands, a port for what the legacy body does, an assembly that builds the
+legacy code as blob behind that port, a driver plus boot that fire the facade.
+Green from here. You separate concerns into services (packaging,
+interdependencies). Then from each service, use cases surface into
+`.service.ts`, types and pure functions into `.model.ts`. The extensionless
+files left over? That's the blob — code no layer has been ruled for yet, owned
+as debt. It shrinks as extraction proceeds. The architecture doesn't require a
+greenfield start; it reveals itself in existing code under the pressure of
+testing.
 
 Distilled from production practice, at varying degrees of maturity and
 completeness: two brownfield codebases under months of daily use (design-system
@@ -146,24 +150,25 @@ manifest's format, a REST endpoint's response shape) stay inside the adapter.
 What comes out conforms to the port. This is what makes adapters replaceable —
 not that they're "simple," but that they absorb specificity.
 
-An adapter sits outside the hexagon it serves. It may be a hexagon in its own
-right — and, by extension, a full service package: its own layers, its own
-packaging boundary, its own DAG participation (see
-[Services](#services--our-interpretation) and [Rules](#rules)). An adapter that
-talks to an external API has its own internal logic, potentially its own model
-functions, its own external dependencies. The hexagonal pattern is fractal — an
-adapter with an inside of its own has its own ports and its own adapters. The
-same structural principles apply at every level of nesting; what never changes
-is that the adapter is outside the hexagon it serves.
+An adapter sits outside the hexagon it serves. It is a hexagon in its own right
+— and a full service package: its own layers, its own packaging boundary, its
+own DAG participation (see [Services](#services--our-interpretation) and
+[Rules](#rules)). An adapter that talks to an external API has its own internal
+logic, potentially its own model functions, its own external dependencies. The
+hexagonal pattern is fractal — an adapter with an inside of its own has its own
+ports and its own adapters. The same structural principles apply at every level
+of nesting; what never changes is that the adapter is outside the hexagon it
+serves.
 
 **Fractal assembly.** Who composes a nested adapter's internals? The adapter's
 own factory. A composition unit's factory function doubles as the composition
-root for its internal hexagons: it instantiates its internal sub-adapters, wires
-its internal ports, and returns the assembled unit. From the outside, assembly
-sees one composition unit; the fractal assembly inside is an implementation
-detail. Dependencies that are genuinely external to the adapter (an HTTP client,
-a logger) are still injected from outside — internal composition covers what the
-adapter owns, not what it consumes.
+root for its internal hexagons: it instantiates its internal sub-adapters, which
+live under its own `private/`, wires its internal ports, and returns the
+assembled unit. From the outside, assembly sees one composition unit; the
+fractal assembly inside is an implementation detail. Dependencies that are
+genuinely external to the adapter (an HTTP client, a logger) are still injected
+from outside — internal composition covers what the adapter owns, not what it
+consumes.
 
 This has a critical consequence: an adapter connects to the hexagon it serves
 through the port it implements. It's a separate hexagon, and hexagons
@@ -254,16 +259,15 @@ Outside it, inward to outward:
   call from what the driver handed it. One right: build.
 - **Drivers** (`.driver.ts`, framework entry points) — the driving side. Hold
   the tech and the hooks it fires; call assembly to get the hexagon, call one
-  use case per hook. Started by a boot, imported only by drivers. One right:
-  fire.
+  use case per hook. Started by a boot, imported only by a boot or drivers. One
+  right: fire.
 - **Boot** (`.boot.ts`) — the entry. Imports one driver and calls its wiring
   function once, at module root, with no arguments. The one module whose
   evaluation performs a call. Two rights: import one driver, call it.
 - **Test** (files matched by the test globs) — assembly and driver in one, by
   the shape of the test tech. Imports anything, blob included; defines anything;
-  imported by nothing. Its one constraint is `stateless-modules`: no mutable
-  state at spec root. Shared test code is not test kind: it is an adapter, an
-  assembly, a model or a driver, by what it is.
+  imported by nothing (`test-is-assembly-and-driver`). Shared test code is not
+  test kind: it is an adapter, an assembly, a model or a driver, by what it is.
 
 Suffixless files are blob — no layer declaration, no layer guarantees.
 
@@ -273,10 +277,10 @@ Type-only imports are also exempt — see `runtime-import`.)
 
 Inside the hexagon, an outer layer may contain inner-layer code (model logic in
 a `.service.ts` file is fine — it just inherits the stricter consumption
-constraints of its host layer); the reverse is never acceptable. The outside
-kinds do not get this: an adapter holds what its port needs and nothing of the
-hexagon's, and assembly, driver and boot define nothing at all (their rules
-below).
+constraints of its host layer); the reverse is never acceptable. Adapters and
+the outside kinds do not get this: an adapter holds what its port needs and
+nothing of the hexagon's, and assembly, driver and boot define nothing at all
+(their rules below).
 
 ### Model — knowledge
 
@@ -428,10 +432,11 @@ factory to call (anchors in the [Summary](#summary)):
   injected behind the port that awaits it. Arguments are literals, tech values
   received as parameters (a working directory, an environment, a framework's
   context handle passed through and never called), or instances built or
-  received here. It returns instances — one service, or a record of services and
-  shared instances for the assemblies and drivers below it. No use-case call: a
-  use case whose result feeds a factory is a pipeline hiding in the wiring. By
-  default config is wired as a dependency (the config service, the
+  received here. It returns services — one, or a record of services and shared
+  model instances for the assemblies and drivers below it — and no adapter
+  unless a test is the caller (below). No use-case call: a use case whose result
+  feeds a factory is a pipeline hiding in the wiring. By default config is wired
+  as a dependency (the config service, the
   [ubiquitous port](#config--the-ubiquitous-port)) and loaded inside the use
   case that needs it. The exception is the **load**: a use case the graph itself
   depends on — the config service's, for a graph that varies with a config file.
@@ -476,6 +481,11 @@ files are also where a bundler splits: they are the only files that import
 composition units, so the chunk graph is the assembly graph, and a lazily loaded
 feature is a lazily imported assembly.
 
+An assembly does not return adapters, except when called by a test: a spec file
+asserts on what its fakes recorded, so a test factory hands them back (see
+[The test factory pattern](#the-test-factory-pattern)). The corollary is that an
+assembly that returns adapters can only be called by tests.
+
 How the rule is read: by callee file kind and by result flow. A callee from a
 service, adapter, assembly or blob file is a factory by construction; a call
 result may only be passed on or returned, never branched on, computed with, or
@@ -505,13 +515,13 @@ nothing in it needs a test.
 **Only a driver listens to the tech.** The argument parser, the server, the test
 runner's callbacks, the component the framework mounts: the driver is the one
 place in the program that receives their events — an adapter may call into the
-same tech on the outbound side, behind a port, but never hears from it. The
-driver receives the hexagon already built and fires its use cases from **hooks**
-— the callbacks the tech invokes. What a driver does not do is build the
-hexagon; that is [assembly](#assembly--the-composition-root), above. Nothing but
-a boot or another driver imports a driver: the boot starts it, one import and
-one call. Node runs the boot, the test runner runs the spec file, the framework
-mounts the component.
+same tech on the outbound side, behind a port. The driver receives the hexagon
+already built and fires its use cases from **hooks** — the callbacks the tech
+invokes. What a driver does not do is build the hexagon; that is
+[assembly](#assembly--the-composition-root), above. Nothing but a boot or
+another driver imports a driver: the boot starts it, one import and one call.
+Node runs the boot, the test runner runs the spec file, the framework mounts the
+component.
 
 Because the tech lives here, what "one hook" is depends on the tech: a
 `.command().action()` callback on a CLI, a route handler, a `test()` body, an
@@ -823,9 +833,9 @@ services. They are part of `icons` and can access `icons/private/`.
 
 **The direction law.** A nested adapter's edges point up: it type-imports the
 port it implements and, at most, model code of the service it adapts for. The
-parent stays import-blind to its children — instantiation and injection are
-assembly's job, wherever assembly lives. Since the child already points up, any
-parent import of the child's files closes a service-level cycle
+parent stays import-blind to its public children — their instantiation and
+injection are assembly's job, wherever assembly lives. Since the child already
+points up, any parent import of the child's files closes a service-level cycle
 (`no-service-cycle`). The blindness is scoped to that upward relation: a nested
 child with no upward edges — a component the parent composes — may be imported
 freely. The child's role picks the direction; what `no-service-cycle` enforces
@@ -890,7 +900,7 @@ means no rule forbids it.
 | ------------ | ------------------------------------------------- | ---------------------------------------------------------- |
 | **Model**    | Model, pure third-party libs                      | Everything else, incl. concrete                            |
 | **Ports**    | Model, ports                                      | Everything else, incl. concrete                            |
-| **Service**  | Model, ports                                      | Adapters, assembly, drivers, other `.service.ts`, concrete |
+| **Service**  | Model, ports, `private/` of own service           | Adapters, assembly, drivers, other `.service.ts`, concrete |
 | **Adapters** | Model, ports, `private/` of own service, concrete | Other adapters, assembly, drivers                          |
 | **Assembly** | Model, ports, composition units, assemblies, blob | Drivers, concrete (a declared container library excepted)  |
 | **Drivers**  | Assemblies, drivers, their own tech               | Composition units, model, blob, boot                       |
@@ -905,7 +915,7 @@ exemption does not reach them: nothing but a boot or a driver imports a driver,
 nothing but an assembly or a driver imports an assembly, nothing imports a boot,
 type imports included. In the other direction type imports are free: a driver or
 an assembly may type-import from any layer, since a hook's options or a wiring
-function's signature name shapes and call nothing — the model row's prohibition
+function's signature name shapes and call nothing — the driver row's prohibition
 is about calls. "Concrete" means platform/IO code: `node:fs`, HTTP clients,
 database drivers (`service-purity`). Pure, deterministic third-party libraries
 count as model-layer code.
@@ -1044,10 +1054,9 @@ tooling. Both are hard requirements.
   setup builds units with fixtures (test-purpose adapters, same isolation
   rules), the test bodies are hooks, registered by calls at module root that the
   test tech owns (`stateless-modules` exempts the registration, not mutable
-  state). Recognized by the configured test globs. A test file is a leaf of the
-  graph, so the test tech grants it what no other kind gets: it imports anything
-  — blob included, which is how unplaced code gets its characterization tests;
-  it defines anything; the hook count and services-only do not apply. Nothing
+  state). Recognized by the configured test globs. It imports anything — blob
+  included, which is how unplaced code gets its characterization tests; it
+  defines anything; the hook count and services-only do not apply. Nothing
   imports a test file. Shared test code gets none of this: it is placed by what
   it is — a fake or in-memory implementation is an adapter, a test factory is an
   assembly function, a data builder is model, and a matcher, fixture or shared
@@ -1061,8 +1070,9 @@ tooling. Both are hard requirements.
 
 - <a id="assembly-builds-only"></a>`assembly-builds-only` — **Every call in an
   assembly is a factory call** — arguments are literals, tech values received as
-  parameters, or instances; it returns instances; no use-case call but the loads
-  the project declares, whose results count as tech values; a branch or loop on
+  parameters, or instances; it returns services and shared model instances, and
+  adapters only when called by a test; no use-case call but the loads the
+  project declares, whose results count as tech values; a branch or loop on
   parameters or loaded values with factory arms is wiring, none on an instance's
   output; nothing at module root but imports.
 - <a id="assembly-driver-only"></a>`assembly-driver-only` — **An assembly is
@@ -1198,9 +1208,8 @@ live at the boundary that defines the contract, not at the joints inside.
 
 ### Test isolation
 
-A test file is assembly and driver in one. Its rights are wide (it imports and
-defines what it needs — `test-is-assembly-and-driver`), but the assembly half
-follows the assembly rules: the test creates a service instance by calling the
+A test file is assembly and driver in one (`test-is-assembly-and-driver`). The
+setup half is assembly: the test creates a service instance by calling the
 factory with test-purpose dependencies, then exercises it from its hooks. This
 has direct consequences:
 
@@ -1237,7 +1246,9 @@ the assembly. It calls the service factory with sensible defaults (real adapters
 with fixture data, nominal config, mock ports). Individual tests call the test
 factory and override only what their specific scenario requires. A test factory
 shared across test modules is an assembly function in an assembly file, as its
-shape says; the fakes it wires are adapters, and a matcher or shared hook
+shape says; the fakes it wires are adapters, and it may return them alongside
+the service because a test is its caller, which then is the only caller it may
+have (see [Assembly](#assembly--the-composition-root)). A matcher or shared hook
 registered on the runner is a driver the spec file calls. No shared test code is
 blob or test kind.
 
@@ -1335,8 +1346,7 @@ exists.
 
 **3. DAG cycle threatened — extract to a shared kernel.** When two services both
 need the same types or functions and the dependency would otherwise be mutual,
-extract the shared code into its own service — model and/or service-layer code,
-no composition units.
+extract the shared code into its own service.
 
 ```
 # BAD — creates a cycle risk
@@ -1390,11 +1400,13 @@ defines a port for "give me token data in this shape," an adapter translates
 corrupted by another's evolving semantics. In our architecture, it's just a
 port + adapter — the mechanism we already have.
 
-**5. Operational cross-dependency — port + adapter.** When the dependency is
-operational (service A needs to _call_ service B and vice versa), at least one
-direction must go through a port + adapter. Service A defines a port for what it
-needs from B; an adapter wraps B's API to satisfy that port. Assembly wires
-them. No direct import.
+**5. Mutual operational dependency — a slicing error.** When service A needs to
+call service B and B needs to call A, no wiring fixes it: two services that need
+each other at runtime are one service with two concerns, or both need a third.
+Merge them (above), or extract the use case both need into a service upstream of
+both — step 3 with behavior instead of types. Port + adapter is the
+one-directional move of step 4; it does not remove a mutual need, it relabels
+one edge of it.
 
 The full progression: own it → share directly → extract kernel → split with
 anti-corruption boundary. No special mechanisms needed at any stage — the
@@ -1488,11 +1500,8 @@ patterns).
 ### Kernel
 
 A service holding shared domain concepts, typically extracted to prevent
-dependency cycles between consumers. Pure model, or service layer without
-composition units. (Once a shared service has composition units, it's no longer
-a kernel — it's a full service, possibly serving an anti-corruption role.) See
-[Sharing](#sharing) for governance concerns (divergence, anti-corruption
-boundaries).
+dependency cycles between consumers. See [Sharing](#sharing) for governance
+concerns (divergence, anti-corruption boundaries).
 
 Kernels can hold business domain concepts (`Provider`, `Theme`, `IconFamily`) or
 platform/technical domain concepts (`util/vite.ts`, `util/path.ts`,
@@ -1515,23 +1524,31 @@ tradeoff. Agents should always default to clean domain decomposition.
 ### Progressive adoption (for humans)
 
 > **NOT FOR AGENTS**: An agent should always produce the full architecture
-> (model + service layer + ports & adapters where external deps exist).
+> (model + service layer + ports & adapters where external deps exist, and the
+> necessary boilerplates: assembly, driver and boot).
 
 The architecture supports incremental adoption. The hard rules are few and
 clear; everything else is a gradient that natural pressures (testing, reuse,
 scaling) push toward the clean state over time.
 
-**Stage 1** — Service boundaries only. Service factory with IoC, clear layer
-files. Already useful.
+**Stage 1** — The cut. Install the necessary boilerplates first: a facade
+service whose use cases are the entry's commands, a port for what the legacy
+body does, an assembly that builds the legacy code as blob behind that port, a
+driver plus boot that fire the facade. The program is green from here. This
+stage comes first because it has to: a blob entry cannot import a composition
+unit, so a service extracted before the cut has no green state (see
+[Driver — the outermost layer](#driver--the-outermost-layer)).
 
-**Stage 2** — Extract to model. Pure functions move out. Testability improves
+**Stage 2** — Service boundaries. Services pulled out of the blob one port at a
+time, each a service factory with IoC and clear layer files. Already useful.
+
+**Stage 3** — Extract to model. Pure functions move out. Testability improves
 dramatically. But don't rush — see [Distillation](#distillation) on premature
 extraction risks.
 
-**Stage 3** — Ports & adapters. External dependencies isolated behind contracts.
-Full architecture.
+**Stage 4** — Ports & adapters. External dependencies isolated behind contracts.
 
-**Stage 4** — Nested hexagons. When an adapter or sub-concern grows complex
+**Stage 5** — Nested hexagons. When an adapter or sub-concern grows complex
 enough, it becomes its own hexagon with its own internal structure.
 
 ---

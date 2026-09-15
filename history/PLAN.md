@@ -31,20 +31,29 @@
   board). Companion, ruled to the `deblob docs` command family: derived-view
   staleness check — diff `docs/` sections against `source:` stamps in
   `skills/*/knowledge|references/`; stamp-text ↔ heading matching rule to spec.
-- **Placement debt** — chapter opened 2026-09-10:
-  `history/20260910_placement-debt/` (GOAL, PLAN, step 01 spec drafted; rulings
-  pending at the seam). Born from a service-cutting audit of the package: green
-  checks, two placement defects the checker cannot see — shared knowledge filed
-  under its first consumer (the manifest claim, the check registry) and a run
-  with no service (orchestration in `main.ts`, no fs port, sync by contagion,
-  three port-less adapters). Sequenced before the adapters-implement-ports rule
-  (CLI board, Ideas): the rule is born over a dogfood that passes it. Carries
-  the laundering finding (agents routing logic into assembly past the verdict)
-  with levers to rule. Terrain confirmed the class 2026-09-11 (the partner CLI,
-  nine steps green, verbs sequenced in the driver — "a trigger with no owning
-  use case"): a fifth step carries the gate questions — trigger → use-case table
-  at the spec gate, owning suites read per trigger at the test gate, "the driver
-  sequences nothing" in the guide.
+- **Driver layer** — chapter opened 2026-09-13: `history/20260913_driver-layer/`
+  (GOAL, PLAN with the rulings and the closed review board, research). Canon
+  first draft bb4bb3c, review closed 8cf50cc (2026-09-15): assembly builds,
+  driver fires, boot starts, test kind, declared loads and tech, per-tech
+  readings. Second consistency read closed 2026-09-15 (rows 33–52: rules that
+  solved no observed problem cut back or dropped). Step queue 01–07 on the
+  chapter PLAN; next: step 01 (the reader). Absorbs placement-debt steps 02–05
+  as its step 07.
+- **Placement debt** — chapter opened 2026-09-10 (its steps 02–05 now re-cut
+  under the driver-layer chapter, above): `history/20260910_placement-debt/`
+  (GOAL, PLAN, step 01 spec drafted; rulings pending at the seam). Born from a
+  service-cutting audit of the package: green checks, two placement defects the
+  checker cannot see — shared knowledge filed under its first consumer (the
+  manifest claim, the check registry) and a run with no service (orchestration
+  in `main.ts`, no fs port, sync by contagion, three port-less adapters).
+  Sequenced before the adapters-implement-ports rule (CLI board, Ideas): the
+  rule is born over a dogfood that passes it. Carries the laundering finding
+  (agents routing logic into assembly past the verdict) with levers to rule.
+  Terrain confirmed the class 2026-09-11 (the partner CLI, nine steps green,
+  verbs sequenced in the driver — "a trigger with no owning use case"): a fifth
+  step carries the gate questions — trigger → use-case table at the spec gate,
+  owning suites read per trigger at the test gate, "the driver sequences
+  nothing" in the guide.
 - **Review-slicing skill** — dogfooded 2026-07-23 on step-10's own diff, verdict
   positive (better, more engaging review — rixo). Graduation next, a fresh
   session: chapter in the skills lineage; first ruling = name (the
