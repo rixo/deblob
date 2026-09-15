@@ -58,13 +58,22 @@
 ## Steps
 
 1. `01_package/` — the package exists: Svelte on Vite, the snapshot source, one
-   component, the reactivity test, checker dogfooded, CI wired.
+   component, the reactivity test, checker dogfooded, CI wired. Landed 92ae7f2.
+2. `02_config-overlay/` — `view.projects` and `deblob.local.json`. Landed
+   0676dac.
+3. `03_data-half/` — the snapshot function, the WebSocket server driver in
+   `deblob` (run from source, the seed of `deblob view`), Vite proxying it in
+   our dev cycle, the viewer's source and first real view, the corpus test.
+   Re-cut of what the board called "the data half": the watcher moves to its own
+   step; no Vite plugin (yagni). SPEC ratified 2026-09-13, built in five review
+   checkpoints through 2026-09-16, back-filled.
+4. Candidate: the watcher — re-run the snapshot on change, push again; additive
+   over 03.
+5. Candidate: `deblob view` serving the built bundle.
 
-Candidates after 01, rixo sizes each: the config overlay and `view.projects` (a
-`deblob` config step, small); the data half (snapshot of a project, watch,
-WebSocket push) with the corpus test, as the dev cycle; `deblob view` serving
-the built bundle; the map (ELK in a worker, tween, the bake-off's interaction
-requirements).
+Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
+(ELK in a worker, tween, the bake-off's interaction requirements; Playwright
+through Vitest browser mode enters there).
 
 ## Open
 
@@ -89,11 +98,17 @@ requirements).
 
 ### Ideas
 
+- **Non-deterministic test fixtures** (2026-09-15, rixo) — the corpus test runs
+  over a snapshot of the live codebase, regenerated every run (step 03's seed
+  ruling). Revisit testing against non-deterministic inputs: what such a test
+  can and cannot prove, and whether the seed stays — if it is still there when
+  this card opens.
 - **Baked static build** (2026-09-12) — the snapshot written into the HTML, no
   server after delivery; the "prod / staging" flow. Same input, stream of one.
-- **Middleware and Vite plugin** (2026-09-12) — thin exports of `deblob`
-  wrapping "extract, serve bundle, push"; a package of their own only if they
-  leave `deblob`.
+- **Middleware and Vite plugin** (2026-09-12; yagni, rixo 2026-09-13) — userland
+  packaging of the view server plus the static build, for people who want it
+  inside their own server or Vite. Step 03's data server is the thing they would
+  wrap; nothing built until someone asks.
 - **Review list as the product** (2026-09-12) — spec, spec diff, services and
   their primary use cases as they appear, tests as the review surface; a diff
   reviewer closer to VS Code's than GitLab's, staging a hunk once reviewed.

@@ -18,6 +18,7 @@ describe("isConfigError", () => {
     expect(isConfigError(foreign)).toBe(true)
     expect(isConfigError(new Error("SOME_MADE_UP_BUG"))).toBe(false)
     expect(isConfigError(null)).toBe(false)
+    expect(isConfigError("SOME_MADE_UP_STRING")).toBe(false)
   })
 })
 

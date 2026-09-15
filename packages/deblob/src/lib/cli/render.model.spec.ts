@@ -22,6 +22,7 @@ import {
   renderBroken,
   renderUnresolved,
   renderUnverified,
+  serviceCountOf,
   sizeStatsOf,
   SURFACE_NOT_CLAIMED,
 } from "./render.model.ts"
@@ -1244,6 +1245,14 @@ describe("bare status", () => {
       ]),
     ).toEqual({ totalBytes: 1000, blobPercent: 90 })
     expect(sizeStatsOf([])).toEqual({ totalBytes: 0, blobPercent: 0 })
+  })
+
+  test("serviceCountOf counts distinct roots, blob (null) never counts", () => {
+    expect(
+      serviceCountOf(["src/FAKE_A", null, "src/FAKE_B", "src/FAKE_A", null]),
+    ).toBe(2)
+    expect(serviceCountOf([null, null])).toBe(0)
+    expect(serviceCountOf([])).toBe(0)
   })
 })
 

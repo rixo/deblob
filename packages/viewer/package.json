@@ -13,24 +13,35 @@
   "engines": {
     "node": ">=22.18"
   },
+  "exports": {
+    "./snapshot.model": {
+      "types": "./src/lib/snapshot/snapshot.model.ts",
+      "default": "./src/lib/snapshot/snapshot.model.ts"
+    }
+  },
   "files": [
     "README.md",
-    "dist"
+    "dist",
+    "src/lib/snapshot/snapshot.model.ts"
   ],
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "7.3.0",
+    "@types/ws": "8.18.1",
     "@vitest/coverage-v8": "5.0.0",
-    "deblob": "workspace:*",
     "jsdom": "30.0.1",
+    "npm-run-all2": "^9.0.2",
     "svelte": "5.57.0",
     "typescript": "7.0.2",
     "vite": "8.3.0",
-    "vitest": "5.0.0"
+    "vitest": "5.0.0",
+    "ws": "8.21.3"
   },
   "scripts": {
     "build": "vite build",
-    "check": "deblob check",
-    "dev": "vite",
+    "check": "node ../deblob/src/drivers/cli/bin.ts check",
+    "dev": "run-p dev:*",
+    "dev:serve": "node ../deblob/src/drivers/serve/bin.ts",
+    "dev:vite": "vite",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

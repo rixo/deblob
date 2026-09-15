@@ -164,6 +164,37 @@ export const createConfigLoader = ({
   }
 
   /**
+   * The package.json at `root`, parsed — `null` when there is none; a manifest
+   * that does not parse fails naming it. The one read both manifest readers
+   * share.
+   */
+  const readManifest = async (
+    root: string,
+  ): Promise<Record<string, unknown> | null> => {
+    const manifestPath = join(root, "package.json")
+    const text = await fs.readFile(manifestPath)
+    if (text === null) return null
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text)
+    } catch (error) {
+      throw new ConfigError(`failed to parse ${manifestPath}`, { cause: error })
+    }
+    return typeof parsed === "object" && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : {}
+  }
+
+  /**
+   * The package's `name` at `root` — what a project is called when it is a
+   * package; `null` without a manifest or without a string name.
+   */
+  const readPackageName = async (root: string): Promise<string | null> => {
+    const name = (await readManifest(root))?.["name"]
+    return typeof name === "string" ? name : null
+  }
+
+  /**
    * The package's own surface claim — package.json at the config root: `deblob`
    * field presence, its `blob` carve-outs and `assembly` designations, plus the
    * exports map flattened to subpath → target paths. `null` = no package.json
@@ -175,19 +206,8 @@ export const createConfigLoader = ({
   const readPackageSurface = async (
     root: string,
   ): Promise<PackageSurface | null> => {
-    const manifestPath = join(root, "package.json")
-    const text = await fs.readFile(manifestPath)
-    if (text === null) return null
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(text)
-    } catch (error) {
-      throw new ConfigError(`failed to parse ${manifestPath}`, { cause: error })
-    }
-    const manifest =
-      typeof parsed === "object" && parsed !== null
-        ? (parsed as Record<string, unknown>)
-        : {}
+    const manifest = await readManifest(root)
+    if (manifest === null) return null
     const field = manifest["deblob"]
     if (field === undefined) return null
     if (typeof field !== "object" || field === null || Array.isArray(field)) {
@@ -226,6 +246,7 @@ export const createConfigLoader = ({
     explicitConfigPath,
     readLocalConfig,
     tsconfigPathOf,
+    readPackageName,
     readPackageSurface,
   }
 }

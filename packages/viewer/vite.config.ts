@@ -4,11 +4,16 @@ import { defineConfig } from "vite"
 
 export default defineConfig({
   plugins: [svelte()],
+  server: {
+    // the data server (`pnpm dev:serve`, deblob's serve driver, PORT 5175)
+    proxy: { "/deblob/ws": { target: "ws://127.0.0.1:5175", ws: true } },
+  },
   // vitest resolves svelte's server build without this: mount() unavailable
   ...(process.env.VITEST ? { resolve: { conditions: ["browser"] } } : {}),
   test: {
     include: ["src/**/*.spec.ts"],
     environment: "jsdom",
+    globalSetup: ["./vitest.global-setup.ts"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,svelte}"],

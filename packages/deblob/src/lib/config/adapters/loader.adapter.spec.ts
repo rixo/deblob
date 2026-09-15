@@ -17,6 +17,7 @@ const {
   explicitConfigPath,
   readLocalConfig,
   tsconfigPathOf,
+  readPackageName,
   readPackageSurface,
 } = createConfigLoader({ fs: createNodeFs() })
 
@@ -336,6 +337,24 @@ describe("readPackageSurface", () => {
       roots.map((root) => rm(root, { recursive: true, force: true })),
     ),
   )
+
+  test("readPackageName: the manifest's string name, else null", async () => {
+    expect(await readPackageName(await rootWith())).toBeNull()
+    expect(await readPackageName(await rootWith(JSON.stringify({})))).toBeNull()
+    expect(
+      await readPackageName(await rootWith(JSON.stringify({ name: 42 }))),
+    ).toBeNull()
+    expect(await readPackageName(await rootWith("null"))).toBeNull()
+    expect(
+      await readPackageName(
+        await rootWith(JSON.stringify({ name: "FAKE_PKG" })),
+      ),
+    ).toBe("FAKE_PKG")
+    const broken = await rootWith("{ not json")
+    await expect(readPackageName(broken)).rejects.toThrowError(
+      `failed to parse ${join(broken, "package.json")}`,
+    )
+  })
 
   test("yields null without a package.json — no claim, no check", async () => {
     expect(await readPackageSurface(await rootWith())).toBeNull()

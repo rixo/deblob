@@ -46,6 +46,7 @@ import {
   renderBroken,
   renderUnresolved,
   renderUnverified,
+  serviceCountOf,
   sizeStatsOf,
   SURFACE_NOT_CLAIMED,
 } from "../../lib/cli/render.model.ts"
@@ -184,10 +185,6 @@ const resolveOptionsFor = (
     ...(surface?.assembly ?? []),
   ]),
 })
-
-/** Distinct service roots over the covered set — what the layer rules govern. */
-const serviceCountOf = (roots: Iterable<string | null>): number =>
-  new Set([...roots].filter((root) => root !== null)).size
 
 /**
  * The load → resolve sequence — assembly's own job (arch §Assembly: read

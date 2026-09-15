@@ -826,6 +826,10 @@ export const sizeStatsOf = (
   blobPercent: blobPercentOf(entries),
 })
 
+/** Distinct service roots over the covered set — what the layer rules govern. */
+export const serviceCountOf = (roots: Iterable<string | null>): number =>
+  new Set([...roots].filter((root) => root !== null)).size
+
 export type BareStatus = {
   version: string
   provenance: string

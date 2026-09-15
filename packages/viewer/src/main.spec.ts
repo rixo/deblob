@@ -17,5 +17,6 @@ test("the entry mounts the app on #app", async () => {
 
   await import("./main.ts")
 
-  expect(target.querySelector("time")).not.toBeNull()
+  expect(target.querySelector("main")).not.toBeNull()
+  expect(target.textContent).toContain("loading")
 })

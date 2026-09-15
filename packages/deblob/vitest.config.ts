@@ -14,6 +14,8 @@ export default defineConfig({
         // process glue only — covered by the child-process smoke test; the
         // ruled e2e-only exception (09 spec), everything else runs in-process
         "src/drivers/cli/bin.ts",
+        "src/drivers/serve/bin.ts",
+        "src/drivers/snapshot/bin.ts",
       ],
       thresholds: {
         lines: 100,
