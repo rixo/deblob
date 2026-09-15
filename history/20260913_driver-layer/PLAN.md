@@ -1,0 +1,189 @@
+# Chapter PLAN — driver layer
+
+Scratch for the chapter: the canon review board (every item found on the first
+draft, its status, the edit it implies), the decisions ratified along the way,
+and the step queue. The canon draft is committed as bb4bb3c; edits land on top
+of it, reviewed by rixo per checkpoint, one commit per batch of ruled items.
+
+Status words: **DONE** (edit in the working tree or committed), **RULED** (rixo
+decided, edit pending), **OPEN** (needs a decision), **PRE-EXISTING** (not from
+the draft, noted for the ruleset's completeness).
+
+## Rulings so far (2026-09-15)
+
+- **Boot is a layer.** `.boot.ts` (plus an optional config glob, mirroring
+  `assembly`, for a framework that owns the file name). Two rights, nothing
+  more: import a single driver; call its wiring function once, at module root,
+  with no arguments. Defines nothing, holds nothing, touches no tech — `process`
+  and `document` are the driver's. Nothing imports a boot; every boot is a root
+  of the import graph, one per entry point. It is the one module whose
+  evaluation performs a call, which is what makes `stateless-modules` hold
+  everywhere else without exception. Outermost: `… < drivers < boot`. Slug
+  proposal: `boot-one-call`.
+- **`stateless-modules` restated.** The intent is no mutable module state; the
+  second target is no side effect at evaluation; root calls are the lane both
+  use to get around the rule, not the crime (`Object.freeze` at a model root is
+  what the rule wants). A root call is legal only when its callee is declared
+  pure and its result immutable. Enforcement in tiers: a root call to a factory
+  is red once the flavor identifies factories (step 02); a root call into tech
+  or a composition unit is already red by imports; readonly-typed root bindings
+  are an opt-in config, because some target codebases are untyped. The driver
+  exception dies; a root driver builds inside its wiring function and reads its
+  tech there; a lazy assembly caches in that function's closure.
+- **Test files get the root-registration right.** A spec file's evaluation calls
+  the runner's registration API (`describe`, `test`) at root, unbounded, by the
+  test tech's shape. Mutable state at spec root stays forbidden (each test
+  assembles its own instance).
+- **Root drivers take no arguments.** `main()` not `main(io)`: a wiring function
+  takes tech and instances only from a parent driver.
+- **Translation as a facade service is taxonomic, not a contradiction of
+  intent.** Cockburn's driving adapter is, in deblob, the driver file plus the
+  facade service; ruling the translation as a service buys it ports and contract
+  tests instead of blob. The domain services stay tech-blind, which is the
+  intent both authors protect. One owned sentence in canon; the Ports section's
+  "inside" scoped to the domain services; parse and render are use cases only
+  under deblob's level-blind definition, not Cockburn's.
+- **Flavors identify factories — a step of this chapter**, not a future idea:
+  the assembly reader's model-callee case, the root-call rule above, and the CLI
+  rework all need it.
+- **The load, declared (2026-09-15).** By default an assembly makes no use-case
+  call and config is loaded inside the use case that needs it. The exception: a
+  load, a use case the graph depends on (the config service's). Loads are
+  declared, not inferred — nothing in a call's shape tells a load from a use
+  case run for its effect, and a "result consumed" check is gamed as easily. The
+  project declares the allowed use cases (config key, step 01: file + function,
+  one or a list); any assembly may await any declared one, several if the graph
+  needs several config sources; an undeclared call is red with the declaration
+  as the resolution. No per-assembly tuple (rename cost for nothing on an honour
+  mechanism), no count (useless once declared). Results are tech values: factory
+  arguments, conditions, loops, nothing computes on them. Canon states the
+  principle only; the key's shape is CLI spec. Restores the research note's
+  "root awaits one load"; the implementation guide's lazy `getConfig()` is the
+  pre-canon form. Multiple Mains rejected as the general answer (tedious, DRY);
+  choosing adapters from config data is the normal case.
+- **Branch or loop is wiring** when what it tests or iterates is a parameter or
+  a loaded value, compared to a literal or for truthiness, with factory-call
+  arms. A condition reading an instance or a value computed from one is the
+  launder; "every call is a factory call" already kills computed conditions, the
+  instance read is what the rule adds. "Makes no decision" → "decides nothing
+  but which factory to call". Not a last resort: choosing the implementation is
+  the composition root's job (Seemann); building two instances to use one is a
+  container's habit, rejected.
+- **Small fixes taken**: Humble Object credited to Meszaros (Feathers's humble
+  dialog box as origin); "primary use case" / "instrumental use case" stated as
+  our aliases; Martin's Main mapped to the split (now boot + driver + assembly);
+  the "most boring file" line dropped as load-bearing zero.
+
+## Review board — internal consistency
+
+| #   | Item                                                                                                                                                                                                                            | Status | Ruling / edit                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Layering preamble says outer layers have "progressively fewer structural constraints"; assembly and driver carry the narrowest rules                                                                                            | DONE   | Rewrite the preamble: more knowledge outward, and the two outermost kinds trade import breadth for the narrowest verb lists                                                                                                                                                                                                                                                                                                               |
+| 2   | "Outer layers may contain inner-layer code" licenses model logic in assembly and driver, which forbid any definition                                                                                                            | DONE   | Scope the sentence to the hexagon's own layers; name assembly, driver, boot as the exception                                                                                                                                                                                                                                                                                                                                              |
+| 3   | "Imported by nothing" false for sub-drivers; `stateless-modules` driver exception rests on it                                                                                                                                   | DONE   | Boot layer; exception dropped; "imported by nothing outside the driver layer; the boot starts it" at lines 186-188, 248, 500                                                                                                                                                                                                                                                                                                              |
+| 4   | Assembly rule never says the file exports one assembly function ("nothing at module root but imports")                                                                                                                          | DONE   | No count rule: nothing calls an assembly under a one-callee constraint (the driver cap exists for the boot). "Nothing else is defined" → "nothing but assembly functions is defined, as many per file as the author wants"                                                                                                                                                                                                                |
+| 5   | "Takes no injected dependencies" vs "instances built or received here"                                                                                                                                                          | DONE   | Line 219 trimmed to "it is called, never built"; no new sentence — who may hand an assembly an instance is implied by the matrix (only assemblies and drivers import assemblies; only assembly builds composition units)                                                                                                                                                                                                                  |
+| 6   | `run(argv)` in the CLI example vs Ports "shaped to the inside's needs"                                                                                                                                                          | DONE   | See "translation as a facade service" above; write the owned sentence, scope "inside"                                                                                                                                                                                                                                                                                                                                                     |
+| 7   | Non-driver web components are suffixless, hence blob; drivers cannot import blob, so `+page.svelte` rendering a child is red                                                                                                    | DONE   | Derivation, not a ruled conflict: canon fences web drivers as open (line 209) and the resolver has no `.svelte` extension, so such files are not in the graph. One sentence at the fence: a file of an unruled tech matching no driver glob is outside the graph, not blob. UI ideas to Future                                                                                                                                            |
+| 8   | Retrofit path: a suffixless entry file cannot import an assembly nor a composition unit, so no green state once the first service exists                                                                                        | DONE   | Path stated after "not ready to be declared": blob entry stays green until one cut installs facade service + port + assembly (legacy as quarantined blob behind the port) + driver + boot; distillation from there; extracting a domain service before the cut is the one red route                                                                                                                                                       |
+| 9   | Test exemptions list only the call count and services-only; fixtures and test factories are definitions; test utility files are blob                                                                                            | DONE   | Test kind = spec files only (imports anything, blob included; defines anything; imported by nothing; `stateless-modules` kept). Shared test code is never test kind or blob: fakes = adapters, test factories = assembly, data builders = model, runner extensions (`expect.extend`, fixtures, shared hooks) = a driver the spec calls with the tech. Layer list, matrix row, rule anchor, driver-to-driver example, test factory section |
+| 10  | Matrix preamble says intersection of layer and composition rules; the Drivers row forbids model, which comes from a driver rule                                                                                                 | DONE   | Preamble names every rule family the matrix folds (layer, composition, outside kinds). Type imports free on the importing side for every kind (a driver may type-import model and ports: shapes, no calls); the restriction stays on the imported side (nothing type-imports assembly/driver/boot but their importers)                                                                                                                    |
+| 11  | `main(io)` implies a caller the CLI example does not place                                                                                                                                                                      | DONE   | Boot; the example gains `cli.boot.ts`; `main()` takes no arguments                                                                                                                                                                                                                                                                                                                                                                        |
+| 12  | "The only place in the program that touches the tech" vs a framework-side adapter implementing a routing port                                                                                                                   | DONE   | Qualified at both sites (line 194, line 609): the driver is the only place that listens to the tech / receives its events; an adapter may call into the same tech outbound, behind a port; "nothing to abstract" scoped to the inbound side                                                                                                                                                                                               |
+| 13  | Wording that bites literally: "makes no decision" vs a branch on tech values; "never its functions for their results" vs the reader letting a model call through; "a context handle" as assembly parameter; "getters" undefined | DONE   | Four fixes: "makes no decision" → "decides nothing but which factory to call" (lines 274, 435); model imports: factories called for the instance they build, never a function for a computed value, the flavor tells them apart; context handle: passed through, never called; "getters" dropped — a driver calls use cases                                                                                                               |
+| 14  | Hexagonal "Drivers" section hosts deblob prescription under "the principles are Cockburn's"                                                                                                                                     | DONE   | Paragraphs 3-4 moved to "Driver — the outermost layer" after its intro (first sentence merged into the intro's); the hexagonal section keeps a one-sentence pointer that build/fire and what a driver holds are ours                                                                                                                                                                                                                      |
+| 15  | "Tech adapter" undefined in a standalone doc and collides with hexagonal "adapter"                                                                                                                                              | DONE   | Renamed: each tech comes with a **reading** (recognition, hook cutting, exemptions), defined once at first use; "adapter" kept only in a parenthesis about the checker (one adapter per tech, like the flavor). Step 03 SPEC follows                                                                                                                                                                                                      |
+| 32  | Layers read as the hexagon: composition unit equated with hexagon, adapters called hexagons, drivers called Cockburn's adapters, one concentric list model to boot                                                              | DONE   | Hexagon = model, ports, service; adapters, assembly, drivers, boot are the outside; layer list split inside/outside; "driver is an adapter" dropped (transitive chain ends in a contradiction); folder is a third axis                                                                                                                                                                                                                    |
+
+## Review board — authors
+
+| #   | Item                                                                                           | Status | Ruling / edit                                                                                                                                                                                                                                                                                                |
+| --- | ---------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 16  | Seemann and Martin have the root obtain config values; `assembly-builds-only` forbids the call | DONE   | Ruled: the declared load (see rulings). Rule bullet, Summary anchor, CLI example (assembly awaits the load it declares) updated. Service example keeps `config: MyServiceConfig` — legal as tech values or as the declared load's result. Implementation guide's config pattern to align in step 05          |
+| 17  | Parsing and rendering as use cases vs Cockburn's driving adapter and Martin's presenters       | DONE   | Taxonomic; one owned sentence; see rulings                                                                                                                                                                                                                                                                   |
+| 18  | Humble Object credited to Feathers                                                             | DONE   | Meszaros, Feathers's humble dialog box as origin (unstaged)                                                                                                                                                                                                                                                  |
+| 19  | Seemann's single composition root vs fractal group assemblies and instance duplication         | DONE   | Mapping added to the instance-duplication paragraph: one root per entry point is his rule (a multi-page site is several applications), a group assembly is his root split into functions, duplication is his lifestyle made visible as which assembly builds what. Agreed with rixo 2026-09-15: no departure |
+| 20  | "Primary use case is a common alias"                                                           | DONE   | Our alias (unstaged)                                                                                                                                                                                                                                                                                         |
+| 21  | Martin's Main is the entry point too, not assembly alone                                       | DONE   | Mapped to driver + assembly (unstaged); update again to boot + driver + assembly with #3                                                                                                                                                                                                                     |
+
+## Review board — completeness and laundering venues
+
+| #   | Item                                                                                                                                         | Status | Ruling / edit                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 22  | The facade service is where logic goes with every light green (full service rights, tech-shaped contract)                                    | DONE   | No annotation (rixo 2026-09-15: a service using its full rights is legal code; flagging it by size is a nanny precedent). One sentence at the facade paragraph: logic lands there by design, ruled code, no rule looks at its size. Future idea dropped                                                                                                                                                                                                                                                             |
+| 23  | Inside a hook, before and after the one call, nothing bounds arguments or result use (`opts.cwd ?? process.cwd()`, `if (result.ok) exit`)    | DONE   | Mirror rule in `one-call-per-hook` and its anchor: the call is unconditional; arguments are tech values, instances, literals, unchanged; the result is returned or handed whole to the tech (tech call, tech-held state). Defaults, branches on the result, transforms, error-to-exit mapping are the facade's use case. "Tech value" includes tech-held state (view model), so the ordinary web handler fits; ruled for plain-TS drivers, web readings decide the line. Checkable syntactically once hooks are cut |
+| 24  | "Own tech" is undeclared; a pure library counts as model, which a driver may not import, so the door is shut only if tech is a declared list | DONE   | Ruled (rixo 2026-09-15): tech is declared by the reading — a reading that parses the driver can name its packages for free. A driver's external import claimed by no reading is red, resolution = the project's `tech` declaration (the escape hatch for a tech without a reading: recognized, nothing cut, imports bounded); pure libs are model, red regardless. Strict-mode card dropped; `tech` key added to step 03's proto                                                                                    |
+| 25  | Callbacks the tech's reading does not cut are unruled code in a ruled file (middleware, `beforeEach`, `$effect`)                             | DONE   | Reversed by rixo 2026-09-15: lenient by default. A callback the reading does not cut is not a hook and is not judged; a half-known tech must not turn a codebase red for what the checker does not understand (same principle as the web fence). What a reading leaves uncut is that tech's open part, stated in the reading                                                                                                                                                                                        |
+| 26  | Spec files are the widest-rights kind, granted by glob; a script named `*.spec.ts` is unreviewable by rule                                   | DONE   | Owned inside the test rule: the test file is a leaf of the graph, so the tech grants it what no other kind gets; the test gate is the defense. Found on the way: `main.spec.ts` → `main.ts` and `index.spec.ts` → `index.ts` are spec-imports-blob, red under the old text, green now                                                                                                                                                                                                                               |
+| 27  | Shared model instances built in assembly are a cross-service channel with no port and no DAG edge                                            | DONE   | Non-issue (rixo 2026-09-15): a shared model instance is a dependency like a shared adapter — both services import its type (two edges on the map), assembly shows the fan-out. Data coupling through shared state is out of scope whatever the shared thing is. Sentence dropped from canon                                                                                                                                                                                                                         |
+| 28  | Lazy wiring in a hook needs a cache; module-root `let` forbidden                                                                             | DONE   | The cache lives in the wiring function's closure                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 29  | Undefined checkable terms: definition, literal, tech value, getter                                                                           | DONE   | Defined once before the assembly rules: tech value (what the tech hands or holds, plus a declared load's result), literal, definition. "Getter" gone with #13                                                                                                                                                                                                                                                                                                                                                       |
+| 30  | Suffixless `private/` files are blob in code; the visibility example (line 569) shows one imported by its service, red today                 | DONE   | `private/` is visibility, not a layer (verified: the layers check cites `blob-quarantine` on a blob target whatever the path; own-private only relaxes the composition seals). Example suffixed (`private/scoring-heuristic.model.ts`); one sentence in the private/ section                                                                                                                                                                                                                                        |
+| 31  | Assembly's `assembly-builds-only` reformulation for root calls                                                                               | DONE   | See `stateless-modules` ruling                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+## Canon edits — batch 1 (applied 2026-09-15, unstaged, awaiting review)
+
+1. Boot layer: layer list, matrix row, `inward-deps`, Summary rule
+   `boot-one-call`, CLI example gains `cli.boot.ts`, SPA parallel (driver
+   exports `main()` that mounts, boot calls it). Inspirations: Main = boot +
+   driver + assembly.
+2. `stateless-modules` restated (no mutable state, no side effect at evaluation;
+   root calls only on declared-pure callees with immutable results; factory
+   calls red; readonly opt-in; boot the one evaluation that calls; test
+   registration exempt). Driver exception removed; "assembly needs no exception"
+   generalized.
+3. "Imported by nothing" at lines 186-188, 248, 500 → imported by nothing
+   outside the driver layer; the boot starts it.
+4. `driver-defines-hooks-only`: `main()`; tech and instances arrive only from a
+   parent driver.
+5. Facade sentence (#6/#17) and Ports "inside" scoping.
+
+Dependencies to watch before applying open items: #9 and #26 hang on the test
+tech's exemption list (touched by the registration ruling); #23 and #13
+("getters") are one edit; #7 and #8 both concern files outside the graph; #16
+may reopen the service example and the config pattern section.
+
+## Step queue
+
+- `00_canon` — this board's edits to `docs/architecture.md`, one commit per
+  ruled batch on top of bb4bb3c. Done when every row above is DONE or RULED with
+  a written home (canon, implementation guide, or a step below).
+- `01_tech-adapter` — SPEC: recognition (`.boot.ts`, `.assembly.ts`,
+  `.driver.ts`, test globs, framework globs, config globs for boot and
+  assembly), hook cutting, attribution, per-tech exemptions (test registration,
+  call count, services-only, definitions), level labelling; the assembly reader
+  (callee file kind + result flow); the hook reader (arguments + result flow,
+  #23); the load declaration (config key: file + function, one or a list; any
+  assembly may await any declared load; the reader treats results as tech values
+  and flags any other non-factory call with the declaration as the resolution).
+  Dynamic imports read as imports.
+- `02_flavor-factories` — the flavor says what a factory is (`create*`
+  convention, composition-unit exports); unlocks the model-callee case of the
+  assembly reader, the root-factory-call check of `stateless-modules`, and the
+  readonly opt-in config.
+- `03_outside-rules` — `deblob check` enforces the assembly, driver, boot and
+  test rules: config keys (`boot`, `drivers`, `tests`, `loads`), the three kinds
+  in `Layer`, the new slugs in `RULE_IDS`, three violation members, three
+  detectors, three explain cards. Proto API drafted 2026-09-15 in
+  `03_outside-rules/SPEC.md`, to ratify when the step opens; after 01 and 02.
+- `04_cli-restructure` — deblob's own CLI: `cli.boot.ts` (today's `bin.ts`),
+  `cli.driver.ts` (cac, one hook per command), `cli.assembly.ts` (factory calls,
+  returns the CLI service), `lib/cli/cli.service.ts` (parse, dispatch, render;
+  io port). Today's `main.ts` is red under every driver rule.
+- `05_slugs` — code, skills, README follow canon (`test-setup-assembly` →
+  `test-is-assembly-and-driver`, the new assembly/driver/boot rules); breaking,
+  accepted. Implementation guide's config pattern (lazy `getConfig()` in the
+  root) rewritten as the declared load.
+- `06_container-whitelist` — config key for a runtime container library, when
+  someone needs it.
+- `07_placement-debt-recut` — placement-debt steps 02–05 re-cut under this
+  chapter; step 01 unchanged.
+
+## Future
+
+### Ideas
+
+- Readonly-typed root bindings as a strict-flavor check (with step 02).
+- UI iteration (#7): a pure component read as an extension of the driver, or a
+  tech-specific view layer taking model's rules minus the ones that don't fit;
+  neither written in canon until the web stress test.
