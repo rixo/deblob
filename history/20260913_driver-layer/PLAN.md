@@ -186,11 +186,17 @@ may reopen the service example and the config pattern section.
   is one: cut back to about 11k words. Priority order for what stays: negative
   rules first (the ones `deblob check` enforces or will), positive guidance
   second, elaboration last. Style: concise, to the point, readable — Bastiat,
-  not a treatise; the review of the current text was a suffering. Done when the
-  cut is reviewed and committed. No further prose-against-prose read after that:
-  the canon is the prerequisite of the tool and the tool of the files, so the
-  next canon edits come from writing the reader (steps 01–03) and from its
-  diagnostics on real code, not from another read.
+  not a treatise; the review of the current text was a suffering. Cut done
+  2026-09-16: 13747 → 10605 words, then five one-track review agents (negative
+  rules, outside kinds, inside + packaging, guidance + skill stamps, cold read)
+  hunted lost load-bearing content; ~55 distinct items, the dropped rule
+  conditions, the sentences compression made false and the overselling hedges
+  restored, rationale and examples left out → 11228 words, all 26 rule anchors
+  kept. rixo did not re-read end to end (trust + branch). Step CLOSED. No
+  further prose-against-prose read after that: the canon is the prerequisite of
+  the tool and the tool of the files, so the next canon edits come from writing
+  the reader (steps 01–03) and from its diagnostics on real code, not from
+  another read.
 - `01_tech-adapter` — SPEC: recognition (`.boot.ts`, `.assembly.ts`,
   `.driver.ts`, test globs, framework globs, config globs for boot and
   assembly), hook cutting, attribution, per-tech exemptions (test registration,
