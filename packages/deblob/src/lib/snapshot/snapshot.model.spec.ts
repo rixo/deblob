@@ -1,7 +1,7 @@
 import { expect, test } from "vitest"
 
 import type { ImportGraph, ModuleNode } from "../extraction/graph.model.ts"
-import { snapshotFrom } from "./snapshot.model.ts"
+import { snapshotFrom, watchSetOf } from "./snapshot.model.ts"
 
 const node = (
   path: string,
@@ -176,4 +176,13 @@ test("a configless run says so; a config outside the root keeps its path", () =>
   expect(elsewhere.project.provenance).toBe(
     "/FAKE_ELSEWHERE/deblob.config.ts (flavor: FAKE_FLAVOR)",
   )
+})
+
+test("the watch set: the root, then every spanned directory under it", () => {
+  expect(watchSetOf("/FAKE_ROOT", ["src", "src/lib"])).toEqual([
+    "/FAKE_ROOT",
+    "/FAKE_ROOT/src",
+    "/FAKE_ROOT/src/lib",
+  ])
+  expect(watchSetOf("/FAKE_ROOT", [])).toEqual(["/FAKE_ROOT"])
 })

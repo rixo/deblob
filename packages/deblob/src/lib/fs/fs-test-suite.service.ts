@@ -19,6 +19,9 @@ export const FS_TREE: Readonly<Record<string, string>> = {
   "notes.md": "# made up\n",
 }
 
+/** Root-relative directories with nothing in them, created next to `FS_TREE`. */
+export const FS_EMPTY_DIRS: readonly string[] = ["src/empty"]
+
 export const createFsTestSuite = ({
   api: { describe, it, equal, matches },
 }: {
@@ -54,10 +57,11 @@ export const createFsTestSuite = ({
         equal(await fs.readFile(at("src/app.model.ts/inside.ts")), null)
       })
 
-      it("says a file exists, and a directory", async () => {
+      it("says a file exists, and a directory, an empty one too", async () => {
         const { fs, at } = await ready()
         equal(await fs.exists(at("src/app.model.ts")), true)
         equal(await fs.exists(at("src/deep")), true)
+        equal(await fs.exists(at("src/empty")), true)
       })
 
       it("says a missing path does not exist, nor a path through a file", async () => {
@@ -77,6 +81,7 @@ export const createFsTestSuite = ({
         const { fs, at } = await ready()
         equal(await fs.stat(at("src/SOME_MISSING.ts")), null)
         equal(await fs.stat(at("src/deep")), null)
+        equal(await fs.stat(at("src/empty")), null)
       })
 
       it("globs cwd-relative POSIX paths, ignores out, hidden segments never", async () => {
@@ -99,6 +104,33 @@ export const createFsTestSuite = ({
       it("globs nothing under a cwd that is not there", async () => {
         const { fs, at } = await ready()
         equal(await fs.glob(["src/**"], { cwd: at("src/none") }), [])
+        equal(await fs.globDirs(["src/**"], { cwd: at("src/none") }), [])
+      })
+
+      it("globs directories the same way: no trailing slash, never cwd itself, a pattern's own directory among them, an empty one too", async () => {
+        const { fs, at } = await ready()
+        equal(
+          (
+            await fs.globDirs(["**"], {
+              cwd: at("."),
+              ignore: ["**/node_modules/**"],
+            })
+          ).sort(),
+          ["src", "src/deep", "src/empty"],
+        )
+        equal((await fs.globDirs(["**"], { cwd: at(".") })).sort(), [
+          "node_modules",
+          "node_modules/made-up-dep",
+          "src",
+          "src/deep",
+          "src/empty",
+        ])
+        equal((await fs.globDirs(["src/**"], { cwd: at(".") })).sort(), [
+          "src",
+          "src/deep",
+          "src/empty",
+        ])
+        equal(await fs.globDirs(["src/**/*.ts"], { cwd: at(".") }), [])
       })
     })
   }

@@ -30,6 +30,23 @@ test("delivers client messages to the server's handler and awaits it", async () 
   expect(received).toEqual(["/FAKE_ROOT"])
 })
 
+test("a leaving client reaches the server's close handler, or nobody", async () => {
+  const { channel, connect } = createMemoryChannel()
+  let closed = 0
+  channel.onClient(async (client) => {
+    client.onClose(async () => {
+      closed += 1
+    })
+  })
+  const connection = await connect()
+  await connection.close()
+  expect(closed).toBe(1)
+
+  const careless = createMemoryChannel()
+  careless.channel.onClient(async () => {})
+  await expect((await careless.connect()).close()).resolves.toBeUndefined()
+})
+
 test("misuse is loud: connecting before a server, sending before it listens", async () => {
   const idle = createMemoryChannel()
   await expect(idle.connect()).rejects.toThrow("nothing is serving")

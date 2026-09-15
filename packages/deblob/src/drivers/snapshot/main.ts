@@ -1,6 +1,7 @@
 /**
  * The snapshot script driver — assembly: executed, never imported. Trigger =
- * the process invocation, input = the cwd, output = the snapshot as one JSON
+ * the process invocation, input = the cwd as the project root (exactly: its own
+ * config or the defaults, nothing above it), output = the snapshot as one JSON
  * line on stdout, exit code. The corpus seed, and in miniature the future baked
  * static build. One service call.
  *

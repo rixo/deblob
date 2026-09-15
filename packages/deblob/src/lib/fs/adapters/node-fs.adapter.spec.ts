@@ -5,7 +5,11 @@ import { dirname, join } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
 
 import { createVitestTestingApi } from "../../test/adapters/vitest-testing-api.adapter.ts"
-import { FS_TREE, createFsTestSuite } from "../fs-test-suite.service.ts"
+import {
+  FS_EMPTY_DIRS,
+  FS_TREE,
+  createFsTestSuite,
+} from "../fs-test-suite.service.ts"
 import { createNodeFs } from "./node-fs.adapter.ts"
 
 const roots: string[] = []
@@ -21,6 +25,8 @@ const onDisk = async (): Promise<string> => {
     await mkdir(dirname(join(root, path)), { recursive: true })
     await writeFile(join(root, path), content)
   }
+  for (const dir of FS_EMPTY_DIRS)
+    await mkdir(join(root, dir), { recursive: true })
   return root
 }
 

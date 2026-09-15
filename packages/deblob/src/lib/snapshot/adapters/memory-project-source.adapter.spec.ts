@@ -10,6 +10,7 @@ const source = createMemoryProjectSource({
     "/FAKE_ROOT": {
       config: FAKE_CONFIG,
       files: ["src/z.ts", "src/a.ts"],
+      dirs: ["src"],
       sizes: { "src/z.ts": 10, "src/a.ts": 20 },
       name: "FAKE_PKG",
     },
@@ -19,10 +20,12 @@ const source = createMemoryProjectSource({
 
 test("answers every port function from the project at that directory", async () => {
   expect(await source.loadConfig("/FAKE_ROOT")).toBe(FAKE_CONFIG)
+  expect(await source.loadConfigAt("/FAKE_ROOT")).toBe(FAKE_CONFIG)
   expect(await source.scanCoverage(FAKE_CONFIG)).toEqual([
     "src/z.ts",
     "src/a.ts",
   ])
+  expect(await source.scanCoverageDirs(FAKE_CONFIG)).toEqual(["src"])
   expect(await source.sizesOf("/FAKE_ROOT", ["src/a.ts"])).toEqual([
     { path: "src/a.ts", size: 20 },
   ])

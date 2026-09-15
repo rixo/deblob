@@ -2,7 +2,12 @@
  * Live delivery over the browser `WebSocket`, speaking the protocol of
  * `snapshot.model.ts`. The socket opens on the first subscriber and closes
  * after the last (`readable`'s start/stop); a new subscription reconnects from
- * scratch. Reconnecting on a lost socket is the watcher step's concern.
+ * scratch. A socket lost while subscribed — the server restarted, or gone —
+ * puts the source back in the loading arm, the last snapshot kept, and reopens
+ * after `retryMs`, again and again until it opens or the last subscriber
+ * leaves. After a reopen the server sends `projects` and its first snapshot as
+ * on any connect; a project selected meanwhile is asked for again right after
+ * the open.
  *
  * Answers are taken as they come: a `snapshot` or `error` ends the current
  * load, whichever request it answers.
@@ -48,22 +53,54 @@ const receive = (state: SourceState, message: ServerMessage): SourceState => {
   }
 }
 
-export const createWsSource = (url: string): SnapshotSource => {
-  // the open socket, while subscribed — selecting without one is a caller bug
+export const createWsSource = (
+  url: string,
+  { retryMs = 1000 }: { retryMs?: number } = {},
+): SnapshotSource => {
+  // the connection, while subscribed — selecting without one is a caller bug
   let send = (message: ClientMessage): void => {
     throw new Error(`ws source: select before subscribe: ${message.project}`)
   }
   const { subscribe } = readable<SourceState>(CONNECTING, (_set, update) => {
-    const socket = new WebSocket(url)
-    socket.addEventListener("message", (event: MessageEvent<string>) => {
-      const message = JSON.parse(event.data) as ServerMessage
-      update((state) => receive(state, message))
-    })
-    send = (message) => {
-      update(loadingFrom)
-      socket.send(JSON.stringify(message))
+    let stopped = false
+    let retry: ReturnType<typeof setTimeout> | null = null
+    // the project asked for on this connection, re-asked after a reopen
+    let selected: string | null = null
+    const open = (): WebSocket => {
+      const ws = new WebSocket(url)
+      ws.addEventListener("open", () => {
+        if (selected !== null) {
+          ws.send(JSON.stringify({ type: "select", project: selected }))
+        }
+      })
+      ws.addEventListener("message", (event: MessageEvent<string>) => {
+        const message = JSON.parse(event.data) as ServerMessage
+        update((state) => receive(state, message))
+      })
+      ws.addEventListener("close", () => {
+        if (stopped) return
+        update(loadingFrom)
+        retry = setTimeout(() => {
+          retry = null
+          socket = open()
+        }, retryMs)
+      })
+      return ws
     }
-    return () => socket.close()
+    let socket = open()
+    send = (message) => {
+      selected = message.project
+      update(loadingFrom)
+      // not open — lost, or reopening: the open handler asks for it
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(message))
+      }
+    }
+    return () => {
+      stopped = true
+      if (retry !== null) clearTimeout(retry)
+      socket.close()
+    }
   })
   return {
     subscribe,

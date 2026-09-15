@@ -63,7 +63,14 @@ const serverUp = async () => {
     while (connections.length <= index) await tick()
     return connections[index] as (typeof connections)[number]
   }
-  return { url: `ws://127.0.0.1:${port}/FAKE_WS`, connection, wss }
+  const down = () =>
+    new Promise<void>((resolve) => {
+      for (const ws of wss.clients) ws.terminate()
+      server.close(() => resolve())
+    })
+  const up = () =>
+    new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve))
+  return { url: `ws://127.0.0.1:${port}/FAKE_WS`, connection, wss, down, up }
 }
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5))
@@ -155,4 +162,73 @@ test("select before subscribe is a bug: it throws", () => {
   expect(() => source.select("/FAKE_ROOT")).toThrow(
     "ws source: select before subscribe: /FAKE_ROOT",
   )
+})
+
+const RETRY_MS = 20
+
+test("a socket lost while subscribed: loading with the snapshot kept, reopened after the retry, the selected project asked for again", async () => {
+  const { url, connection, wss } = await serverUp()
+  const source = createWsSource(url, { retryMs: RETRY_MS })
+  const seen: SourceState[] = []
+  const unsubscribe = source.subscribe((state) => seen.push(state))
+  const first = await connection(0)
+  first.send({ type: "projects", projects: FAKE_PROJECTS })
+  first.send({ type: "snapshot", snapshot: snapshotOf("/FAKE_ROOT") })
+  await settle(seen, 3)
+  source.select("/FAKE_OTHER")
+  await settle(first.received, 1)
+  first.send({ type: "error", project: "/FAKE_OTHER", message: "FAKE_FAILURE" })
+  await settle(seen, 5)
+
+  for (const ws of wss.clients) ws.terminate()
+  await settle(seen, 6)
+  expect(seen[5]).toEqual({
+    projects: FAKE_PROJECTS,
+    loading: true,
+    error: null,
+    snapshot: snapshotOf("/FAKE_ROOT"),
+  })
+
+  const second = await connection(1)
+  await settle(second.received, 1)
+  expect(second.received).toEqual([{ type: "select", project: "/FAKE_OTHER" }])
+  second.send({ type: "snapshot", snapshot: snapshotOf("/FAKE_OTHER") })
+  await settle(seen, 7)
+  expect(seen[6]?.loading).toBe(false)
+  expect(seen[6]?.snapshot?.project.root).toBe("/FAKE_OTHER")
+  unsubscribe()
+})
+
+test("the server down: retries until it is back; a select meanwhile waits for the open", async () => {
+  const { url, connection, down, up, wss } = await serverUp()
+  const source = createWsSource(url, { retryMs: RETRY_MS })
+  const seen: SourceState[] = []
+  const unsubscribe = source.subscribe((state) => seen.push(state))
+  await connection(0)
+  await down()
+  await tick()
+  source.select("/FAKE_OTHER")
+  // several retries fail while the server is down
+  await new Promise((resolve) => setTimeout(resolve, RETRY_MS * 5))
+  expect(wss.clients.size).toBe(0)
+
+  await up()
+  const back = await connection(1)
+  await settle(back.received, 1)
+  expect(back.received).toEqual([{ type: "select", project: "/FAKE_OTHER" }])
+  expect(seen.every((state) => state.loading)).toBe(true)
+  unsubscribe()
+})
+
+test("the last unsubscriber stops the retries", async () => {
+  const { url, connection, down, up, wss } = await serverUp()
+  const source = createWsSource(url, { retryMs: RETRY_MS })
+  const unsubscribe = source.subscribe(() => {})
+  await connection(0)
+  await down()
+  await tick()
+  unsubscribe()
+  await up()
+  await new Promise((resolve) => setTimeout(resolve, RETRY_MS * 5))
+  expect(wss.clients.size).toBe(0)
 })

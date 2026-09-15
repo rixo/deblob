@@ -1,15 +1,16 @@
 /**
  * The data server — assembly: the projects a viewer at `cwd` shows, an HTTP
- * server with the ws channel at `/deblob/ws`, the protocol served. Takes its
- * world as a value (cwd, port, streams) so the whole thing runs in-process; the
- * bin shim owns the only `process` glue. No CLI verb until step 05: the package
- * script `serve`, run from source.
+ * server with the ws channel at `/deblob/ws`, a watcher, the protocol served.
+ * Takes its world as a value (cwd, port, streams) so the whole thing runs
+ * in-process; the bin shim owns the only `process` glue. No CLI verb until step
+ * 05: the package script `serve`, run from source.
  */
 
 import { createServer } from "node:http"
 import type { AddressInfo } from "node:net"
 import { inspect } from "node:util"
 
+import { createChokidarWatcher } from "../../lib/snapshot/adapters/chokidar-watcher.adapter.ts"
 import { createWsChannel } from "../../lib/snapshot/adapters/ws-channel.adapter.ts"
 import type { Report } from "../../lib/snapshot/ports/report.port.ts"
 import {
@@ -36,7 +37,7 @@ export const main = async (io: ServeIo) => {
   const report: Report = (error) => {
     io.stderr.write(`${inspect(error)}\n`)
   }
-  const { snapshotOf, projectsOf } = createSnapshotService({
+  const { runOf, projectsOf } = createSnapshotService({
     source: createProjectSource(),
     extractionFor,
   })
@@ -47,7 +48,8 @@ export const main = async (io: ServeIo) => {
     path: WS_PATH,
     report,
   })
-  serveSnapshots({ channel, projects, snapshotOf, report })
+  const watcher = createChokidarWatcher({ quietMs: 100, report })
+  serveSnapshots({ channel, projects, runOf, watcher, report })
   await new Promise<void>((resolve) => server.listen(io.port, HOST, resolve))
   const { port } = server.address() as AddressInfo
   io.stdout.write(

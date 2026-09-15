@@ -1,8 +1,8 @@
 /**
  * The world in memory: projects keyed by directory, each with its resolved
- * config, its coverage set, its sizes and its manifest name; a fixed clock. An
- * unknown directory fails the way a missing project would; a file without a
- * size is a fixture bug and fails naming it.
+ * config, its coverage set and the directories it spans, its sizes and its
+ * manifest name; a fixed clock. An unknown directory fails the way a missing
+ * project would; a file without a size is a fixture bug and fails naming it.
  */
 
 import type { ResolvedConfig } from "../../config/config.service.ts"
@@ -12,6 +12,8 @@ export type MemoryProject = {
   config: ResolvedConfig
   /** The coverage set as the filesystem would list it — any order. */
   files: readonly string[]
+  /** The directories coverage spans, root-relative, the root itself absent. */
+  dirs: readonly string[]
   sizes: Readonly<Record<string, number>>
   /** The manifest's name; `null` for a project without one. */
   name: string | null
@@ -32,8 +34,11 @@ export const createMemoryProjectSource = ({
     return project
   }
   return {
+    // no hierarchy in memory: a directory is a project or nothing
     loadConfig: async (dir) => projectAt(dir).config,
+    loadConfigAt: async (root) => projectAt(root).config,
     scanCoverage: async (config) => projectAt(config.root).files,
+    scanCoverageDirs: async (config) => projectAt(config.root).dirs,
     sizesOf: async (root, files) => {
       const { sizes } = projectAt(root)
       return files.map((path) => {

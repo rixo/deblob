@@ -66,9 +66,12 @@
    our dev cycle, the viewer's source and first real view, the corpus test.
    Re-cut of what the board called "the data half": the watcher moves to its own
    step; no Vite plugin (yagni). SPEC ratified 2026-09-13, built in five review
-   checkpoints through 2026-09-16, back-filled.
-4. Candidate: the watcher — re-run the snapshot on change, push again; additive
-   over 03.
+   checkpoints through 2026-09-16, back-filled. Landed f439f3b.
+4. `04_watcher/` — re-run the snapshot on change, push again; the viewer's
+   source reconnects. Additive over 03: protocol and state shape unchanged.
+   Ratified and built 2026-09-16 in four review checkpoints (chokidar 5, the
+   directories coverage spans, discovery stopping at a listed directory),
+   back-filled.
 5. Candidate: `deblob view` serving the built bundle.
 
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map

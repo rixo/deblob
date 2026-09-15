@@ -13,6 +13,7 @@ import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
 import { createConfigLoader, importConfigDefault } from "./loader.adapter.ts"
 
 const {
+  configAt,
   discoverConfig,
   explicitConfigPath,
   readLocalConfig,
@@ -86,6 +87,21 @@ describe("discoverConfig", () => {
   test("rejects two config files in one directory as ambiguity", async () => {
     await expect(discoverConfig(fixture("ambiguous"))).rejects.toThrowError(
       /deblob\.config\.ts and deblob\.config\.js/,
+    )
+  })
+})
+
+describe("configAt", () => {
+  test("the config in that directory exactly — the ancestor's is not consulted", async () => {
+    expect((await configAt(fixture("walk/nested")))?.configPath).toBe(
+      fixture("walk/nested/deblob.config.ts"),
+    )
+    expect(await configAt(fixture("walk/nested/deeper"))).toBeNull()
+  })
+
+  test("two config files in one directory is ambiguity here too", async () => {
+    await expect(configAt(fixture("ambiguous"))).rejects.toThrowError(
+      "keep exactly one deblob config per directory",
     )
   })
 })

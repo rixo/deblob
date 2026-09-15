@@ -40,15 +40,19 @@ pnpm dev
 ```
 
 Two processes: Vite serving the page, and deblob's data server run from its
-source (`node ../deblob/src/drivers/serve/bin.ts`, port 5175) with this package
-as its cwd. Vite proxies `/deblob/ws` to it. The server extracts a project on
-every request and pushes once; there is no watcher yet, reload the page (or
-click the project again) to see a change.
+source (`node --watch ../deblob/src/drivers/serve/bin.ts`, port 5175) with this
+package as its cwd. Vite proxies `/deblob/ws` to it. The server watches the
+project it shows — every directory its coverage spans, plus its root for the
+config files — and pushes a fresh snapshot after a change settles, no reload, no
+click. Editing deblob's own source (or this package's `deblob.config.ts`, which
+the server loads) restarts the server; the page reconnects on its own, the last
+snapshot staying up meanwhile, and comes back on the project it was showing.
 
-The projects shown are this package's `view.projects`. Nothing is listed in the
-committed config, so the server shows this package alone. To view your own
-checkouts, list them in a `deblob.local.json` beside `deblob.config.ts` —
-gitignored, same keys as the config:
+The projects shown are this package's `view.projects`: the committed config
+lists this package and `deblob`, so the switch has two entries out of the box.
+To view your own checkouts, list them in a `deblob.local.json` beside
+`deblob.config.ts` — gitignored, same keys as the config (the local list
+replaces the committed one):
 
 ```json
 { "view": { "projects": ["../deblob", "/path/to/a/checkout"] } }

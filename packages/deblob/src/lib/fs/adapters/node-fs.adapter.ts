@@ -47,5 +47,15 @@ export const createNodeFs = (): Fs => {
         dot: false,
         onlyFiles: true,
       }),
+    globDirs: async (patterns, { cwd, ignore = [] }) => {
+      const dirs = await glob([...patterns], {
+        cwd,
+        ignore: [...ignore],
+        dot: false,
+        onlyDirectories: true,
+      })
+      // tinyglobby marks a directory with a trailing slash
+      return dirs.map((dir) => dir.replace(/\/$/, ""))
+    },
   }
 }

@@ -48,6 +48,28 @@ export const createConfigLoader = ({
   }
 
   /**
+   * The config in one directory, exactly — no walk: a directory that is a
+   * project by declaration (a viewer's listed project, a script's cwd) is its
+   * own root, its own files or nothing, never an ancestor's.
+   */
+  const configAt = async (dir: string): Promise<DiscoveredConfig | null> => {
+    const root = resolve(dir)
+    const found = await Promise.all(
+      CONFIG_FILENAMES.map((name) => fs.exists(join(root, name))),
+    )
+    const present = CONFIG_FILENAMES.filter((_, index) => found[index])
+    const [single] = present
+    if (present.length > 1) {
+      throw new ConfigError(
+        `${root} contains ${present.join(" and ")} — keep exactly one deblob config per directory`,
+      )
+    }
+    const localPath = await localConfigBeside(root)
+    if (!single && !localPath) return null
+    return { root, configPath: single ? join(root, single) : null, localPath }
+  }
+
+  /**
    * Upward walk from `cwd`, nearest wins — placement freedom with the
    * no-inheritance ban intact: one directory, never a stack. The walk stops at
    * the first directory holding a config file or a `deblob.local.json`: a lone
@@ -58,24 +80,8 @@ export const createConfigLoader = ({
     cwd: string,
   ): Promise<DiscoveredConfig | null> => {
     for (let dir = resolve(cwd); ;) {
-      const found = await Promise.all(
-        CONFIG_FILENAMES.map((name) => fs.exists(join(dir, name))),
-      )
-      const present = CONFIG_FILENAMES.filter((_, index) => found[index])
-      const [single] = present
-      if (present.length > 1) {
-        throw new ConfigError(
-          `${dir} contains ${present.join(" and ")} — keep exactly one deblob config per directory`,
-        )
-      }
-      const localPath = await localConfigBeside(dir)
-      if (single || localPath) {
-        return {
-          root: dir,
-          configPath: single ? join(dir, single) : null,
-          localPath,
-        }
-      }
+      const found = await configAt(dir)
+      if (found !== null) return found
       const parent = dirname(dir)
       if (parent === dir) return null
       dir = parent
@@ -242,6 +248,7 @@ export const createConfigLoader = ({
   }
 
   return {
+    configAt,
     discoverConfig,
     explicitConfigPath,
     readLocalConfig,

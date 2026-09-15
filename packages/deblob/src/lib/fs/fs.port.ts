@@ -23,4 +23,14 @@ export interface Fs {
     patterns: readonly string[],
     options: { cwd: string; ignore?: readonly string[] },
   ): Promise<string[]>
+  /**
+   * The same question asked of directories: those under `cwd` matching the
+   * patterns and none of the ignores, as cwd-relative POSIX paths without a
+   * trailing slash, in no particular order; hidden segments never match, and
+   * `cwd` itself is not among them.
+   */
+  globDirs(
+    patterns: readonly string[],
+    options: { cwd: string; ignore?: readonly string[] },
+  ): Promise<string[]>
 }

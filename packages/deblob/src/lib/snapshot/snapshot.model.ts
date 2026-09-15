@@ -24,6 +24,16 @@ const underRoot = (root: string, path: string | null): string | null =>
     ? path.slice(root.length + 1)
     : path
 
+/**
+ * What a project's watch holds: its root — the config files sit there — and
+ * every directory coverage spans, made absolute. A string join, not a path
+ * operation: the scan's paths are POSIX under the root it was given.
+ */
+export const watchSetOf = (
+  root: string,
+  dirs: readonly string[],
+): readonly string[] => [root, ...dirs.map((dir) => `${root}/${dir}`)]
+
 export const snapshotFrom = ({
   config,
   graph,

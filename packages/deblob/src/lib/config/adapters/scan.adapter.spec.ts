@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { describe, expect, test } from "vitest"
@@ -11,7 +14,9 @@ import { createMemoryFs } from "../../fs/adapters/memory-fs.adapter.ts"
 import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
 import { createCoverageScan } from "./scan.adapter.ts"
 
-const { scanCoverage, statSizes } = createCoverageScan({ fs: createNodeFs() })
+const { scanCoverage, scanCoverageDirs, statSizes } = createCoverageScan({
+  fs: createNodeFs(),
+})
 
 const root = fileURLToPath(
   new URL("../__fixtures__/scan-tree", import.meta.url),
@@ -69,6 +74,45 @@ describe("scanCoverage", () => {
       "src/app.model.ts",
       "src/app.ts",
     ])
+  })
+})
+
+describe("scanCoverageDirs", () => {
+  const dirsOf = (
+    overrides: Partial<{ include: string[]; exclude: string[] }> = {},
+  ) =>
+    scanCoverageDirs({
+      root,
+      include: overrides.include ?? [...DEFAULT_INCLUDE],
+      exclude: [...EXCLUDE_BASELINE, ...(overrides.exclude ?? [])],
+    })
+
+  test("the directories under include — baseline out, hidden skipped, the root itself absent, sorted", async () => {
+    expect(await dirsOf()).toEqual(["scripts", "src"])
+    // absent by construction: node_modules/ (baseline), .hidden-tool/ (dot)
+  })
+
+  test("include and exclude prune the same way as the file scan", async () => {
+    expect(await dirsOf({ include: ["src/**"] })).toEqual(["src"])
+    expect(await dirsOf({ exclude: ["scripts/**"] })).toEqual(["src"])
+  })
+
+  test("a directory with no covered file yet is listed — nested, or empty", async () => {
+    const temp = await mkdtemp(join(tmpdir(), "deblob-scan-dirs-"))
+    try {
+      await mkdir(join(temp, "src", "FAKE_EMPTY"), { recursive: true })
+      await mkdir(join(temp, "src", "FAKE_ASSETS"))
+      await writeFile(join(temp, "src", "FAKE_ASSETS", "FAKE.css"), "")
+      expect(
+        await scanCoverageDirs({
+          root: temp,
+          include: ["src/**"],
+          exclude: [...EXCLUDE_BASELINE],
+        }),
+      ).toEqual(["src", "src/FAKE_ASSETS", "src/FAKE_EMPTY"])
+    } finally {
+      await rm(temp, { recursive: true, force: true })
+    }
   })
 })
 

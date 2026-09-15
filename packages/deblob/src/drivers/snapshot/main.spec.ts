@@ -77,6 +77,23 @@ test("a lone local file: configless with an overlay, provenance names it", async
   }
 })
 
+test("the cwd is the project, exactly: a config above it is not consulted", async () => {
+  const cwd = here(".")
+  const { code, out } = await run(cwd)
+  expect(code).toBe(0)
+  const snapshot = JSON.parse(out) as Snapshot
+  expect(snapshot.project).toEqual({
+    root: cwd.replace(/\/$/, ""),
+    name: null,
+    provenance: "no config (defaults)",
+  })
+  expect(snapshot.modules.map((module) => module.path)).toEqual([
+    "bin.ts",
+    "main.spec.ts",
+    "main.ts",
+  ])
+})
+
 test("no config anywhere above: the defaults, the directory as root", async () => {
   const temp = await mkdtemp(join(tmpdir(), "deblob-snapshot-bare-"))
   try {

@@ -3,7 +3,11 @@ import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 import { createVitestTestingApi } from "../../test/adapters/vitest-testing-api.adapter.ts"
-import { FS_TREE, createFsTestSuite } from "../fs-test-suite.service.ts"
+import {
+  FS_EMPTY_DIRS,
+  FS_TREE,
+  createFsTestSuite,
+} from "../fs-test-suite.service.ts"
 import { createMemoryFs } from "./memory-fs.adapter.ts"
 
 const ROOT = "/made-up-root"
@@ -18,6 +22,7 @@ createFsTestSuite({ api: createVitestTestingApi() }).run({
           content,
         ]),
       ),
+      { dirs: FS_EMPTY_DIRS.map((dir) => join(ROOT, dir)) },
     ),
     root: ROOT,
   }),

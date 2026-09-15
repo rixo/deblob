@@ -11,16 +11,25 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
 ## API
 
 - `createSnapshotService({ source, extractionFor })` →
-  `{ snapshotOf, projectsOf }`. `snapshotOf(dir)`: config discovery from `dir`,
-  the coverage scan (sorted, so the snapshot's order is fixed), the extraction
-  composed for that config, the sizes, the manifest name, then the fold.
-  `projectsOf(dir)`: the projects a viewer at `dir` shows — its config's
-  `view.projects`, or the project at `dir` alone — each root with its manifest
-  name.
-- `serveSnapshots({ channel, projects, snapshotOf, report })`: the protocol in
-  one place. On connect: `projects`, then the first project's `snapshot`. On
-  `select`: that project's `snapshot`. The project's own failure, its config,
-  answers `error` for that project. Anything else is a bug: reported in full
+  `{ runOf, snapshotOf, projectsOf }`. `runOf(root)` → `{ snapshot, watchSet }`:
+  the project at `root` exactly — its own config or the defaults, never an
+  ancestor's (a listed directory is the project; rixo, 2026-09-16) — the
+  coverage scan (sorted, so the snapshot's order is fixed), the extraction
+  composed for that config, the sizes, the manifest name, then the fold — and
+  the watch set for the next run: the root and every directory coverage spans,
+  absolute. `snapshotOf(root)` is the snapshot alone. `projectsOf(dir)`: the
+  projects a viewer at `dir` shows — the config of the project containing `dir`
+  (discovery, as the CLI) names them in `view.projects`, or that project alone —
+  each root with its manifest name.
+- `serveSnapshots({ channel, projects, runOf, watcher, report })`: the protocol
+  in one place. On connect: `projects`, then the first project's `snapshot`, its
+  watch set watched. On `select`: that project's `snapshot`, the watch moved to
+  it. On a change under the watch: the current project's `snapshot` again,
+  unasked, the set refreshed. On close: the watch closed. Runs for one client
+  never overlap — a change or select mid-run marks one more run; an answer for a
+  project no longer current is dropped. The project's own failure, its config,
+  answers `error` for that project, the watch set as it was (the root is in it:
+  fixing the config is a change). Anything else is a bug: reported in full
   through `report` (the driver's stderr), and the client hears that the server
   failed on that project. Either way the connection lives on — a server does not
   die for one project. An empty project list is a caller error, raised at once.
@@ -30,15 +39,20 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
 
 ## Ports
 
-- `ports/project-source.port.ts` — `ProjectSource`: `loadConfig(dir)`,
-  `scanCoverage(config)`, `sizesOf(root, files)`, `manifestNameOf(root)`,
-  `now()`. What a snapshot needs from the world, as functions the driver
-  composes from the CLI's own sequence; promise-only.
+- `ports/project-source.port.ts` — `ProjectSource`: `loadConfig(dir)` (the
+  project containing `dir`, discovery), `loadConfigAt(root)` (the project at
+  `root` exactly), `scanCoverage(config)`, `scanCoverageDirs(config)` (the
+  directories coverage spans — the watch set), `sizesOf(root, files)`,
+  `manifestNameOf(root)`, `now()`. What a snapshot needs from the world, as
+  functions the driver composes from the CLI's own sequence; promise-only.
 - `ports/channel.port.ts` — `Channel`: `onClient(handler)`; a `ChannelClient`
-  has `send(message)` and `onMessage(handler)`. Handlers return promises the
-  adapter awaits.
+  has `send(message)`, `onMessage(handler)` and `onClose(handler)`. Handlers
+  return promises the adapter awaits.
 - `ports/report.port.ts` — `Report`: `(error) => void`, where the server's own
   failures go; the driver decides presentation.
+- `ports/watch.port.ts` — `Watcher`: `watch(dirs, onChange)` → `Watch` with
+  `update(dirs)` and `close()`. Absolute directories, each watched for its own
+  entries only; one `onChange` per burst; what changed is not reported.
 
 ## Adapters
 
@@ -52,6 +66,15 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
   sent; misuse (connecting before a server, sending before it listens) is loud.
 - `adapters/memory-report.adapter.ts` — `createMemoryReport()` →
   `{ report, reported }`.
+- `adapters/chokidar-watcher.adapter.ts` —
+  `createChokidarWatcher({ quietMs, report })` over chokidar 5 (exact-pinned):
+  one instance per watch at depth 0, hidden entries ignored, the initial listing
+  skipped, events coalesced until `quietMs` of silence; chokidar's own errors
+  reported. Polling where a filesystem emits nothing: chokidar's
+  `CHOKIDAR_USEPOLLING`, untouched.
+- `adapters/memory-watcher.adapter.ts` — `createMemoryWatcher()` →
+  `{ watcher, change(dir), watching }`: the test fires the changes and reads the
+  live sets.
 - `adapters/memory-project-source.adapter.ts` —
   `createMemoryProjectSource({ projects, now })`: the world in memory, projects
   keyed by directory; an unknown directory fails like a missing project.
@@ -64,10 +87,12 @@ manifest name — and `scan.adapter.ts`) and the extraction service.
 
 - `serve/` — the data server, package script `serve` (run from source, `PORT` in
   the environment, default 5175): the projects of the cwd's config, an HTTP
-  server with the channel at `/deblob/ws`, the protocol served; its own failures
-  on stderr in full, and it keeps serving. No CLI verb until step 05.
+  server with the channel at `/deblob/ws`, the chokidar watcher (100 ms quiet),
+  the protocol served; its own failures on stderr in full, and it keeps serving.
+  No CLI verb until step 05.
 - `snapshot/` — the script driver, package script `snapshot`: executed, never
-  imported; cwd in, the snapshot as one JSON line on stdout, exit 0; a config
-  error on stderr, exit 2. The viewer's corpus seed.
+  imported; cwd in as the project root (exactly, nothing above it), the snapshot
+  as one JSON line on stdout, exit 0; a config error on stderr, exit 2. The
+  viewer's corpus seed.
 - `wiring.ts` — the project source and the extraction composed for the two
   drivers; the CLI driver keeps its own sequence.

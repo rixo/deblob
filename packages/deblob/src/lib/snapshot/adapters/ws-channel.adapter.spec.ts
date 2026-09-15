@@ -115,6 +115,28 @@ test("malformed frames and rejecting handlers are reported; the socket lives on"
   await client.closed
 })
 
+test("a client closing, or terminated by close, reaches the handler", async () => {
+  const { channel, close, url } = await serverOn("/FAKE_WS")
+  let closed = 0
+  channel.onClient(async (client) => {
+    client.onClose(async () => {
+      closed += 1
+    })
+  })
+  const leaving = connect(url("/FAKE_WS"))
+  await leaving.opened
+  leaving.close()
+  await leaving.closed
+  while (closed < 1) await new Promise((r) => setTimeout(r, 5))
+
+  const terminated = connect(url("/FAKE_WS"))
+  await terminated.opened
+  await close()
+  await terminated.closed
+  while (closed < 2) await new Promise((r) => setTimeout(r, 5))
+  expect(closed).toBe(2)
+})
+
 test("close terminates the clients still connected", async () => {
   const { channel, close, url } = await serverOn("/FAKE_WS")
   channel.onClient(async () => {})

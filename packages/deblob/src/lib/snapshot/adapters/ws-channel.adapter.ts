@@ -3,7 +3,8 @@
  * upgrade at one path — so it coexists with another socket on the same server
  * (Vite's). JSON text frames both ways. A malformed client frame, or a handler
  * that rejects, is reported and the socket lives on; nobody listening means the
- * frame is dropped, as the port says.
+ * frame is dropped, as the port says. The socket's `close` — the client's own,
+ * or `terminate` from here — is the port's close.
  */
 
 import type { IncomingMessage, Server } from "node:http"
@@ -74,6 +75,11 @@ export const createWsChannel = ({
                 return
               }
               onMessage(message).catch(report)
+            })
+          },
+          onClose: (onClose) => {
+            ws.on("close", () => {
+              onClose().catch(report)
             })
           },
         }).catch(report)

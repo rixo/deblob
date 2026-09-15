@@ -8,6 +8,7 @@
 
 import { join, resolve } from "node:path"
 
+import type { DiscoveredConfig } from "../lib/config/adapters/loader.adapter.ts"
 import {
   createConfigLoader,
   importConfigDefault,
@@ -46,9 +47,11 @@ export const createProjectSource = (): ProjectSource => {
   const loader = createConfigLoader({ fs })
   const scan = createCoverageScan({ fs })
 
-  /** Config discovery from a directory: its own files, or the defaults. */
-  const loadConfig = async (dir: string): Promise<ResolvedConfig> => {
-    const found = await loader.discoverConfig(dir)
+  /** The config from what discovery found — or the defaults rooted at `dir`. */
+  const configFrom = async (
+    found: DiscoveredConfig | null,
+    dir: string,
+  ): Promise<ResolvedConfig> => {
     if (found === null) {
       return resolveConfig(
         {},
@@ -82,8 +85,11 @@ export const createProjectSource = (): ProjectSource => {
   }
 
   return {
-    loadConfig,
+    loadConfig: async (dir) =>
+      configFrom(await loader.discoverConfig(dir), dir),
+    loadConfigAt: async (root) => configFrom(await loader.configAt(root), root),
     scanCoverage: (config) => scan.scanCoverage(config),
+    scanCoverageDirs: (config) => scan.scanCoverageDirs(config),
     sizesOf: (root, files) => scan.statSizes(root, files),
     manifestNameOf: (root) => loader.readPackageName(root),
     now: () => new Date().toISOString(),

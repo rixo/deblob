@@ -40,7 +40,7 @@
     "build": "vite build",
     "check": "node ../deblob/src/drivers/cli/bin.ts check",
     "dev": "run-p dev:*",
-    "dev:serve": "node ../deblob/src/drivers/serve/bin.ts",
+    "dev:serve": "node --watch ../deblob/src/drivers/serve/bin.ts",
     "dev:vite": "vite",
     "test": "vitest run --coverage",
     "test:watch": "vitest",

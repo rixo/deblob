@@ -16,6 +16,8 @@ export type MemoryConnection = {
   readonly sent: readonly ServerMessage[]
   /** Deliver a client message; resolves when the server's handler has. */
   send(message: ClientMessage): Promise<void>
+  /** Leave; resolves when the server's close handler has, if it set one. */
+  close(): Promise<void>
 }
 
 export const createMemoryChannel = () => {
@@ -33,12 +35,16 @@ export const createMemoryChannel = () => {
     }
     const sent: ServerMessage[] = []
     let onMessage: ((message: ClientMessage) => Promise<void>) | null = null
+    let onClose: (() => Promise<void>) | null = null
     const client: ChannelClient = {
       send: (message) => {
         sent.push(message)
       },
       onMessage: (handler) => {
         onMessage = handler
+      },
+      onClose: (handler) => {
+        onClose = handler
       },
     }
     await onClient(client)
@@ -49,6 +55,10 @@ export const createMemoryChannel = () => {
           throw new Error("memory channel: the server is not listening")
         }
         return onMessage(message)
+      },
+      // a client may leave whether or not the server cares
+      close: async () => {
+        if (onClose !== null) await onClose()
       },
     }
   }
