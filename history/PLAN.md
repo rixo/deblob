@@ -60,6 +60,12 @@
 
 ### Ideas
 
+- **Service README check** (2026-09-15) — every service directory carries a
+  `README.md`: the implementation guide demands it (the service's living doc),
+  the graph already knows every service root, and the terrain shows it is the
+  thing most easily overlooked. A packaging-family rule with its own slug; open
+  at graduation: whether nested services and adapter-only directories count, and
+  whether a missing README is a violation or the first warning-level finding.
 - **Arc delimiters in commit subjects — `chapter(...)` / `close(...)`**
   (2026-07-24) — mark an arc's first and last commits with paired subject
   markers; ties to the first-commit-becomes-MR-description rule (the opening
