@@ -75,7 +75,7 @@ different meaning, each with its own rules:
   composition by assembly. `.service.ts` and `.adapter.ts` files declare
   composition units — they signal "I need to be composed by assembly."
 - **Layering** — code is organized in concentric layers: model, ports, service,
-  adapters, assembly. Dependencies point inward.
+  adapters, assembly, drivers. Dependencies point inward.
 - **Packaging** — the service is the unit of ownership, visibility (`private/`),
   sharing (DAG participation, kernel extraction, anti-corruption boundaries).
 
@@ -167,14 +167,10 @@ introduced.
 
 ### Drivers
 
-Drivers are inbound adapters — the mechanism by which the outside world triggers
-the hexagon. A CLI command handler, an HTTP route, a UI event handler: each
-translates an external trigger into a call on the hexagon's inside.
-
-A driver is an adapter like any other — it sits outside the hexagon, translates
-between two interfaces. The asymmetry with outbound adapters is minor: a
-driver's "port" is the hexagon's public API itself, so it doesn't need a
-separate port definition. The contract already exists.
+Drivers are the driving side — the mechanism by which the outside world triggers
+the hexagon. A CLI command handler, an HTTP route, a unit test, a UI event
+handler: each turns an external event into a call on the hexagon's inside. In
+Cockburn's terminology these are "driving" or "primary" adapters.
 
 What distinguishes drivers semantically: where an outbound adapter is a means to
 an end (the hexagon needs external data), a driver is a goal — it's the reason
@@ -182,43 +178,41 @@ the hexagon is accessible to the outside world. "We need a CLI" or "we need a
 web interface" are driver-level decisions. Without drivers, nothing happens — no
 trigger, no execution.
 
-In Cockburn's terminology these are "driving" or "primary" adapters.
+**A driver holds the tech.** The argument parser, the server, the test runner's
+callbacks, the component the framework mounts: the driver is where the
+technology that fires events lives, and it is the only place in the program that
+touches it. It receives the hexagon already built and fires its use cases from
+**hooks** — the callbacks the tech invokes. What a driver does not do is build
+the hexagon; that is [assembly](#assembly), described next. Nothing in the
+program imports a driver: the runtime starts it. Node runs the bin, the test
+runner runs the spec file, the framework mounts the component.
+
+Because the tech lives here, what "one hook" is depends on the tech: a
+`.command().action()` callback on a CLI, a route handler, a `test()` body, an
+event handler in a component. So are what counts as a call, a definition, or
+wiring. The driver rules are ascribed per technology by a tech adapter that
+recognizes driver files, cuts them into hooks, and states the tech's exemptions.
+Plain-TypeScript drivers carry the `.driver.ts` suffix; a tech's own files are
+declared by glob — spec files by the test globs, framework entry points by the
+framework's patterns. Web drivers are open: research in progress, stress test
+pending on a real app. The one thing claimed for them is the recognition rule —
+a component matching the declared driver globs may import an assembly; any other
+component doing so is a violation.
 
 ### Assembly
 
-Before any adapter can translate anything, someone has to: read config,
-instantiate adapters, wire them to ports, create hexagons, make them available.
-This is **not an adapter.** It doesn't translate between interfaces. It _builds
-the system._
+Before any driver can fire, someone has to instantiate adapters, wire them to
+ports, create services. That is assembly: the composition root — Seemann's word
+for it — written by hand. It is not an adapter: it translates nothing. It is not
+a composition unit: it takes no injected dependencies and nobody composes it. It
+builds the hexagon from what the driver hands it — tech values such as a working
+directory or an environment — and returns the built instances for the driver's
+hooks to call.
 
-Assembly is the only code with the privilege of importing composition units and
-binding them to abstract ports. It is the outermost layer — see
-[Assembly — the necessary evil](#assembly--the-necessary-evil) for its role in
-the layer hierarchy.
-
-Assembly can take many forms:
-
-- A CLI entry point (`main.ts`) — eager, single composition root
-- A DI container (Angular) — eager, declarative, global
-- Svelte context providers (`useMyService` in `+layout.svelte`) — lazy,
-  hierarchical, code-split-friendly
-- A test setup function — wires a hexagon with real or test-purpose adapters for
-  a specific test context
-- A simple factory call at the top of a script
-
-These are different implementations with different tradeoffs. The architectural
-role is the same: wire adapters to ports, create services, make them available
-to consumers.
-
-**In simple apps** (CLI tools), assembly and the driver often share a file. The
-CLI entry point both wires the system AND handles commands. This is fine — but
-recognize the two hats. When it gets complex, separate them.
-
-**In web apps**, components naturally blend roles: driving (user events),
-assembly (context providers), and rendering. A web app also has multiple entry
-points (each route is a `main`), so assembly is distributed across the component
-tree. The separation is conceptual, enforced by convention, not always by file
-structure.
+Cockburn does not say who builds the hexagon or who fires it. Keeping the two in
+separate files, with one right each, is ours — see
+[Assembly — the composition root](#assembly--the-composition-root) and
+[Driver — the outermost layer](#driver--the-outermost-layer).
 
 ---
 
@@ -226,8 +220,8 @@ structure.
 
 This is where we depart from Cockburn and bring in our own opinions. Cockburn
 describes the hexagonal shape — inside, outside, ports, adapters. He doesn't
-prescribe how to organize the inside, how hexagons share code, or how assembly
-is structured as a layer. We do.
+prescribe how to organize the inside, how hexagons share code, who builds a
+hexagon or who fires it. We do.
 
 Code is organized in **layers** — a concentric dependency hierarchy. Each layer
 wraps the previous, has progressively more knowledge of the system, and
@@ -246,8 +240,13 @@ Layers, from innermost to outermost:
 - **Adapters** (`.adapter.ts`) — port implementations for a specific technology.
   Can depend on concrete external systems. Composition unit — must be composed
   by assembly.
-- **Assembly** — system composition. The necessary evil. Cross-cuts all domains,
-  depends on everything. The dirtiest layer — the thinner, the better.
+- **Assembly** (`.assembly.ts`) — the composition root. Imports composition
+  units, calls their factories, returns the instances. Cross-cuts all domains,
+  imports everything, holds no tech and makes no decision. One right: build.
+- **Drivers** (`.driver.ts`, spec files, framework entry points) — the driving
+  side. Hold the tech and the hooks it fires; call assembly to get the hexagon,
+  call one use case per hook. Started by the runtime, imported by nothing. One
+  right: fire.
 
 Suffixless files are blob — no layer declaration, no layer guarantees.
 
@@ -277,8 +276,9 @@ randomness, platform — is what makes code concrete:
   passed by the caller, not discoveries
 - Modules are stateless (`stateless-modules`) — no module-level mutable state,
   exported or not: no top-level `let`, no unfrozen collections, nothing a
-  closure could capture at module scope; state lives inside factories, and
-  instances are created by callers, never exported
+  closure could capture at module scope; state lives inside factories, and a
+  module exports factories, never instances — an instance exists only where a
+  factory was called
 - Factories with closure state are model code when they depend on nothing —
   domain machines, entities, dependency-free reactive stores. The moment a
   factory takes a port or a service, it is a composition unit and belongs in the
@@ -288,8 +288,8 @@ randomness, platform — is what makes code concrete:
 
 Model code from different services can depend on each other — that's
 model-to-model, staying within the layer. What model code cannot do is depend on
-any outer layer: not service layer, not assembly. The constraint is about
-layers, not about service packaging.
+any outer layer: not service layer, not assembly, not driver. The constraint is
+about layers, not about service packaging.
 
 **Pure third-party libraries count as model-layer code.** A date library, a
 parsing utility, a schema validator — acceptable model dependencies as long as
@@ -312,6 +312,20 @@ function on the returned API is a use case: `list`, `resolve`, `import`,
 `publish`. The service exists _because_ these use cases exist, and it exists
 _only as long as_ they do. If you can't name the use cases, you don't have a
 service — you have a utility bag.
+
+Use cases have levels — Cockburn's. A **user goal** is what an actor comes for
+(`check` a codebase). A **subfunction** — an instrumental use case — is a step
+in its service (`scan` the files). A **summary** bundles goals over time. All of
+a service's use cases are visible on its export surface, and the surface alone
+does not say the level. The driver does: a use case reached from a driver's hook
+is a user goal on that channel — the same goal whether a CLI command or an HTTP
+route fires it. Reached only from services, a subfunction. Reached from both,
+both. A test driver labels nothing: a test reaches subfunctions and adapters as
+readily as goals. The level is a map annotation, never a violation — where the
+label disagrees with the author, the author is right. "Primary use case" is a
+common alias for user goal, and "instrumental use case" is ours for subfunction.
+Avoid "secondary use case": the hexagon already uses primary and secondary for
+adapters.
 
 Where model is knowledge, the service layer is decisions: it decides which model
 functions to call, in what order, with what inputs, and how to combine results
@@ -365,51 +379,184 @@ central control — duplicated resolution, duplicated side effects, no single
 place to see what's wired to what. Assembly is the only place where dependencies
 are resolved. No exceptions.
 
-The concrete assembly mechanism — how factories are called, how services are
-made available to consumers — is platform-specific. See the companion
-implementation guide for patterns (CLI entry points, Svelte context resolution,
-test setup).
+How the instances assembly returns reach the hooks that call them — a return
+value on a CLI, a context on a component tree — is specific to the driver
+technology. See the companion implementation guide for patterns (CLI entry
+points, Svelte context resolution, test setup).
 
-### Assembly — the necessary evil
+### Assembly — the composition root
 
-The outermost layer. Assembly wires composition units (`.service.ts`,
-`.adapter.ts`) together: it imports concrete adapters, reads config, calls
-factories, and makes services available to consumers. It cross-cuts all domains
-and depends on everything — including concrete, platform-specific code. This
-makes it the dirtiest layer: fragile, coupled to the runtime environment,
-essentially untestable. It's a necessary evil — the infamous "glue code," and
-the only layer where that label is justified.
+Assembly wires composition units (`.service.ts`, `.adapter.ts`) together: it
+imports concrete adapters and services, calls their factories in dependency
+order, hands each instance to the ones that need it, and returns what it built.
+It is the one place in the program that knows the concrete graph, and the
+services never know it exists. It cross-cuts all domains and imports everything.
+A file allowed to import anything must be allowed to do almost nothing with it,
+or it becomes the place where logic hides; so the layer with the widest import
+right carries the narrowest rule. Assembly holds no tech and makes no decision.
+By rule, it is the most boring file in the program (anchors in the
+[Summary](#summary)):
 
-The discipline is to keep it as thin as possible. Every line of logic in
-assembly is a line that can't be tested in isolation. The practical mechanism:
-push as much as possible into the service layer.
+- **`assembly-builds-only`** — every call in an assembly is a factory call: a
+  composition unit's, another assembly's, a model factory's when a
+  dependency-free instance must be shared between services, or — the quarantine
+  case — a blob file's, when a dependency not yet extracted is built here and
+  injected behind the port that awaits it. Arguments are literals, tech values
+  received as parameters (a working directory, an environment, a context
+  handle), or instances built or received here. It returns instances — one
+  service, or a record of services and shared instances for the assemblies and
+  drivers below it. No use-case call: a use case whose result feeds a factory is
+  a pipeline hiding in the wiring, which is why config is wired as a dependency
+  (the config service, the [ubiquitous port](#config--the-ubiquitous-port)) and
+  loaded inside the use case that needs it. No branch on anything an instance
+  returned; a branch on a tech value whose arms are factory calls is wiring.
+  Nothing else is defined, and nothing sits at module root but imports — an
+  exported instance would be an imported instance somewhere
+  (`stateless-modules`).
+- **`assembly-driver-only`** — an assembly file is imported only by drivers and
+  other assemblies, type imports included. An assembly has no contract of its
+  own; its shape is the services it returns. `runtime-import`'s exemption is
+  about depending on a contract's shape and does not reach it. Consumers type
+  against service APIs.
 
-**Assembly is not blob.** Blob is unqualified code — no layer ruled, owned as
-debt until distillation places it. Assembly is code _ruled_ necessary for
-wiring: it earns its untestability by building the system, and by nothing else.
-The privilege to import anything is not permission for anything to live here — a
-decision or computation written in assembly isn't wiring, it's blob hiding in
-the one layer whose label seems to allow it. If a piece of code is genuinely
-unplaced, own it as blob (suffixless, importable by assembly only): the debt
-stays visible instead of laundered.
+What an assembly imports: composition units, other assemblies, model — its
+factories, to build a dependency-free instance that services will share, and its
+values as factory arguments, never its functions for their results — and blob,
+the only layer that may. Blob enters the graph here and nowhere else: as an
+instance, behind a contract the service already holds, at the one kind of file
+whose rules bound what can be done with it (`blob-quarantine`). Never a driver,
+never concrete tech — tech values arrive as parameters. A runtime container
+library, if one is used, is tech; it enters only by explicit configuration, and
+without that declaration the import is a violation. Deblob has no opinion on
+containers beyond that: a container still imports what it weaves, so it is an
+assembly by imports, and the same invariant holds — it constructs and never
+calls a use case.
 
-A CLI tool illustrates this well. A CLI service (`src/lib/cli/`) can expose use
-cases cleanly, receive a `LoggerPort`, be tested in isolation — that's service
-layer. The part that imports the CLI framework (`cac`, `commander`), parses
-`process.argv`, and wires the actual commands — that's irreducibly assembly. The
-boundary test: can I meaningfully define a port for this? If yes, it belongs in
-the service layer behind a port. If no — if abstracting the whole driver would
-just add a massive layer of indirection married to the single real
-implementation — it's assembly glue.
+Assemblies are fractal. A root assembly builds what is shared and passes it
+down; a group assembly next to the driver that uses it builds its own graph from
+what it received. Shared instances flow down, never sideways — an assembly that
+wants a sibling's instance is asking for that instance to move up. Assembly
+files are also where a bundler splits: they are the only files that import
+composition units, so the chunk graph is the assembly graph, and a lazily loaded
+feature is a lazily imported assembly.
 
-Trying to make a complex driver (React, SvelteKit, Astro) a port is a trap: you
-end up adding indirection to every touchpoint while remaining permanently
-married to the actual implementation. Abstracting _parts_ of these systems from
-a service's scoped perspective (e.g., a routing port, a navigation port) is the
-right move. Abstracting the whole thing is hopeless.
+How the rule is read: by callee file kind and by result flow. A callee from a
+service, adapter, assembly or blob file is a factory by construction; a call
+result may only be passed on or returned, never branched on, computed with, or
+member-accessed. A model file holds both factories and functions and the import
+cannot tell them apart, so a model call whose result feeds a factory is the one
+shape the reader lets through — deterministic, no I/O, and a rare
+assembly-to-model edge on the map.
 
-See [Hexagonal architecture — Assembly](#assembly) for the architectural role.
-See the companion implementation guide for platform-specific assembly patterns.
+What the rules do not guarantee: that a stateful service is built once. Two
+drivers calling the same assembly get two instances. That is valid code, visible
+on the map as fan-in, and left to the author.
+
+### Driver — the outermost layer
+
+The driver holds the tech and fires the hexagon. It imports its assembly and its
+tech, reads what the tech gives — argv, env, a request, an event — and hands the
+instances assembly returned to its hooks. It is coupled to the runtime by nature
+and essentially untestable: Feathers's Humble Object, the code that touches the
+untestable edge, kept so thin that nothing in it needs a test. The driver rules
+make thin the only legal shape:
+
+- **`wiring-outside-hooks`** — outside its hooks, a driver only wires: assembly
+  calls, tech setup (the parser, the server, the mount), sub-driver
+  registration. Arguments are tech values, instances, literals. Wiring may also
+  sit inside a hook — an assembly imported lazily on first event — the rule says
+  what may sit outside them.
+- **`one-call-per-hook`** — a hook is the callback the tech fires: a command
+  action, a route handler, a `test()` body, an event handler. It may wire, and
+  it makes exactly one use-case call. Two calls mean the sequence between them
+  is a use case nobody owns: it gets a facade service, with a contract and a
+  test, and the two become its subfunctions. Zero calls is a violation too — a
+  hook with no use case is logic with no home. This is the rule that closes the
+  loop; the others exist to make it unavoidable.
+- **`driver-calls-services-only`** — a driver calls services (use cases,
+  getters), assembly factories, sub-driver wiring functions, and its own tech.
+  Never an adapter: an adapter call from a hook is an effect no contract covers.
+  Never a model: parsing and rendering are use cases of a service, not
+  translation done in the driver.
+- **`driver-defines-hooks-only`** — the only definitions in a driver are its
+  hooks and at most one wiring function taking the tech (a `main(io)`, a
+  `registerCheckCommands(cli, services)`). Anything else is residue: a local
+  `parseFoo` is a model without a test, a table of lambdas is a service without
+  a contract.
+- **`driver-to-driver-wiring`** — a driver imports another driver only to call
+  its wiring function, during its own wiring, passing tech and instances. Never
+  a hook, never data from the hexagon. This is how a program with one entry
+  point splits its hooks across files: a CLI whose command groups each live in
+  their own driver, the root handing each a parser instance and its services
+  (`registerCheckCommands(cli, services)`); a server whose routes live in files
+  the main driver mounts on the app; a spec file calling a shared setup
+  function. The sub-driver exports that one wiring function and no hook, so the
+  only thing the root can do with the import is let it attach its callbacks.
+  Calling a sub-driver from inside a hook, or handing it a use-case result,
+  would let one driver's hook chain two of another's calls — the two-call leak
+  through one level of indirection. A parent component rendering a child in
+  markup is not this rule: that is the tech mounting it.
+- **`driver-not-imported`** — no file outside the driver layer imports a driver,
+  type imports included. The runtime starts drivers; the program does not.
+
+**Assembly and driver are not blob.** Blob is unqualified code — no layer ruled,
+owned as debt until distillation places it. Assembly and driver are code _ruled_
+necessary for building and firing the system, and for nothing else. The
+privilege to import anything is not permission for anything to live here — a
+decision or computation written in either isn't wiring, it's blob hiding in a
+layer whose label seems to allow it. The closed verb lists are what forbid it: a
+declared assembly or driver file cannot absorb a line without turning red. If a
+piece of code is genuinely unplaced, own it as blob (suffixless, importable by
+assembly only): the debt stays visible instead of laundered. A driver has no
+legal use for a blob import — its hooks call services, its wiring calls
+assemblies — so a driver that still needs unplaced code is not ready to be
+declared: it stays suffixless, blob itself, until the services it will call
+exist.
+
+A CLI tool illustrates this well. The CLI service (`src/lib/cli/`) exposes the
+commands as use cases — `check(options)`, `status(options)`, or a single
+`run(argv)` that parses and dispatches. It orchestrates the domain services it
+is wired with through ports, renders, and writes through an io port; it is
+tested through that contract. The assembly (`cli.assembly.ts`) builds the fs
+adapter, the config service, the domain services and the CLI service from a
+working directory and an environment, and returns the CLI service. The driver
+(`cli.driver.ts`) is the humble object left over: it reads the process, calls
+the assembly, registers one command per hook on the parser, and each hook makes
+its one call. A large CLI splits its hooks across driver files by taste, each
+taking the parser and its services from the root driver, and splits its wiring
+across assemblies by the shape of the graph. Neither split can hold logic.
+
+Where does the logic go when the rules force it out? Into a service, where the
+service rules apply on arrival — ports, no adapter calls, contract tests. A
+wholesale move is not a hole; it is the design. What the rules cannot do is stop
+a tasteless implementer from stuffing domain logic into the CLI service: that is
+a service with a contract, and the contract will be argv in, text out — the tax
+that makes extraction the easier path. The rules turn invisible debt (untested
+glue under no rule) into visible debt (misplaced code under every service rule,
+on the map, in the wrong box). The last mile is taste, and the map is what the
+reviewer reads.
+
+The port test — "can I meaningfully define a port for this?" — places outbound
+code: yes, it is a service concern behind a port; no, it is an adapter. It says
+nothing about inbound: every line of an assembly or a driver fails it by
+construction, so it cannot place them. Their placement follows the rules above.
+
+A driver technology is never a port, and never needs to be one. Inbound, the
+hexagon's port is the service layer's export surface — Cockburn's driving port —
+and each technology that fires it is one more driver written against that
+surface: a CLI, a Svelte app, a React app and an HTTP server are four drivers on
+one hexagon, and nothing inside the hexagon knows which one is running. That is
+the symmetry Cockburn draws, and the layer rules make it literal: only drivers
+import the tech, so there is nothing to abstract. Outbound is different. When a
+service needs something the framework provides — routing, navigation, storage —
+it gets a port scoped to that need, and a framework-side adapter implements it.
+Abstracting the framework wholesale as an outbound dependency is the trap:
+indirection at every touchpoint while remaining married to the one
+implementation. Slice it to what the service asks for.
+
+See [Hexagonal architecture — Drivers](#drivers) and [Assembly](#assembly) for
+the architectural roles. See the companion implementation guide for
+platform-specific patterns.
 
 ### Visibility: public by default, private by intention
 
@@ -600,16 +747,21 @@ Combined result of layer rules and composition rules — both negative, both
 enforceable at the import level. The matrix is their intersection: a "can
 import" entry means neither rule forbids it.
 
-| Layer        | Can import from                                   | Cannot import from                                |
-| ------------ | ------------------------------------------------- | ------------------------------------------------- |
-| **Model**    | Model, pure third-party libs                      | Everything else, incl. concrete                   |
-| **Ports**    | Model, ports                                      | Everything else, incl. concrete                   |
-| **Service**  | Model, ports                                      | Adapters, assembly, other `.service.ts`, concrete |
-| **Adapters** | Model, ports, `private/` of own service, concrete | Other adapters, assembly                          |
-| **Assembly** | Anything                                          | —                                                 |
+| Layer        | Can import from                                   | Cannot import from                                         |
+| ------------ | ------------------------------------------------- | ---------------------------------------------------------- |
+| **Model**    | Model, pure third-party libs                      | Everything else, incl. concrete                            |
+| **Ports**    | Model, ports                                      | Everything else, incl. concrete                            |
+| **Service**  | Model, ports                                      | Adapters, assembly, drivers, other `.service.ts`, concrete |
+| **Adapters** | Model, ports, `private/` of own service, concrete | Other adapters, assembly, drivers                          |
+| **Assembly** | Model, ports, composition units, assemblies, blob | Drivers, concrete (a declared container library excepted)  |
+| **Drivers**  | Assemblies, drivers, their own tech               | Composition units, model, blob                             |
 
-The matrix governs **runtime imports**. Type-only imports (`import type`) are
-exempt from composition rules — see `runtime-import`. "Concrete" means
+The matrix governs **runtime imports**. What assemblies and drivers may _call_
+is narrower than what they may import — see their rules. Type-only imports
+(`import type`) are exempt from composition rules — see `runtime-import`.
+Assembly and driver are not composition units, so the exemption does not reach
+them: nothing outside the driver layer type-imports a driver, and nothing
+outside assembly and drivers type-imports an assembly. "Concrete" means
 platform/IO code: `node:fs`, HTTP clients, database drivers (`service-purity`).
 Pure, deterministic third-party libraries count as model-layer code.
 
@@ -637,10 +789,11 @@ Every import kind counts at this level, `import type` included: A referencing
 B's types means A cannot build without B's sources — extraction independence
 holds for types. (The module level below is runtime-only; the asymmetry is
 deliberate.) When a cycle threatens, the sharing progression applies (see
-[Sharing](#sharing)). In practice, wiring placement matters too: assembly whose
-wiring would close a service cycle is misplaced — composition belongs outside
-the service tree (like a root `main.ts`) or in its own service, and in tests,
-fixtures are test-purpose adapters, not the real nested ones.
+[Sharing](#sharing)). In practice, wiring placement matters too: wiring that
+would close a service cycle is misplaced — composition belongs in an assembly
+outside the service tree (a root `cli.assembly.ts`) or in the service's own
+assembly, and in tests, fixtures are test-purpose adapters, not the real nested
+ones.
 
 **Module level (sanity).** Circular runtime dependencies between files — even
 within the same service — are forbidden. They're not architecturally significant
@@ -665,8 +818,8 @@ tooling. Both are hard requirements.
 **Layer rules:**
 
 - <a id="inward-deps"></a>`inward-deps` — **Dependencies point inward** —
-  `model < ports < service, adapters < assembly`. Lateral (same layer) OK. See
-  dependency matrix for the combined result with composition rules.
+  `model < ports < service, adapters < assembly < drivers`. Lateral (same layer)
+  OK. See dependency matrix for the combined result with composition rules.
 - <a id="layer-in-path"></a>`layer-in-path` — **Layer is visible in the import
   path** — no `index.ts` indirection.
 - <a id="chain-purity"></a>`chain-purity` — **Layer purity is a chain property**
@@ -682,19 +835,21 @@ tooling. Both are hard requirements.
 - <a id="blob-quarantine"></a>`blob-quarantine` — **Only assembly may import
   from blob** — blob has no layer constraint. Everything else importing from it
   contaminates a layer that was supposed to have guarantees. (Blob importing
-  blob is fine — only a layer that makes a guarantee can break one, and blob and
-  assembly claim none. Type-only imports included — blob has no contract shape
-  to depend on; `runtime-import`'s type exemption covers composition rules
-  only.)
+  blob is fine — only a layer that makes a guarantee can break one, and blob
+  claims none. Assembly may take it because its rule bounds what it can do with
+  it: build it and inject it behind a port, on the map. A driver may not — its
+  hooks call services, so a blob call there is already a violation. Type-only
+  imports included — blob has no contract shape to depend on; `runtime-import`'s
+  type exemption covers composition rules only.)
 
 **Composition rules:**
 
 - <a id="service-assembly-only"></a>`service-assembly-only` — **`.service.ts`
   can only be imported by assembly** — not by model, ports, other service-layer
-  code, adapters, or blob.
+  code, adapters, drivers, or blob.
 - <a id="adapter-assembly-only"></a>`adapter-assembly-only` — **`.adapter.ts`
   can only be imported by assembly** — not by model, ports, service, other
-  adapters, or blob.
+  adapters, drivers, or blob.
 - <a id="runtime-import"></a>`runtime-import` — **Composition rules govern
   runtime imports — type-only imports are exempt.** Depending on a contract's
   shape is not depending on its implementation.
@@ -735,14 +890,58 @@ tooling. Both are hard requirements.
 - <a id="test-through-contract"></a>`test-through-contract` — **Tests go through
   the contract** — input via public API, assertions on documented behavior, no
   implementation details.
-- <a id="test-setup-assembly"></a>`test-setup-assembly` — **Test setup is
-  assembly** — same isolation rules apply, fixtures are test-purpose adapters.
+- <a id="test-is-assembly-and-driver"></a>`test-is-assembly-and-driver` — **A
+  unit test file is assembly and driver in one** — by the shape of the test
+  tech: the setup builds units with fixtures (test-purpose adapters, same
+  isolation rules), the test bodies are hooks. Recognized by the configured test
+  globs. A test's hook exercises its unit under test freely — the call count and
+  the services-only constraint are per-tech, and the test tech exempts them.
+  Test edges count for rights and coverage, never for use-case level. End-to-end
+  tests are neither: they are users of the shipped drivers, outside the graph.
+
+**Assembly rules** (detail in
+[Assembly — the composition root](#assembly--the-composition-root)):
+
+- <a id="assembly-builds-only"></a>`assembly-builds-only` — **Every call in an
+  assembly is a factory call** — arguments are literals, tech values received as
+  parameters, or instances; it returns instances; no use-case call, no branch on
+  an instance's output, nothing at module root but imports.
+- <a id="assembly-driver-only"></a>`assembly-driver-only` — **An assembly is
+  imported only by drivers and assemblies** — type imports included; an assembly
+  has no contract to depend on.
+
+**Driver rules** (detail in
+[Driver — the outermost layer](#driver--the-outermost-layer)):
+
+- <a id="wiring-outside-hooks"></a>`wiring-outside-hooks` — **Outside its hooks,
+  a driver only wires** — assembly calls, tech setup, sub-driver registration;
+  arguments are tech values, instances, literals.
+- <a id="one-call-per-hook"></a>`one-call-per-hook` — **Each hook makes exactly
+  one use-case call** — a second call means a facade service is missing; zero
+  means logic with no home. Hooks are cut by the tech adapter; the test tech
+  exempts the count.
+- <a id="driver-calls-services-only"></a>`driver-calls-services-only` — **A
+  driver calls services, assembly, sub-driver wiring and its own tech, nothing
+  else** — never an adapter, never a model.
+- <a id="driver-defines-hooks-only"></a>`driver-defines-hooks-only` — **A driver
+  defines nothing but its hooks and one wiring function** — any other definition
+  is residue.
+- <a id="driver-to-driver-wiring"></a>`driver-to-driver-wiring` — **A driver
+  imports another driver only to call its wiring function** — passing tech and
+  instances; never a hook, never hexagon data.
+- <a id="driver-not-imported"></a>`driver-not-imported` — **Nothing outside the
+  driver layer imports a driver** — type imports included; the runtime starts
+  drivers.
 
 **Module discipline:**
 
 - <a id="stateless-modules"></a>`stateless-modules` — **Modules are stateless**
-  — state lives in factory closures only; instances are created by callers,
-  never imported. Assembly, whose job is instantiation, is the exception.
+  — state lives in factory closures only; a module exports factories, never
+  instances. An instance exists only where a factory was called, and reaches its
+  users by argument, never by import. A driver's module root is the exception:
+  it may hold the instances it wires, because a driver is executed once by the
+  runtime and imported by nothing, so no importer can share them. Assembly needs
+  no exception — it builds inside its factory and keeps nothing at module root.
 
 ---
 
@@ -827,9 +1026,9 @@ live at the boundary that defines the contract, not at the joints inside.
 
 ### Test isolation
 
-Test setup is assembly. The same architectural rules apply: the test creates a
-service instance by calling the factory with test-purpose dependencies. This has
-direct consequences:
+A test file is assembly and driver in one. The same architectural rules apply:
+the test creates a service instance by calling the factory with test-purpose
+dependencies, then exercises it from its hooks. This has direct consequences:
 
 **Fixtures are adapters.** A test fixture that provides canned data is,
 architecturally, an adapter — it implements a port with deterministic data
@@ -1168,7 +1367,12 @@ enough, it becomes its own hexagon with its own internal structure.
   making them concrete and prescriptive for a specific tech context.
 - **Clean Architecture** (Martin) — the inward dependency rule and concentric
   layer model. Cockburn doesn't prescribe internal hexagon structure; the
-  model/service/assembly layering comes from here.
+  model/service layering comes from here. Martin's Main, the component that
+  builds everything and sits outside every ring, is our assembly; Seemann's
+  composition root is the same thing under the name we borrow. Where we depart:
+  they have the root call the driving adapters, we have the driver call the
+  root, so that the file the runtime starts is the same kind on a CLI and on a
+  component tree.
 - **Domain-Driven Design** (Evans) — organize by domain concern, not by
   technical type. Shared kernel and anti-corruption layer (we say "boundary" to
   avoid collision with our layer terminology) concepts for managing
