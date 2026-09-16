@@ -210,3 +210,58 @@ describe("CHECK_RULES", () => {
     }
   })
 })
+
+describe("view", () => {
+  test("the bare verb takes the default port", () => {
+    expect(parseCli(["view"])).toEqual({
+      config: null,
+      noColor: false,
+      action: { command: "view", port: null },
+    })
+  })
+
+  test("--port names the port; 0 is the OS's any-free-port, not an error", () => {
+    expect(parseCli(["view", "--port", "4000"])).toMatchObject({
+      action: { command: "view", port: 4000 },
+    })
+    expect(parseCli(["view", "--port", "0"])).toMatchObject({
+      action: { command: "view", port: 0 },
+    })
+  })
+
+  test.each([
+    ["not a number", "FAKE"],
+    ["not whole", "80.5"],
+    ["negative", "-1"],
+    ["above the range", "65536"],
+    ["padded", " 80 "],
+    ["empty", ""],
+  ])("--port %s is a usage error that teaches the range", (_case, value) => {
+    // `--port=x`, not `--port x`: a value starting with a dash is parseArgs's
+    // own refusal otherwise, and this pins ours
+    expect(parseCli(["view", `--port=${value}`])).toEqual({
+      error: `--port wants a whole number from 0 to 65535 (0 = any free port) — got "${value}"`,
+    })
+  })
+
+  test("an argument is a usage error — the projects come from config", () => {
+    expect(parseCli(["view", "../FAKE_DIR"])).toEqual({
+      error:
+        'view takes no arguments (got "../FAKE_DIR") — the projects it shows come from config, key view.projects',
+    })
+  })
+
+  test("--port on another command teaches rather than being ignored", () => {
+    expect(parseCli(["check", "--port", "4000"])).toEqual({
+      error:
+        "--port rides deblob view only (it is the port the viewer is served on)",
+    })
+  })
+})
+
+test("a check-only flag on view teaches too", () => {
+  expect(parseCli(["view", "--explain"])).toEqual({
+    error:
+      "--explain rides deblob check only (it explains the rules that fired)",
+  })
+})

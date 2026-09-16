@@ -16,6 +16,7 @@ deblob                       project status + discovery
 deblob check [what...]       run architecture checks (default: all)
 deblob explain <topic...>    explain rules or checks (service-purity,
                              layers, ...)
+deblob view                  serve the viewer on this project
 ```
 
 - **`deblob`** prints the inventory — file count, total size, blob %
@@ -46,6 +47,12 @@ deblob explain <topic...>    explain rules or checks (service-purity,
   pasteable `deblob explain service-purity private-sealed no-service-cycle`.
   `deblob check --explain` appends the explanation of every rule that fired; a
   CI log becomes self-teaching in one run.
+- **`deblob view`** serves the viewer — the extracted codebase in a browser — on
+  `http://127.0.0.1:3615` (`--port` to move it), and follows the code: save a
+  covered file and the page updates, no reload. The bundle ships inside this
+  package, so there is nothing to install and nothing to build. Which projects
+  it lists comes from config (`view.projects`), never from the command line;
+  with no list it shows the project you ran it in. Ctrl-C stops it; it exits 0.
 
 Violations cite their rule and print the offending edge:
 

@@ -46,6 +46,14 @@
   CLI. Consequence: the data half is a function first (snapshot of a project), a
   server second; dev server, `deblob view` and the corpus test call the same
   function. The map's layout leg (headless browser) is the map step's problem.
+- **The bundle ships inside `deblob` (2026-09-16).** Built, it is 39 kB of JS
+  and a 323-byte HTML file — 52 kB, 15 kB gzipped, small enough that none of the
+  three shapes costs anything visible. `deblob`'s build copies
+  `packages/viewer/dist` into its own `dist/viewer`, so one package is published
+  and nothing resolves at runtime; the published-dependency shape is prepared
+  (the viewer carries a `./bundle/*` export, the root is decided in one
+  function) and revisited when this branch merges into `main`. The optional peer
+  is dead — nobody wants a `deblob` without the viewer.
 - **The viewer's own code does not inherit `deblob`'s laundering (2026-09-13).**
   Found at step 02 in the CLI's config wiring (`02_config-overlay/SPEC.md` §
   Findings); the fix in `deblob` is deferred, the rules bind the new package
@@ -71,8 +79,15 @@
    source reconnects. Additive over 03: protocol and state shape unchanged.
    Ratified and built 2026-09-16 in four review checkpoints (chokidar 5, the
    directories coverage spans, discovery stopping at a listed directory),
-   back-filled.
-5. Candidate: `deblob view` serving the built bundle.
+   back-filled. Landed cecef2e.
+5. `05_view/` — `deblob view`: the CLI verb, the built bundle served from the
+   same server as the data channel, the packaging question answered (where the
+   bundle lives in an npm install). Ratified and built 2026-09-16 in five review
+   checkpoints (the static half re-cut as a service over a `BundleFiles` port,
+   the serve driver reused, port 3615, the bundle copied into `deblob`'s
+   `dist/`, a packed-package gate), back-filled. The GOAL's success test is met:
+   `deblob view` opens the viewer on a codebase, and it follows the codebase as
+   it changes.
 
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
@@ -94,8 +109,8 @@ through Vitest browser mode enters there).
   (`@typescript/native@npm:typescript@7`) plus a `--tsgo` flag. Not taken: a
   dual-TypeScript install is not a step 01 call. Until it is, `tsc --noEmit`
   types the `.ts` sources and `.svelte` script blocks go untyped.
-- **Optional peer or regular dependency** of `deblob` on the viewer: decided
-  when the bundle size is known.
+- ~~**Optional peer or regular dependency** of `deblob` on the viewer~~ — closed
+  2026-09-16 at step 05, see § Decisions.
 
 ## Future
 

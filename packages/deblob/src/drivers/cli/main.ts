@@ -8,7 +8,7 @@
  * `deblob` is informational by contract — always 0, even over a broken config.
  */
 
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -32,6 +32,7 @@ import {
   isRuleNumber,
   parseCli,
   rulesForTopic,
+  DEFAULT_VIEW_PORT,
   KNOWN_CHECKS,
 } from "../../lib/cli/cli.model.ts"
 import {
@@ -88,6 +89,8 @@ import type {
 } from "../../lib/extraction/graph.model.ts"
 import type { FlavorClassification } from "../../lib/extraction/ports/flavor.port.ts"
 import { createRecognition } from "../../lib/extraction/recognition.model.ts"
+import { INDEX as VIEWER_INDEX } from "../../lib/view/bundle.model.ts"
+import { main as serveView } from "../serve/main.ts"
 
 /**
  * The stock readers, in the order they bind by default: the test runner before
@@ -129,6 +132,17 @@ export type MainIo = {
   stdout: Writer
   stderr: Writer
   env: Readonly<Record<string, string | undefined>>
+  /**
+   * The world saying stop — ctrl-c, from the bin shim. Only the verbs that keep
+   * running listen to it; every other verb is done before it could fire.
+   */
+  signal: AbortSignal
+  /**
+   * Where the built viewer sits — resolved by the bin shim, like every other
+   * fact about the world this runs in, and the whole of what SPEC 05's
+   * packaging ruling touches. Only `view` reads it.
+   */
+  bundle: string
 }
 
 /** The sort wherever output orders rules — the summary's display order. */
@@ -344,6 +358,42 @@ const runStatus = async (
 }
 
 /**
+ * The viewer, served with the data half over one port, until ctrl-c. The config
+ * is not read here: the server reads it to list the projects, and a project
+ * that cannot be read is the CLI's error to present — the same line `check`
+ * prints, exit 2, nothing listening.
+ */
+const runView = async (
+  io: MainIo,
+  action: Extract<ParsedCli["action"], { command: "view" }>,
+): Promise<number> => {
+  if (!existsSync(join(io.bundle, VIEWER_INDEX))) {
+    io.stderr.write(
+      `the viewer bundle is missing at ${io.bundle} — this install cannot serve the page\n`,
+    )
+    return 2
+  }
+  let close: () => Promise<void>
+  try {
+    ;({ close } = await serveView({
+      cwd: io.cwd,
+      port: action.port ?? DEFAULT_VIEW_PORT,
+      bundle: io.bundle,
+      stdout: io.stdout,
+      stderr: io.stderr,
+    }))
+  } catch (error) {
+    io.stderr.write(`${asConfigError(error).message}\n`)
+    return 2
+  }
+  await new Promise<void>((resolve) => {
+    io.signal.addEventListener("abort", () => resolve(), { once: true })
+  })
+  await close()
+  return 0
+}
+
+/**
  * Graph paths are config-root-relative; the terminal resolves clicks from cwd.
  * This is the hop between the two — `""` when they coincide (the common run).
  */
@@ -525,6 +575,8 @@ export const main = async (io: MainIo): Promise<number> => {
       return runStatus(io, parsed, colors, deps)
     case "check":
       return runCheck(io, parsed, action, colors, deps)
+    case "view":
+      return runView(io, action)
     case "explain": {
       const rules = new Set<RuleId>()
       const unknown = action.topics.filter((topic) => {

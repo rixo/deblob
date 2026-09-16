@@ -1,9 +1,10 @@
 /**
- * The data server — assembly: the projects a viewer at `cwd` shows, an HTTP
- * server with the ws channel at `/deblob/ws`, a watcher, the protocol served.
- * Takes its world as a value (cwd, port, streams) so the whole thing runs
- * in-process; the bin shim owns the only `process` glue. No CLI verb until step
- * 05: the package script `serve`, run from source.
+ * The view server — assembly: the projects a viewer at `cwd` shows, an HTTP
+ * server with the ws channel at `/deblob/ws`, a watcher, the protocol served,
+ * and the built bundle at `/` when there is one to serve. Takes its world as a
+ * value (cwd, port, bundle, streams) so the whole thing runs in-process; the
+ * bin shim owns the only `process` glue. Two callers: the package script
+ * `serve` (the dev cycle, data half only) and the CLI's `view` verb.
  */
 
 import { createServer } from "node:http"
@@ -17,6 +18,8 @@ import {
   createSnapshotService,
   serveSnapshots,
 } from "../../lib/snapshot/snapshot.service.ts"
+import { createFsBundle } from "../../lib/view/adapters/fs-bundle.adapter.ts"
+import { createViewService } from "../../lib/view/view.service.ts"
 import { createProjectSource, extractionFor } from "../wiring.ts"
 
 export const WS_PATH = "/deblob/ws"
@@ -28,6 +31,11 @@ export type ServeIo = {
   cwd: string
   /** `0` binds a free port — the tests' way in. */
   port: number
+  /**
+   * The built viewer to serve at `/`, or `null` for the dev cycle, where Vite
+   * serves the page and this server is only the data half.
+   */
+  bundle: string | null
   stdout: Writer
   stderr: Writer
 }
@@ -50,10 +58,45 @@ export const main = async (io: ServeIo) => {
   })
   const watcher = createChokidarWatcher({ quietMs: 100, report })
   serveSnapshots({ channel, projects, runOf, watcher, report })
+  if (io.bundle !== null) {
+    const { respondTo } = createViewService({
+      files: createFsBundle({ root: io.bundle }),
+      reserved: [WS_PATH],
+    })
+    // the whole translation: node's request in, node's response out — what to
+    // answer was decided by the service, a request that is not its own included
+    server.on("request", (request, response) => {
+      void respondTo({
+        // a served request always has both — node's types are looser than its
+        // runtime, and a `??` arm here would be unreachable by construction
+        method: request.method as string,
+        path: request.url as string,
+      })
+        .then((answer) => {
+          if (answer === null) {
+            response.writeHead(404).end()
+            return
+          }
+          response
+            .writeHead(answer.status, {
+              "content-type": answer.contentType,
+              "content-length": answer.body.byteLength,
+            })
+            .end(answer.body)
+        })
+        .catch((error: unknown) => {
+          // a server does not die for one request: say it in full, answer 500
+          report(error)
+          response.writeHead(500).end()
+        })
+    })
+  }
   await new Promise<void>((resolve) => server.listen(io.port, HOST, resolve))
   const { port } = server.address() as AddressInfo
   io.stdout.write(
-    `deblob serve: ws://${HOST}:${port}${WS_PATH} — ${projects.length} project(s)\n`,
+    io.bundle === null
+      ? `deblob serve: ws://${HOST}:${port}${WS_PATH} — ${projects.length} project(s)\n`
+      : `deblob view: http://${HOST}:${port} — ${projects.length} project(s), ctrl-c to stop\n`,
   )
   return {
     port,

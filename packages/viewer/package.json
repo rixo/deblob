@@ -17,6 +17,9 @@
     "./snapshot.model": {
       "types": "./src/lib/snapshot/snapshot.model.ts",
       "default": "./src/lib/snapshot/snapshot.model.ts"
+    },
+    "./bundle/*": {
+      "default": "./dist/*"
     }
   },
   "files": [

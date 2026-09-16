@@ -1166,6 +1166,7 @@ describe("bare status", () => {
         "  deblob check [what...]      run architecture checks",
         "                              (dag · layers · private · barrels · ports · surface · modules)",
         "  deblob explain <topic...>   explain rules or checks",
+        "  deblob view                 open the viewer on this project",
         "  deblob --help               full help",
         "",
       ].join("\n"),

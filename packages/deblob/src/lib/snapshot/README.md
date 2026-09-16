@@ -85,11 +85,14 @@ manifest name — and `scan.adapter.ts`) and the extraction service.
 
 ## Drivers (`src/drivers/`)
 
-- `serve/` — the data server, package script `serve` (run from source, `PORT` in
-  the environment, default 5175): the projects of the cwd's config, an HTTP
-  server with the channel at `/deblob/ws`, the chokidar watcher (100 ms quiet),
-  the protocol served; its own failures on stderr in full, and it keeps serving.
-  No CLI verb until step 05.
+- `serve/` — the view server, with two callers. The package script `serve` (run
+  from source, `PORT` in the environment, default 5175) is the dev cycle's data
+  half alone: the projects of the cwd's config, an HTTP server with the channel
+  at `/deblob/ws`, the chokidar watcher (100 ms quiet), the protocol served; its
+  own failures on stderr in full, and it keeps serving. The CLI's `view` verb
+  calls the same assembly with a bundle root, and the same server then answers
+  the page and its assets at `/` ([view](../view/README.md)) — one port for
+  both, since the channel rides the HTTP server's upgrade.
 - `snapshot/` — the script driver, package script `snapshot`: executed, never
   imported; cwd in as the project root (exactly, nothing above it), the snapshot
   as one JSON line on stdout, exit 0; a config error on stderr, exit 2. The

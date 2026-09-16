@@ -875,6 +875,7 @@ export const renderBareStatus = (status: BareStatus, colors: Colors): string =>
     "  deblob check [what...]      run architecture checks",
     `                              (${KNOWN_CHECKS.join(" · ")})`,
     "  deblob explain <topic...>   explain rules or checks",
+    "  deblob view                 open the viewer on this project",
     "  deblob --help               full help",
     "",
   ].join("\n")
@@ -943,6 +944,7 @@ Usage
   deblob check [what...]       run architecture checks (default: all)
   deblob explain <topic...>    explain rules or checks (service-purity,
                                layers, ...)
+  deblob view                  serve the viewer on this project
 
 Checks
   dag        service dependencies form a DAG; no module-level runtime
@@ -962,6 +964,7 @@ Checks
 
 Options
   -c, --config <path>    config file (default: nearest deblob.config.ts)
+  --port <n>             view only: the port to serve on (default 3615)
   --no-color             plain output (NO_COLOR is honored too)
   -h, --help             show this help
   -v, --version          print version

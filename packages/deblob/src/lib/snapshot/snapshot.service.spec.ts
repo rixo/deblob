@@ -410,6 +410,8 @@ describe("self-extract", () => {
       stdout: { write: (chunk: string) => (out += chunk) },
       stderr: { write: () => {} },
       env: {},
+      signal: new AbortController().signal,
+      bundle: "",
     })
     const headline = /(\d+) files? · \S+ · (\d+)% blob/.exec(out)
     const coverage = /(\d+) services? · (\d+) imports?/.exec(out)

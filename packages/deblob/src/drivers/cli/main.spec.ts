@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { beforeAll, describe, expect, test } from "vitest"
+import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { main } from "./main.ts"
 
@@ -41,6 +41,8 @@ const run = async (
     cwd: string
     env: Record<string, string>
     isTTY: boolean
+    signal: AbortSignal
+    bundle: string
   }> = {},
 ): Promise<RunResult> => {
   let out = ""
@@ -54,6 +56,8 @@ const run = async (
     },
     stderr: { write: (chunk: string) => (err += chunk) },
     env: options.env ?? {},
+    signal: options.signal ?? new AbortController().signal,
+    bundle: options.bundle ?? here("__fixtures__/NO_SUCH_BUNDLE"),
   })
   return { code, out, err }
 }
@@ -630,5 +634,88 @@ describe("bin shim (child process smoke)", () => {
     expect(check.stderr.replace(/\n +/g, " ")).toMatch(
       /deblob\.config\.ts is written as ESM but loaded as CommonJS.*rename it deblob\.config\.mts.*"type": "module"/s,
     )
+  })
+})
+
+describe("view", () => {
+  const FAKE_INDEX = "<!doctype html>FAKE VIEWER"
+
+  const bundleDir = async (): Promise<string> => {
+    const dir = await mkdtemp(join(tmpdir(), "deblob-view-"))
+    viewTemps.push(dir)
+    await writeFile(join(dir, "index.html"), FAKE_INDEX)
+    return dir
+  }
+
+  /** Runs `view` until the caller stops it: the URL line is the handshake. */
+  const serving = async (
+    options: { cwd: string; bundle: string; argv?: string[] } = {
+      cwd: cleanDir,
+      bundle: "",
+    },
+  ) => {
+    const stopping = new AbortController()
+    let out = ""
+    let err = ""
+    const done = main({
+      argv: options.argv ?? ["view", "--port", "0"],
+      cwd: options.cwd,
+      stdout: { write: (chunk: string) => (out += chunk) },
+      stderr: { write: (chunk: string) => (err += chunk) },
+      env: {},
+      signal: stopping.signal,
+      bundle: options.bundle,
+    })
+    for (let waited = 0; waited < 5000 && out === "" && err === ""; waited++) {
+      await new Promise((resolve) => setTimeout(resolve, 1))
+    }
+    return {
+      out,
+      err,
+      stop: async () => {
+        stopping.abort()
+        return done
+      },
+    }
+  }
+
+  const viewTemps: string[] = []
+  afterAll(async () => {
+    for (const dir of viewTemps.splice(0)) {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("an install without the bundle says so and serves nothing, exit 2", async () => {
+    const { code, out, err } = await run(["view"])
+    expect(code).toBe(2)
+    expect(out).toBe("")
+    expect(err).toMatch(/viewer bundle is missing at .*NO_SUCH_BUNDLE/)
+  })
+
+  test("serves the page over the project until the signal, exit 0", async () => {
+    const bundle = await bundleDir()
+    const { out, err, stop } = await serving({ cwd: cleanDir, bundle })
+    expect(err).toBe("")
+    const url = /(http:\/\/127\.0\.0\.1:\d+)/.exec(out)?.[1] as string
+    expect(out).toBe(`deblob view: ${url} — 1 project(s), ctrl-c to stop\n`)
+    expect(await (await fetch(url)).text()).toBe(FAKE_INDEX)
+    await expect(stop()).resolves.toBe(0)
+    // the port is gone with it
+    await expect(fetch(url)).rejects.toThrow()
+  })
+
+  test("a config it cannot read is the line check prints, exit 2", async () => {
+    const bundle = await bundleDir()
+    // no --port: the default is read, and a config that fails is read before
+    // anything binds, so nothing listens on it
+    const { out, err, stop } = await serving({
+      cwd: brokenConfigDir,
+      bundle,
+      argv: ["view"],
+    })
+    expect(out).toBe("")
+    expect(err).toContain("deblob.config.ts")
+    await expect(stop()).resolves.toBe(2)
   })
 })

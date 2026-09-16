@@ -48,12 +48,14 @@
     "build": "run-s build:*",
     "build:content": "node scripts/build-content.ts",
     "build:ts": "tsc -p tsconfig.build.json",
+    "build:viewer": "node scripts/build-viewer.ts",
     "check": "node src/drivers/cli/bin.ts check",
     "prepack": "pnpm build",
     "serve": "node src/drivers/serve/bin.ts",
     "snapshot": "node src/drivers/snapshot/bin.ts",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:pack": "node scripts/verify-pack.ts"
   }
 }

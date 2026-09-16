@@ -1,9 +1,8 @@
 # @deblob/viewer
 
 The deblob viewer: a browser app over a codebase deblob has extracted, launched
-by `deblob view` (step 05 of its chapter, `history/20260912_viewer/`). Today it
-runs as the dev cycle described below and shows a project's snapshot: what it
-is, how big, which services, which files under each, by layer.
+by `deblob view`. It shows a project's snapshot: what it is, how big, which
+services, which files under each, by layer.
 
 A Svelte single-page app built by Vite. It never imports `deblob`: data reaches
 it through its one input, a **snapshot source** — a Svelte store of whole
@@ -32,6 +31,20 @@ the next loads and under an error) and `SnapshotSource`, a readable of it with
 `select(root)`. Two adapters: `createStaticSource(snapshot | null)` and
 `createWsSource(url)`, the socket opening on the first subscriber and closing
 after the last.
+
+## How it is served
+
+Two ways, one page. **`deblob view`**, in any project with `deblob` installed:
+the built bundle of this package is copied into `deblob`'s own `dist/` at build
+time, and its view server answers the page, its assets and the WebSocket channel
+on one port (3615 by default). Nothing to install, no Vite, no second process.
+The `./bundle/*` export is there for the day `deblob` depends on this package
+instead of embedding it; nothing resolves through it yet.
+
+**`pnpm dev`**, below, for working on the viewer itself. Either way the app
+connects to `/deblob/ws` on its own origin — in dev that is Vite's proxy, under
+`deblob view` it is the server itself — so the entry has no idea which one it is
+talking to.
 
 ## The dev cycle
 
@@ -66,7 +79,7 @@ that project's error.
 
 ```
 pnpm dev          Vite + the data server (run-p dev:*)
-pnpm build        production bundle in dist/
+pnpm build        production bundle in dist/ (what `deblob view` serves)
 pnpm test         vitest, 100% coverage through the contract
 pnpm typecheck    tsc over the TypeScript sources
 pnpm check        deblob on its own source, run from deblob's source

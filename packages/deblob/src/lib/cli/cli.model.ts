@@ -63,6 +63,11 @@ export type CliAction =
       explainOnly: boolean
     }
   | { command: "explain"; topics: readonly string[] }
+  | {
+      command: "view"
+      /** `null` = the default port; the projects come from config, never here. */
+      port: number | null
+    }
 
 export type ParsedCli = {
   /** Explicit config path (`-c`); `null` = discovery walk. */
@@ -73,7 +78,12 @@ export type ParsedCli = {
 
 export type UsageError = { error: string }
 
-const COMMANDS = ["check", "explain"] as const
+const COMMANDS = ["check", "explain", "view"] as const
+
+/** The port `deblob view` serves on when the line does not say. */
+export const DEFAULT_VIEW_PORT = 3615
+
+const MAX_PORT = 65535
 
 const isKnownCheck = (name: string): name is CheckName =>
   (KNOWN_CHECKS as readonly string[]).includes(name)
@@ -110,6 +120,7 @@ export const parseCli = (argv: readonly string[]): ParsedCli | UsageError => {
         "no-color": { type: "boolean" },
         explain: { type: "boolean" },
         "explain-only": { type: "boolean" },
+        port: { type: "string" },
       },
     })
   } catch (error) {
@@ -126,20 +137,31 @@ export const parseCli = (argv: readonly string[]): ParsedCli | UsageError => {
     action,
   })
 
-  const explainFlags = (allowed: boolean): UsageError | null => {
-    if (allowed && values.explain && values["explain-only"]) {
+  /**
+   * Flags that ride one command only: used anywhere else they teach instead of
+   * being ignored — a flag that does nothing is a lie about the run. `null` is
+   * a command none of them rides.
+   */
+  const strayFlags = (verb: "check" | "view" | null): UsageError | null => {
+    if (verb === "check" && values.explain && values["explain-only"]) {
       return {
         error:
           "--explain and --explain-only contradict — the first appends explanations, the second replaces the listing; pick one",
       }
     }
-    if (!allowed) {
+    if (verb !== "check") {
       for (const flag of ["explain", "explain-only"] as const) {
         if (values[flag]) {
           return {
             error: `--${flag} rides deblob check only (it explains the rules that fired)`,
           }
         }
+      }
+    }
+    if (verb !== "view" && values.port !== undefined) {
+      return {
+        error:
+          "--port rides deblob view only (it is the port the viewer is served on)",
       }
     }
     return null
@@ -157,13 +179,13 @@ export const parseCli = (argv: readonly string[]): ParsedCli | UsageError => {
   }
 
   if (command === undefined) {
-    const flagError = explainFlags(false)
+    const flagError = strayFlags(null)
     if (flagError) return flagError
     return withAction({ command: "status" })
   }
 
   if (command === "check") {
-    const flagError = explainFlags(true)
+    const flagError = strayFlags("check")
     if (flagError) return flagError
     const names = positionals.slice(1)
     for (const name of names) {
@@ -183,7 +205,7 @@ export const parseCli = (argv: readonly string[]): ParsedCli | UsageError => {
   }
 
   if (command === "explain") {
-    const flagError = explainFlags(false)
+    const flagError = strayFlags(null)
     if (flagError) return flagError
     const topics = positionals.slice(1)
     if (topics.length === 0) {
@@ -193,6 +215,30 @@ export const parseCli = (argv: readonly string[]): ParsedCli | UsageError => {
       }
     }
     return withAction({ command: "explain", topics })
+  }
+
+  if (command === "view") {
+    const flagError = strayFlags("view")
+    if (flagError) return flagError
+    const extra = positionals.slice(1)
+    if (extra.length > 0) {
+      return {
+        error: `view takes no arguments (got "${extra[0]}") — the projects it shows come from config, key view.projects`,
+      }
+    }
+    if (values.port === undefined) {
+      return withAction({ command: "view", port: null })
+    }
+    // digits only: `Number("")` is 0 and `Number(" 80 ")` is 80 — neither is a
+    // port somebody typed. 0 itself is the OS's "any free port": unusual on a
+    // command line, not wrong.
+    const port = Number(values.port)
+    if (!/^[0-9]+$/.test(values.port) || port > MAX_PORT) {
+      return {
+        error: `--port wants a whole number from 0 to ${MAX_PORT} (0 = any free port) — got "${values.port}"`,
+      }
+    }
+    return withAction({ command: "view", port })
   }
 
   return {

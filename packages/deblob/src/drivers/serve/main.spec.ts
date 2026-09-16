@@ -73,6 +73,7 @@ test("serves the projects of the cwd's config, then the first snapshot; select a
   const { port, close } = await main({
     cwd: root,
     port: 0,
+    bundle: null,
     stdout: { write: (chunk: string) => (out += chunk) },
     stderr: { write: () => {} },
   })
@@ -122,6 +123,7 @@ test("a file written under the shown project pushes its snapshot again", async (
   const { port, close } = await main({
     cwd: root,
     port: 0,
+    bundle: null,
     stdout: { write: () => {} },
     stderr: { write: () => {} },
   })
@@ -150,6 +152,7 @@ test("the server's own failures go to stderr in full; it keeps serving", async (
   const { port, close } = await main({
     cwd: root,
     port: 0,
+    bundle: null,
     stdout: { write: () => {} },
     stderr: { write: (chunk: string) => (err += chunk) },
   })
@@ -186,5 +189,80 @@ test("bin shim (child process smoke): PORT in, the address line out, a client se
     expect(projects?.type).toBe("projects")
   } finally {
     child.kill()
+  }
+})
+
+const FAKE_INDEX = "<!doctype html>FAKE INDEX"
+const FAKE_SCRIPT = "export const FAKE_VALUE = 1\n"
+
+/** A built bundle, as a build would leave it: a page and one hashed asset. */
+const bundleDir = async () => {
+  const root = await mkdtemp(join(tmpdir(), "deblob-bundle-"))
+  temps.push(root)
+  await mkdir(join(root, "assets"), { recursive: true })
+  await writeFile(join(root, "index.html"), FAKE_INDEX)
+  await writeFile(join(root, "assets", "app-FAKEHASH.js"), FAKE_SCRIPT)
+  return root
+}
+
+test("given a bundle, the page and its assets are served beside the channel", async () => {
+  const { root } = await viewerProject()
+  const bundle = await bundleDir()
+  let out = ""
+  const { port, close } = await main({
+    cwd: root,
+    port: 0,
+    bundle,
+    stdout: { write: (chunk: string) => (out += chunk) },
+    stderr: { write: () => {} },
+  })
+  const base = `http://127.0.0.1:${port}`
+  try {
+    expect(out).toBe(`deblob view: ${base} — 2 project(s), ctrl-c to stop\n`)
+
+    const page = await fetch(base)
+    expect(page.headers.get("content-type")).toBe("text/html; charset=utf-8")
+    expect(await page.text()).toBe(FAKE_INDEX)
+    // a path only the page knows: the page again, not a 404
+    expect(await (await fetch(`${base}/FAKE_ROUTE/deep`)).text()).toBe(
+      FAKE_INDEX,
+    )
+
+    const asset = await fetch(`${base}/assets/app-FAKEHASH.js`)
+    expect(asset.headers.get("content-type")).toBe(
+      "text/javascript; charset=utf-8",
+    )
+    expect(await asset.text()).toBe(FAKE_SCRIPT)
+
+    expect((await fetch(`${base}/assets/gone-FAKEHASH.js`)).status).toBe(404)
+    // the channel's own path is not the page
+    expect((await fetch(`${base}${WS_PATH}`)).status).toBe(404)
+    expect((await fetch(base, { method: "POST" })).status).toBe(404)
+
+    // and the data half is untouched
+    const received = await receive(`ws://127.0.0.1:${port}${WS_PATH}`, 2)
+    expect(received[0]).toMatchObject({ type: "projects" })
+    expect(received[1]).toMatchObject({ type: "snapshot" })
+  } finally {
+    await close()
+  }
+})
+
+test("a bundle root that is not a directory: reported in full, 500 to the client", async () => {
+  const { root } = await viewerProject()
+  let err = ""
+  const { port, close } = await main({
+    cwd: root,
+    port: 0,
+    // a file where a directory was expected — a broken install, not a miss
+    bundle: join(await bundleDir(), "index.html"),
+    stdout: { write: () => {} },
+    stderr: { write: (chunk: string) => (err += chunk) },
+  })
+  try {
+    expect((await fetch(`http://127.0.0.1:${port}/`)).status).toBe(500)
+    expect(err).toContain("ENOTDIR")
+  } finally {
+    await close()
   }
 })
