@@ -865,6 +865,7 @@ describe("the reading on the graph — the reading fixture", () => {
     "src/default.assembly.ts",
     "src/app/app.service.spec.ts",
     "src/globals.spec.ts",
+    "src/sub.driver.spec.ts",
     "src/routes/+page.svelte",
   ]
 
@@ -1040,8 +1041,8 @@ describe("the reading on the graph — the reading fixture", () => {
       "factory", // createMemoryStore
       "factory", // createAppService
       "use-case", // app.load()
-      "model", // createRegistry
-      "model", // normalize
+      "factory", // createRegistry — a model export the stock flavor names
+      "model", // normalize — a model function, bound by flow
       "factory", // createLegacyThing (blob)
       "factory",
       "factory",
@@ -1050,6 +1051,13 @@ describe("the reading on the graph — the reading fixture", () => {
       "factory", // createGroupAssembly
     ])
     expect(calls[5]?.callee).toMatchObject({ kind: "factory", layer: "blob" })
+    // the stock flavor's word reaches the reader through the service
+    expect(calls[3]?.callee).toEqual({
+      kind: "factory",
+      layer: "model",
+      path: "src/app/app.model.ts",
+      name: "createRegistry",
+    })
     expect(calls[2]?.callee).toEqual({
       kind: "use-case",
       member: "load",
@@ -1198,6 +1206,12 @@ describe("the reading on the graph — the reading fixture", () => {
       driverTech: (specifier) => specifier === "some-made-up-parser",
     })
     const [register] = readingOf(single, "src/sub.driver.ts").functions
+    // the spec file's site, handing two unknowns, is read but does not bind
+    expect(
+      callsOf(
+        readingOf(single, "src/sub.driver.spec.ts").hooks[0]?.body ?? [],
+      ).map((call) => call.callee.kind),
+    ).toEqual(["wiring"])
     expect(register?.params).toEqual([
       { name: "cli", kind: "tech" },
       { name: "services", kind: "instance" },
@@ -1214,6 +1228,23 @@ describe("the reading on the graph — the reading fixture", () => {
       },
     })
     expect(readingOf(single, "src/sub.driver.ts").open).toEqual([])
+  })
+
+  test("a flavor without the factory naming rule names nothing: every model callee stays model", () => {
+    const root = fixtureRoot("reading")
+    const stock = createTsSuffixesFactoriesFlavor()
+    const extraction = createExtraction({
+      engine: createOxcEngine({ tsconfigPath: `${root}tsconfig.json` }),
+      flavor: { classify: (files) => stock.classify(files) },
+      techs: [createPlainTsTech()],
+    })
+    const graph = extraction.extractGraph({ root, files: READING_FILES })
+    const [assembly] = readingOf(graph, "src/cli.assembly.ts").functions
+    expect(callsOf(assembly?.body ?? [])[3]?.callee).toEqual({
+      kind: "model",
+      path: "src/app/app.model.ts",
+      name: "createRegistry",
+    })
   })
 
   test("a boot: its root call is the driver's wiring function", () => {

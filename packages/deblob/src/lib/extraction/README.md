@@ -18,11 +18,14 @@ is never parsed through. An external leaf may carry a layer when the other side
 declared one; absent, it is unlabeled.
 
 Every parsed module also carries its **reading** (`FileReading`, JSON data): its
-root statements — calls classified, definitions with their value kind, branches
-with what their test reads off — and, for the outside kinds, its top-level
-functions with their hooks cut and the open part the reader could not place. An
-outside-kind file no tech covers, or an unparsed one, has none: recognized and
-open.
+root statements — calls classified, definitions with their value kind and
+whether they are readonly where the syntax shows it (code, a primitive-valued
+initializer, `as const`, `Object.freeze`, a `Readonly*`, `readonly T[]`,
+primitive or literal annotation; no alias resolution, no inference — an alias
+reads `false`), branches with what their test reads off — and, for the outside
+kinds, its top-level functions with their hooks cut and the open part the reader
+could not place. An outside-kind file no tech covers, or an unparsed one, has
+none: recognized and open.
 
 ## API
 
@@ -44,8 +47,9 @@ open.
   file is read, the graph pass binds parameters at their call sites: an assembly
   function or a sub-driver's wiring function called from another outside-kind
   file takes each parameter's kind from the arguments, joined over every site
-  (`null`, unknown, where sites disagree), and the file is read again with them
-  — to a fixed point, since a binding can make the next site's argument known.
+  (`null`, unknown, where sites disagree; a site in a test file does not bind —
+  a test hands fakes), and the file is read again with them — to a fixed point,
+  since a binding can make the next site's argument known.
 - `graph.model.ts` — the graph vocabulary, `LAYERS`, `packageNameOf`, the
   two-wildcard specifier pattern grammar (`specifierPattern`,
   `specifierMatcher`) shared by `external`, `externalLayers`, and `blob`
@@ -71,18 +75,21 @@ open.
   Lexical scope, then one kinds table: a callee is what the binding at the root
   of its chain is — an import's target by layer (a service, adapter, assembly or
   blob export is a factory; a driver export the sub-driver's wiring; a model
-  export model; a ports, boot or test file a forbidden import), an external by
-  claim (a tech's, `driverTech`, or a concrete builtin), by purity (pure is
-  model) or unclaimed; a free global is the language when ECMAScript defines it
-  and the host's tech otherwise; a member called on an instance is a use case,
-  on a tech value the tech unless the name is an intrinsic prototype method's.
-  Every call carries its arguments (kind, and for an instance where it came
-  from) and where its result reaches; a use case that matches a declared load by
-  member name — and by file when the instance is traced to a factory that is not
-  an assembly's record — is marked, its result a tech value. The cut: a function
-  handed to a tech callee is a hook, nested hooks included; one handed to
-  anything else is open. Takes plain data, never the port: the service chooses
-  the tech.
+  export a factory of layer `model` when the flavor names it and model, bound by
+  result flow, otherwise; a ports, boot or test file a forbidden import), an
+  external by claim (a tech's, `driverTech`, or a concrete builtin), by purity
+  (pure is model, the flavor's word applying as for a model file) or unclaimed;
+  a free global is the language when ECMAScript defines it and the host's tech
+  otherwise; a local function a local, carrying the flavor's word as `factory`
+  (a local factory's instance has no origin); a member called on an instance is
+  a use case, on a tech value the tech unless the name is an intrinsic prototype
+  method's. Every call carries its arguments (kind, and for an instance where it
+  came from) and where its result reaches; a use case that matches a declared
+  load by member name — and by file when the instance is traced to a factory
+  that is not an assembly's record — is marked, its result a tech value. The
+  cut: a function handed to a tech callee is a hook, nested hooks included; one
+  handed to anything else is open. Takes plain data, never the port: the service
+  chooses the tech.
 
 ## Ports
 
@@ -95,8 +102,10 @@ open.
 - `ports/flavor.port.ts` — `FlavorResolver`: `classify(files)` maps the whole
   coverage set to layer, service root, and privacy at once (path-only,
   set-based); optional `classifyEntry(subpath)` is the naming rule read across
-  package boundaries; optional `typeOnlyExempt` is the flavor's type-only stance
-  (`runtime-import`).
+  package boundaries; optional `isFactory(name)` is the naming rule over an
+  export name — what tells a model factory from a model function, the stock rule
+  being `create` followed by a capital; optional `typeOnlyExempt` is the
+  flavor's type-only stance (`runtime-import`).
 - `ports/tech.port.ts` — `Tech`: canon's reading of a technology, one adapter
   per tech as the flavor is one per naming convention. A tech is the kinds it
   reads, the packages it claims as tech, and the driver rules it exempts;

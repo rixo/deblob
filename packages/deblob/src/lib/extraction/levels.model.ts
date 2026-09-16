@@ -79,8 +79,8 @@ export const useCaseLevels = (graph: ImportGraph): UseCaseLevels => {
 
   /**
    * Follow the origin down the member path: to a service (primary), to an
-   * adapter or blob instance (not a use case — the driver rules' business,
-   * skipped here), or nowhere (unresolved).
+   * adapter, blob or model instance (not a use case — the driver rules'
+   * business, skipped here), or nowhere (unresolved).
    */
   const trace = (
     origin: InstanceOrigin,

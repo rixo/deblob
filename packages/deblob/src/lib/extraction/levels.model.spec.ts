@@ -64,8 +64,8 @@ describe("useCaseLevels", () => {
     ])
   })
 
-  test("a use case on an instance the reading cannot trace is listed unresolved; an adapter reached through the records is neither", () => {
-    const { unresolved } = levelsOf()
+  test("a use case on an instance the reading cannot trace is listed unresolved; an adapter or a model instance reached through the records is neither", () => {
+    const { primary, unresolved } = levelsOf()
     expect(
       unresolved.map(({ driver, member, span }) => [driver, member, span.line]),
     ).toEqual([
@@ -77,6 +77,8 @@ describe("useCaseLevels", () => {
       ["src/other.driver.ts", "app", 24],
       ["src/other.driver.ts", "group", 25],
     ])
+    // `services.registry.get` — a model factory's instance, skipped like an adapter's
+    expect(primary.map(({ member }) => member)).not.toContain("registry.get")
   })
 
   test("a sub-driver's hook counts once its parameters are bound: the same use case, another driver", () => {

@@ -963,10 +963,11 @@ needs tooling that knows service boundaries.
   argument, never by import. A call at module root is legal only when its callee
   is declared pure and its result immutable: `Object.freeze` on a literal is
   what the rule wants, a factory call is what it forbids, and the flavor's
-  factory recognition makes that red. Readonly-typed root bindings are an opt-in
-  check for typed codebases. Two shapes are exempt by kind: the boot's one call,
-  and a spec file's registration calls into the runner. Assembly and driver need
-  no exception — each builds inside its function.
+  factory recognition makes that red. Root bindings are checked for a readonly
+  type by default; a codebase without the types turns that check off in config.
+  Two shapes are exempt by kind: the boot's one call, and a spec file's
+  registration calls into the runner. Assembly and driver need no exception —
+  each builds inside its function.
 
 ---
 

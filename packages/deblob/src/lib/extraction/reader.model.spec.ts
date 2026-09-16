@@ -193,7 +193,12 @@ describe("readModule — the shapes fixture as a driver", () => {
   })
 
   test("a shadowing local wins over the import — a local definition", () => {
-    expect(callee(50)).toEqual({ kind: "local", name: "createThing" })
+    // no flavor's word given to the reader: nothing is a factory by name
+    expect(callee(50)).toEqual({
+      kind: "local",
+      name: "createThing",
+      factory: false,
+    })
   })
 
   test("dynamic import and bound require read as imports of their target", () => {
@@ -469,7 +474,11 @@ describe("readModule — binding patterns, odd roots, test origins, assignments"
   })
 
   test("a shadowed `require` is a local, not an import", () => {
-    expect(callee(27)).toEqual({ kind: "local", name: "require" })
+    expect(callee(27)).toEqual({
+      kind: "local",
+      name: "require",
+      factory: false,
+    })
     expect(callee(28)).toEqual({ kind: "language" })
   })
 
@@ -614,5 +623,192 @@ describe("readModule — binding patterns, odd roots, test origins, assignments"
         statement.kind === "definition" ? statement.name : statement.kind,
       ),
     ).toEqual(["a", "b", "first"])
+  })
+})
+
+describe("readModule — the flavor's word on export names", () => {
+  /** A test-side rule, the stock flavor's shape without the adapter. */
+  const isFactory = (name: string) => /^create[A-Z]/.test(name)
+  const reading = read("factories.ts", { layer: "assembly", isFactory })
+  const main = reading.functions.find((fn) => fn.name === "main")
+  if (!main) throw new Error("main not read")
+  const calls = callsOf(main.body)
+  const callee = (line: number): CalleeKind => callAt(calls, line).callee
+
+  test("a model import the flavor names is a factory of layer model; one it does not name stays model", () => {
+    expect(callee(10)).toEqual({
+      kind: "factory",
+      layer: "model",
+      path: "src/helper.model.ts",
+      name: "createHelper",
+    })
+    expect(callee(11)).toEqual({
+      kind: "model",
+      path: "src/helper.model.ts",
+      name: "helper",
+    })
+    // a member called on the model instance is a use case with that origin
+    expect(callee(17)).toEqual({
+      kind: "use-case",
+      member: "run",
+      origin: {
+        path: "src/helper.model.ts",
+        name: "createHelper",
+        layer: "model",
+      },
+    })
+  })
+
+  test("a pure package's export: the same rule, the path is the specifier", () => {
+    expect(callee(12)).toEqual({
+      kind: "factory",
+      layer: "model",
+      path: "pure-lib",
+      name: "createPureFn",
+    })
+    expect(callee(13)).toEqual({
+      kind: "model",
+      path: "pure-lib",
+      name: "pureFn",
+    })
+  })
+
+  test("a local function the flavor names is a local factory, its instance untraced; one it does not name is a plain local", () => {
+    expect(callee(14)).toEqual({
+      kind: "local",
+      name: "createLocalThing",
+      factory: true,
+    })
+    expect(callee(15)).toEqual({
+      kind: "local",
+      name: "localFn",
+      factory: false,
+    })
+    expect(callee(16)).toEqual({
+      kind: "use-case",
+      member: "run",
+      origin: null,
+    })
+  })
+
+  test("a root factory call named by the flavor: a root call with a factory callee, its definition an instance", () => {
+    expect(
+      reading.root.map((statement) =>
+        statement.kind === "call"
+          ? statement.call.callee.kind
+          : statement.kind === "definition"
+            ? [statement.name, statement.value]
+            : statement.kind,
+      ),
+    ).toEqual(["factory", ["ROOT_INSTANCE", "instance"]])
+  })
+
+  test("without the flavor's word, nothing is a factory by name — step 01's reading", () => {
+    const plain = read("factories.ts", { layer: "assembly" })
+    const kinds = callsOf(
+      plain.functions.find((fn) => fn.name === "main")?.body ?? [],
+    ).map((call) => call.callee.kind)
+    expect(kinds).toEqual([
+      "model",
+      "model",
+      "model",
+      "model",
+      "local",
+      "local",
+      "language",
+      "language",
+    ])
+  })
+})
+
+describe("readModule — readonly, the syntactic fact on root definitions", () => {
+  const reading = read("readonly-forms.ts", { layer: "model", tech: null })
+  const byName = new Map(
+    reading.root.flatMap((statement) =>
+      statement.kind === "definition"
+        ? [[statement.name ?? "default", statement.readonly] as const]
+        : [],
+    ),
+  )
+  const readonlyOf = (...names: string[]) =>
+    names.map((name) => [name, byName.get(name)])
+  const all = (names: string[], expected: boolean) =>
+    names.map((name) => [name, expected])
+
+  test("code is readonly: a function, class or enum declaration", () => {
+    const names = ["fnDecl", "ClassDecl", "EnumDecl"]
+    expect(readonlyOf(...names)).toEqual(all(names, true))
+  })
+
+  test("a const whose initializer's form is immutable: primitives and their operators, functions, `as const`, `Object.freeze`, an assertion to a readonly type, through TS wrappers", () => {
+    const names = [
+      "primitive",
+      "str",
+      "bigint",
+      "regex",
+      "template",
+      "unary",
+      "binary",
+      "logical",
+      "conditional",
+      "undef",
+      "nul",
+      "arrow",
+      "classExpr",
+      "asConst",
+      "angleConst",
+      "frozen",
+      "asReadonly",
+      "satisfiesPrimitive",
+      "parenthesized",
+    ]
+    expect(readonlyOf(...names)).toEqual(all(names, true))
+  })
+
+  test("a const whose annotation is readonly at its top: `Readonly*`, `readonly T[]`, a primitive keyword, a literal type, unions and parentheses of those", () => {
+    const names = [
+      "annotatedReadonly",
+      "annotatedArray",
+      "annotatedMap",
+      "annotatedSet",
+      "annotatedString",
+      "annotatedLiteral",
+      "annotatedUnion",
+      "annotatedParens",
+    ]
+    expect(readonlyOf(...names)).toEqual(all(names, true))
+  })
+
+  test("a destructured const reads the whole declarator's form", () => {
+    expect(readonlyOf("d1", "d2", "d3")).toEqual([
+      ["d1", true],
+      ["d2", true],
+      ["d3", false],
+    ])
+  })
+
+  test("not readonly: let and var, a record, array, `new`, call or member initializer, a mutable assertion, an alias annotation, a mixed union, an awaited value, a default-exported record", () => {
+    const names = [
+      "letBinding",
+      "varBinding",
+      "record",
+      "array",
+      "map",
+      "call",
+      "member",
+      "asMutable",
+      "annotatedAlias",
+      "annotatedMixedUnion",
+      "logicalBindings",
+      "awaited",
+      "default",
+    ]
+    expect(readonlyOf(...names)).toEqual(all(names, false))
+  })
+
+  test("the census is total over the fixture: every root definition has the fact", () => {
+    expect(byName.size).toBe(47)
+    // `REFS` closes with `as const` — readonly, and the fixture's own guard
+    expect(byName.get("REFS")).toBe(true)
   })
 })

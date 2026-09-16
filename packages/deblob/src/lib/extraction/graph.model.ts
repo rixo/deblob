@@ -177,13 +177,21 @@ export type ValueKind =
 /**
  * Where an instance came from: the factory call that built it, by export, and
  * the factory file's kind — an origin in an assembly is a record the reader
- * cannot see through.
+ * cannot see through; an origin in a model file is a factory the flavor named
+ * (a pure package's, `path` is the specifier).
  */
 export type InstanceOrigin = {
   path: string
   name: string
-  layer: "service" | "adapters" | "assembly" | "blob"
+  layer: FactoryLayer
 }
+
+/**
+ * The kinds whose exports read as factories: by construction, or by the
+ * flavor's word for `model`.
+ */
+export type FactoryLayer =
+  "service" | "adapters" | "assembly" | "blob" | "model"
 
 /** An argument as passed: its kind, and for an instance where it came from. */
 export type ArgValue = {
@@ -198,19 +206,16 @@ export type ArgValue = {
  * table every outside rule reads (step 01 SPEC § Callee and value kinds).
  */
 export type CalleeKind =
-  | {
-      kind: "factory"
-      layer: "service" | "adapters" | "assembly" | "blob"
-      path: string
-      name: string
-    }
+  | { kind: "factory"; layer: FactoryLayer; path: string; name: string }
   | { kind: "wiring"; path: string; name: string }
+  /** A model export the flavor did not name a factory: bound by result flow. */
   | { kind: "model"; path: string; name: string }
   | { kind: "forbidden-import"; layer: "ports" | "boot" | "test"; path: string }
   | { kind: "tech"; package: string | null }
   | { kind: "unclaimed"; package: string }
   | { kind: "language" }
-  | { kind: "local"; name: string }
+  /** A local function; `factory` is the flavor's word on its name. */
+  | { kind: "local"; name: string; factory: boolean }
   | { kind: "use-case"; member: string; origin: InstanceOrigin | null }
   | { kind: "unknown" }
 
@@ -252,6 +257,16 @@ export type ReadStatement =
       form: string
       exported: boolean
       value: ValueKind
+      /**
+       * Immutability visible at the binding — code (a function, class, enum), a
+       * `const` whose initializer is a primitive-valued expression, `as const`,
+       * a function or `Object.freeze(…)`, or whose annotation is a `Readonly*`
+       * type, a `readonly` array, a primitive keyword or a literal type.
+       * Syntactic: no alias resolution, no inference (a `const` typed with an
+       * alias reads `false`). `stateless-modules` reads it unless config says
+       * `mutableModuleState`.
+       */
+      readonly: boolean
       span: Span
     }
   | {

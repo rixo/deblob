@@ -76,14 +76,15 @@ const sameArg = (a: ArgValue, b: ArgValue): boolean =>
  * The parameter bindings the call sites give: file → exported function →
  * argument per position, `null` where two sites disagree or one is short. Only
  * an assembly function or a driver's wiring function is a target — the two
- * exports the outside kinds call across files.
+ * exports the outside kinds call across files. A site in a test file does not
+ * bind: a test hands fakes, no evidence of what production hands.
  */
 const paramBindingsOf = (
   modules: ReadonlyMap<string, ModuleNode>,
 ): Map<string, Map<string, (ArgValue | null)[]>> => {
   const bindings = new Map<string, Map<string, (ArgValue | null)[]>>()
   for (const [from, node] of modules) {
-    if (node.reading === null) continue
+    if (node.reading === null || node.layer === "test") continue
     for (const call of readingCalls(node.reading)) {
       const { callee } = call
       const target =
@@ -290,6 +291,9 @@ export const createExtraction = ({
             : { name: tech.name, exempts: tech.exempts },
         importTargetOf: (specifier) =>
           importTargetKindOf(tech, targetOfSpecifier(specifier), specifier),
+        // the flavor's word on export names, plain data; a flavor without the
+        // rule names nothing
+        isFactory: (name) => flavor.isFactory?.(name) ?? false,
         ...(paramKinds ? { paramKinds } : {}),
         configLoads,
       })
@@ -428,11 +432,12 @@ export const createExtraction = ({
     // the graph pass: parameters are bound at their call sites. An assembly
     // function or a sub-driver's wiring function called from another
     // outside-kind file takes its parameters' kinds from the arguments,
-    // joined over every site — the files that gained a binding are read
-    // again with it, the tree parsed again rather than kept. A binding can
-    // make another site's argument known (a root assembly's parameter handed
-    // on to a group assembly), so the pass runs to a fixed point: one round
-    // per level of the call chain, at most one per file.
+    // joined over every production site (a test's fakes bind nothing) — the
+    // files that gained a binding are read again with it, the tree parsed
+    // again rather than kept. A binding can make another site's argument
+    // known (a root assembly's parameter handed on to a group assembly), so
+    // the pass runs to a fixed point: one round per level of the call chain,
+    // at most one per file.
     let previous = ""
     for (let round = 0; round < modules.size; round += 1) {
       const bindings = paramBindingsOf(modules)

@@ -109,6 +109,18 @@ export const classifyStockEntry = (subpath: string): FlavorLayer | null => {
 }
 
 /**
+ * The stock naming rule over an export name — the "factories" half of this
+ * flavor's name, the implementation guide's `create<Name><Kind>`: `create`
+ * followed by a capital. Not `create` alone, not `createdAt`. `init<Name>` is
+ * the guide's assembly entrypoint, a factory by file kind already, so the rule
+ * does not list it.
+ */
+const FACTORY_NAME = /^create[A-Z]/
+
+export const isStockFactoryName = (name: string): boolean =>
+  FACTORY_NAME.test(name)
+
+/**
  * Stock flavor registry — name → factory, injected into `resolveConfig` by
  * assembly (a flavor is an adapter; neither the model nor another adapter may
  * import one). One entry today; a second stock flavor gets its own adapter
@@ -120,6 +132,7 @@ export const STOCK_FLAVORS: Readonly<Record<string, () => FlavorResolver>> = {
 
 export const createTsSuffixesFactoriesFlavor = (): FlavorResolver => ({
   classifyEntry: classifyStockEntry,
+  isFactory: isStockFactoryName,
   classify: (files) => {
     const roots = new Set<string>()
     for (const file of files) {

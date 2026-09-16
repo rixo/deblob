@@ -5,6 +5,7 @@ import {
   STOCK_FLAVORS,
   classifyStockEntry,
   createTsSuffixesFactoriesFlavor,
+  isStockFactoryName,
 } from "./ts-suffixes-factories-flavor.adapter.ts"
 
 const classify = (files: string[]) =>
@@ -252,5 +253,27 @@ describe("classifyStockEntry — the naming rule over subpath and specifier tail
   test("rides the resolver instance as classifyEntry — the port method is the same rule", () => {
     const flavor = createTsSuffixesFactoriesFlavor()
     expect(flavor.classifyEntry?.("checkout.service")).toBe("service")
+  })
+})
+
+describe("the factory naming rule — `create` followed by a capital", () => {
+  test("names the guide's factories", () => {
+    expect(isStockFactoryName("createSomeMadeUpService")).toBe(true)
+    expect(isStockFactoryName("createX")).toBe(true)
+  })
+
+  test("names nothing else: bare, lowercase continuation, other prefixes, the default export", () => {
+    expect(isStockFactoryName("create")).toBe(false)
+    expect(isStockFactoryName("createdAt")).toBe(false)
+    expect(isStockFactoryName("creates")).toBe(false)
+    expect(isStockFactoryName("initSomething")).toBe(false)
+    expect(isStockFactoryName("makeThing")).toBe(false)
+    expect(isStockFactoryName("default")).toBe(false)
+  })
+
+  test("rides the resolver instance as isFactory — the port method is the same rule", () => {
+    const flavor = createTsSuffixesFactoriesFlavor()
+    expect(flavor.isFactory?.("createSomeMadeUpThing")).toBe(true)
+    expect(flavor.isFactory?.("someMadeUpThing")).toBe(false)
   })
 })

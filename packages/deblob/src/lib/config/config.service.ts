@@ -102,6 +102,15 @@ export type DeblobConfig = {
    */
   typeOnlyExempt?: boolean
   /**
+   * `stateless-modules`, the readonly half: by default every module-level
+   * binding must be readonly-typed where the reader can see it (`as const`, a
+   * literal, `Object.freeze`, a `Readonly*` or primitive annotation). `true`
+   * says module state may be mutable-typed — the escape for a codebase without
+   * the types. Default: `false`. The other halves (a root factory call, a root
+   * call into tech) are not affected.
+   */
+  mutableModuleState?: boolean
+  /**
    * The tsconfig feeding resolution (`paths` aliases) — path relative to the
    * config file's directory. Default: `tsconfig.json` at the config root when
    * present. `false` disables discovery. A declared path that does not exist
@@ -179,6 +188,7 @@ export type ResolvedConfig = {
   exclude: readonly string[]
   pure: readonly string[]
   typeOnlyExempt: boolean
+  mutableModuleState: boolean
   /**
    * Declared tsconfig: absolute path, `false` = disabled, `undefined` =
    * discover `tsconfig.json` at the root (existence is a filesystem fact — the
@@ -219,6 +229,7 @@ const KNOWN_KEYS = [
   "exclude",
   "pure",
   "typeOnlyExempt",
+  "mutableModuleState",
   "tsconfig",
   "alias",
   "external",
@@ -482,6 +493,12 @@ export const resolveConfig = (
   ) {
     throw new ConfigError(`config key "typeOnlyExempt" must be a boolean`)
   }
+  if (
+    record["mutableModuleState"] !== undefined &&
+    typeof record["mutableModuleState"] !== "boolean"
+  ) {
+    throw new ConfigError(`config key "mutableModuleState" must be a boolean`)
+  }
 
   const { flavor, name: flavorName } = flavorOf(
     record["flavor"],
@@ -513,6 +530,8 @@ export const resolveConfig = (
     exclude,
     pure,
     typeOnlyExempt,
+    mutableModuleState:
+      (record["mutableModuleState"] as boolean | undefined) ?? false,
     tsconfig: tsconfigOf(record["tsconfig"], context.root),
     alias: aliasOf(record["alias"], context.root),
     external: externalMatcherOf(stringArrayKey(record, "external") ?? []),

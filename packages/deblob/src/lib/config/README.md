@@ -12,9 +12,12 @@ adapters over the platform; assembly owns the load → resolve sequence.
   `.assembly.ts`, `.driver.ts`, `.boot.ts` and test naming regardless),
   `configLoads` (the use cases an assembly may await, `"<file>#<name>"`, one or
   a list), `driverTech` (specifier patterns over packages a driver may import as
-  its tech), `include`, `exclude`, `pure`, `typeOnlyExempt`, `tsconfig`,
-  `alias`, `external`, `externalLayers`, `build`. `defineConfig` is the identity
-  that types a config file. Both are the package's public surface.
+  its tech), `include`, `exclude`, `pure`, `typeOnlyExempt`,
+  `mutableModuleState` (`true` lets module-level bindings be mutable-typed — the
+  opt-out of `stateless-modules`' readonly half for a codebase without the
+  types; default `false`, the check on), `tsconfig`, `alias`, `external`,
+  `externalLayers`, `build`. `defineConfig` is the identity that types a config
+  file. Both are the package's public surface.
 - `resolveConfig(raw, { root, configPath, flavors })` → `ResolvedConfig`. Takes
   the raw exported value and the stock flavor registry, validates every key with
   a teaching `ConfigError`, and returns the resolved run: the live

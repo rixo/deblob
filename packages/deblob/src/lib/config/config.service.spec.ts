@@ -48,7 +48,16 @@ describe("resolveConfig — defaults", () => {
     expect(resolved.exclude).toEqual(EXCLUDE_BASELINE)
     expect(resolved.pure).toEqual([])
     expect(resolved.typeOnlyExempt).toBe(true)
+    // the readonly check is on by default; the key is the opt-out
+    expect(resolved.mutableModuleState).toBe(false)
     expect(resolved.isAssembly("src/main.ts")).toBe(false)
+  })
+
+  test("mutableModuleState: true loosens the readonly check, false or absent keeps it", () => {
+    expect(resolve({ mutableModuleState: true }).mutableModuleState).toBe(true)
+    expect(resolve({ mutableModuleState: false }).mutableModuleState).toBe(
+      false,
+    )
   })
 
   test("defaults the flavor to the stock name's registry entry", () => {
@@ -112,6 +121,9 @@ describe("resolveConfig — validation", () => {
     )
     expect(() => resolve({ typeOnlyExempt: "yes" })).toThrowError(
       /"typeOnlyExempt".*boolean/s,
+    )
+    expect(() => resolve({ mutableModuleState: "yes" })).toThrowError(
+      /"mutableModuleState".*boolean/s,
     )
   })
 

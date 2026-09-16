@@ -37,4 +37,13 @@ export interface FlavorResolver {
    * flavor can carry its own rule later.
    */
   classifyEntry?(subpath: string): FlavorLayer | null
+
+  /**
+   * The naming rule over an export name — whether the flavor reads it as a
+   * factory. Consulted where the file kind does not already decide: a model
+   * export, a pure package's export, a local function. Optional: a flavor
+   * without it names no factory, and a model call stays bound by its result
+   * flow. Name only, no file content — the reader hands the name it resolved.
+   */
+  isFactory?(name: string): boolean
 }

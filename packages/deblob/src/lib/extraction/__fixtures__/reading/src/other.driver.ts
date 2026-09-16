@@ -23,5 +23,7 @@ export const other = async () => {
     // the service instance itself called, and the group's: not use cases
     services.app()
     services.group()
+    // a member of a model instance the flavor named: not a service's use case
+    services.registry.get("k")
   })
 }

@@ -58,6 +58,12 @@ export type ReadInput = {
   tech: { name: string; exempts: readonly Exemption[] } | null
   importTargetOf: (specifier: string) => ImportTargetKind
   /**
+   * The flavor's word on an export name — a factory or not — where the file
+   * kind does not decide: a model export, a pure package's export, a local
+   * function. Absent = nothing is a factory by name (step 01's reading).
+   */
+  isFactory?: (name: string) => boolean
+  /**
    * What the file's exported functions were called with, by export name
    * (`"default"` for the default export) and by position — the graph pass's
    * word; `null` where call sites disagree. A parameter no entry binds is
@@ -208,6 +214,137 @@ const unwrap = (node: AstNode): AstNode => {
   return current
 }
 
+// --- readonly, the syntactic fact -----------------------------------------
+// Immutability a type checker would know and this reader reads off the
+// syntax alone: no alias resolution, no inference. A census of the forms
+// TypeScript types as readonly without a checker; what is not listed reads
+// `false`, the strict side. `stateless-modules` reads it unless config says
+// `mutableModuleState`.
+
+/** Type keywords whose values are primitives — immutable by nature. */
+const PRIMITIVE_TYPE_KEYWORDS = new Set([
+  "TSStringKeyword",
+  "TSNumberKeyword",
+  "TSBooleanKeyword",
+  "TSBigIntKeyword",
+  "TSSymbolKeyword",
+  "TSNullKeyword",
+  "TSUndefinedKeyword",
+  "TSLiteralType",
+  "TSTemplateLiteralType",
+])
+
+/** The standard readonly wrappers, by name at the type's top. */
+const READONLY_TYPE_NAMES = new Set([
+  "Readonly",
+  "ReadonlyArray",
+  "ReadonlyMap",
+  "ReadonlySet",
+])
+
+/**
+ * A type written as readonly at its top: `Readonly<…>`, `readonly T[]`, a
+ * primitive, a union or intersection of those.
+ */
+const isReadonlyType = (type: AstNode): boolean => {
+  if (PRIMITIVE_TYPE_KEYWORDS.has(type.type)) return true
+  switch (type.type) {
+    case "TSTypeReference": {
+      const typeName = type["typeName"] as AstNode
+      return (
+        typeName.type === "Identifier" &&
+        READONLY_TYPE_NAMES.has(typeName["name"] as string)
+      )
+    }
+    case "TSTypeOperator":
+      return type["operator"] === "readonly"
+    case "TSParenthesizedType":
+      return isReadonlyType(type["typeAnnotation"] as AstNode)
+    case "TSUnionType":
+    case "TSIntersectionType":
+      return (type["types"] as AstNode[]).every(isReadonlyType)
+    default:
+      return false
+  }
+}
+
+/** `as const` / `<const>`: the assertion's type is the `const` reference. */
+const isConstAssertion = (type: AstNode): boolean =>
+  type.type === "TSTypeReference" &&
+  (type["typeName"] as AstNode)["name"] === "const"
+
+/**
+ * An initializer whose value is immutable by its form: a primitive-valued
+ * expression (a literal, a template, an operator's result), `undefined`, a
+ * function or class, `as const`, `Object.freeze(…)`, or an assertion to a
+ * readonly type.
+ */
+const isImmutableInitializer = (node: AstNode): boolean => {
+  switch (node.type) {
+    case "Literal":
+    case "TemplateLiteral":
+    case "UnaryExpression":
+    case "BinaryExpression":
+    case "ClassExpression":
+      return true
+    case "Identifier":
+      return node["name"] === "undefined"
+    case "LogicalExpression":
+      return (
+        isImmutableInitializer(node["left"] as AstNode) &&
+        isImmutableInitializer(node["right"] as AstNode)
+      )
+    case "ConditionalExpression":
+      return (
+        isImmutableInitializer(node["consequent"] as AstNode) &&
+        isImmutableInitializer(node["alternate"] as AstNode)
+      )
+    case "TSAsExpression":
+    case "TSTypeAssertion": {
+      const type = node["typeAnnotation"] as AstNode
+      return (
+        isConstAssertion(type) ||
+        isReadonlyType(type) ||
+        isImmutableInitializer(node["expression"] as AstNode)
+      )
+    }
+    case "ParenthesizedExpression":
+    case "TSSatisfiesExpression":
+    case "TSNonNullExpression":
+      return isImmutableInitializer(node["expression"] as AstNode)
+    case "CallExpression": {
+      const callee = node["callee"] as AstNode
+      return (
+        callee.type === "MemberExpression" &&
+        (callee["object"] as AstNode)["name"] === "Object" &&
+        (callee["property"] as AstNode)["name"] === "freeze"
+      )
+    }
+    default:
+      return isFunctionNode(node)
+  }
+}
+
+/** The annotation on a binding pattern, if written. */
+const annotationOf = (pattern: AstNode): AstNode | null => {
+  const annotation = pattern["typeAnnotation"]
+  return isNode(annotation) ? (annotation["typeAnnotation"] as AstNode) : null
+}
+
+/**
+ * A declarator is readonly-typed when it is a `const` and either its annotation
+ * or its initializer says so; a `let` or `var` never is. A destructuring
+ * pattern reads the whole declarator: `const { a } = FROZEN` is readonly iff
+ * `FROZEN`'s form is.
+ */
+const isReadonlyDeclarator = (form: string, declarator: AstNode): boolean => {
+  if (form !== "const") return false
+  const annotation = annotationOf(declarator["id"] as AstNode)
+  if (annotation !== null && isReadonlyType(annotation)) return true
+  const init = declarator["init"]
+  return isNode(init) && isImmutableInitializer(init)
+}
+
 const VALUE_RANK: Readonly<Record<ValueKind, number>> = {
   literal: 0,
   tech: 1,
@@ -343,6 +480,7 @@ export const readModule = ({
   source,
   tech,
   importTargetOf,
+  isFactory = () => false,
   paramKinds,
   configLoads = [],
 }: ReadInput): FileReading => {
@@ -531,6 +669,12 @@ export const readModule = ({
     if (name === undefined) return { callee: { kind: "unknown" }, rest }
     if (target.kind === "unresolved")
       return { callee: { kind: "unknown" }, rest }
+    // a model export — a covered model file's or a pure package's — is a
+    // factory when the flavor names it, and a function bound by flow otherwise
+    const modelCallee = (path: string): CalleeKind =>
+      isFactory(name)
+        ? { kind: "factory", layer: "model", path, name }
+        : { kind: "model", path, name }
     if (target.kind === "external") {
       const pkg = target.package ?? binding.specifier
       return {
@@ -539,7 +683,7 @@ export const readModule = ({
           target.claim === "tech"
             ? { kind: "tech", package: pkg }
             : target.claim === "model"
-              ? { kind: "model", path: binding.specifier, name }
+              ? modelCallee(binding.specifier)
               : { kind: "unclaimed", package: pkg },
       }
     }
@@ -553,7 +697,7 @@ export const readModule = ({
       case "driver":
         return { rest, callee: { kind: "wiring", path, name } }
       case "model":
-        return { rest, callee: { kind: "model", path, name } }
+        return { rest, callee: modelCallee(path) }
       case "ports":
       case "boot":
       case "test":
@@ -570,6 +714,11 @@ export const readModule = ({
           origin: { path: callee.path, name: callee.name, layer: callee.layer },
           path: [],
         }
+      case "local":
+        // a local factory builds an instance no factory file traces
+        return callee.factory
+          ? { kind: "instance", origin: null, path: [] }
+          : { kind: "computed", origin: null, path: [] }
       case "tech":
         return { kind: "tech", origin: null, path: [] }
       case "unknown":
@@ -754,7 +903,8 @@ export const readModule = ({
       }
       const resolved = resolveBinding(binding)
       if (members.length === 0) {
-        if (binding.isFunction) return { kind: "local", name }
+        if (binding.isFunction)
+          return { kind: "local", name, factory: isFactory(name) }
         if (resolved.kind === "instance")
           return {
             kind: "use-case",
@@ -1248,15 +1398,18 @@ export const readModule = ({
       } else if (isNode(init)) {
         evaluate(init, { kind: "destructured" }, true)
       }
+      const form = declaration["kind"] as string
+      const readonly = isReadonlyDeclarator(form, declarator)
       for (const { name, node } of names) {
         // declared by the same pattern walk on scope entry — always found
         const binding = lookup(scope, name) as Binding
         emit({
           kind: "definition",
           name,
-          form: declaration["kind"] as string,
+          form,
           exported,
           value: resolveBinding(binding).kind,
+          readonly,
           span: spanOf(node),
         })
       }
@@ -1290,6 +1443,9 @@ export const readModule = ({
           form: "default",
           exported: true,
           value: value.kind,
+          // a default-exported expression is a binding nothing reassigns:
+          // readonly by its initializer's form
+          readonly: isImmutableInitializer(declaration),
           span: spanOf(statement),
         })
         return
@@ -1315,6 +1471,8 @@ export const readModule = ({
           exported,
           value:
             statement.type === "TSEnumDeclaration" ? "literal" : "function",
+          // code, not state
+          readonly: true,
           span: spanOf(statement),
         })
         return
