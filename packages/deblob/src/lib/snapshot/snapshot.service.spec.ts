@@ -132,9 +132,12 @@ describe("createSnapshotService", () => {
   })
 })
 
+// every root a test selects: `serveSnapshots` runs nothing outside its list
 const FAKE_PROJECTS = [
   { root: "/FAKE_A", name: "FAKE_A" },
   { root: "/FAKE_B", name: null },
+  { root: "/FAKE_BROKEN", name: null },
+  { root: "/FAKE_SLOW", name: null },
 ]
 
 const FAKE_BUG = new Error("FAKE_BUG")
@@ -265,6 +268,21 @@ describe("serveSnapshots", () => {
     await send({ type: "select", project: "/FAKE_A" })
     expect(rootOf(3)).toBe("/FAKE_A")
     expect(watching()).toEqual([["/FAKE_A", "/FAKE_A/src"]])
+    expect(sent).toHaveLength(4)
+  })
+
+  test("a select outside the list is answered and never run: nothing extracted, nothing watched", async () => {
+    const { sent, send, watching } = await connectServed()
+    await send({ type: "select", project: "/FAKE_UNOFFERED" })
+    expect(sent[2]).toEqual({
+      type: "error",
+      project: "/FAKE_UNOFFERED",
+      message: "not a project this server shows",
+    })
+    // no run, no move: the watch is still the one the first project set
+    expect(watching()).toEqual([["/FAKE_A", "/FAKE_A/src"]])
+    // the connection lives on, on the project it was already showing
+    await send({ type: "select", project: "/FAKE_B" })
     expect(sent).toHaveLength(4)
   })
 

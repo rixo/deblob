@@ -296,10 +296,13 @@ step's cut.
   `snapshot.project.root` would drop every answer of a project whose config sits
   above its listed directory (the two roots), and the `snapshot` message no
   longer carries the requested root. Keying needs that field back.
-- **`select` of any directory answers a snapshot.** `serveSnapshots` does not
+- ~~**`select` of any directory answers a snapshot.** `serveSnapshots` does not
   check `select` against its list; `loadConfig` walks up from anywhere and lands
   on the defaults, so a root outside the list — or no directory at all — comes
-  back as an empty snapshot rather than an error.
+  back as an empty snapshot rather than an error.~~ — fixed 2026-09-16: a root
+  the server did not offer is answered `error` and never run. It mattered more
+  than "laxity" said: the channel has no origin check, so any page in the
+  browser could reach it and name any path (05 § Findings).
 - **Extraction has no failure vocabulary.** A covered file that fails to parse
   throws a bare `Error` from the oxc adapter; the CLI does not catch it (stack,
   no exit code), the server reports it and keeps serving. Doctrine says an

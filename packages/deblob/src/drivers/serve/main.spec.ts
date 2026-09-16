@@ -146,6 +146,24 @@ test("a file written under the shown project pushes its snapshot again", async (
   }
 })
 
+test("without a bundle there is nothing to serve: a plain request is answered 404, not left hanging", async () => {
+  const { root } = await viewerProject()
+  const { port, close } = await main({
+    cwd: root,
+    port: 0,
+    bundle: null,
+    stdout: { write: () => {} },
+    stderr: { write: () => {} },
+  })
+  try {
+    const base = `http://127.0.0.1:${port}`
+    expect((await fetch(base)).status).toBe(404)
+    expect((await fetch(`${base}${WS_PATH}`)).status).toBe(404)
+  } finally {
+    await close()
+  }
+})
+
 test("the server's own failures go to stderr in full; it keeps serving", async () => {
   const { root } = await viewerProject()
   let err = ""

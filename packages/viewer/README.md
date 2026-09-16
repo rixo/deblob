@@ -23,7 +23,8 @@ through a type-only import. JSON throughout.
   root and name), `snapshot`, `error` (project, message). Client to server:
   `select` (project root). On connect the server sends `projects`, then the
   first project's `snapshot`; a project whose extraction fails yields `error`
-  and the connection lives on.
+  and the connection lives on. `projects` is the whole menu: a `select` naming
+  anything else answers `error` too.
 
 `src/lib/snapshot/snapshot-source.port.ts` is the app's side: `SourceState`
 (projects, and loading / loaded / errored — the previous snapshot stays up while

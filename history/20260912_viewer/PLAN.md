@@ -95,6 +95,14 @@ through Vitest browser mode enters there).
 
 ## Open
 
+- **The channel takes any page (2026-09-16).** WebSocket handshakes are exempt
+  from CORS, so while a server runs, any page in the browser can open the
+  channel; nothing checks `Origin`. The `select` membership check bounds what
+  that reaches to the configured projects, which is why it went first. Closing
+  it is a step: under `deblob view` page and channel share an origin, so a
+  strict same-origin check suffices; the dev cycle has two origins (Vite's page,
+  our channel) and needs an allowlist or Vite's own answer, a per-run token in
+  the page. Sized, not ruled.
 - **Data contract.** What the viewer asks for is the viewer's to define and
   `deblob`'s dump to conform to. Not settled; step 01 ships a stamp only.
 - **Driver layer rulings** happening in the main checkout (driver vs assembly,

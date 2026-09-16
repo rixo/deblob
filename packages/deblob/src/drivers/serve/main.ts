@@ -58,39 +58,48 @@ export const main = async (io: ServeIo) => {
   })
   const watcher = createChokidarWatcher({ quietMs: 100, report })
   serveSnapshots({ channel, projects, runOf, watcher, report })
-  if (io.bundle !== null) {
-    const { respondTo } = createViewService({
-      files: createFsBundle({ root: io.bundle }),
-      reserved: [WS_PATH],
-    })
-    // the whole translation: node's request in, node's response out — what to
-    // answer was decided by the service, a request that is not its own included
-    server.on("request", (request, response) => {
-      void respondTo({
+  // no bundle: the channel is all this server has, and every plain request is
+  // a 404 — the listener is attached either way, or a stray GET is answered by
+  // nobody and hangs until node times the request out
+  const view =
+    io.bundle === null
+      ? null
+      : createViewService({
+          files: createFsBundle({ root: io.bundle }),
+          reserved: [WS_PATH],
+        })
+  // the whole translation: node's request in, node's response out — what to
+  // answer was decided by the service, a request that is not its own included
+  server.on("request", (request, response) => {
+    if (view === null) {
+      response.writeHead(404).end()
+      return
+    }
+    void view
+      .respondTo({
         // a served request always has both — node's types are looser than its
         // runtime, and a `??` arm here would be unreachable by construction
         method: request.method as string,
         path: request.url as string,
       })
-        .then((answer) => {
-          if (answer === null) {
-            response.writeHead(404).end()
-            return
-          }
-          response
-            .writeHead(answer.status, {
-              "content-type": answer.contentType,
-              "content-length": answer.body.byteLength,
-            })
-            .end(answer.body)
-        })
-        .catch((error: unknown) => {
-          // a server does not die for one request: say it in full, answer 500
-          report(error)
-          response.writeHead(500).end()
-        })
-    })
-  }
+      .then((answer) => {
+        if (answer === null) {
+          response.writeHead(404).end()
+          return
+        }
+        response
+          .writeHead(answer.status, {
+            "content-type": answer.contentType,
+            "content-length": answer.body.byteLength,
+          })
+          .end(answer.body)
+      })
+      .catch((error: unknown) => {
+        // a server does not die for one request: say it in full, answer 500
+        report(error)
+        response.writeHead(500).end()
+      })
+  })
   await new Promise<void>((resolve) => server.listen(io.port, HOST, resolve))
   const { port } = server.address() as AddressInfo
   io.stdout.write(

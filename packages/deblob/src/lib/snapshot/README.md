@@ -24,15 +24,17 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
 - `serveSnapshots({ channel, projects, runOf, watcher, report })`: the protocol
   in one place. On connect: `projects`, then the first project's `snapshot`, its
   watch set watched. On `select`: that project's `snapshot`, the watch moved to
-  it. On a change under the watch: the current project's `snapshot` again,
-  unasked, the set refreshed. On close: the watch closed. Runs for one client
-  never overlap — a change or select mid-run marks one more run; an answer for a
-  project no longer current is dropped. The project's own failure, its config,
-  answers `error` for that project, the watch set as it was (the root is in it:
-  fixing the config is a change). Anything else is a bug: reported in full
-  through `report` (the driver's stderr), and the client hears that the server
-  failed on that project. Either way the connection lives on — a server does not
-  die for one project. An empty project list is a caller error, raised at once.
+  it — the list sent on connect is the whole menu, and a root outside it answers
+  `error` and is never run. On a change under the watch: the current project's
+  `snapshot` again, unasked, the set refreshed. On close: the watch closed. Runs
+  for one client never overlap — a change or select mid-run marks one more run;
+  an answer for a project no longer current is dropped. The project's own
+  failure, its config, answers `error` for that project, the watch set as it was
+  (the root is in it: fixing the config is a change). Anything else is a bug:
+  reported in full through `report` (the driver's stderr), and the client hears
+  that the server failed on that project. Either way the connection lives on — a
+  server does not die for one project. An empty project list is a caller error,
+  raised at once.
 - `snapshot.model.ts` —
   `snapshotFrom({ config, graph, sizes, name, generatedAt })`: the pure fold.
   Config paths are shown relative to the root when under it.

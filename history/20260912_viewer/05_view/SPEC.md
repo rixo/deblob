@@ -329,9 +329,14 @@ Surfaced while building:
   the cwd, so an explicit config path is silently not honoured. No behaviour
   invented — either it teaches (usage error) or it is threaded through to
   `projectsOf`; a ruling, not a slip to fix in passing.
-- **A server with `bundle: null` has no `request` listener at all**, so a stray
-  GET is answered by nobody and hangs until node's request timeout. Pre-existing
-  (step 03), invisible in the dev cycle because Vite only proxies the channel
-  path.
+- ~~**A server with `bundle: null` has no `request` listener at all**, so a
+  stray GET is answered by nobody and hangs until node's request timeout~~ —
+  fixed 2026-09-16. The listener is attached either way and answers 404 with no
+  bundle. Recording it here was the mistake: it is a defect in the surface this
+  chapter built, not a fork to rule.
+- ~~**`select` of any directory answers a snapshot** (SPEC 03 § Findings)~~ —
+  fixed 2026-09-16 alongside it. `serveSnapshots` answers `error` for a root it
+  did not offer and runs nothing. The spec's own harness had been selecting two
+  roots it never announced, which is how the hole stayed invisible.
 
 The rest filled as the step is built.

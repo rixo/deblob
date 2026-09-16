@@ -182,6 +182,17 @@ export const serveSnapshots = ({
     }
 
     client.onMessage(async (message) => {
+      // the list the client was sent is the whole menu: anything else is
+      // answered and never run — a client asking for a directory it was not
+      // offered is a bug, or a page that is not ours
+      if (!projects.some(({ root }) => root === message.project)) {
+        client.send({
+          type: "error",
+          project: message.project,
+          message: "not a project this server shows",
+        })
+        return
+      }
       current = message.project
       const previous = watch
       watch = null
