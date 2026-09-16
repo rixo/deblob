@@ -89,20 +89,22 @@
    success test is met: `deblob view` opens the viewer on a codebase, and it
    follows the codebase as it changes.
 
+6. `06_channel-access/` — the socket answers the viewer, not any page: a
+   WebSocket handshake is not gated by CORS, so `Origin` and `Host` are checked
+   on the upgrade: a loopback host, and a loopback origin on the same port — the
+   port is what says the page is this server's, the loopback names alias each
+   other. One rule for both servers: the viewer's socket goes to its own origin,
+   and Vite's proxy forwards both headers. Additive: the protocol and the viewer
+   do not change. Ratified and built 2026-09-16 in three review checkpoints (the
+   predicate as a model, the channel's required `allows` answering 403, the
+   refusal line on the driver's stderr).
+
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
 through Vitest browser mode enters there).
 
 ## Open
 
-- **The channel takes any page (2026-09-16).** WebSocket handshakes are exempt
-  from CORS, so while a server runs, any page in the browser can open the
-  channel; nothing checks `Origin`. The `select` membership check bounds what
-  that reaches to the configured projects, which is why it went first. Closing
-  it is a step: under `deblob view` page and channel share an origin, so a
-  strict same-origin check suffices; the dev cycle has two origins (Vite's page,
-  our channel) and needs an allowlist or Vite's own answer, a per-run token in
-  the page. Sized, not ruled.
 - **Data contract.** What the viewer asks for is the viewer's to define and
   `deblob`'s dump to conform to. Not settled; step 01 ships a stamp only.
 - **Driver layer rulings** happening in the main checkout (driver vs assembly,

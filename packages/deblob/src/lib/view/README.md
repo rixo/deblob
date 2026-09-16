@@ -3,7 +3,10 @@
 The built viewer, served over HTTP. `deblob view` gives the browser a page and
 the assets it asks for; everything the page then does — the project list, the
 snapshots, the pushes on change — is [snapshot](../snapshot/README.md) over the
-WebSocket channel on the same port.
+WebSocket channel on the same port. One port is also what makes the channel's
+rule simple: the page and the channel share an origin, so the channel can answer
+its own page and refuse every other
+([handshake](../snapshot/handshake.model.ts)).
 
 The bundle is a directory of files this package ships (`dist/viewer`, copied
 from `packages/viewer/dist` by `scripts/build-viewer.ts`). Serving it is two

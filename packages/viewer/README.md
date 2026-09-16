@@ -58,12 +58,18 @@ pnpm dev
 
 Two processes: Vite serving the page, and deblob's data server run from its
 source (`node --watch ../deblob/src/drivers/serve/bin.ts`, port 5175) with this
-package as its cwd. Vite proxies `/deblob/ws` to it. The server watches the
-project it shows — every directory its coverage spans, plus its root for the
-config files — and pushes a fresh snapshot after a change settles, no reload, no
-click. Editing deblob's own source (or this package's `deblob.config.ts`, which
-the server loads) restarts the server; the page reconnects on its own, the last
-snapshot staying up meanwhile, and comes back on the project it was showing.
+package as its cwd. Vite proxies `/deblob/ws` to it — and because the entry
+builds the socket URL from `location.host`, the browser opens it on Vite's own
+origin, which the proxy forwards unchanged. So the data server sees a
+same-origin handshake and applies the same rule `deblob view` does, with no
+dev-only escape: a page on another local port is refused here too. A client of
+your own needs `--origin http://localhost:5173`, or whichever port Vite took.
+The server watches the project it shows — every directory its coverage spans,
+plus its root for the config files — and pushes a fresh snapshot after a change
+settles, no reload, no click. Editing deblob's own source (or this package's
+`deblob.config.ts`, which the server loads) restarts the server; the page
+reconnects on its own, the last snapshot staying up meanwhile, and comes back on
+the project it was showing.
 
 Editing this package's own source updates the page in place too. Components are
 their own HMR boundaries; everything else under the entry — the source adapter,

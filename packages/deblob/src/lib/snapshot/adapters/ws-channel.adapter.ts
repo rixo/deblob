@@ -5,6 +5,11 @@
  * that rejects, is reported and the socket lives on; nobody listening means the
  * frame is dropped, as the port says. The socket's `close` — the client's own,
  * or `terminate` from here — is the port's close.
+ *
+ * `allows` decides on the handshake's own headers, before any client exists:
+ * refused is a `403` on the raw socket and nothing else — no `ChannelClient`,
+ * no `connection`, nothing for the rest of the server to hear. The rule itself
+ * is the caller's (`handshake.model.ts`); this only asks and translates.
  */
 
 import type { IncomingMessage, Server } from "node:http"
@@ -15,6 +20,7 @@ import type {
 } from "@deblob/viewer/snapshot.model"
 import { WebSocketServer } from "ws"
 
+import type { Handshake } from "../handshake.model.ts"
 import type { Channel } from "../ports/channel.port.ts"
 import type { Report } from "../ports/report.port.ts"
 
@@ -42,15 +48,24 @@ export const createWsChannel = ({
   server,
   path,
   report,
+  allows,
 }: {
   server: Server
   path: string
   report: Report
+  /** Who may open the channel, on the handshake's headers alone. */
+  allows: (handshake: Handshake) => boolean
 }) => {
   const wss = new WebSocketServer({ noServer: true })
   server.on("upgrade", (request, socket, head) => {
     if (pathOf(request) !== path) {
       socket.destroy()
+      return
+    }
+    // not ours: said out loud, so a client that is refused knows why it was
+    const { origin, host } = request.headers
+    if (!allows({ origin, host })) {
+      socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n")
       return
     }
     wss.handleUpgrade(request, socket, head, (ws) => {

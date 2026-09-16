@@ -53,6 +53,11 @@ deblob view                  serve the viewer on this project
   package, so there is nothing to install and nothing to build. Which projects
   it lists comes from config (`view.projects`), never from the command line;
   with no list it shows the project you ran it in. Ctrl-C stops it; it exits 0.
+  It answers its own page and nothing else: the data channel refuses a handshake
+  from any other origin, so no page you happen to have open elsewhere in the
+  browser can read your file tree through it. A client that is not a browser has
+  to say where it is from — `wscat --origin http://127.0.0.1:3615` — and a
+  refusal prints one line saying which origin was turned away.
 
 Violations cite their rule and print the offending edge:
 

@@ -11,11 +11,15 @@ import { createWsChannel } from "./ws-channel.adapter.ts"
 const FAKE_PROJECTS: ServerMessage = { type: "projects", projects: [] }
 
 /** A real client: every text frame collected, awaited by count. */
-const connect = (url: string) => {
-  const ws = new WebSocket(url)
+const connect = (url: string, options: { origin?: string } = {}) => {
+  const ws = new WebSocket(url, options)
   const received: unknown[] = []
   const closed = new Promise<void>((resolve) => ws.on("close", () => resolve()))
-  ws.on("error", () => {})
+  // swallowed, and kept: a refused handshake arrives here, not as a frame
+  let failure = ""
+  ws.on("error", (error: Error) => {
+    failure = error.message
+  })
   ws.on("message", (data) => {
     received.push(JSON.parse(String(data)))
   })
@@ -28,6 +32,7 @@ const connect = (url: string) => {
     opened,
     closed,
     until,
+    failure: () => failure,
     send: (text: string) => ws.send(text),
     close: () => ws.close(),
   }
@@ -38,10 +43,12 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup()
 })
 
-const serverOn = async (path: string) => {
+// the rule is `handshake.model.ts`'s and tested there; here it is a value, so
+// these tests say what the adapter does with each answer and nothing more
+const serverOn = async (path: string, allows: () => boolean = () => true) => {
   const server = createServer()
   const { report, reported } = createMemoryReport()
-  const { channel, close } = createWsChannel({ server, path, report })
+  const { channel, close } = createWsChannel({ server, path, report, allows })
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
   const { port } = server.address() as AddressInfo
   const closeAll = async () => {
@@ -53,6 +60,7 @@ const serverOn = async (path: string) => {
     channel,
     reported,
     close: closeAll,
+    host: `127.0.0.1:${port}`,
     url: (p: string) => `ws://127.0.0.1:${port}${p}`,
   }
 }
@@ -135,6 +143,47 @@ test("a client closing, or terminated by close, reaches the handler", async () =
   await terminated.closed
   while (closed < 2) await new Promise((r) => setTimeout(r, 5))
   expect(closed).toBe(2)
+})
+
+test("the handshake's headers are what the rule is asked about", async () => {
+  const seen: unknown[] = []
+  const server = createServer()
+  const { report } = createMemoryReport()
+  createWsChannel({
+    server,
+    path: "/FAKE_WS",
+    report,
+    allows: (handshake) => {
+      seen.push(handshake)
+      return true
+    },
+  })
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+  const { port } = server.address() as AddressInfo
+  cleanups.push(
+    () => new Promise<void>((resolve) => server.close(() => resolve())),
+  )
+  const client = connect(`ws://127.0.0.1:${port}/FAKE_WS`, {
+    origin: "http://SOME_OTHER_SITE.example",
+  })
+  await client.opened
+  expect(seen).toEqual([
+    { origin: "http://SOME_OTHER_SITE.example", host: `127.0.0.1:${port}` },
+  ])
+  client.close()
+  await client.closed
+})
+
+test("a handshake the rule refuses: no client reaches the handler", async () => {
+  const { channel, url } = await serverOn("/FAKE_WS", () => false)
+  let clients = 0
+  channel.onClient(async () => {
+    clients += 1
+  })
+  const client = connect(url("/FAKE_WS"))
+  await client.closed
+  expect(client.failure()).toContain("403")
+  expect(clients).toBe(0)
 })
 
 test("close terminates the clients still connected", async () => {

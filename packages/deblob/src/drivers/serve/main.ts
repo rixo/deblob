@@ -13,6 +13,7 @@ import { inspect } from "node:util"
 
 import { createChokidarWatcher } from "../../lib/snapshot/adapters/chokidar-watcher.adapter.ts"
 import { createWsChannel } from "../../lib/snapshot/adapters/ws-channel.adapter.ts"
+import { allowsHandshake } from "../../lib/snapshot/handshake.model.ts"
 import type { Report } from "../../lib/snapshot/ports/report.port.ts"
 import {
   createSnapshotService,
@@ -55,6 +56,17 @@ export const main = async (io: ServeIo) => {
     server,
     path: WS_PATH,
     report,
+    // a refusal is not a bug, so it does not go through `report` — but a
+    // server that turns clients away without a word cannot be debugged
+    allows: (handshake) => {
+      if (allowsHandshake(handshake)) return true
+      // the origin alone: the host is this server's own address, already on
+      // the line it printed when it started
+      io.stderr.write(
+        `deblob: refused a handshake: origin ${handshake.origin ?? "(none)"}\n`,
+      )
+      return false
+    },
   })
   const watcher = createChokidarWatcher({ quietMs: 100, report })
   serveSnapshots({ channel, projects, runOf, watcher, report })

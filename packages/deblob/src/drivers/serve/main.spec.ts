@@ -53,7 +53,8 @@ const receive = (
   after: (ws: WebSocket, received: ServerMessage[]) => void = () => {},
 ): Promise<ServerMessage[]> =>
   new Promise((resolve, reject) => {
-    const ws = new WebSocket(url)
+    // where the page would be: the channel only answers its own origin
+    const ws = new WebSocket(url, { origin: `http://${new URL(url).host}` })
     const received: ServerMessage[] = []
     ws.on("error", reject)
     ws.on("message", (data) => {
@@ -146,6 +147,40 @@ test("a file written under the shown project pushes its snapshot again", async (
   }
 })
 
+test("a handshake that is not the viewer's is refused, and the refusal is said on stderr", async () => {
+  const { root } = await viewerProject()
+  let err = ""
+  const { port, close } = await main({
+    cwd: root,
+    port: 0,
+    bundle: null,
+    stdout: { write: () => {} },
+    stderr: { write: (chunk: string) => (err += chunk) },
+  })
+  const refused = (options: { origin?: string }) =>
+    new Promise<Error>((resolve) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}${WS_PATH}`, options)
+      ws.on("error", resolve)
+    })
+  try {
+    // a page somewhere else in the browser
+    const elsewhere = await refused({
+      origin: "http://SOME_OTHER_SITE.example",
+    })
+    expect(elsewhere.message).toContain("403")
+    expect(err).toContain(
+      "deblob: refused a handshake: origin http://SOME_OTHER_SITE.example",
+    )
+
+    // something that makes the request without choosing its headers
+    const headless = await refused({})
+    expect(headless.message).toContain("403")
+    expect(err).toContain("origin (none)")
+  } finally {
+    await close()
+  }
+})
+
 test("without a bundle there is nothing to serve: a plain request is answered 404, not left hanging", async () => {
   const { root } = await viewerProject()
   const { port, close } = await main({
@@ -175,7 +210,9 @@ test("the server's own failures go to stderr in full; it keeps serving", async (
     stderr: { write: (chunk: string) => (err += chunk) },
   })
   try {
-    const ws = new WebSocket(`ws://127.0.0.1:${port}${WS_PATH}`)
+    const ws = new WebSocket(`ws://127.0.0.1:${port}${WS_PATH}`, {
+      origin: `http://127.0.0.1:${port}`,
+    })
     await new Promise<void>((resolve) => ws.on("open", resolve))
     ws.send("{ not json")
     while (!err.includes("malformed client frame")) {

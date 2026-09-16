@@ -38,6 +38,14 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
 - `snapshot.model.ts` —
   `snapshotFrom({ config, graph, sizes, name, generatedAt })`: the pure fold.
   Config paths are shown relative to the root when under it.
+- `handshake.model.ts` — `allowsHandshake({ origin, host })`: who may open the
+  channel. A WebSocket handshake is not gated by CORS, so any page in the
+  browser reaches a local server unless the server refuses it. Allowed is a
+  loopback `host`, an `origin` that is there, and that origin being `http` on a
+  loopback name at the same port — the port is what says the page is this
+  server's own, and the loopback names alias each other. The `host` clause is
+  not redundant: under rebinding, a page's `Origin` and `Host` match because it
+  owns both.
 
 ## Ports
 
@@ -62,7 +70,9 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
   → `{ channel, close }` over the `ws` package, attached to an existing HTTP
   server's upgrade at one path so it coexists with another socket on the same
   server (Vite's). JSON text frames both ways. A malformed client frame or a
-  handler that rejects is reported and the socket lives on.
+  handler that rejects is reported and the socket lives on. `allows` is asked on
+  the handshake's own headers before any client exists; refused is a `403` on
+  the raw socket and nothing else — the rule itself is the caller's.
 - `adapters/memory-channel.adapter.ts` — `createMemoryChannel()` →
   `{ channel, connect }`: the caller connects clients and reads what they were
   sent; misuse (connecting before a server, sending before it listens) is loud.
@@ -94,7 +104,10 @@ manifest name — and `scan.adapter.ts`) and the extraction service.
   own failures on stderr in full, and it keeps serving. The CLI's `view` verb
   calls the same assembly with a bundle root, and the same server then answers
   the page and its assets at `/` ([view](../view/README.md)) — one port for
-  both, since the channel rides the HTTP server's upgrade.
+  both, since the channel rides the HTTP server's upgrade. Either way the
+  channel takes `allowsHandshake`, and a refusal is one line on stderr naming
+  the origin — not a bug, so not `report`'s, but a server that turns clients
+  away without a word cannot be debugged.
 - `snapshot/` — the script driver, package script `snapshot`: executed, never
   imported; cwd in as the project root (exactly, nothing above it), the snapshot
   as one JSON line on stdout, exit 0; a config error on stderr, exit 2. The
