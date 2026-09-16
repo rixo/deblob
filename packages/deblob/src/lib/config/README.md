@@ -7,18 +7,26 @@ adapters over the platform; assembly owns the load → resolve sequence.
 ## API
 
 - `DeblobConfig` (`config.service.ts`) — the authoring contract, all keys
-  optional: `flavor`, `assembly`, `include`, `exclude`, `pure`,
-  `typeOnlyExempt`, `tsconfig`, `alias`, `external`, `externalLayers`, `build`.
-  `defineConfig` is the identity that types a config file. Both are the
-  package's public surface.
+  optional: `flavor`, the four designations `assembly`, `drivers`, `boot`,
+  `tests` (globs for the kinds a framework names itself — the stock flavor reads
+  `.assembly.ts`, `.driver.ts`, `.boot.ts` and test naming regardless),
+  `configLoads` (the use cases an assembly may await, `"<file>#<name>"`, one or
+  a list), `driverTech` (specifier patterns over packages a driver may import as
+  its tech), `include`, `exclude`, `pure`, `typeOnlyExempt`, `tsconfig`,
+  `alias`, `external`, `externalLayers`, `build`. `defineConfig` is the identity
+  that types a config file. Both are the package's public surface.
 - `resolveConfig(raw, { root, configPath, flavors })` → `ResolvedConfig`. Takes
   the raw exported value and the stock flavor registry, validates every key with
   a teaching `ConfigError`, and returns the resolved run: the live
-  `FlavorResolver`, the assembly matcher, the coverage globs, the resolver
-  aliases, the declared-external matcher, the `externalLayers` lookup, the build
-  mirror. This is a service, not a model, because it holds a port shape.
-- `config.model.ts` — `ConfigError` and `asConfigError`, the coverage constants
-  (`DEFAULT_INCLUDE`, the non-removable `EXCLUDE_BASELINE`,
+  `FlavorResolver`, the four designation matchers, the normalized config loads,
+  the `driverTech` matcher, the coverage globs, the resolver aliases, the
+  declared-external matcher, the `externalLayers` lookup, the build mirror. A
+  `configLoads` entry is validated for shape only; whether its file is covered
+  is extraction's to say. This is a service, not a model, because it holds a
+  port shape.
+- `config.model.ts` — `ConfigError`, its duck-typed guard `isConfigError` (by
+  name; `instanceof` breaks across realms) and `asConfigError`, the coverage
+  constants (`DEFAULT_INCLUDE`, the non-removable `EXCLUDE_BASELINE`,
   `COVERAGE_EXTENSIONS`), the config-import error message.
 
 ## Adapters

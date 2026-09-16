@@ -5,8 +5,21 @@ import {
   COVERAGE_EXTENSIONS,
   asConfigError,
   hasCoverageExtension,
+  isConfigError,
   configImportErrorMessage,
 } from "./config.model.ts"
+
+describe("isConfigError", () => {
+  test("recognizes a ConfigError by name, across realms — an instance from elsewhere counts", () => {
+    expect(isConfigError(new ConfigError("SOME_MADE_UP_MESSAGE"))).toBe(true)
+    const foreign = Object.assign(new Error("SOME_MADE_UP_MESSAGE"), {
+      name: "ConfigError",
+    })
+    expect(isConfigError(foreign)).toBe(true)
+    expect(isConfigError(new Error("SOME_MADE_UP_BUG"))).toBe(false)
+    expect(isConfigError(null)).toBe(false)
+  })
+})
 
 describe("asConfigError", () => {
   test("passes a ConfigError through, rethrows anything else", () => {

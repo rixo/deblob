@@ -12,11 +12,20 @@ export class ConfigError extends Error {
 }
 
 /**
+ * The discriminant, duck-typed on the name: `instanceof` breaks across package
+ * boundaries and realms, a name travels.
+ */
+export const isConfigError = (error: unknown): error is ConfigError =>
+  typeof error === "object" &&
+  error !== null &&
+  (error as { name?: unknown }).name === "ConfigError"
+
+/**
  * The runner's catch filter: config errors are handled (message + exit code),
  * anything else is a bug and keeps flying.
  */
 export const asConfigError = (error: unknown): ConfigError => {
-  if (error instanceof ConfigError) return error
+  if (isConfigError(error)) return error
   throw error
 }
 

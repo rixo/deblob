@@ -3,6 +3,8 @@ import { defineConfig } from "vitest/config"
 export default defineConfig({
   test: {
     include: ["src/**/*.spec.ts"],
+    // fixture repos carry spec files of their own — test data, never run
+    exclude: ["**/node_modules/**", "**/__fixtures__/**"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],

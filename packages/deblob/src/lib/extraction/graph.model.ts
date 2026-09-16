@@ -6,8 +6,22 @@
  * parsed, never expanded.
  */
 
+/**
+ * The file kinds: the hexagon (model, ports, service), its adapters, the three
+ * outside kinds that build and fire it (assembly, driver, boot), the test kind
+ * — assembly and driver in one — and blob, the unqualified rest. A closed
+ * union: every switch and record over it is total by the compiler.
+ */
 export type Layer =
-  "model" | "ports" | "service" | "adapters" | "assembly" | "blob"
+  | "model"
+  | "ports"
+  | "service"
+  | "adapters"
+  | "assembly"
+  | "driver"
+  | "boot"
+  | "test"
+  | "blob"
 
 /** The layer vocabulary as a value — config validation enumerates through it. */
 export const LAYERS: readonly Layer[] = [
@@ -16,8 +30,40 @@ export const LAYERS: readonly Layer[] = [
   "service",
   "adapters",
   "assembly",
+  "driver",
+  "boot",
+  "test",
   "blob",
 ]
+
+/**
+ * Extraction's failure vocabulary. One code today: the config designated one
+ * file under two kinds — the user's to fix, so the driver presents it. A parse
+ * failure is the next candidate and still throws bare.
+ */
+export type ExtractionErrorCode =
+  "designation-conflict" | "load-file-not-covered"
+
+export class ExtractionError extends Error {
+  override name = "ExtractionError"
+  readonly code: ExtractionErrorCode
+  // no parameter property: the package runs on Node's type stripping, which
+  // accepts erasable syntax only
+  constructor(code: ExtractionErrorCode, message: string) {
+    super(message)
+    this.code = code
+  }
+}
+
+/**
+ * The discriminant, duck-typed on the name like `isConfigError`: `instanceof`
+ * breaks across package boundaries and realms, a name travels. `code` tells the
+ * failures apart once there are several.
+ */
+export const isExtractionError = (error: unknown): error is ExtractionError =>
+  typeof error === "object" &&
+  error !== null &&
+  (error as { name?: unknown }).name === "ExtractionError"
 
 /**
  * Bare-specifier package name (`zod`, `@scope/name`, `node:path`); `null` for
@@ -59,10 +105,11 @@ export const specifierMatcher = (
 }
 
 /**
- * What a flavor can say about a file. Source naming never yields `assembly` —
- * that is granted by the caller's designation matcher — but test naming does
- * (`test-setup-assembly`, and opinions live in the flavor); the designation
- * matcher still ORs on top for exotic naming.
+ * What a flavor can say about a file: any kind, from the path alone. The stock
+ * flavor reads the outside kinds from their suffixes (`.assembly.ts`,
+ * `.driver.ts`, `.boot.ts`) and test naming as `test`; the caller's designation
+ * matchers (`assembly`, `drivers`, `boot`, `tests` config globs) OR on top for
+ * a framework that owns the file name.
  */
 export type FlavorLayer = Layer
 
@@ -100,6 +147,197 @@ export type ModuleNode = {
    * statements are edge facts, never listed here.
    */
   runtimeContent: readonly RuntimeEntry[]
+  /**
+   * What the reader saw: root statements for every parsed file; functions and
+   * hooks for the outside kinds, cut with the file's tech. `null` when the
+   * engine parsed nothing, or when the file is of an outside kind no tech
+   * covers — recognized and open.
+   */
+  reading: FileReading | null
+}
+
+/** The driver rules a tech's shape exempts (`test-is-assembly-and-driver`). */
+export type Exemption =
+  "registration" | "call-count" | "services-only" | "definitions"
+
+/** Byte offsets plus the 1-based line and column, so nothing reopens the file. */
+export type Span = { start: number; end: number; line: number; column: number }
+
+/**
+ * What a value is, by what it is bound to: a literal (records and arrays of
+ * allowed values included); the tech's (an import a tech claims, a host global,
+ * a member or result of one, a hook's parameter); an instance (a factory
+ * result, a member of one); a function; anything computed (an operator, a
+ * language call, a `let` reassigned); or unknown (a parameter no call site
+ * binds, a node the reader does not know).
+ */
+export type ValueKind =
+  "literal" | "tech" | "instance" | "function" | "computed" | "unknown"
+
+/**
+ * Where an instance came from: the factory call that built it, by export, and
+ * the factory file's kind — an origin in an assembly is a record the reader
+ * cannot see through.
+ */
+export type InstanceOrigin = {
+  path: string
+  name: string
+  layer: "service" | "adapters" | "assembly" | "blob"
+}
+
+/** An argument as passed: its kind, and for an instance where it came from. */
+export type ArgValue = {
+  kind: ValueKind
+  origin: InstanceOrigin | null
+  /** Member path from the origin's result (`services.app` passed on). */
+  path: readonly string[]
+}
+
+/**
+ * What a callee is, by the binding at the root of its reference chain — the one
+ * table every outside rule reads (step 01 SPEC § Callee and value kinds).
+ */
+export type CalleeKind =
+  | {
+      kind: "factory"
+      layer: "service" | "adapters" | "assembly" | "blob"
+      path: string
+      name: string
+    }
+  | { kind: "wiring"; path: string; name: string }
+  | { kind: "model"; path: string; name: string }
+  | { kind: "forbidden-import"; layer: "ports" | "boot" | "test"; path: string }
+  | { kind: "tech"; package: string | null }
+  | { kind: "unclaimed"; package: string }
+  | { kind: "language" }
+  | { kind: "local"; name: string }
+  | { kind: "use-case"; member: string; origin: InstanceOrigin | null }
+  | { kind: "unknown" }
+
+/** One place a call's result reaches. */
+export type ResultUse =
+  | { kind: "argument"; to: CalleeKind }
+  | { kind: "returned" }
+  | { kind: "condition" }
+  | { kind: "member" }
+  | { kind: "entry" }
+  | { kind: "reassigned" }
+  | { kind: "computed" }
+  | { kind: "discarded" }
+
+export type ReadCall = {
+  span: Span
+  callee: CalleeKind
+  args: readonly ArgValue[]
+  /** Every context the result reaches — a bound result's uses, or its own. */
+  result: readonly ResultUse[]
+  /**
+   * For a `use-case` callee: the declared config load it matches, if any — by
+   * member name, and by file when the instance is traced to a factory that is
+   * not an assembly's record. A matched load's result is a tech value.
+   */
+  load: { file: string; name: string } | null
+}
+
+/**
+ * A body as a flat list of what happened in it, evaluation order: every call
+ * (nested ones included, each once), every definition, every branch or loop
+ * with its arms, every return. Not a syntax tree — what the rules read.
+ */
+export type ReadStatement =
+  | { kind: "call"; call: ReadCall }
+  | {
+      kind: "definition"
+      name: string | null
+      form: string
+      exported: boolean
+      value: ValueKind
+      span: Span
+    }
+  | {
+      kind: "control"
+      test: ValueKind
+      testOrigin: "parameter" | "load" | "instance" | "other"
+      arms: readonly (readonly ReadStatement[])[]
+      span: Span
+    }
+  | {
+      kind: "return"
+      value: ValueKind | null
+      /**
+       * A returned record literal, entry by entry — an assembly's returned
+       * record is how a driver's use cases trace back to their service. `null`
+       * when what is returned is not a record literal.
+       */
+      record: readonly { key: string; value: ArgValue }[] | null
+      span: Span
+    }
+  | { kind: "other"; span: Span }
+
+export type ReadHook = {
+  span: Span
+  /** The tech call this hook was handed to. */
+  registeredBy: ReadCall
+  body: readonly ReadStatement[]
+  hooks: readonly ReadHook[]
+}
+
+export type ReadFunction = {
+  name: string | null
+  exported: boolean
+  span: Span
+  /** Kinds bound at the function's call sites; unknown where none binds. */
+  params: readonly { name: string; kind: ValueKind }[]
+  /** Outside its hooks. */
+  body: readonly ReadStatement[]
+  hooks: readonly ReadHook[]
+}
+
+export type OpenPart = {
+  span: Span
+  why: "uncut-callback" | "unknown-callee" | "unbound-parameter"
+}
+
+export type FileReading = {
+  /** The tech that read the file; `null` for a file of an inside kind. */
+  tech: string | null
+  exempts: readonly Exemption[]
+  root: readonly ReadStatement[]
+  /** Hooks registered from module root — a spec file's `test()` bodies. */
+  hooks: readonly ReadHook[]
+  /** Top-level function definitions; empty for the inside kinds. */
+  functions: readonly ReadFunction[]
+  /** What the reader could not place — never a fact a rule fires on. */
+  open: readonly OpenPart[]
+}
+
+/**
+ * The shipped builtin baseline: Node builtins are concrete by default; this
+ * curated set is the pure exception — string-only, deterministic modules.
+ */
+export const PURE_BUILTINS: ReadonlySet<string> = new Set([
+  "node:path",
+  "node:querystring",
+])
+
+export type ExternalPurity = "pure" | "concrete" | "unclassified"
+
+/**
+ * The purity trichotomy of an external leaf: a resolved file outside coverage
+ * is concrete; a declared external is what `pure` says, concrete otherwise; a
+ * builtin is concrete unless curated or declared pure; a package is pure only
+ * when declared, unclassified otherwise — purity is declared, not presumed.
+ */
+export const externalPurityOf = (
+  target: Extract<EdgeTarget, { type: "external" }>,
+  pure: ReadonlySet<string>,
+): ExternalPurity => {
+  const pkg = target.package
+  if (pkg === null) return "concrete"
+  if (target.declared) return pure.has(pkg) ? "pure" : "concrete"
+  if (pkg.startsWith("node:"))
+    return PURE_BUILTINS.has(pkg) || pure.has(pkg) ? "pure" : "concrete"
+  return pure.has(pkg) ? "pure" : "unclassified"
 }
 
 export type EdgeKind = "runtime" | "type"

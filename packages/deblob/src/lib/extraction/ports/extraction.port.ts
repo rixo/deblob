@@ -1,8 +1,12 @@
 /**
  * The engine contract — parsing/resolution engines are adapters behind this
  * port (the architecture's answer to the TS 7 rupture). Implementations must
- * not leak engine shapes (spans, napi types) through it.
+ * not leak engine shapes (spans, napi types) through it. The syntax tree itself
+ * is not an engine shape: ESTree is the standard every parser targets, and the
+ * reader walks it.
  */
+
+import type { Program } from "@oxc-project/types"
 
 import type { EdgeForm, RuntimeEntry } from "../graph.model.ts"
 
@@ -38,6 +42,13 @@ export type FileExtraction = {
    * statements are never listed.
    */
   runtimeContent: readonly RuntimeEntry[]
+  /**
+   * The module's syntax tree: ESTree with TypeScript extensions, `start`/`end`
+   * byte offsets on every node. The reader's input, never kept past the file.
+   */
+  program: Program
+  /** The text the tree was parsed from — spans resolve to lines through it. */
+  source: string
 }
 
 export type Resolution =

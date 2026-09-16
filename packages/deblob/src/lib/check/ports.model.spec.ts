@@ -39,6 +39,7 @@ const graph = (
         isPrivate: false,
         parsed: true,
         runtimeContent: spec.runtimeContent ?? [],
+        reading: null,
       },
     ]),
   ),

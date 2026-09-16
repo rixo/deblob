@@ -15,6 +15,7 @@ import type {
   Layer,
   ModuleNode,
 } from "../extraction/graph.model.ts"
+import { externalPurityOf } from "../extraction/graph.model.ts"
 import type { RuleId } from "./rule.model.ts"
 import type { LayersViolation, TargetClass } from "./violation.model.ts"
 
@@ -34,52 +35,51 @@ export type CheckLayersOptions = {
 }
 
 /**
- * The shipped builtin baseline: Node builtins are concrete by default; this
- * curated set is the pure exception — string-only, deterministic modules.
- */
-const PURE_BUILTINS: ReadonlySet<string> = new Set([
-  "node:path",
-  "node:querystring",
-])
-
-type NonAssembly = Exclude<Layer, "assembly">
-
-/**
  * The in-set targets whose types are a contract (`runtime-import`'s "contract's
  * shape"): the composition units. Blob's shape is its implementation and
  * assembly is wiring — neither owns a contract, both bind type edges.
  */
 const TYPE_EXEMPT_TARGETS: ReadonlySet<Layer> = new Set(["service", "adapters"])
 
-type ExternalClass = "pure" | "concrete" | "unclassified"
+/**
+ * The outside kinds, outermost last: `assembly < driver < boot`. The test kind
+ * is outside too — assembly and driver in one — but sits in no chain: it is
+ * imported by nothing, and that rule has no slug in `RULE_IDS` until the
+ * outside rules land (driver-layer chapter, steps 03 and 06).
+ */
+const OUTSIDE_RANK = { assembly: 0, driver: 1, boot: 2 } as const
+type ChainedOutsideKind = keyof typeof OUTSIDE_RANK
 
-const classifyExternal = (
-  target: Extract<EdgeTarget, { type: "external" }>,
-  pure: ReadonlySet<string>,
-): ExternalClass => {
-  const pkg = target.package
-  // a resolved file outside the coverage set: ungoverned, undeclared ⇒ concrete
-  if (pkg === null) return "concrete"
-  // a declared external: the user already said what it is (a module the
-  // environment provides); its identity is the matched pattern, and purity
-  // is the one open question — concrete unless the pattern is a `pure`
-  // entry, never unclassified
-  if (target.declared) return pure.has(pkg) ? "pure" : "concrete"
-  // `pure` takes "package names and builtin specifiers" (ratified) — a
-  // declared builtin is pure like a declared package; undeclared builtins are
-  // enumerable and default concrete, never unclassified
-  if (pkg.startsWith("node:"))
-    return PURE_BUILTINS.has(pkg) || pure.has(pkg) ? "pure" : "concrete"
-  return pure.has(pkg) ? "pure" : "unclassified"
+const outsideRankOf = (layer: Layer): number | null =>
+  layer in OUTSIDE_RANK ? OUTSIDE_RANK[layer as ChainedOutsideKind] : null
+
+/**
+ * An import from an outside kind that points outward — assembly to driver,
+ * driver to boot: `inward-deps`. Toward the test kind the chain says nothing,
+ * and the "imported by nothing" rule waits for its slug. (The inside rows cite
+ * `inward-deps` for every outside target themselves, test included: from the
+ * inside, every outside kind is outward.)
+ */
+const outwardRules = (
+  importer: ChainedOutsideKind,
+  target: Layer,
+): readonly RuleId[] | null => {
+  const to = outsideRankOf(target)
+  return to !== null && OUTSIDE_RANK[importer] < to ? ["inward-deps"] : null
 }
 
 /**
  * Rules cited for a forbidden module cell, `null` for a legal one — base
  * citations; the `runtime-import` hint ("import type is fine") is appended by
- * the caller wherever the cell's type variant is exempt.
+ * the caller wherever the cell's type variant is exempt. Total over `Layer` by
+ * the compiler. The driver and boot rows cite what `RULE_IDS` names today: the
+ * composition seals and `blob-quarantine`. A driver importing model, or a boot
+ * importing anything but its driver, is canon's letter with no slug yet
+ * (`driver-calls-services-only`, `boot-one-call` — steps 03 and 06 of the
+ * driver-layer chapter), so those cells read legal here until then.
  */
 const moduleCellRules = (
-  importer: NonAssembly,
+  importer: Layer,
   target: Layer,
 ): readonly RuleId[] | null => {
   switch (importer) {
@@ -98,6 +98,22 @@ const moduleCellRules = (
       if (target === "service") return ["service-assembly-only"]
       if (target === "adapters") return ["adapter-assembly-only"]
       return target === "blob" ? ["blob-quarantine"] : ["inward-deps"]
+    case "assembly":
+      // imports anything inside, blob included; never outward
+      return outwardRules("assembly", target)
+    case "driver":
+      if (target === "service") return ["service-assembly-only"]
+      if (target === "adapters") return ["adapter-assembly-only"]
+      if (target === "blob") return ["blob-quarantine"]
+      return outwardRules("driver", target)
+    case "boot":
+      if (target === "service") return ["service-assembly-only"]
+      if (target === "adapters") return ["adapter-assembly-only"]
+      if (target === "blob") return ["blob-quarantine"]
+      return null
+    case "test":
+      // imports anything, blob included
+      return null
     case "blob":
       // blob binds under the composition seals only
       if (target === "service") return ["service-assembly-only"]
@@ -160,7 +176,6 @@ export const checkLayers = (
 
     const importer = moduleOf(graph, edge.from)
     const importerLayer = importer.layer
-    if (importerLayer === "assembly") continue
 
     if (edge.to.type === "module") {
       const target = moduleOf(graph, edge.to.path)
@@ -211,7 +226,7 @@ export const checkLayers = (
     // file outside the coverage set (package null) publishes nothing and binds
     const externalExempt = typeOnlyExempt && edge.to.package !== null
     if (typeEdge && externalExempt) continue
-    const externalClass = classifyExternal(edge.to, pure)
+    const externalClass = externalPurityOf(edge.to, pure)
     if (externalClass === "pure") continue
     if (externalClass === "unclassified") {
       violations.push({

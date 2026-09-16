@@ -175,6 +175,84 @@ describe("resolveConfig — tsconfig & alias", () => {
   })
 })
 
+describe("resolveConfig — the outside kinds: designations, configLoads, driverTech", () => {
+  test("defaults every designation to a matcher that matches nothing", () => {
+    const resolved = resolve({})
+    for (const matches of [
+      resolved.isAssembly,
+      resolved.isDriver,
+      resolved.isBoot,
+      resolved.isTest,
+    ]) {
+      expect(matches("src/anything.ts")).toBe(false)
+    }
+    expect(resolved.configLoads).toEqual([])
+    expect(resolved.driverTech("some-made-up-pkg")).toBe(false)
+  })
+
+  test("compiles each designation key to its own glob matcher", () => {
+    const resolved = resolve({
+      assembly: ["src/wire/**"],
+      drivers: ["src/routes/**/+page.svelte"],
+      boot: ["src/entry.ts"],
+      tests: ["**/__tests__/**"],
+    })
+    expect(resolved.isAssembly("src/wire/app.ts")).toBe(true)
+    expect(resolved.isDriver("src/routes/home/+page.svelte")).toBe(true)
+    expect(resolved.isDriver("src/routes/home/Card.svelte")).toBe(false)
+    expect(resolved.isBoot("src/entry.ts")).toBe(true)
+    expect(resolved.isTest("src/lib/__tests__/thing.ts")).toBe(true)
+    expect(resolved.isTest("src/lib/thing.ts")).toBe(false)
+  })
+
+  test("rejects a non-array designation, naming the key", () => {
+    for (const key of ["drivers", "boot", "tests"]) {
+      expect(() => resolve({ [key]: "src/**" })).toThrowError(
+        new RegExp(`"${key}" must be an array of strings`),
+      )
+    }
+  })
+
+  test("normalizes configLoads: one string or a list, each split at the hash", () => {
+    expect(
+      resolve({ configLoads: "src/lib/config/config.service.ts#load" })
+        .configLoads,
+    ).toEqual([{ file: "src/lib/config/config.service.ts", name: "load" }])
+    expect(
+      resolve({
+        configLoads: ["src/a/a.service.ts#loadA", "src/b/b.service.ts#loadB"],
+      }).configLoads,
+    ).toEqual([
+      { file: "src/a/a.service.ts", name: "loadA" },
+      { file: "src/b/b.service.ts", name: "loadB" },
+    ])
+  })
+
+  test("rejects a configLoads entry that is not <file>#<name>, quoting it", () => {
+    for (const entry of [
+      "src/a.service.ts",
+      "#load",
+      "src/a.service.ts#",
+      "a#b#c",
+    ]) {
+      expect(() => resolve({ configLoads: entry })).toThrowError(
+        new RegExp(`"configLoads": ${JSON.stringify(entry)}.*<file>#<name>`),
+      )
+    }
+    expect(() => resolve({ configLoads: 42 })).toThrowError(
+      /"configLoads" must be a "<file>#<name>" string or an array/,
+    )
+  })
+
+  test("compiles driverTech to a specifier matcher — the external grammar, any pattern matches", () => {
+    const { driverTech } = resolve({ driverTech: ["cac", "@made-up/*"] })
+    expect(driverTech("cac")).toBe(true)
+    expect(driverTech("@made-up/server")).toBe(true)
+    expect(driverTech("@made-up/server/deep")).toBe(false)
+    expect(driverTech("node:http")).toBe(false)
+  })
+})
+
 describe("resolveConfig — external specifier patterns", () => {
   test("defaults to a matcher that matches nothing", () => {
     expect(resolve({}).external("$made-up/config")).toBeNull()
@@ -320,7 +398,7 @@ describe("resolveConfig — externalLayers", () => {
     expect(() =>
       resolve({ externalLayers: { "@made-up/**": "SOME_MADE_UP_LAYER" } }),
     ).toThrowError(
-      /"@made-up\/\*\*".*SOME_MADE_UP_LAYER.*model, ports, service, adapters, assembly, blob/s,
+      /"@made-up\/\*\*".*SOME_MADE_UP_LAYER.*model, ports, service, adapters, assembly, driver, boot, test, blob/s,
     )
   })
 })

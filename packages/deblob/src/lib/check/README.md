@@ -18,7 +18,14 @@ One function per check, all over `ImportGraph` from `extraction`:
   `runtime-import`: a type-only edge is exempt where the target owns a contract
   shape. An external leaf carrying a layer enters the matrix as a target of that
   layer; an unlabeled external falls to the purity trichotomy (pure / concrete /
-  unclassified) that `pure` decides.
+  unclassified) that `pure` decides. The matrix is total over the nine kinds:
+  the driver, boot and test rows cite what `RULE_IDS` names today (the
+  composition seals, `blob-quarantine`, and `inward-deps` for an import that
+  points outward — assembly to driver, driver to boot, the inside to any of
+  them); a driver importing model, or a boot importing anything but its driver,
+  is canon's letter with no slug yet and reads legal until the outside rules
+  land (driver-layer chapter, steps 03 and 06). Externals from a driver or a
+  boot are not this check's: the driver's tech is read elsewhere.
 - `checkPrivate(graph)` — `private-sealed`. Every `private` path segment is one
   boundary; every edge kind and form binds.
 - `checkBarrels(graph, { tolerateBlobReexport? })` — `layer-in-path`. An index

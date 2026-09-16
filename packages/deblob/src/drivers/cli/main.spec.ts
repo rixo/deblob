@@ -376,6 +376,23 @@ describe("deblob check", () => {
     expect(err).toContain("deblob.config.ts")
   })
 
+  test("one file under two designation keys: extraction's teaching error on stderr, exit 2", async () => {
+    const { code, out, err } = await run(["check"], {
+      cwd: here("__fixtures__/twice-designated"),
+    })
+    expect(code).toBe(2)
+    expect(out).toBe("")
+    expect(err).toBe(
+      'src/main.ts is designated "assembly" and "boot" in deblob config — a file has one kind; narrow the globs\n',
+    )
+  })
+
+  test("a parse failure is a bug, not a config error: it keeps flying", async () => {
+    await expect(
+      run(["check"], { cwd: here("__fixtures__/unparsable") }),
+    ).rejects.toThrow(/parse failed/)
+  })
+
   test("check surface named by hand on a package with no field: one stderr note, no exports segment, exit 0 — a pass it never ran does not read as a pass", async () => {
     const named = await run(["check", "surface"], { cwd: cleanDir })
     expect(named.code).toBe(0)

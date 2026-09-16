@@ -12,20 +12,36 @@ import type {
  * directory.
  */
 
+/**
+ * Suffix → kind, inside and outside the hexagon alike. The outside kinds
+ * (assembly, driver, boot) are named by suffix like the inside ones; a
+ * framework that owns the file name declares its files by config glob instead.
+ */
 const LAYER_BY_SUFFIX: Record<string, FlavorLayer> = {
   model: "model",
   port: "ports",
   service: "service",
   adapter: "adapters",
+  assembly: "assembly",
+  driver: "driver",
+  boot: "boot",
 }
 
 const LAYER_SUFFIX =
-  /\.(model|port|service|adapter)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
+  /\.(model|port|service|adapter|assembly|driver|boot)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
 
 /**
- * `test-setup-assembly` — test naming is this flavor's opinion (same extension
- * set as layer suffixes). Closed carve-out: `__tests__/` and other directory
- * conventions stay to the config's `assembly` escape hatch.
+ * The hexagon's own kinds mark a service root where they sit; the outside kinds
+ * build and fire services without being one, so a driver directory is no
+ * service root.
+ */
+const ROOT_MARKING_SUFFIX =
+  /\.(?:model|port|service|adapter)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
+
+/**
+ * `test-is-assembly-and-driver` — test naming is this flavor's opinion (same
+ * extension set as layer suffixes). Closed carve-out: `__tests__/` and other
+ * directory conventions stay to the config's `tests` globs.
  */
 const TEST_SUFFIX = /\.(?:spec|test)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
 
@@ -49,7 +65,7 @@ const baseOf = (dir: string): string => {
 }
 
 const layerOf = (path: string): FlavorLayer => {
-  if (TEST_SUFFIX.test(path)) return "assembly"
+  if (TEST_SUFFIX.test(path)) return "test"
   const match = LAYER_SUFFIX.exec(path)
   if (!match) return "blob"
   // the regex alternation and the record keys are the same set
@@ -107,7 +123,7 @@ export const createTsSuffixesFactoriesFlavor = (): FlavorResolver => ({
   classify: (files) => {
     const roots = new Set<string>()
     for (const file of files) {
-      if (LAYER_SUFFIX.test(file)) roots.add(markedRootOf(file))
+      if (ROOT_MARKING_SUFFIX.test(file)) roots.add(markedRootOf(file))
     }
 
     const classifications = new Map<string, FlavorClassification>()

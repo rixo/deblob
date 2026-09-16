@@ -290,6 +290,10 @@ export const createOxcEngine = ({
       runtimeContent: collectRuntimeContent(
         result.program as unknown as AstNode,
       ),
+      // the tree itself: ESTree with TypeScript nodes, offsets on every node —
+      // the reader's input, dropped by the caller once read
+      program: result.program,
+      source,
     }
   }
 

@@ -35,6 +35,7 @@ const graph = (
         isPrivate: spec.isPrivate ?? false,
         parsed: true,
         runtimeContent: [],
+        reading: null,
       },
     ]),
   ),
@@ -976,6 +977,142 @@ describe("checkLayers", () => {
           rules: ["service-assembly-only", "runtime-import"],
         }),
       ])
+    })
+  })
+
+  describe("the outside kinds — driver, boot, test rows (`inward-deps`, the seals, `blob-quarantine`)", () => {
+    const outside = (edges: EdgeSpec[]) =>
+      checkLayers(
+        graph(
+          {
+            "src/cli.boot.ts": { layer: "boot" },
+            "src/cli.driver.ts": { layer: "driver" },
+            "src/sub.driver.ts": { layer: "driver" },
+            "src/cli.assembly.ts": { layer: "assembly" },
+            "src/cli.spec.ts": { layer: "test" },
+            "src/a/a.service.ts": { layer: "service", serviceRoot: "src/a" },
+            "src/a/a.adapter.ts": { layer: "adapters", serviceRoot: "src/a" },
+            "src/a/a.model.ts": { layer: "model", serviceRoot: "src/a" },
+            "src/a/a.port.ts": { layer: "ports", serviceRoot: "src/a" },
+            "src/legacy.ts": { layer: "blob" },
+          },
+          edges,
+        ),
+      )
+
+    test("a driver importing a composition unit or blob fires the seal or the quarantine", () => {
+      const violations = outside([
+        { from: "src/cli.driver.ts", to: mod("src/a/a.service.ts") },
+        { from: "src/cli.driver.ts", to: mod("src/a/a.adapter.ts") },
+        { from: "src/cli.driver.ts", to: mod("src/legacy.ts") },
+      ])
+      expect(violations.map((v) => v.rules)).toEqual([
+        ["service-assembly-only", "runtime-import"],
+        ["adapter-assembly-only", "runtime-import"],
+        ["blob-quarantine"],
+      ])
+    })
+
+    test("a driver type-importing a composition unit stays green — a hook's options name a shape", () => {
+      expect(
+        outside([
+          {
+            from: "src/cli.driver.ts",
+            to: mod("src/a/a.service.ts"),
+            kind: "type",
+          },
+        ]),
+      ).toEqual([])
+    })
+
+    test("a driver importing its assembly or another driver stays green", () => {
+      expect(
+        outside([
+          { from: "src/cli.driver.ts", to: mod("src/cli.assembly.ts") },
+          { from: "src/cli.driver.ts", to: mod("src/sub.driver.ts") },
+        ]),
+      ).toEqual([])
+    })
+
+    test("outward from the outside kinds fires `inward-deps` — assembly to driver, driver to boot", () => {
+      const violations = outside([
+        { from: "src/cli.assembly.ts", to: mod("src/cli.driver.ts") },
+        { from: "src/cli.assembly.ts", to: mod("src/cli.boot.ts") },
+        { from: "src/cli.driver.ts", to: mod("src/cli.boot.ts") },
+        {
+          from: "src/cli.assembly.ts",
+          to: mod("src/cli.driver.ts"),
+          kind: "type",
+        },
+      ])
+      expect(violations.map((v) => [v.file, v.rules])).toEqual([
+        ["src/cli.assembly.ts", ["inward-deps"]],
+        ["src/cli.assembly.ts", ["inward-deps"]],
+        ["src/cli.driver.ts", ["inward-deps"]],
+        ["src/cli.assembly.ts", ["inward-deps"]],
+      ])
+    })
+
+    test("the inside importing an outside kind fires `inward-deps` — a driver, a boot, a test", () => {
+      const violations = outside([
+        { from: "src/a/a.model.ts", to: mod("src/cli.driver.ts") },
+        { from: "src/a/a.service.ts", to: mod("src/cli.boot.ts") },
+        { from: "src/a/a.adapter.ts", to: mod("src/cli.spec.ts") },
+        { from: "src/a/a.port.ts", to: mod("src/cli.driver.ts"), kind: "type" },
+      ])
+      expect(violations.map((v) => v.rules)).toEqual([
+        ["inward-deps"],
+        ["inward-deps"],
+        ["inward-deps"],
+        ["inward-deps"],
+      ])
+    })
+
+    test("a boot importing a composition unit or blob fires the seal or the quarantine; its driver is green", () => {
+      const violations = outside([
+        { from: "src/cli.boot.ts", to: mod("src/cli.driver.ts") },
+        { from: "src/cli.boot.ts", to: mod("src/a/a.service.ts") },
+        { from: "src/cli.boot.ts", to: mod("src/a/a.adapter.ts") },
+        { from: "src/cli.boot.ts", to: mod("src/legacy.ts") },
+      ])
+      expect(violations.map((v) => v.rules)).toEqual([
+        ["service-assembly-only", "runtime-import"],
+        ["adapter-assembly-only", "runtime-import"],
+        ["blob-quarantine"],
+      ])
+    })
+
+    test("a test file imports anything, blob included", () => {
+      expect(
+        outside([
+          { from: "src/cli.spec.ts", to: mod("src/a/a.service.ts") },
+          { from: "src/cli.spec.ts", to: mod("src/a/a.adapter.ts") },
+          { from: "src/cli.spec.ts", to: mod("src/legacy.ts") },
+          { from: "src/cli.spec.ts", to: mod("src/cli.driver.ts") },
+          { from: "src/cli.spec.ts", to: mod("src/cli.assembly.ts") },
+          { from: "src/cli.spec.ts", to: lib("node:fs") },
+        ]),
+      ).toEqual([])
+    })
+
+    test("what has no slug yet reads legal — a driver importing model, a boot importing model, a driver importing a test (steps 03 and 06)", () => {
+      expect(
+        outside([
+          { from: "src/cli.driver.ts", to: mod("src/a/a.model.ts") },
+          { from: "src/cli.boot.ts", to: mod("src/a/a.model.ts") },
+          { from: "src/cli.driver.ts", to: mod("src/cli.spec.ts") },
+          { from: "src/legacy.ts", to: mod("src/cli.driver.ts") },
+        ]),
+      ).toEqual([])
+    })
+
+    test("externals from a driver or a boot are not this check's — the driver's tech is read elsewhere", () => {
+      expect(
+        outside([
+          { from: "src/cli.driver.ts", to: lib("some-made-up-parser") },
+          { from: "src/cli.boot.ts", to: lib("node:process") },
+        ]),
+      ).toEqual([])
     })
   })
 

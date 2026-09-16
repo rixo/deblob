@@ -65,12 +65,17 @@ import {
 import { readExplainEntries } from "../../lib/explain/adapters/content.adapter.ts"
 import { createOxcEngine } from "../../lib/extraction/adapters/oxc-extraction.adapter.ts"
 import { createPackageMetaReader } from "../../lib/extraction/adapters/package-meta.adapter.ts"
+import { createPlainTsTech } from "../../lib/extraction/adapters/plain-ts-tech.adapter.ts"
+import { createTestRunnerTech } from "../../lib/extraction/adapters/test-runner-tech.adapter.ts"
 import {
   classifyStockEntry,
   STOCK_FLAVORS,
 } from "../../lib/extraction/adapters/ts-suffixes-factories-flavor.adapter.ts"
 import { createExtraction } from "../../lib/extraction/extraction.service.ts"
-import { specifierMatcher } from "../../lib/extraction/graph.model.ts"
+import {
+  isExtractionError,
+  specifierMatcher,
+} from "../../lib/extraction/graph.model.ts"
 import type {
   ImportGraph,
   ModuleNode,
@@ -287,21 +292,39 @@ const runCheck = async (
     ...(tsconfigPath === null ? {} : { tsconfigPath }),
     alias: config.alias,
   })
-  const { extractGraph } = createExtraction({ engine, flavor: config.flavor })
+  const { extractGraph } = createExtraction({
+    engine,
+    flavor: config.flavor,
+    techs: [createPlainTsTech(), createTestRunnerTech()],
+  })
   const packageMeta = createPackageMetaReader({
     resolve: engine.resolve,
     anchor: join(config.root, "package.json"),
     classifyEntry: classifyStockEntry,
   })
-  const graph = extractGraph({
-    root: config.root,
-    files,
-    isAssembly: config.isAssembly,
-    external: config.external,
-    // the consumer patch wins over producer fields — reviewer of record
-    externalLayerOf: (specifier) =>
-      config.externalLayers(specifier) ?? packageMeta.layerOf(specifier),
-  })
+  let graph: ImportGraph
+  try {
+    graph = extractGraph({
+      root: config.root,
+      files,
+      isAssembly: config.isAssembly,
+      isDriver: config.isDriver,
+      isBoot: config.isBoot,
+      isTest: config.isTest,
+      external: config.external,
+      // the consumer patch wins over producer fields — reviewer of record
+      externalLayerOf: (specifier) =>
+        config.externalLayers(specifier) ?? packageMeta.layerOf(specifier),
+      pure: config.pure,
+      driverTech: config.driverTech,
+    })
+  } catch (error) {
+    // extraction's own failures are the user's to fix: message, exit 2;
+    // anything else is a bug and keeps flying
+    if (!isExtractionError(error)) throw error
+    io.stderr.write(`${error.message}\n`)
+    return 2
+  }
   const surfaceRan = action.checks.includes("surface")
   const surfaceReport: SurfaceReport = surfaceRan
     ? runSurface(graph, config, surface)

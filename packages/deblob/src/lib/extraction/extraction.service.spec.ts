@@ -4,32 +4,52 @@ import { describe, expect, test } from "vitest"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import { createTsSuffixesFactoriesFlavor } from "./adapters/ts-suffixes-factories-flavor.adapter.ts"
 import { createExtraction } from "./extraction.service.ts"
-import type { ImportEdge, ImportGraph } from "./graph.model.ts"
+import { createPlainTsTech } from "./adapters/plain-ts-tech.adapter.ts"
+import { createTestRunnerTech } from "./adapters/test-runner-tech.adapter.ts"
+import type {
+  ImportEdge,
+  ImportGraph,
+  ReadCall,
+  ReadStatement,
+} from "./graph.model.ts"
+import { isExtractionError } from "./graph.model.ts"
 import type { ExtractionEngine } from "./ports/extraction.port.ts"
+
+/** A parsed nothing — what a fake engine hands the reader. */
+const EMPTY_PROGRAM = {
+  type: "Program",
+  body: [],
+  sourceType: "module",
+  hashbang: null,
+  start: 0,
+  end: 0,
+} as unknown as import("@oxc-project/types").Program
 
 const fixtureRoot = (name: string) =>
   fileURLToPath(new URL(`./__fixtures__/${name}/`, import.meta.url))
 
 /** Test factory: real adapters over an on-disk fixture repo. */
+type Designations = {
+  isAssembly?: (path: string) => boolean
+  isDriver?: (path: string) => boolean
+  isBoot?: (path: string) => boolean
+  isTest?: (path: string) => boolean
+}
+
 const extractFixture = ({
   fixture,
   files,
-  isAssembly,
+  ...designations
 }: {
   fixture: string
   files: readonly string[]
-  isAssembly?: (path: string) => boolean
-}): ImportGraph => {
+} & Designations): ImportGraph => {
   const root = fixtureRoot(fixture)
   const extraction = createExtraction({
     engine: createOxcEngine({ tsconfigPath: `${root}tsconfig.json` }),
     flavor: createTsSuffixesFactoriesFlavor(),
   })
-  return extraction.extractGraph({
-    root,
-    files,
-    ...(isAssembly ? { isAssembly } : {}),
-  })
+  return extraction.extractGraph({ root, files, ...designations })
 }
 
 const FORMS_FILES = [
@@ -446,6 +466,80 @@ describe("extractGraph over the forms fixture", () => {
     })
     expect(graph.modules.get("src/app.ts")).toMatchObject({ layer: "assembly" })
   })
+
+  test("grants driver and boot through their designation matchers", () => {
+    const graph = extractFixture({
+      fixture: "forms",
+      files: FORMS_FILES,
+      isDriver: (path) => path === "src/app.ts",
+      isBoot: (path) => path === "src/dep.ts",
+    })
+    expect(graph.modules.get("src/app.ts")).toMatchObject({ layer: "driver" })
+    expect(graph.modules.get("src/dep.ts")).toMatchObject({ layer: "boot" })
+  })
+
+  test("a designation wins over the flavor's word — a layered file under the glob takes the kind", () => {
+    const graph = extractFixture({
+      fixture: "forms",
+      files: FORMS_FILES,
+      isDriver: (path) => path === "src/foo.model.ts",
+    })
+    expect(graph.modules.get("src/foo.model.ts")).toMatchObject({
+      layer: "driver",
+    })
+  })
+
+  test("the test kind wins over every designation — a spec file is one wherever it sits", () => {
+    const graph = extractFixture({
+      fixture: "forms",
+      files: FORMS_FILES,
+      isDriver: () => true,
+      isTest: (path) => path === "src/app.ts",
+    })
+    expect(graph.modules.get("src/app.ts")).toMatchObject({ layer: "test" })
+    expect(graph.modules.get("src/dep.ts")).toMatchObject({ layer: "driver" })
+  })
+
+  test("an unparsed file takes its designated kind too — the web fence, recognized and open", () => {
+    const graph = extractFixture({
+      fixture: "forms",
+      files: FORMS_FILES,
+      isDriver: (path) => path === "src/widget.svelte",
+    })
+    expect(graph.modules.get("src/widget.svelte")).toMatchObject({
+      layer: "driver",
+      parsed: false,
+    })
+  })
+
+  test("throws an ExtractionError naming the file and both keys when two designations claim one file", () => {
+    let thrown: unknown
+    try {
+      extractFixture({
+        fixture: "forms",
+        files: FORMS_FILES,
+        isAssembly: (path) => path === "src/app.ts",
+        isBoot: (path) => path === "src/app.ts",
+      })
+    } catch (error) {
+      thrown = error
+    }
+    expect(isExtractionError(thrown)).toBe(true)
+    expect(thrown).toMatchObject({
+      code: "designation-conflict",
+      message: expect.stringMatching(
+        /src\/app\.ts is designated "assembly" and "boot"/,
+      ) as string,
+    })
+    // the guard is duck-typed on the name: a bare Error is not extraction's,
+    // an instance from another realm with the name is
+    expect(isExtractionError(new Error("parse failed"))).toBe(false)
+    expect(
+      isExtractionError(
+        Object.assign(new Error("SOME_MADE_UP"), { name: "ExtractionError" }),
+      ),
+    ).toBe(true)
+  })
 })
 
 describe("extractGraph over the resolution fixture", () => {
@@ -540,6 +634,8 @@ describe("extractGraph — declared external specifiers", () => {
             }
           }),
           runtimeContent: [],
+          program: EMPTY_PROGRAM,
+          source: "",
         }
       },
       resolve: (_from, specifier) => {
@@ -680,6 +776,8 @@ describe("externalLayerOf — the crossed layer carrier on external leaves", () 
                 literal: true,
               })),
               runtimeContent: [],
+              program: EMPTY_PROGRAM,
+              source: "",
             }
           : null,
       resolve: (_from, specifier) =>
@@ -744,5 +842,415 @@ describe("externalLayerOf — the crossed layer carrier on external leaves", () 
   test("without the carrier every leaf stays layer: null — today's behavior", () => {
     const graph = extractCrossed(["@made-up/billing/checkout.service"])
     expect(graph.edges[0]?.to).toMatchObject({ layer: null })
+  })
+})
+
+describe("the reading on the graph — the reading fixture", () => {
+  const READING_FILES = [
+    "src/app/app.service.ts",
+    "src/app/app.port.ts",
+    "src/app/store.adapter.ts",
+    "src/app/app.model.ts",
+    "src/legacy.ts",
+    "src/cli.assembly.ts",
+    "src/cli.driver.ts",
+    "src/sub.driver.ts",
+    "src/cli.boot.ts",
+    "src/group.assembly.ts",
+    "src/other.driver.ts",
+    "src/default.driver.ts",
+
+    "src/opaque.assembly.ts",
+    "src/const.assembly.ts",
+    "src/default.assembly.ts",
+    "src/app/app.service.spec.ts",
+    "src/globals.spec.ts",
+    "src/routes/+page.svelte",
+  ]
+
+  /**
+   * Test factory: the fixture project with both stock techs and the project's
+   * claims.
+   */
+  const extractReading = (
+    techs = [createPlainTsTech(), createTestRunnerTech()],
+    configLoads: readonly { file: string; name: string }[] = [
+      { file: "src/app/app.service.ts", name: "load" },
+    ],
+  ) => {
+    const root = fixtureRoot("reading")
+    const extraction = createExtraction({
+      engine: createOxcEngine({ tsconfigPath: `${root}tsconfig.json` }),
+      flavor: createTsSuffixesFactoriesFlavor(),
+      techs,
+    })
+    return extraction.extractGraph({
+      root,
+      files: READING_FILES,
+      isDriver: (path) => path.endsWith("+page.svelte"),
+      pure: ["pure-made-up-lib"],
+      driverTech: (specifier) => specifier === "some-made-up-parser",
+      configLoads,
+    })
+  }
+
+  const readingOf = (graph: ImportGraph, path: string) => {
+    const reading = graph.modules.get(path)?.reading
+    if (!reading) throw new Error(`no reading for ${path}`)
+    return reading
+  }
+
+  const callsOf = (statements: readonly ReadStatement[]): ReadCall[] =>
+    statements.flatMap((statement) =>
+      statement.kind === "call"
+        ? [statement.call]
+        : statement.kind === "control"
+          ? statement.arms.flatMap(callsOf)
+          : [],
+    )
+
+  const kindsOf = (calls: readonly ReadCall[]) =>
+    calls.map((call) => call.callee.kind)
+
+  test("chooses the tech by kind: plain-ts for assembly, driver and boot; test-runner for test; none inside", () => {
+    const graph = extractReading()
+    expect(readingOf(graph, "src/cli.assembly.ts").tech).toBe("plain-ts")
+    expect(readingOf(graph, "src/cli.driver.ts").tech).toBe("plain-ts")
+    expect(readingOf(graph, "src/cli.boot.ts").tech).toBe("plain-ts")
+    expect(readingOf(graph, "src/app/app.service.spec.ts").tech).toBe(
+      "test-runner",
+    )
+    expect(readingOf(graph, "src/app/app.service.spec.ts").exempts).toEqual([
+      "registration",
+      "call-count",
+      "services-only",
+      "definitions",
+    ])
+    expect(readingOf(graph, "src/app/app.model.ts").tech).toBeNull()
+    expect(readingOf(graph, "src/app/app.model.ts").functions).toEqual([])
+    expect(
+      callsOf(readingOf(graph, "src/app/app.model.ts").root).map(
+        (c) => c.callee,
+      ),
+    ).toEqual([{ kind: "language" }])
+  })
+
+  test("an unparsed designated file has no reading — recognized and open", () => {
+    const graph = extractReading()
+    expect(graph.modules.get("src/routes/+page.svelte")).toMatchObject({
+      layer: "driver",
+      parsed: false,
+      reading: null,
+    })
+  })
+
+  test("tripwire: an outside kind no injected tech covers reads as null, no throw", () => {
+    const graph = extractReading([createTestRunnerTech()])
+    expect(graph.modules.get("src/cli.driver.ts")).toMatchObject({
+      layer: "driver",
+      parsed: true,
+      reading: null,
+    })
+    expect(readingOf(graph, "src/globals.spec.ts").tech).toBe("test-runner")
+  })
+
+  test("a driver: externals by claim, purity and complement; hooks cut, nested; the open part", () => {
+    const [main] = readingOf(extractReading(), "src/cli.driver.ts").functions
+    if (!main) throw new Error("main not read")
+    const calls = callsOf(main.body)
+    const at = (line: number) =>
+      calls.filter((call) => call.span.line === line).map((call) => call.callee)
+    // `driverTech` claims the parser; a concrete builtin is tech; a `pure` package is model; the rest is unclaimed
+    expect(at(10)).toEqual([{ kind: "tech", package: "some-made-up-parser" }])
+    expect(at(12)).toEqual([{ kind: "tech", package: "node:fs" }])
+    expect(at(13)).toEqual([
+      { kind: "model", path: "pure-made-up-lib", name: "pureThing" },
+    ])
+    expect(at(14)).toEqual([
+      { kind: "unclaimed", package: "unclaimed-made-up-lib" },
+    ])
+    // the assembly call, its result an instance handed to the sub-driver's wiring
+    expect(at(11)).toEqual([
+      { kind: "tech", package: null },
+      {
+        kind: "factory",
+        layer: "assembly",
+        path: "src/cli.assembly.ts",
+        name: "createCliAssembly",
+      },
+    ])
+    expect(at(29)).toEqual([
+      { kind: "wiring", path: "src/sub.driver.ts", name: "registerSub" },
+    ])
+    expect(
+      calls.find((call) => call.span.line === 29)?.args.map((arg) => arg.kind),
+    ).toEqual(["tech", "instance"])
+    // the hooks: one use-case call each, through the assembly's returned record
+    expect(main.hooks.map((hook) => hook.span.line)).toEqual([15, 19, 24])
+    expect(kindsOf(callsOf(main.hooks[0]?.body ?? []))).toEqual(["use-case"])
+    expect(callsOf(main.hooks[0]?.body ?? [])[0]?.callee).toEqual({
+      kind: "use-case",
+      member: "app.check",
+      origin: {
+        path: "src/cli.assembly.ts",
+        name: "createCliAssembly",
+        layer: "assembly",
+      },
+    })
+    expect(callsOf(main.hooks[0]?.body ?? [])[0]?.result).toEqual([
+      { kind: "returned" },
+    ])
+    // the second hook translates: a branch on the result, a stringify, a console call
+    expect(kindsOf(callsOf(main.hooks[1]?.body ?? []))).toEqual([
+      "use-case",
+      "tech",
+      "language",
+      "tech",
+    ])
+    expect(callsOf(main.hooks[1]?.body ?? [])[0]?.result).toEqual([
+      { kind: "member" },
+      { kind: "condition" },
+      { kind: "argument", to: { kind: "language" } },
+    ])
+    // a hook inside a hook
+    expect(main.hooks[2]?.hooks.map((hook) => hook.span.line)).toEqual([25])
+    expect(kindsOf(callsOf(main.hooks[2]?.hooks[0]?.body ?? []))).toEqual([
+      "use-case",
+    ])
+    // `.map` and `.then` callbacks: not hooks, open
+    expect(
+      readingOf(extractReading(), "src/cli.driver.ts").open.map((part) => [
+        part.why,
+        part.span.line,
+      ]),
+    ).toEqual([
+      ["uncut-callback", 31],
+      ["uncut-callback", 32],
+    ])
+  })
+
+  test("an assembly: factories by file kind, a use case on an instance, controls by their test", () => {
+    const [assembly] = readingOf(
+      extractReading(),
+      "src/cli.assembly.ts",
+    ).functions
+    if (!assembly) throw new Error("assembly function not read")
+    const calls = callsOf(assembly.body)
+    expect(kindsOf(calls)).toEqual([
+      "factory", // createMemoryStore
+      "factory", // createAppService
+      "use-case", // app.load()
+      "model", // createRegistry
+      "model", // normalize
+      "factory", // createLegacyThing (blob)
+      "factory",
+      "factory",
+      "use-case", // app.status(...).ok in a condition
+      "factory",
+      "factory", // createGroupAssembly
+    ])
+    expect(calls[5]?.callee).toMatchObject({ kind: "factory", layer: "blob" })
+    expect(calls[2]?.callee).toEqual({
+      kind: "use-case",
+      member: "load",
+      origin: {
+        path: "src/app/app.service.ts",
+        name: "createAppService",
+        layer: "service",
+      },
+    })
+    // the declared load, traced to its factory in this file: matched, its
+    // result a tech value, the branch on it wiring
+    expect(calls[2]?.load).toEqual({
+      file: "src/app/app.service.ts",
+      name: "load",
+    })
+    expect(calls[2]?.result).toEqual([
+      { kind: "member" },
+      { kind: "condition" },
+    ])
+    expect(
+      assembly.body.flatMap((statement) =>
+        statement.kind === "control" ? [statement.testOrigin] : [],
+      ),
+    ).toEqual(["parameter", "load", "instance"])
+    // the group assembly receives an instance and a record of tech values
+    expect(calls[10]?.args).toEqual([
+      {
+        kind: "instance",
+        origin: {
+          path: "src/app/app.service.ts",
+          name: "createAppService",
+          layer: "service",
+        },
+        path: [],
+      },
+      { kind: "tech", origin: null, path: [] },
+    ])
+    // the returned record joins its entries: two instances, two computed values
+    expect(assembly.body.at(-1)).toMatchObject({
+      kind: "return",
+      value: "computed",
+    })
+    // bound at the two drivers' call sites: both pass what the host hands
+    expect(assembly.params).toEqual([
+      { name: "cwd", kind: "tech" },
+      { name: "env", kind: "tech" },
+    ])
+  })
+
+  test("an undeclared use-case call in an assembly stays `load: null`", () => {
+    const [assembly] = readingOf(
+      extractReading(undefined, []),
+      "src/cli.assembly.ts",
+    ).functions
+    expect(callsOf(assembly?.body ?? [])[2]?.load).toBeNull()
+  })
+
+  test("a group assembly: parameters bound at the root's call site, a load on a received instance matched by file", () => {
+    const [group] = readingOf(
+      extractReading(),
+      "src/group.assembly.ts",
+    ).functions
+    if (!group) throw new Error("group assembly not read")
+    expect(group.params).toEqual([
+      { name: "app", kind: "instance" },
+      { name: "cwd", kind: "tech" },
+    ])
+    const calls = callsOf(group.body)
+    expect(calls[0]?.callee).toEqual({
+      kind: "use-case",
+      member: "load",
+      origin: {
+        path: "src/app/app.service.ts",
+        name: "createAppService",
+        layer: "service",
+      },
+    })
+    expect(calls[0]?.load).toEqual({
+      file: "src/app/app.service.ts",
+      name: "load",
+    })
+    expect(
+      group.body.flatMap((statement) =>
+        statement.kind === "control" ? [statement.testOrigin] : [],
+      ),
+    ).toEqual(["load", "parameter"])
+    expect(readingOf(extractReading(), "src/group.assembly.ts").open).toEqual(
+      [],
+    )
+  })
+
+  test("a sub-driver exported as the default is bound under the default key", () => {
+    const [register] = readingOf(
+      extractReading(),
+      "src/default.driver.ts",
+    ).functions
+    expect(register?.name).toBeNull()
+    expect(register?.params).toEqual([{ name: "cli", kind: "tech" }])
+    expect(register?.hooks).toHaveLength(1)
+  })
+
+  test("a load naming a file outside coverage is an ExtractionError, presented by the driver", () => {
+    let thrown: unknown
+    try {
+      extractReading(undefined, [
+        { file: "src/nowhere.service.ts", name: "load" },
+      ])
+    } catch (error) {
+      thrown = error
+    }
+    expect(isExtractionError(thrown)).toBe(true)
+    expect(thrown).toMatchObject({ code: "load-file-not-covered" })
+  })
+
+  test("a sub-driver: parameters bound at its call sites — two sites disagreeing on the parser leave it unknown, the services stay an instance", () => {
+    const reading = readingOf(extractReading(), "src/sub.driver.ts")
+    const [register] = reading.functions
+    expect(register?.params).toEqual([
+      { name: "cli", kind: "unknown" },
+      { name: "services", kind: "instance" },
+    ])
+    expect(kindsOf(callsOf(register?.body ?? []))).toEqual([
+      "unknown",
+      "unknown",
+    ])
+    // the callback is handed to an unknown callee: not a hook, open
+    expect(reading.open.map((part) => part.why)).toEqual([
+      "unknown-callee",
+      "uncut-callback",
+      "unknown-callee",
+      "unbound-parameter",
+    ])
+  })
+
+  test("a sub-driver with one agreeing site: the parser is tech, the hook is cut, the use case traced through the record", () => {
+    const root = fixtureRoot("reading")
+    const extraction = createExtraction({
+      engine: createOxcEngine({ tsconfigPath: `${root}tsconfig.json` }),
+      flavor: createTsSuffixesFactoriesFlavor(),
+      techs: [createPlainTsTech(), createTestRunnerTech()],
+    })
+    // only cli.driver.ts calls it once other.driver.ts is left out
+    const single = extraction.extractGraph({
+      root,
+      files: READING_FILES.filter((file) => file !== "src/other.driver.ts"),
+      driverTech: (specifier) => specifier === "some-made-up-parser",
+    })
+    const [register] = readingOf(single, "src/sub.driver.ts").functions
+    expect(register?.params).toEqual([
+      { name: "cli", kind: "tech" },
+      { name: "services", kind: "instance" },
+    ])
+    expect(kindsOf(callsOf(register?.body ?? []))).toEqual(["tech", "tech"])
+    expect(register?.hooks).toHaveLength(1)
+    expect(callsOf(register?.hooks[0]?.body ?? [])[0]?.callee).toEqual({
+      kind: "use-case",
+      member: "app.check",
+      origin: {
+        path: "src/cli.assembly.ts",
+        name: "createCliAssembly",
+        layer: "assembly",
+      },
+    })
+    expect(readingOf(single, "src/sub.driver.ts").open).toEqual([])
+  })
+
+  test("a boot: its root call is the driver's wiring function", () => {
+    const reading = readingOf(extractReading(), "src/cli.boot.ts")
+    expect(reading.functions).toEqual([])
+    expect(callsOf(reading.root).map((call) => call.callee)).toEqual([
+      { kind: "wiring", path: "src/cli.driver.ts", name: "main" },
+    ])
+  })
+
+  test("a spec file: registration at root is a tech call, hooks cut from describe, test and beforeEach", () => {
+    const reading = readingOf(extractReading(), "src/app/app.service.spec.ts")
+    expect(callsOf(reading.root).map((call) => call.callee)).toEqual([
+      { kind: "tech", package: "vitest" },
+    ])
+    expect(reading.hooks).toHaveLength(1)
+    const [describeHook] = reading.hooks
+    expect(describeHook?.hooks.map((hook) => hook.span.line)).toEqual([10, 14])
+    const testCalls = callsOf(describeHook?.hooks[1]?.body ?? [])
+    expect(kindsOf(testCalls)).toEqual([
+      "factory",
+      "factory",
+      "use-case",
+      "use-case",
+      "factory",
+      "tech",
+      "tech",
+      "tech",
+      "tech",
+    ])
+  })
+
+  test("a globals-mode runner: the registration names are free globals, tech by complement", () => {
+    const reading = readingOf(extractReading(), "src/globals.spec.ts")
+    expect(callsOf(reading.root).map((call) => call.callee)).toEqual([
+      { kind: "tech", package: null },
+    ])
+    expect(reading.hooks[0]?.hooks).toHaveLength(1)
   })
 })

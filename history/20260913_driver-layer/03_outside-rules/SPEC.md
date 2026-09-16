@@ -11,7 +11,7 @@ it is written against the code as of 0.0.6 and the canon as of this review.
 driver, boot, test — with the same identity discipline as the existing rules:
 one slug per rule, a structured violation per finding, an `explain` entry per
 slug. The undeclared-load violation names its resolution. deblob's own package
-is green under them once step 04 lands.
+is green under them once step 05 lands.
 
 Depends on: step 01 (recognition of the kinds, hook cutting, the assembly and
 hook readers, the load declaration read from config), step 02 (what a factory is
@@ -56,7 +56,7 @@ Enter `RULE_IDS` at their family's position, canon § Summary order:
   `driver-to-driver-wiring`, `driver-not-imported`
 - boot rule: `boot-one-call`
 - testing: `test-is-assembly-and-driver` replaces `test-setup-assembly`
-  (breaking; step 05 carries the rename everywhere)
+  (breaking; step 06 carries the rename everywhere)
 - `stateless-modules` keeps its slug and gets its first detector: a root call to
   a factory (needs step 02), a root call into tech or a composition unit,
   mutable root state; test registration exempt by the test tech's reading.
@@ -99,7 +99,7 @@ knowledge cards `assembly-rules`, `driver-rules`, `boot-rule` under
 ## Testing (sketch)
 
 - Per detector, fixtures per shape, one violation each; the green fixture is
-  deblob's own restructured CLI (step 04).
+  deblob's own restructured CLI (step 05).
 - Undeclared load: the same assembly fixture with and without the `loads`
   declaration, one violation then none.
 - Tripwire for the open set of tech: a fixture with a synthetic file kind the
@@ -116,3 +116,37 @@ After steps 01 and 02. Nothing here yet.
 `lib/check/README.md` gains the three detectors; `lib/config/README.md` the four
 keys; the skill's knowledge INDEX the three cards; `docs/architecture.md`
 unchanged (canon precedes this step).
+
+## Amended by step 01 (2026-09-17)
+
+The proto above stays as drafted; step 01 landed the following against it
+(detail in [01_tech-adapter/SPEC.md](../01_tech-adapter/SPEC.md), § Amendments
+and the four "Landed" sections). To take when this step opens:
+
+- Config keys: `loads` is `configLoads`; `tech` is `driverTech`. `tests`
+  defaults to no globs (the flavor's naming is the default). All five keys and
+  their matchers exist in `config.service.ts` already; `Layer` carries
+  `driver | boot | test`.
+- The matrix rows for `driver`, `boot`, `test` landed in 01 (compile totality),
+  citing the slugs that exist; the cells that wait for `RULE_IDS` to gain the
+  new slugs read legal and are commented as such in `layers.model.ts`.
+- Detectors read `ModuleNode.reading` (`FileReading`, JSON) off the graph they
+  already take — no separate reader output. Calls carry `callee`, `args` (kind,
+  origin, path), `result` (the contexts a result reaches), `load`; hooks are cut
+  with their `registeredBy` call; parameters are bound at call sites by the
+  graph pass; `open` lists what the reader did not place.
+- `driverTech`: specifier patterns over packages; host globals are tech by
+  construction, ECMAScript intrinsics are language; pure packages and pure
+  builtins are model in a driver.
+- `configLoads` matching is the reader's: by member name, and by file when the
+  instance is traced to a factory that is not an assembly's returned record; a
+  load naming a file outside coverage is `ExtractionError`
+  `load-file-not-covered`, presented by the driver.
+- `DriverViolation.hook` is a `ReadHook` span; `undeclared-load` carries the
+  traced factory file when there is one (`callee.origin`).
+- Exemptions arrive as tokens on `FileReading.exempts`; "the reading removes the
+  exempt hooks before the detector runs" becomes "the detector skips what the
+  file exempts".
+- Primary use cases: `useCaseLevels(graph)` in `extraction/levels.model.ts`
+  already yields the primary set and the unresolved list; the CLI shows nothing
+  of it yet.

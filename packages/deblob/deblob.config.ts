@@ -8,5 +8,8 @@ export default defineConfig({
   assembly: ["src/index.ts", "src/drivers/**"],
   // deterministic, string-only computation — declared, not presumed
   // (service-purity)
-  pure: ["node:util", "picomatch"],
+  pure: ["node:util", "picomatch", "@oxc-project/types"],
+  // the parser's AST types: a types-only package, nothing on disk to resolve
+  // at runtime — declared, and pure like any type
+  external: ["@oxc-project/types"],
 })

@@ -15,7 +15,11 @@ import { resolve } from "node:path"
 import picomatch from "picomatch"
 
 import type { Layer } from "../extraction/graph.model.ts"
-import { LAYERS, specifierPattern } from "../extraction/graph.model.ts"
+import {
+  LAYERS,
+  specifierMatcher,
+  specifierPattern,
+} from "../extraction/graph.model.ts"
 import type { FlavorResolver } from "../extraction/ports/flavor.port.ts"
 import { STOCK_FLAVOR_NAME } from "../extraction/stock-flavor.model.ts"
 import {
@@ -33,12 +37,47 @@ export type DeblobConfig = {
    */
   flavor?: string | FlavorResolver
   /**
-   * Assembly designation — globs (root-relative POSIX) whose matches wear the
-   * assembly hat: their row in the matrix, nothing else. Privilege is per-edge,
-   * never transitive. Default: `[]` — no designation; an undeclared composition
-   * root classifies blob and its service imports fire `service-assembly-only`.
+   * Assembly designation — globs (root-relative POSIX) whose matches are
+   * assembly files on top of the flavor's `.assembly.ts` naming: their row in
+   * the matrix and, once the outside rules land, their calls read as an
+   * assembly's. Default: `[]` — an undeclared composition root classifies blob
+   * and its service imports fire `service-assembly-only`.
    */
   assembly?: readonly string[]
+  /**
+   * Driver designation — globs for the driver files a framework names itself
+   * (`+page.svelte`, route files); plain-TypeScript drivers carry `.driver.ts`
+   * regardless. Default: `[]`.
+   */
+  drivers?: readonly string[]
+  /**
+   * Boot designation — globs for entry files a framework names itself;
+   * `.boot.ts` is recognized regardless. Default: `[]`.
+   */
+  boot?: readonly string[]
+  /**
+   * Test designation — globs for test files outside the flavor's naming
+   * (`*.spec.*`, `*.test.*` are recognized regardless): `__tests__/**` and
+   * friends. A test file is one wherever it sits, whatever other designation
+   * matches it. Default: `[]`.
+   */
+  tests?: readonly string[]
+  /**
+   * The config loads: the use cases an assembly may await, `"<file>#<name>"` —
+   * the service file whose factory built the instance, root-relative, and the
+   * member called on it. One or a list. By default an assembly makes no
+   * use-case call; a declared load is the exception, a use case the graph
+   * itself depends on, its result a tech value from then on. Default: `[]`.
+   */
+  configLoads?: string | readonly string[]
+  /**
+   * The driver's tech beyond what the stock techs claim: specifier patterns
+   * (same two-wildcard grammar as `external`) over packages a driver may import
+   * as the technology it listens to — a parser, a server, a framework no
+   * reading knows yet. Only widens the driver's import right: a service
+   * importing the same package is red as ever. Default: `[]`.
+   */
+  driverTech?: readonly string[]
   /**
    * Coverage globs, root-relative. Full-scan model: every covered file is a
    * graph node, orphans included. Default: `["**"]` — under-coverage is a
@@ -124,7 +163,18 @@ export type ResolvedConfig = {
    * resolver.
    */
   flavorName: string
+  /**
+   * The designation matchers, one per config key; each matches nothing by
+   * default.
+   */
   isAssembly: (path: string) => boolean
+  isDriver: (path: string) => boolean
+  isBoot: (path: string) => boolean
+  isTest: (path: string) => boolean
+  /** Normalized `configLoads`: one entry per declared load. */
+  configLoads: readonly { file: string; name: string }[]
+  /** Compiled `driverTech` matcher — any declared pattern matches. */
+  driverTech: (specifier: string) => boolean
   include: readonly string[]
   exclude: readonly string[]
   pure: readonly string[]
@@ -160,6 +210,11 @@ export type FlavorRegistry = Readonly<Record<string, () => FlavorResolver>>
 const KNOWN_KEYS = [
   "flavor",
   "assembly",
+  "drivers",
+  "boot",
+  "tests",
+  "configLoads",
+  "driverTech",
   "include",
   "exclude",
   "pure",
@@ -178,7 +233,16 @@ const isStringArray = (value: unknown): value is readonly string[] =>
 
 const stringArrayKey = (
   raw: Record<string, unknown>,
-  key: "assembly" | "include" | "exclude" | "pure" | "external",
+  key:
+    | "assembly"
+    | "drivers"
+    | "boot"
+    | "tests"
+    | "driverTech"
+    | "include"
+    | "exclude"
+    | "pure"
+    | "external",
 ): readonly string[] | undefined => {
   const value = raw[key]
   if (value === undefined) return undefined
@@ -188,6 +252,39 @@ const stringArrayKey = (
     )
   }
   return value
+}
+
+/** A designation key compiled to its matcher — nothing declared matches nothing. */
+const designationOf = (
+  globs: readonly string[],
+): ((path: string) => boolean) =>
+  globs.length > 0 ? picomatch([...globs]) : () => false
+
+/**
+ * `configLoads` validated and normalized: `"<file>#<name>"`, one or a list.
+ * Whether the file is covered is extraction's to say — it has the file set.
+ */
+const configLoadsOf = (
+  value: unknown,
+): readonly { file: string; name: string }[] => {
+  if (value === undefined) return []
+  const entries = typeof value === "string" ? [value] : value
+  if (!isStringArray(entries)) {
+    throw new ConfigError(
+      `config key "configLoads" must be a "<file>#<name>" string or an array of them`,
+    )
+  }
+  return entries.map((entry) => {
+    const hash = entry.indexOf("#")
+    const file = hash === -1 ? "" : entry.slice(0, hash)
+    const name = hash === -1 ? "" : entry.slice(hash + 1)
+    if (file === "" || name === "" || name.includes("#")) {
+      throw new ConfigError(
+        `config key "configLoads": ${JSON.stringify(entry)} is not "<file>#<name>" — the service file (root-relative) and the use case called on its instance`,
+      )
+    }
+    return { file, name }
+  })
 }
 
 /** First declared pattern matching the specifier, declaration order. */
@@ -390,7 +487,6 @@ export const resolveConfig = (
     record["flavor"],
     context.flavors,
   )
-  const assembly = stringArrayKey(record, "assembly") ?? []
   const include = stringArrayKey(record, "include") ?? DEFAULT_INCLUDE
   const exclude = [
     ...EXCLUDE_BASELINE,
@@ -407,7 +503,12 @@ export const resolveConfig = (
     configPath: context.configPath,
     flavor,
     flavorName,
-    isAssembly: assembly.length > 0 ? picomatch([...assembly]) : () => false,
+    isAssembly: designationOf(stringArrayKey(record, "assembly") ?? []),
+    isDriver: designationOf(stringArrayKey(record, "drivers") ?? []),
+    isBoot: designationOf(stringArrayKey(record, "boot") ?? []),
+    isTest: designationOf(stringArrayKey(record, "tests") ?? []),
+    configLoads: configLoadsOf(record["configLoads"]),
+    driverTech: specifierMatcher(stringArrayKey(record, "driverTech") ?? []),
     include,
     exclude,
     pure,

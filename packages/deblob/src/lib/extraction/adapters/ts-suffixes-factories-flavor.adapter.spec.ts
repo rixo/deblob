@@ -58,11 +58,40 @@ describe("ts-suffixes-factories flavor", () => {
     expect(result.get("src/data.json")?.layer).toBe("blob")
   })
 
-  test("never yields assembly from source naming — designation is the caller's", () => {
-    const result = classify(["src/main.assembly.ts", "src/assembly/wire.ts"])
+  test("classifies the outside kinds by suffix — assembly, driver, boot", () => {
+    const result = classify([
+      "src/cli.assembly.ts",
+      "src/cli.driver.ts",
+      "src/cli.boot.ts",
+      "src/assembly/wire.ts",
+    ])
+    expect(result.get("src/cli.assembly.ts")?.layer).toBe("assembly")
+    expect(result.get("src/cli.driver.ts")?.layer).toBe("driver")
+    expect(result.get("src/cli.boot.ts")?.layer).toBe("boot")
+    // a directory name is not a suffix — designation is the config's
+    expect(result.get("src/assembly/wire.ts")?.layer).toBe("blob")
+  })
+
+  test("outside kinds mark no service root — a driver directory is not a service", () => {
+    const result = classify([
+      "src/drivers/cli/cli.driver.ts",
+      "src/drivers/cli/cli.boot.ts",
+      "src/drivers/cli/cli.assembly.ts",
+      "src/drivers/cli/notes.ts",
+    ])
     for (const [, classification] of result) {
-      expect(classification.layer).not.toBe("assembly")
+      expect(classification.serviceRoot).toBeNull()
     }
+  })
+
+  test("attributes an outside-kind file to an enclosing service root like any file", () => {
+    const result = classify([
+      "src/lib/cli/cli.service.ts",
+      "src/lib/cli/cli.assembly.ts",
+    ])
+    expect(result.get("src/lib/cli/cli.assembly.ts")?.serviceRoot).toBe(
+      "src/lib/cli",
+    )
   })
 
   test("attributes a file to the nearest ancestor service root", () => {
@@ -134,30 +163,30 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  test("classifies test files as assembly — test-setup-assembly, the flavor's opinion", () => {
+  test("classifies test files as test — test-is-assembly-and-driver, the flavor's opinion", () => {
     const result = classify([
       "icons/icons.model.spec.ts",
       "icons/loader.test.ts",
       "icons/icons.model.ts",
     ])
-    expect(result.get("icons/icons.model.spec.ts")?.layer).toBe("assembly")
-    expect(result.get("icons/loader.test.ts")?.layer).toBe("assembly")
+    expect(result.get("icons/icons.model.spec.ts")?.layer).toBe("test")
+    expect(result.get("icons/loader.test.ts")?.layer).toBe("test")
     expect(result.get("icons/icons.model.spec.ts")?.serviceRoot).toBe("icons")
   })
 
-  test("classifies test files as assembly inside grouping dirs too", () => {
+  test("classifies test files as test inside grouping dirs too", () => {
     const result = classify([
       "icons/icons.service.ts",
       "icons/ports/icon-source.spec.ts",
       "icons/private/scoring.test.ts",
     ])
     expect(result.get("icons/ports/icon-source.spec.ts")).toEqual({
-      layer: "assembly",
+      layer: "test",
       serviceRoot: "icons",
       isPrivate: false,
     })
     expect(result.get("icons/private/scoring.test.ts")).toEqual({
-      layer: "assembly",
+      layer: "test",
       serviceRoot: "icons",
       isPrivate: true,
     })
@@ -166,7 +195,7 @@ describe("ts-suffixes-factories flavor", () => {
   test("classifies test naming across the same extension set as layer suffixes", () => {
     const result = classify(["a/x.spec.tsx", "a/y.test.mjs", "a/z.spec.cts"])
     for (const [, classification] of result) {
-      expect(classification.layer).toBe("assembly")
+      expect(classification.layer).toBe("test")
     }
   })
 
@@ -188,6 +217,9 @@ describe("classifyStockEntry — the naming rule over subpath and specifier tail
     expect(classifyStockEntry("totals.model")).toBe("model")
     expect(classifyStockEntry("store.port")).toBe("ports")
     expect(classifyStockEntry("stripe.adapter")).toBe("adapters")
+    expect(classifyStockEntry("cli.assembly")).toBe("assembly")
+    expect(classifyStockEntry("cli.driver")).toBe("driver")
+    expect(classifyStockEntry("cli.boot")).toBe("boot")
   })
 
   test("reads exports-map subpaths as written — ./ prefix and nesting", () => {

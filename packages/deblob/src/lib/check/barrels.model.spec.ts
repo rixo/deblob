@@ -37,6 +37,7 @@ const graph = (
         isPrivate: false,
         parsed: true,
         runtimeContent: [],
+        reading: null,
       },
     ]),
   ),
