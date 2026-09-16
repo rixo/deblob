@@ -291,11 +291,15 @@ step's cut.
 - **Two roots.** `snapshot.project.root` is `config.root` (discovery may walk up
   from the listed directory); `projects[].root` is the directory as listed. Same
   in practice; different when a project's config sits above it.
-- **Out-of-order answers: the last wins.** Rapid selects can answer out of
+- ~~**Out-of-order answers: the last wins.** Rapid selects can answer out of
   order, and the source takes each answer as it comes. Keying on
   `snapshot.project.root` would drop every answer of a project whose config sits
   above its listed directory (the two roots), and the `snapshot` message no
-  longer carries the requested root. Keying needs that field back.
+  longer carries the requested root. Keying needs that field back.~~ — closed at
+  step 04 (cecef2e) by the server, not by keying: a client's runs never overlap,
+  and an answer for a project no longer current is dropped, so answers cannot
+  arrive out of order and taking the last one is correct. The guarantee was
+  written into the protocol description in the viewer README on 2026-09-16.
 - ~~**`select` of any directory answers a snapshot.** `serveSnapshots` does not
   check `select` against its list; `loadConfig` walks up from anywhere and lands
   on the defaults, so a root outside the list — or no directory at all — comes
@@ -311,10 +315,12 @@ step's cut.
 - **The serve bin has no presentation for a `ConfigError` at startup:** a broken
   cwd config crashes with the stack. Step 05's verb inherits the CLI's
   presentation; until then, acceptable for a package-script dev server.
-- **The serve test reads the viewer package's real config.** A
+- ~~**The serve test reads the viewer package's real config.** A
   `deblob.local.json` dropped there by hand — the intended dev use — changes
   `projects` and breaks its "1 project" assertion. The test could build its own
-  temp project, or assert on the first project only.
+  temp project, or assert on the first project only.~~ — fixed at step 04
+  (cecef2e): the spec builds its own viewer project in a temp directory. This
+  entry was not struck at the time.
 - **The CLI's load sequence is duplicated** in `drivers/wiring.ts` — the
   config-as-use-case debt of SPEC 02 § Findings, one more caller of it.
 

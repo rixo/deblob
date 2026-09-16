@@ -234,14 +234,27 @@ Surfaced while building, recorded for later rulings; none changed the cut.
   with the reconnect, heavier than needed; the flag is one line to drop.
 - **chokidar's `add` cannot be awaited**: its initial listing races the caller,
   hence the instance swap on `update`. Costs one listing of the set per run.
-- **A watched directory whose own name starts with a dot** is exempt from the
+- ~~**A watched directory whose own name starts with a dot** is exempt from the
   hidden rule by construction, but no test watches one; v8 counts the operand
-  covered. chokidar's own error path is wired to `report` and never provoked.
+  covered. chokidar's own error path is wired to `report` and never provoked.~~
+  — both tested 2026-09-16. Provoking the error (a symlink loop, `ELOOP`)
+  surfaced a race: when a path in the set fails, or is missing, chokidar emits
+  `ready` before the rest of the set is attached, so the watch is not yet up
+  when the adapter says it is, and `update` closes the previous instance too
+  early. Fixed 2026-09-17: chokidar counts a failed path as ready twice (once in
+  `_addToNodeFs`'s `catch`, once in `add()`), so the adapter now opens one
+  instance per directory, where that cannot happen, and awaits every `ready`.
+  The "one chokidar instance per set" in § API above no longer holds. With one
+  instance over the set, the two new tests missed the first write in 8 runs out
+  of 8; with one per directory they passed 8 out of 8.
 - **Two tabs on one project are two chokidar instances** and two extractions per
   change (§ Open, accepted). The set is re-listed on every run.
-- **The source keeps last-answer-wins** (step 03's finding); the server now
+- ~~**The source keeps last-answer-wins** (step 03's finding); the server now
   drops stale answers per client, so the visible case is gone in practice but
-  the client-side stance is unchanged.
+  the client-side stance is unchanged.~~ — not a defect: with the server
+  dropping stale answers, taking the last answer is correct, not just harmless
+  in practice. The ordering is now stated in the protocol description in the
+  viewer README (2026-09-16).
 - **A change in a covered subdirectory during a project's very first run** is
   not seen: only the root is watched until the run's set is known. The next
   change is.

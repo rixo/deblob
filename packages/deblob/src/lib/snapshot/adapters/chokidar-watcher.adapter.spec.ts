@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, expect, test } from "vitest"
@@ -73,5 +73,68 @@ test("one change per burst, hidden entries ignored, a directory outside the set 
   await writeFile(join(root, "FAKE_SUB", "FAKE_LATE.ts"), "")
   await settle()
   expect(fired).toHaveLength(3)
+  expect(reported).toEqual([])
+})
+
+test("a watched directory whose own name is hidden is watched; hidden entries inside it are not", async () => {
+  const root = await tempTree()
+  const dotted = join(root, ".FAKE_DOTTED")
+  await mkdir(dotted)
+  const { report } = createMemoryReport()
+  const watcher = createChokidarWatcher({ quietMs: QUIET_MS, report })
+  const fired: number[] = []
+  const watch = await watcher.watch([dotted], () => fired.push(Date.now()))
+  cleanups.push(() => watch.close())
+
+  await writeFile(join(dotted, ".FAKE_HIDDEN"), "")
+  await settle()
+  expect(fired).toHaveLength(0)
+
+  await writeFile(join(dotted, "FAKE_ONE.ts"), "")
+  await until(fired, 1)
+})
+
+test("chokidar's own error is reported, and the rest of the set is watched once the watch resolves", async () => {
+  const root = await tempTree()
+  // a loop: no user gets past it, root included (the alpine job runs as root,
+  // so a permission error would not be provoked there)
+  const loop = join(root, "FAKE_LOOP")
+  await symlink(loop, loop)
+  const { report, reported } = createMemoryReport()
+  const watcher = createChokidarWatcher({ quietMs: QUIET_MS, report })
+  const fired: number[] = []
+  const watch = await watcher.watch([root, loop], () => fired.push(Date.now()))
+  cleanups.push(() => watch.close())
+  // the loop's own instance fails before it is ready; `root`'s, listing the
+  // loop among its entries, may fail too, now or a moment later
+  expect(reported.length).toBeGreaterThan(0)
+  for (const error of reported) expect(error).toMatchObject({ code: "ELOOP" })
+
+  // right away: one chokidar instance over the whole set said `ready` before
+  // `root` was watched, and this write was missed
+  await writeFile(join(root, "FAKE_ONE.ts"), "")
+  await until(fired, 1)
+})
+
+test("a directory of the set that is gone: the rest is watched once the watch resolves, on open and on update", async () => {
+  const root = await tempTree()
+  const sub = join(root, "FAKE_SUB")
+  const gone = join(root, "FAKE_GONE")
+  const { report, reported } = createMemoryReport()
+  const watcher = createChokidarWatcher({ quietMs: QUIET_MS, report })
+  const fired: number[] = []
+  const watch = await watcher.watch([gone, sub], () => fired.push(Date.now()))
+  cleanups.push(() => watch.close())
+
+  // right away, as above: the one-instance shape missed this write here, 8
+  // runs out of 8
+  await writeFile(join(sub, "FAKE_ONE.ts"), "")
+  await until(fired, 1)
+  await settle()
+
+  await watch.update([gone, root, sub])
+  await writeFile(join(sub, "FAKE_TWO.ts"), "")
+  await until(fired, 2)
+  // missing is not an error: chokidar waits for it to appear
   expect(reported).toEqual([])
 })
