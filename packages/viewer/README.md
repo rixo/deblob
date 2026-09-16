@@ -30,7 +30,10 @@ through a type-only import. JSON throughout.
 the next loads and under an error) and `SnapshotSource`, a readable of it with
 `select(root)`. Two adapters: `createStaticSource(snapshot | null)` and
 `createWsSource(url)`, the socket opening on the first subscriber and closing
-after the last.
+after the last. `createWsSource` also takes an `initial` state to start from
+instead of a blank connect: it is shown as it was handed over while the socket
+opens — nothing blinks on the way in — and the project it was showing is asked
+for again.
 
 ## How it is served
 
@@ -60,6 +63,15 @@ config files — and pushes a fresh snapshot after a change settles, no reload, 
 click. Editing deblob's own source (or this package's `deblob.config.ts`, which
 the server loads) restarts the server; the page reconnects on its own, the last
 snapshot staying up meanwhile, and comes back on the project it was showing.
+
+Editing this package's own source updates the page in place too. Components are
+their own HMR boundaries; everything else under the entry — the source adapter,
+the models — has none, so `src/main.ts` is the boundary for all of it: it
+unmounts the app, hands the state it was showing to the next instance of itself
+through `import.meta.hot.data`, and mounts again. The socket is recreated with
+it — the adapter is the socket, and there is nothing in a live socket to patch —
+but the snapshot never leaves the screen. An update the old state does not fit
+is a reload away, as hot updates go.
 
 The projects shown are this package's `view.projects`: the committed config
 lists this package and `deblob`, so the switch has two entries out of the box.

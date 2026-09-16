@@ -101,6 +101,63 @@ test("connects on the first subscriber: connecting, then projects, then the snap
   unsubscribe()
 })
 
+test("an initial state: the source starts on it as it was handed over, and asks for its project on open", async () => {
+  const { url, connection } = await serverUp()
+  const initial: SourceState = {
+    projects: FAKE_PROJECTS,
+    loading: false,
+    error: null,
+    snapshot: snapshotOf("/FAKE_OTHER"),
+  }
+  const source = createWsSource(url, { initial })
+  const seen: SourceState[] = []
+  const unsubscribe = source.subscribe((state) => seen.push(state))
+  // no loading arm on the way in: the snapshot never leaves the screen
+  expect(seen[0]).toEqual(initial)
+
+  const client = await connection(0)
+  await settle(client.received, 1)
+  expect(client.received).toEqual([{ type: "select", project: "/FAKE_OTHER" }])
+  unsubscribe()
+})
+
+test("an initial state carrying an error: it stays up, and the project it names is the one asked for", async () => {
+  const { url, connection } = await serverUp()
+  const initial: SourceState = {
+    projects: FAKE_PROJECTS,
+    loading: false,
+    error: { project: "/FAKE_OTHER", message: "FAKE_FAILURE" },
+    snapshot: snapshotOf("/FAKE_ROOT"),
+  }
+  const source = createWsSource(url, { initial })
+  const seen: SourceState[] = []
+  const unsubscribe = source.subscribe((state) => seen.push(state))
+  // what failed is still on screen while it is asked for again
+  expect(seen[0]).toEqual(initial)
+
+  const client = await connection(0)
+  await settle(client.received, 1)
+  expect(client.received).toEqual([{ type: "select", project: "/FAKE_OTHER" }])
+  unsubscribe()
+})
+
+test("an initial state with nothing loaded yet: nothing is asked for, the server's own first snapshot answers", async () => {
+  const { url, connection } = await serverUp()
+  const source = createWsSource(url, {
+    initial: {
+      projects: FAKE_PROJECTS,
+      loading: true,
+      error: null,
+      snapshot: null,
+    },
+  })
+  const unsubscribe = source.subscribe(() => {})
+  const client = await connection(0)
+  await tick()
+  expect(client.received).toEqual([])
+  unsubscribe()
+})
+
 test("select: loading with the previous snapshot up, the frame sent; an error answers, the snapshot stays", async () => {
   const { url, connection } = await serverUp()
   const source = createWsSource(url)

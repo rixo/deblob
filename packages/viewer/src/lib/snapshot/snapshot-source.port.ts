@@ -20,6 +20,10 @@ export type SourceError = {
  * project selected. The previous snapshot stays up meanwhile, and after an
  * error; a new request clears the error. Every answer is a snapshot or an
  * error, so there is no loaded-but-empty state.
+ *
+ * A source started on a state given to it — after a hot update, say — shows
+ * that state as it was handed over until its first answer arrives, `loading`
+ * included: that flag is then the giver's word, not a fact about a connection.
  */
 export type SourceState = {
   /** What the source can show; empty until known. */

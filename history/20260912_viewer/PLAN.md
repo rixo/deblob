@@ -85,9 +85,9 @@
    bundle lives in an npm install). Ratified and built 2026-09-16 in five review
    checkpoints (the static half re-cut as a service over a `BundleFiles` port,
    the serve driver reused, port 3615, the bundle copied into `deblob`'s
-   `dist/`, a packed-package gate), back-filled. The GOAL's success test is met:
-   `deblob view` opens the viewer on a codebase, and it follows the codebase as
-   it changes.
+   `dist/`, a packed-package gate), back-filled. Landed 647523e. The GOAL's
+   success test is met: `deblob view` opens the viewer on a codebase, and it
+   follows the codebase as it changes.
 
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
