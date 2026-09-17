@@ -54,7 +54,7 @@ export const serve = async (
   const report: Report = (error) => {
     io.stderr.write(`${inspect(error)}\n`)
   }
-  const { runOf, projectsOf } = createSnapshotService({
+  const { runOf, projectsOf, watchSetFor } = createSnapshotService({
     source: createProjectSource(),
     extractionFor,
   })
@@ -77,7 +77,7 @@ export const serve = async (
     },
   })
   const watcher = createChokidarWatcher({ quietMs: 100, report })
-  serveSnapshots({ channel, projects, runOf, watcher, report })
+  serveSnapshots({ channel, projects, runOf, watchSetFor, watcher, report })
   // no bundle: the channel is all this server has, and every plain request is
   // a 404 — the listener is attached either way, or a stray GET is answered by
   // nobody and hangs until node times the request out

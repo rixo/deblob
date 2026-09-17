@@ -263,9 +263,23 @@ Surfaced while building, recorded for later rulings; none changed the cut.
   dropping stale answers, taking the last answer is correct, not just harmless
   in practice. The ordering is now stated in the protocol description in the
   viewer README (2026-09-16).
-- **A change in a covered subdirectory during a project's very first run** is
+- ~~**A change in a covered subdirectory during a project's very first run** is
   not seen: only the root is watched until the run's set is known. The next
-  change is.
+  change is.~~ — fixed 2026-09-17, and it was every first run of a project, not
+  only the very first: a `select` closes the watch, so a project seen again ran
+  root-only again. The watch set is now read ahead of the run by
+  `watchSetFor(root)` on the service — the same config load and directory scan a
+  run ends with, without the extraction — and watched before the run starts; the
+  run's own set still refreshes it. The scan costs 3 ms for 21 directories, 2 ms
+  for 158, and the run repeats both calls (accepted: rixo, "acceptable", rather
+  than threading a loaded config into `runOf`). A set that cannot be read ahead
+  of the run falls back to the root alone: the run makes the same calls and is
+  the one place that says what a failure means, so a broken config still answers
+  `error` and is still watched where it sits. Two consequences: a first run now
+  often runs twice (a change during the pre-run scan window is an event, and
+  latest-wins collapses it into one more run), and the post-run refresh re-opens
+  a set the pre-run watch already holds — a skip when the set is unchanged is
+  worth its own row.
 - ~~**A watch opened for a client that already left was never closed.**~~ —
   found and fixed 2026-09-17. The serve script's SIGTERM test hung: a client
   that disconnected before its first snapshot left 8 filesystem watchers open

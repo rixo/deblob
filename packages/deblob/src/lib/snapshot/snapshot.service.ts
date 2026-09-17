@@ -63,6 +63,18 @@ export const createSnapshotService = ({
     (await runOf(root)).snapshot
 
   /**
+   * The set to watch for the project at `root` before a run of it: the same
+   * config and directories a run ends with, without the extraction. A run's own
+   * set is only known when it ends, and a change under a covered directory
+   * during that run would be no event at all — the watcher watches each
+   * directory for its own entries.
+   */
+  const watchSetFor = async (root: string): Promise<readonly string[]> => {
+    const config = await source.loadConfigAt(root)
+    return watchSetOf(config.root, await source.scanCoverageDirs(config))
+  }
+
+  /**
    * The projects a viewer at `dir` shows: the config of the project containing
    * `dir` (discovery, as the CLI) names them in `view.projects`, or that
    * project alone — each root with its manifest name. Every root is a project
@@ -80,34 +92,38 @@ export const createSnapshotService = ({
     )
   }
 
-  return { runOf, snapshotOf, projectsOf }
+  return { runOf, snapshotOf, projectsOf, watchSetFor }
 }
 
 /**
  * On connect: `projects`, then the first project's `snapshot`, and its watch.
  * On `select`: that project's `snapshot`, the watch moved to it. On change: the
  * current project's `snapshot` again, the watch set refreshed. On close: the
- * watch closed. The watch is up before the answer goes out — the root alone
- * before a project's first run, the run's set before its snapshot — so a change
- * right after a push is a change seen. Runs for one client never overlap: a
- * change or a select arriving mid-run marks one more run, which follows when
- * this one ends; an answer for a project no longer current is dropped, never
- * sent. The project's own failure — its config — answers `error` for that
- * project, the watch set as it was (the root is in it: fixing the config is a
- * change). Anything else is a bug: reported in full to the driver, and the
- * client hears that the server failed on that project. Either way the
+ * watch closed. The watch is up before the answer goes out — the set read ahead
+ * of a project's first run, the run's own set before its snapshot — so a change
+ * right after a push is a change seen, and so is one during a first run. A set
+ * that cannot be read ahead of the run falls back to the root alone: the run
+ * fails on the same config and answers for it. Runs for one client never
+ * overlap: a change or a select arriving mid-run marks one more run, which
+ * follows when this one ends; an answer for a project no longer current is
+ * dropped, never sent. The project's own failure — its config — answers `error`
+ * for that project, the watch set as it was (the root is in it: fixing the
+ * config is a change). Anything else is a bug: reported in full to the driver,
+ * and the client hears that the server failed on that project. Either way the
  * connection lives on.
  */
 export const serveSnapshots = ({
   channel,
   projects,
   runOf,
+  watchSetFor,
   watcher,
   report,
 }: {
   channel: Channel
   projects: readonly ProjectRef[]
   runOf: SnapshotService["runOf"]
+  watchSetFor: SnapshotService["watchSetFor"]
   watcher: Watcher
   report: Report
 }): void => {
@@ -134,6 +150,22 @@ export const serveSnapshots = ({
         return
       }
       watch = opened
+    }
+
+    /**
+     * The set to watch before a project's first run — best effort: the root
+     * alone when the config cannot be read, or anything else fails. The run
+     * makes the same calls and is the one place that says what a failure means:
+     * its config error reaches the client, anything else is reported as a bug.
+     */
+    const firstWatchSet = async (
+      project: string,
+    ): Promise<readonly string[]> => {
+      try {
+        return await watchSetFor(project)
+      } catch {
+        return [project]
+      }
     }
 
     /** One run of `project`: the answer, and the set to watch before it goes. */
@@ -177,7 +209,7 @@ export const serveSnapshots = ({
             if (closed) break
             again = false
             const project = current
-            if (watch === null) await keepWatching([project])
+            if (watch === null) await keepWatching(await firstWatchSet(project))
             const { answer, watchSet } = await serve(project)
             if (closed || project !== current) continue
             if (watchSet !== null) await keepWatching(watchSet)

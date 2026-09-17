@@ -117,6 +117,19 @@ describe("createSnapshotService", () => {
     })
   })
 
+  test("watchSetFor: the root and the directories coverage spans, no extraction", async () => {
+    const { watchSetFor } = createSnapshotService({
+      source: memorySource,
+      extractionFor: () => () => {
+        throw new Error("the set is read without running the extraction")
+      },
+    })
+    expect(await watchSetFor("/FAKE_ROOT")).toEqual([
+      "/FAKE_ROOT",
+      "/FAKE_ROOT/src",
+    ])
+  })
+
   test("projectsOf: the config's view.projects, or the project alone; names, null without one", async () => {
     const { projectsOf } = createSnapshotService({
       source: memorySource,
@@ -180,6 +193,13 @@ const fakeRuns = () => {
   }
   return {
     runOf,
+    /** The set a run of `root` would end with, read ahead of it. */
+    watchSetFor: async (root: string): Promise<readonly string[]> => {
+      if (root === "/FAKE_B" || failing.has(root)) {
+        throw new ConfigError("FAKE_CONFIG_FAILURE")
+      }
+      return [root, `${root}/src`]
+    },
     /** Let the oldest pending slow run answer. */
     release: () => {
       const pending = slow.shift()
@@ -203,6 +223,7 @@ const connectServed = async () => {
     channel,
     projects: FAKE_PROJECTS,
     runOf: runs.runOf,
+    watchSetFor: runs.watchSetFor,
     watcher,
     report,
   })
@@ -260,6 +281,8 @@ describe("serveSnapshots", () => {
       project: "/FAKE_B",
       message: "FAKE_CONFIG_FAILURE",
     })
+    // its set cannot be read ahead of the run either: the root alone, which is
+    // where its config sits
     expect(watching()).toEqual([["/FAKE_B"]])
     // the old project is nobody's concern any more
     change("/FAKE_A/src")
@@ -313,12 +336,35 @@ describe("serveSnapshots", () => {
     expect(rootOf(3)).toBe("/FAKE_A")
   })
 
+  test("a change under a covered directory during a project's first run is seen: one more run follows", async () => {
+    const { sent, send, change, release, settle, watching, rootOf } =
+      await connectServed()
+    const selecting = send({ type: "select", project: "/FAKE_SLOW" })
+    await settle()
+    // watched before the run that discovers it, or the change is no event at all
+    expect(watching()).toEqual([["/FAKE_SLOW", "/FAKE_SLOW/src"]])
+    change("/FAKE_SLOW/src")
+    release()
+    await settle()
+    release() // the run the change marked
+    await selecting
+    expect(sent.map((message) => message.type)).toEqual([
+      "projects",
+      "snapshot",
+      "snapshot",
+      "snapshot",
+    ])
+    expect(rootOf(2)).toBe("/FAKE_SLOW")
+    expect(rootOf(3)).toBe("/FAKE_SLOW")
+  })
+
   test("runs never overlap: changes during a run collapse into one more; a select mid-run drops the stale answer", async () => {
     const { sent, send, change, release, settle, rootOf, watching } =
       await connectServed()
     const selecting = send({ type: "select", project: "/FAKE_SLOW" })
     await settle()
-    expect(watching()).toEqual([["/FAKE_SLOW"]]) // the root, before the run
+    // the set read ahead of the run, not the root alone
+    expect(watching()).toEqual([["/FAKE_SLOW", "/FAKE_SLOW/src"]])
     change("/FAKE_A/src") // the old watch is closed: nobody hears it
     expect(sent).toHaveLength(2)
     release()
@@ -412,6 +458,7 @@ describe("serveSnapshots", () => {
         channel,
         projects: [],
         runOf: fakeRuns().runOf,
+        watchSetFor: fakeRuns().watchSetFor,
         watcher,
         report,
       }),

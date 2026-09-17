@@ -11,30 +11,38 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
 ## API
 
 - `createSnapshotService({ source, extractionFor })` →
-  `{ runOf, snapshotOf, projectsOf }`. `runOf(root)` → `{ snapshot, watchSet }`:
-  the project at `root` exactly — its own config or the defaults, never an
-  ancestor's (a listed directory is the project; rixo, 2026-09-16) — the
-  coverage scan (sorted, so the snapshot's order is fixed), the extraction
-  composed for that config, the sizes, the manifest name, then the fold — and
-  the watch set for the next run: the root and every directory coverage spans,
-  absolute. `snapshotOf(root)` is the snapshot alone. `projectsOf(dir)`: the
-  projects a viewer at `dir` shows — the config of the project containing `dir`
-  (discovery, as the CLI) names them in `view.projects`, or that project alone —
-  each root with its manifest name.
-- `serveSnapshots({ channel, projects, runOf, watcher, report })`: the protocol
-  in one place. On connect: `projects`, then the first project's `snapshot`, its
-  watch set watched. On `select`: that project's `snapshot`, the watch moved to
-  it — the list sent on connect is the whole menu, and a root outside it answers
-  `error` and is never run. On a change under the watch: the current project's
-  `snapshot` again, unasked, the set refreshed. On close: the watch closed. Runs
-  for one client never overlap — a change or select mid-run marks one more run;
-  an answer for a project no longer current is dropped. The project's own
-  failure, its config, answers `error` for that project, the watch set as it was
-  (the root is in it: fixing the config is a change). Anything else is a bug:
-  reported in full through `report` (the driver's stderr), and the client hears
-  that the server failed on that project. Either way the connection lives on — a
-  server does not die for one project. An empty project list is a caller error,
-  raised at once.
+  `{ runOf, snapshotOf, projectsOf, watchSetFor }`. `runOf(root)` →
+  `{ snapshot, watchSet }`: the project at `root` exactly — its own config or
+  the defaults, never an ancestor's (a listed directory is the project; rixo,
+  2026-09-16) — the coverage scan (sorted, so the snapshot's order is fixed),
+  the extraction composed for that config, the sizes, the manifest name, then
+  the fold — and the watch set for the next run: the root and every directory
+  coverage spans, absolute. `snapshotOf(root)` is the snapshot alone.
+  `projectsOf(dir)`: the projects a viewer at `dir` shows — the config of the
+  project containing `dir` (discovery, as the CLI) names them in
+  `view.projects`, or that project alone — each root with its manifest name.
+  `watchSetFor(root)` is that same set read ahead of a run — the config and the
+  directories, without the extraction — for a caller that must watch before it
+  runs.
+- `serveSnapshots({ channel, projects, runOf, watchSetFor, watcher, report })`:
+  the protocol in one place. On connect: `projects`, then the first project's
+  `snapshot`, its watch set watched. On `select`: that project's `snapshot`, the
+  watch moved to it — the list sent on connect is the whole menu, and a root
+  outside it answers `error` and is never run. On a change under the watch: the
+  current project's `snapshot` again, unasked, the set refreshed. A project's
+  set is watched **before** its first run, read by `watchSetFor` — the run's own
+  set is only known when it ends, and the watcher watches each directory for its
+  own entries, so a change under a covered directory during that run would be no
+  event at all. A set that cannot be read ahead of the run (its config is
+  broken) falls back to the root alone, and the run answers for the config. On
+  close: the watch closed. Runs for one client never overlap — a change or
+  select mid-run marks one more run; an answer for a project no longer current
+  is dropped. The project's own failure, its config, answers `error` for that
+  project, the watch set as it was (the root is in it: fixing the config is a
+  change). Anything else is a bug: reported in full through `report` (the
+  driver's stderr), and the client hears that the server failed on that project.
+  Either way the connection lives on — a server does not die for one project. An
+  empty project list is a caller error, raised at once.
 - `snapshot.model.ts` —
   `snapshotFrom({ config, graph, sizes, name, generatedAt })`: the pure fold.
   Config paths are shown relative to the root when under it.
