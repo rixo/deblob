@@ -265,10 +265,10 @@ Run 2026-09-16 in the order below.
   the dev cycle; that the entry's `/deblob/ws` is same-origin in both; that the
   built bundle is copied into `deblob`'s `dist/` and the `./bundle/*` export is
   there for the day that changes.
-- Chapter PLAN: step 05 built; **step 04's landing sha `cecef2e`**, owed since
-  the last commit; § Decisions gains the packaging ruling (do (b), prepare (a),
-  revisit at the merge into `main`) and retires the "optional peer or regular
-  dependency" open item, which the measurement and the ruling close.
+- Chapter PLAN: step 05 built; step 04 marked built, owed since the last commit;
+  § Decisions gains the packaging ruling (do (b), prepare (a), revisit at the
+  merge into `main`) and retires the "optional peer or regular dependency" open
+  item, which the measurement and the ruling close.
 
 ## Open, ruled at ratification (rixo, 2026-09-16)
 

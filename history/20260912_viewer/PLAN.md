@@ -66,28 +66,27 @@
 ## Steps
 
 1. `01_package/` — the package exists: Svelte on Vite, the snapshot source, one
-   component, the reactivity test, checker dogfooded, CI wired. Landed 92ae7f2.
-2. `02_config-overlay/` — `view.projects` and `deblob.local.json`. Landed
-   0676dac.
+   component, the reactivity test, checker dogfooded, CI wired. Built.
+2. `02_config-overlay/` — `view.projects` and `deblob.local.json`. Built.
 3. `03_data-half/` — the snapshot function, the WebSocket server driver in
    `deblob` (run from source, the seed of `deblob view`), Vite proxying it in
    our dev cycle, the viewer's source and first real view, the corpus test.
    Re-cut of what the board called "the data half": the watcher moves to its own
    step; no Vite plugin (yagni). SPEC ratified 2026-09-13, built in five review
-   checkpoints through 2026-09-16, back-filled. Landed f439f3b.
+   checkpoints through 2026-09-16, back-filled.
 4. `04_watcher/` — re-run the snapshot on change, push again; the viewer's
    source reconnects. Additive over 03: protocol and state shape unchanged.
    Ratified and built 2026-09-16 in four review checkpoints (chokidar 5, the
    directories coverage spans, discovery stopping at a listed directory),
-   back-filled. Landed cecef2e.
+   back-filled.
 5. `05_view/` — `deblob view`: the CLI verb, the built bundle served from the
    same server as the data channel, the packaging question answered (where the
    bundle lives in an npm install). Ratified and built 2026-09-16 in five review
    checkpoints (the static half re-cut as a service over a `BundleFiles` port,
    the serve driver reused, port 3615, the bundle copied into `deblob`'s
-   `dist/`, a packed-package gate), back-filled. Landed 647523e. The GOAL's
-   success test is met: `deblob view` opens the viewer on a codebase, and it
-   follows the codebase as it changes.
+   `dist/`, a packed-package gate), back-filled. The GOAL's success test is met:
+   `deblob view` opens the viewer on a codebase, and it follows the codebase as
+   it changes.
 
 6. `06_channel-access/` — the socket answers the viewer, not any page: a
    WebSocket handshake is not gated by CORS, so `Origin` and `Host` are checked

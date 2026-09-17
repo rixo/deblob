@@ -222,7 +222,7 @@ As first cut:
 - `src/lib/snapshot/README.md` in `deblob`: `runOf`, the serve protocol with the
   watch, `loadConfigAt` and `scanCoverageDirs` on the port, the watch port, the
   chokidar and memory watchers, the driver line.
-- Chapter PLAN: step 04 built; step 03's landing sha.
+- Chapter PLAN: step 04 built; step 03 marked built.
 
 ## Findings
 
