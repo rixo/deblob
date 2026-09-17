@@ -7,7 +7,11 @@ import {
   EXCLUDE_BASELINE,
   hasCoverageExtension,
 } from "../config.model.ts"
-import { scanCoverage, statSizes } from "./scan.adapter.ts"
+import { createMemoryFs } from "../../fs/adapters/memory-fs.adapter.ts"
+import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
+import { createCoverageScan } from "./scan.adapter.ts"
+
+const { scanCoverage, statSizes } = createCoverageScan({ fs: createNodeFs() })
 
 const root = fileURLToPath(
   new URL("../__fixtures__/scan-tree", import.meta.url),
@@ -71,10 +75,41 @@ describe("scanCoverage", () => {
 describe("statSizes", () => {
   test("returns the byte size per covered file, paths preserved", async () => {
     const files = await scan({ include: ["src/**"] })
-    const sizes = statSizes(root, files)
+    const sizes = await statSizes(root, files)
     expect(sizes.map((entry) => entry.path)).toEqual([...files])
     for (const entry of sizes) {
       expect(entry.size).toBeGreaterThan(0)
     }
+  })
+
+  test("a covered file gone since the scan is a race, not a case — loud", async () => {
+    const scan = createCoverageScan({ fs: createMemoryFs({}) })
+    await expect(
+      scan.statSizes("/made-up-root", ["src/app.ts"]),
+    ).rejects.toThrow(/vanished: src\/app\.ts/)
+  })
+})
+
+describe("over the memory fs", () => {
+  test("the scan is the port's: a tree of strings lists like the disk, gated and sorted", async () => {
+    const scan = createCoverageScan({
+      fs: createMemoryFs({
+        "/made-up-root/src/app.ts": "",
+        "/made-up-root/src/app.model.ts": "",
+        "/made-up-root/src/notes.md": "",
+        "/made-up-root/node_modules/dep/index.js": "",
+      }),
+    })
+    const files = await scan.scanCoverage({
+      root: "/made-up-root",
+      include: [...DEFAULT_INCLUDE],
+      exclude: [...EXCLUDE_BASELINE],
+      covers: hasCoverageExtension,
+    })
+    expect(files).toEqual(["src/app.model.ts", "src/app.ts"])
+    expect(await scan.statSizes("/made-up-root", files)).toEqual([
+      { path: "src/app.model.ts", size: 0 },
+      { path: "src/app.ts", size: 0 },
+    ])
   })
 })

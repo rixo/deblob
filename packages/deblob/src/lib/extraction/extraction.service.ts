@@ -153,7 +153,7 @@ export const createExtraction = ({
    */
   readers?: readonly Reader[]
 }) => {
-  const extractGraph = ({
+  const extractGraph = async ({
     root,
     files,
     isAssembly,
@@ -181,7 +181,9 @@ export const createExtraction = ({
      * Consulted uniformly for every external leaf, declared ones included;
      * absent = no claims, every leaf stays `layer: null`.
      */
-    externalLayerOf?: (specifier: string) => Layer | null
+    externalLayerOf?: (
+      specifier: string,
+    ) => Layer | null | Promise<Layer | null>
     /**
      * `pure` entries — a pure package or builtin is model to the reader, red in
      * a driver; a concrete one is the driver's tech.
@@ -194,7 +196,7 @@ export const createExtraction = ({
      * a service file of this project, a miss is a config mistake.
      */
     configLoads?: readonly { file: string; name: string }[]
-  }): ImportGraph => {
+  }): Promise<ImportGraph> => {
     const pureSet = new Set(pure)
     const classifications = flavor.classify(files)
     const fileSet = new Set(files)
@@ -300,11 +302,11 @@ export const createExtraction = ({
     >()
 
     /** Where a literal specifier lands: a target, or the resolver's reason. */
-    const targetOf = (
+    const targetOf = async (
       fromAbsolutePath: string,
       specifier: string,
-    ): { target: EdgeTarget } | { reason: string } => {
-      const layer = () => externalLayerOf?.(specifier) ?? null
+    ): Promise<{ target: EdgeTarget } | { reason: string }> => {
+      const layer = async () => (await externalLayerOf?.(specifier)) ?? null
       const pattern = external?.(specifier) ?? null
       if (pattern !== null) {
         return {
@@ -313,7 +315,7 @@ export const createExtraction = ({
             specifier,
             package: pattern,
             declared: true,
-            layer: layer(),
+            layer: await layer(),
           },
         }
       }
@@ -328,7 +330,7 @@ export const createExtraction = ({
             specifier,
             package: resolution.specifier,
             declared: false,
-            layer: layer(),
+            layer: await layer(),
           },
         }
       }
@@ -341,7 +343,7 @@ export const createExtraction = ({
               specifier,
               package: packageNameOf(specifier),
               declared: false,
-              layer: layer(),
+              layer: await layer(),
             },
       }
     }
@@ -355,7 +357,7 @@ export const createExtraction = ({
       }
 
       const absolutePath = resolve(root, file)
-      const extraction = engine.extract(absolutePath)
+      const extraction = await engine.extract(absolutePath)
       const layer = layerOf(file, classification.layer)
       /** Where each of this file's specifiers landed — the reader asks again. */
       const landed = new Map<string, EdgeTarget | null>()
@@ -371,7 +373,7 @@ export const createExtraction = ({
           continue
         }
 
-        const outcome = targetOf(absolutePath, record.specifier)
+        const outcome = await targetOf(absolutePath, record.specifier)
         if ("reason" in outcome) {
           landed.set(record.specifier, null)
           unresolved.push({
@@ -450,22 +452,18 @@ export const createExtraction = ({
           string,
           EdgeTarget | null
         >
-        const read = (bound?: World): FileReading =>
+        const read = async (bound?: World): Promise<FileReading> =>
           readingOf(
             file,
             node.layer,
-            engine.extract(resolve(root, file)) as FileExtraction,
+            (await engine.extract(resolve(root, file))) as FileExtraction,
             landed,
             paramKindsOf(fileWorlds, bound),
           ) as FileReading
-        modules.set(file, {
-          ...node,
-          reading: read(),
-          readings: fileWorlds.map((world) => ({
-            world,
-            reading: read(world),
-          })),
-        })
+        const readings: { world: World; reading: FileReading }[] = []
+        for (const world of fileWorlds)
+          readings.push({ world, reading: await read(world) })
+        modules.set(file, { ...node, reading: await read(), readings })
       }
     }
 

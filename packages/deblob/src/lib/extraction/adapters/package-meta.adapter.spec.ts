@@ -4,6 +4,7 @@ import { dirname, join } from "node:path"
 
 import { afterAll, describe, expect, test } from "vitest"
 
+import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
 import type { Resolution } from "../ports/extraction.port.ts"
 import { classifyStockEntry } from "./ts-suffixes-factories-flavor.adapter.ts"
 import { createPackageMetaReader } from "./package-meta.adapter.ts"
@@ -21,7 +22,7 @@ const workspace = async (
   files: Record<string, string>,
   resolveTo: Record<string, string>,
 ): Promise<{
-  layerOf: (specifier: string) => string | null
+  layerOf: (specifier: string) => Promise<string | null>
   resolvedCount: () => number
 }> => {
   const root = await mkdtemp(join(tmpdir(), "deblob-meta-"))
@@ -42,6 +43,7 @@ const workspace = async (
       : { kind: "file", path: join(root, target) }
   }
   const reader = createPackageMetaReader({
+    fs: createNodeFs(),
     resolve,
     anchor: join(root, "package.json"),
     classifyEntry: classifyStockEntry,
@@ -67,7 +69,7 @@ describe("createPackageMetaReader", () => {
           "node_modules/@made-up/billing/src/checkout.service.ts",
       },
     )
-    expect(layerOf("@made-up/billing/checkout.service")).toBe("service")
+    expect(await layerOf("@made-up/billing/checkout.service")).toBe("service")
   })
 
   test("the bare root claims nothing — an unlabeled surface, exactly as today", async () => {
@@ -78,7 +80,7 @@ describe("createPackageMetaReader", () => {
       },
       { "@made-up/billing": "node_modules/@made-up/billing/src/index.ts" },
     )
-    expect(layerOf("@made-up/billing")).toBe(null)
+    expect(await layerOf("@made-up/billing")).toBe(null)
   })
 
   test("a package without the field stays unlabeled — no claim to read", async () => {
@@ -91,7 +93,7 @@ describe("createPackageMetaReader", () => {
       },
       { "plain-pkg/x.service": "node_modules/plain-pkg/x.service.js" },
     )
-    expect(layerOf("plain-pkg/x.service")).toBe(null)
+    expect(await layerOf("plain-pkg/x.service")).toBe(null)
   })
 
   test("honors presence over keys it does not understand — a newer producer stays readable", async () => {
@@ -106,7 +108,7 @@ describe("createPackageMetaReader", () => {
       },
       { "newer/x.adapter": "node_modules/newer/x.adapter.js" },
     )
-    expect(layerOf("newer/x.adapter")).toBe("adapters")
+    expect(await layerOf("newer/x.adapter")).toBe("adapters")
   })
 
   test("a subpath off the exports surface claims nothing — a deep import around the map is unlabeled", async () => {
@@ -137,13 +139,15 @@ describe("createPackageMetaReader", () => {
           "node_modules/@made-up/billing/src/legacy/old.adapter.ts",
       },
     )
-    expect(layerOf("@made-up/billing/checkout.service")).toBe("service")
+    expect(await layerOf("@made-up/billing/checkout.service")).toBe("service")
     // the disclosed file reached around its disclosure: not on the surface,
     // so not pure by the field's word either
-    expect(layerOf("@made-up/billing/src/totals.model")).toBe(null)
-    expect(layerOf("@made-up/billing/src/checkout.service")).toBe(null)
+    expect(await layerOf("@made-up/billing/src/totals.model")).toBe(null)
+    expect(await layerOf("@made-up/billing/src/checkout.service")).toBe(null)
     // a pattern key keeps everything under it on the surface
-    expect(layerOf("@made-up/billing/legacy/old.adapter")).toBe("adapters")
+    expect(await layerOf("@made-up/billing/legacy/old.adapter")).toBe(
+      "adapters",
+    )
   })
 
   test("a disclosed subpath classifies null even with a suffixed tail — the retraction pin", async () => {
@@ -164,11 +168,13 @@ describe("createPackageMetaReader", () => {
           "node_modules/@made-up/billing/src/checkout.service.ts",
       },
     )
-    expect(layerOf("@made-up/billing/old.service")).toBe(null)
-    expect(layerOf("@made-up/billing/legacy/deep/thing.adapter")).toBe(null)
-    expect(layerOf("@made-up/billing")).toBe(null)
+    expect(await layerOf("@made-up/billing/old.service")).toBe(null)
+    expect(await layerOf("@made-up/billing/legacy/deep/thing.adapter")).toBe(
+      null,
+    )
+    expect(await layerOf("@made-up/billing")).toBe(null)
     // undisclosed siblings still classify
-    expect(layerOf("@made-up/billing/checkout.service")).toBe("service")
+    expect(await layerOf("@made-up/billing/checkout.service")).toBe("service")
   })
 
   test("an assembly-designated subpath classifies assembly — the producer's word, over the tail", async () => {
@@ -186,14 +192,14 @@ describe("createPackageMetaReader", () => {
       },
       { "@made-up/tool/cli": "node_modules/@made-up/tool/src/cli.ts" },
     )
-    expect(layerOf("@made-up/tool/cli")).toBe("assembly")
-    expect(layerOf("@made-up/tool/bin/deep/run")).toBe("assembly")
+    expect(await layerOf("@made-up/tool/cli")).toBe("assembly")
+    expect(await layerOf("@made-up/tool/bin/deep/run")).toBe("assembly")
     // the designation beats the tail's own suffix
-    expect(layerOf("@made-up/tool/wired.service")).toBe("assembly")
+    expect(await layerOf("@made-up/tool/wired.service")).toBe("assembly")
     // blob retracts before assembly is read
-    expect(layerOf("@made-up/tool/bin/legacy")).toBe(null)
+    expect(await layerOf("@made-up/tool/bin/legacy")).toBe(null)
     // undesignated siblings still read the stock rule
-    expect(layerOf("@made-up/tool/totals.model")).toBe("model")
+    expect(await layerOf("@made-up/tool/totals.model")).toBe("model")
   })
 
   test("a malformed assembly list abroad reads as absent — the tail decides", async () => {
@@ -208,8 +214,8 @@ describe("createPackageMetaReader", () => {
       },
       { "sloppy-tool/cli": "node_modules/sloppy-tool/cli.js" },
     )
-    expect(layerOf("sloppy-tool/cli")).toBe(null)
-    expect(layerOf("sloppy-tool/x.service")).toBe("service")
+    expect(await layerOf("sloppy-tool/cli")).toBe(null)
+    expect(await layerOf("sloppy-tool/x.service")).toBe("service")
   })
 
   test("a field without an exports map is the provider's error — ignored abroad, no claim", async () => {
@@ -224,7 +230,7 @@ describe("createPackageMetaReader", () => {
       },
       { "mainonly/x.service": "node_modules/mainonly/x.service.js" },
     )
-    expect(layerOf("mainonly/x.service")).toBe(null)
+    expect(await layerOf("mainonly/x.service")).toBe(null)
   })
 
   test("a malformed blob abroad reads as absent — a stranger's field never breaks the run", async () => {
@@ -239,7 +245,7 @@ describe("createPackageMetaReader", () => {
       },
       { "sloppy/x.service": "node_modules/sloppy/x.service.js" },
     )
-    expect(layerOf("sloppy/x.service")).toBe("service")
+    expect(await layerOf("sloppy/x.service")).toBe("service")
   })
 
   test("steps over nameless type-marker manifests to the owning package", async () => {
@@ -257,7 +263,7 @@ describe("createPackageMetaReader", () => {
       },
       { "marked/x.model": "node_modules/marked/dist/x.model.js" },
     )
-    expect(layerOf("marked/x.model")).toBe("model")
+    expect(await layerOf("marked/x.model")).toBe("model")
   })
 
   test("walks past a scalar manifest — valid JSON, no package there", async () => {
@@ -268,7 +274,7 @@ describe("createPackageMetaReader", () => {
       },
       { "scalar/x.service": "node_modules/scalar/x.service.js" },
     )
-    expect(layerOf("scalar/x.service")).toBe(null)
+    expect(await layerOf("scalar/x.service")).toBe(null)
   })
 
   test("degrades to unlabeled on a stranger's broken manifest — never breaks the run", async () => {
@@ -279,14 +285,14 @@ describe("createPackageMetaReader", () => {
       },
       { "broken/x.service": "node_modules/broken/x.service.js" },
     )
-    expect(layerOf("broken/x.service")).toBe(null)
+    expect(await layerOf("broken/x.service")).toBe(null)
   })
 
   test("yields no claim for relative specifiers, builtins, and unresolvable packages", async () => {
     const { layerOf } = await workspace({}, {})
-    expect(layerOf("./local/thing.service")).toBe(null)
-    expect(layerOf("node:path")).toBe(null)
-    expect(layerOf("@made-up/ghost/x.service")).toBe(null)
+    expect(await layerOf("./local/thing.service")).toBe(null)
+    expect(await layerOf("node:path")).toBe(null)
+    expect(await layerOf("@made-up/ghost/x.service")).toBe(null)
   })
 
   test("yields no claim when nothing up the tree carries a named manifest", async () => {
@@ -294,7 +300,7 @@ describe("createPackageMetaReader", () => {
       { "stray/x.service.js": "" },
       { "stray-pkg/x.service": "stray/x.service.js" },
     )
-    expect(layerOf("stray-pkg/x.service")).toBe(null)
+    expect(await layerOf("stray-pkg/x.service")).toBe(null)
   })
 
   test("caches per package name — one probe serves every subpath", async () => {
@@ -308,9 +314,9 @@ describe("createPackageMetaReader", () => {
           "node_modules/@made-up/billing/src/checkout.service.ts",
       },
     )
-    expect(layerOf("@made-up/billing/checkout.service")).toBe("service")
-    expect(layerOf("@made-up/billing/totals.model")).toBe("model")
-    expect(layerOf("@made-up/billing")).toBe(null)
+    expect(await layerOf("@made-up/billing/checkout.service")).toBe("service")
+    expect(await layerOf("@made-up/billing/totals.model")).toBe("model")
+    expect(await layerOf("@made-up/billing")).toBe(null)
     expect(resolvedCount()).toBe(1)
   })
 
@@ -327,10 +333,10 @@ describe("createPackageMetaReader", () => {
           "node_modules/@made-up/billing/src/checkout.service.ts",
       },
     )
-    expect(layerOf("@made-up/billing/theme.css")).toBe(null)
-    expect(layerOf("@made-up/billing/checkout.service")).toBe("service")
+    expect(await layerOf("@made-up/billing/theme.css")).toBe(null)
+    expect(await layerOf("@made-up/billing/checkout.service")).toBe("service")
     // the unreached probe was not cached; the reached one is
-    expect(layerOf("@made-up/billing/totals.model")).toBe("model")
+    expect(await layerOf("@made-up/billing/totals.model")).toBe("model")
     expect(resolvedCount()).toBe(2)
   })
 })

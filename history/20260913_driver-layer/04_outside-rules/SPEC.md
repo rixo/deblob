@@ -13,8 +13,8 @@ first among them the self-check red until the CLI restructure and CI's lane
 saying so). Where this step changes one of them, the change is written here,
 dated, and 03's text stands as what was planned.
 
-**Draft, 2026-09-17 — to ratify before the build.** Decisions listed under §
-Decisions; nothing below is built.
+**Drafted 2026-09-17, decisions ratified the same day** (§ Decisions; one
+deferred). Nothing below is built until "build".
 
 ## Goal
 
@@ -150,7 +150,9 @@ CLI and explain.
 
 ## Implementation
 
-Contained checkpoints, each handed back, one commit for the step.
+Contained checkpoints, each handed back and committed on its own go (rixo,
+2026-09-17: the checkpoint story is for future reviewers too); verdict cases
+land red as their own commit, the check that greens them as the next.
 
 1. **The fs kernel.** `lib/fs/` port, adapters, contract test; the six disk
    touches moved; async spread through the engine, extraction, package-meta, the
@@ -168,8 +170,60 @@ Contained checkpoints, each handed back, one commit for the step.
 4. **Assembly and boot** — 03's checkpoint 4, cases first.
 5. **Driver** — 03's checkpoint 5, cases first; the exemption pair; the CLI
    golden; the self-check count; violations attributed to their world's site.
-6. **The reading spec cut** (§ Testing) and the list for the ruling.
+6. **The reading spec, assessed** with both sets in hand (decision 6); § Testing
+   holds the proposal.
 7. **CI lane.** 03's decision 1, if ratified.
+
+### Landed — checkpoint 1, 2026-09-17 (the fs kernel)
+
+What the code settled against the sketch above:
+
+- `lib/fs/`: `fs.port.ts` (`Fs`: `readFile`, `exists`, `stat`, `glob`, all
+  promise-returning), `adapters/node-fs.adapter.ts` (`createNodeFs()`,
+  `node:fs/promises` + tinyglobby; ENOENT and ENOTDIR read as missing, every
+  other failure flies — pinned on a directory read as a file and a name too
+  long), `adapters/memory-fs.adapter.ts` (`createMemoryFs(files)`, absolute path
+  → content; a directory exists when a file sits under it; `glob` is picomatch
+  over the keys under `cwd`, `dot: false` like the disk, ignores matched with
+  `dot: true` so a baseline exclude works either way; `files` exposed).
+  `fs.port.spec.ts` is the contract test, one tree read through both. The
+  self-check counts the directory as a sixth service: a port marks a root, no
+  service file needed — a kernel.
+- The five readers take the port narrowed to what they use
+  (`Pick<Fs, "readFile">` and the like — the crossing-services rule, one port
+  scoped per consumer, never a restated dialect): `createOxcEngine({ fs, … })`
+  (a covered file not there throws `no such file`, never a parse result),
+  `createPackageMetaReader({ fs, … })` with `layerOf` async,
+  `createConfigLoader({ fs })` → `discoverConfig`, `explicitConfigPath`,
+  `tsconfigPathOf`, `readPackageSurface` (all async; `importConfigDefault` stays
+  a top-level export — the platform call), `createCoverageScan({ fs })` →
+  `scanCoverage`, `statSizes` (a covered file gone since the scan throws
+  `covered file vanished`), `createContentReader({ fs })` → `readExplainEntries`
+  (a promised file not shipped throws `shipped content missing`). `main`'s
+  version read stays sync, the boot's.
+- The async spread: `ExtractionEngine.extract` resolves to the extraction;
+  `extractGraph` is async and its `externalLayerOf` may answer with a promise
+  (assembly composes the sync config patch with the async package-meta reader).
+  Files are still read one at a time, the tree dropped after each — no parallel
+  pre-read, so memory stays per file on a large tree; the graph pass reparses
+  per world as before, awaited in order.
+- `main` instantiates the node adapter once inside `main()` and threads a `Deps`
+  record (fs, loader, scan, content) into the runs — never at module root (a
+  root factory call is what the modules check will forbid).
+- Specs: the mechanical sweep to `await` over the extraction, levels, loader,
+  scan, content and package-meta specs; the reading spec parses every reader
+  fixture once at module top (top-level `await`, the fixture directory listed
+  through the port's own `glob`) so `read` stays a plain function — the reading
+  never writes to the tree, and the one test that mutates one parses its own.
+  New cases: the contract test (both adapters), the node adapter's failures, a
+  scan over a memory tree, the vanished file, the missing shipped content, the
+  engine's missing file.
+- Docs: `lib/fs/README.md` new; the config, extraction and explain READMEs say
+  the port; the config README's "not behind a port on purpose" paragraph is
+  gone.
+- Gates: typecheck clean; suite 661 passing, the two `rule-content` slug
+  assertions red (07); coverage 100 on all four axes; self-check 0 violations,
+  64 files, 6 services; the package builds; prettier from the root.
 
 ## Docs
 
@@ -185,30 +239,36 @@ Contained checkpoints, each handed back, one commit for the step.
 - Outermost PLAN, the `deblob-test` card: what this run showed, feeding the
   skill.
 
-## Decisions — to ratify
+## Decisions — ratified 2026-09-17 (rixo), one row each
 
 1. **The fs port's set**: read, exists, stat, glob — the readers' use today,
    nothing anticipated. A reader needing more adds the member with the code that
    reads it. All promise-returning; no sync member without a force-majeure case
-   written next to it (ruled, not open — listed so the async spread through the
-   engine, extraction and the loader is read as the consequence it is).
-2. **Resolution for cases**: the resolver port with an fs-port adapter for the
-   memory run (recommended; relative imports and in-tree manifests cover every
-   rule case, the resolver is small, and cases stay strings). Fallback if the
-   split is judged too much for this step: cases materialise their tree in a
-   temp dir and run the node adapters — strings in the spec, disk underneath,
-   slower, no port split.
-3. **Case shape**: markers in the source (recommended: the line is where the
-   marker sits, nothing to renumber; the reviewer reads code and verdict on one
-   line; rustc's `//~ ERROR` precedent). Alternative: an expectation list next
-   to the tree with file, line, slug — explicit, renumbered by hand.
-4. **What a marker proves**: file, line, slug; the message is not compared (the
-   renderer's, the golden's). Alternative: compare the message too, every case
-   pins the wording.
+   written next to it. Ruled before the rest, restating 2026-09-13.
+2. **Resolution for cases**: a resolver port with two adapters — oxc-resolver
+   for the node run, a small resolver over the fs port for the memory run.
+   Ratified as not a question: making the chain testable is what a port is for.
+   The catch, stated so it is not mistaken for a hole: oxc-resolver is native
+   and reads the disk itself, so it cannot be handed the fs port; the case
+   resolver is the weaker one (no tsconfig paths, no exports maps, no symlinks),
+   which is fine because no rule depends on how a specifier resolves, only on
+   where it lands, and the node run stays proven by the CLI golden. The temp-dir
+   fallback is dropped.
+3. **Case shape**: markers in the source, `// red <slug>[: why]` on the line
+   that must be red; nothing to renumber; rustc's `//~ ERROR` precedent.
+4. **What a marker proves**: file, line, slug. Messages are not compared: rixo —
+   messages are an entirely different problem, a closed set, fully testable at
+   the level that natively makes sense (the renderer, once per shape); mixing
+   that concern into the task of covering every JavaScript idiom would be a
+   mistake.
 5. **The harness's home**: a spec-side assembly next to the check specs,
    duplicating `runCheck`'s wiring over the memory adapters, replaced by 09's
-   run service. Named as laundering-adjacent on purpose: it is assembly, it
-   lives with the tests that own it, and 09 removes the duplicate.
-6. **The reading spec's fate**: the procedure in § Testing, the survivors ruled
-   by rixo, not by the agent.
-7. **03's seven decisions**: carried, to ratify here with these.
+   run service. Accepted as is; laundering-adjacent on purpose, 09 removes the
+   duplicate.
+6. **The reading spec's fate**: DEFERRED, not ruled — revisited once both sets
+   exist, the verdict cases and the reading spec, and the situation is assessed
+   with full information. Checkpoint 6 becomes that assessment, with § Testing's
+   procedure as the proposal on the table, not the plan.
+7. **03's seven decisions**: carried and ratified, the self-check red included —
+   rixo: self-checking comes with woes; the branch is not `main` and can stay
+   red for a while. CI's lane says so (checkpoint 7).

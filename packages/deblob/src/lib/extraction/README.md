@@ -41,25 +41,27 @@ open.
 - `createExtraction({ engine, flavor, readers? })` → `{ extractGraph }`.
   `extractGraph({ root, files, isAssembly?, isDriver?, isBoot?, external?, externalLayerOf?, pure?, driverTech?, configLoads? })`
   classifies the files through the flavor, parses each through the engine,
-  resolves every specifier, and returns the graph. The three designation
-  matchers are the config's globs for the kinds a framework names itself;
-  recognition (`recognition.model.ts`, shared with the bare status) takes the
-  most specific claim first — a reader of one kind designates it by binding (the
-  test runner's naming makes a test file wherever it sits), then one designation
-  wins over the flavor's word, and two designations on one file throw with the
-  file and both keys named. `external` names specifiers the environment provides
-  (a hit is a leaf, never resolved); `externalLayerOf` answers the layer an
-  external leaf carries, composed by assembly from the consumer's
-  `externalLayers` and producer `deblob` fields. `readers` are the readers in
-  precedence order (config's bindings first, then the stock ones): the first
-  whose binding matches a file and whose kinds hold its kind reads it; `pure`
-  and `driverTech` are what the reading resolves a driver's externals against;
-  `configLoads` are the declared loads, each naming a covered file or the run
-  fails loud (`load-file-not-covered`). After every file is read, the graph pass
-  binds parameters at their call sites, one world per site: an assembly function
-  or a sub-driver's wiring function called from another outside-kind file has
-  one world per distinct argument vector its production sites hand it (a site in
-  a test file opens none — a test hands fakes; a site in its own file none
+  resolves every specifier, and resolves to the graph — async since the engine
+  reads through the fs port; `externalLayerOf` may answer with a promise (the
+  package-meta reader does). The three designation matchers are the config's
+  globs for the kinds a framework names itself; recognition
+  (`recognition.model.ts`, shared with the bare status) takes the most specific
+  claim first — a reader of one kind designates it by binding (the test runner's
+  naming makes a test file wherever it sits), then one designation wins over the
+  flavor's word, and two designations on one file throw with the file and both
+  keys named. `external` names specifiers the environment provides (a hit is a
+  leaf, never resolved); `externalLayerOf` answers the layer an external leaf
+  carries, composed by assembly from the consumer's `externalLayers` and
+  producer `deblob` fields. `readers` are the readers in precedence order
+  (config's bindings first, then the stock ones): the first whose binding
+  matches a file and whose kinds hold its kind reads it; `pure` and `driverTech`
+  are what the reading resolves a driver's externals against; `configLoads` are
+  the declared loads, each naming a covered file or the run fails loud
+  (`load-file-not-covered`). After every file is read, the graph pass binds
+  parameters at their call sites, one world per site: an assembly function or a
+  sub-driver's wiring function called from another outside-kind file has one
+  world per distinct argument vector its production sites hand it (a site in a
+  test file opens none — a test hands fakes; a site in its own file none
   either), and the file is read once per world, that function bound from that
   site — `ModuleNode.readings`, each with its `World` (function, inducing site,
   arguments); `ModuleNode.reading` binds every function from its first world. A
@@ -117,9 +119,9 @@ open.
 ## Ports
 
 - `ports/extraction.port.ts` — `ExtractionEngine`: `extract(absolutePath)`
-  yields import occurrences, runtime content, and the parsed program with its
-  source — ESTree with TypeScript nodes, the standard shape, not the engine's —
-  or `null` when the engine has no extractor for that file kind;
+  resolves to import occurrences, runtime content, and the parsed program with
+  its source — ESTree with TypeScript nodes, the standard shape, not the
+  engine's — or `null` when the engine has no extractor for that file kind;
   `resolve(from, specifier)` yields a file, a builtin, or an unresolved reason.
   Engine shapes never leak through it; the tree is read per file and dropped.
 - `ports/flavor.port.ts` — `FlavorResolver`: `classify(files)` maps the whole
@@ -140,9 +142,13 @@ open.
 
 ## Adapters
 
-- `adapters/oxc-extraction.adapter.ts` — the engine over `oxc-parser` and
-  `oxc-resolver`: ESM records plus an AST walk for `require(...)`, resolution
-  through the project's tsconfig `paths` and config aliases.
+- `adapters/oxc-extraction.adapter.ts` —
+  `createOxcEngine({ fs, tsconfigPath?, alias? })`, the engine over `oxc-parser`
+  and `oxc-resolver`: the source read through the fs port (a covered file not
+  there is loud, never a parse result), ESM records plus an AST walk for
+  `require(...)`, resolution through the project's tsconfig `paths` and config
+  aliases — oxc-resolver's own, over the disk (the resolver port that frees it
+  is step 04's checkpoint 2).
 - `adapters/ts-suffixes-factories-flavor.adapter.ts` — the stock flavor: kind
   from the file suffix (`.model`, `.port`, `.service`, `.adapter`, `.assembly`,
   `.driver`, `.boot`; test naming is not the flavor's, see the test runner),
@@ -159,11 +165,12 @@ open.
   its binding is what makes a file a test file — canon's "spec files by the test
   globs"; claims the runners it knows (a census, `driverTech` for the next one);
   exempts registration, the call count, services-only and definitions.
-- `adapters/package-meta.adapter.ts` — the cross-package reader: resolves a bare
-  specifier to its owning package.json, reads the `deblob` field and the exports
-  map, answers the layer a subpath claims. Anything short of a readable claim
-  reads as no claim; a stranger's manifest never breaks the run. Cached per
-  package once a manifest was reached.
+- `adapters/package-meta.adapter.ts` — the cross-package reader,
+  `createPackageMetaReader({ fs, resolve, anchor, classifyEntry })`: resolves a
+  bare specifier to its owning package.json, reads the `deblob` field and the
+  exports map through the fs port, answers (async) the layer a subpath claims.
+  Anything short of a readable claim reads as no claim; a stranger's manifest
+  never breaks the run. Cached per package once a manifest was reached.
 
 ## What it does not do
 

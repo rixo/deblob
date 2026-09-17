@@ -22,11 +22,12 @@ is the explain-side companion.
 
 ## Adapters
 
-- `adapters/content.adapter.ts` —
+- `adapters/content.adapter.ts` — `createContentReader({ fs })` →
   `readExplainEntries({ contentRoot, rules, version })` reads the shipped
-  content into entries. `contentRoot` is injected: the bin anchors it at
-  `dist/content` next to its own compiled location, tests point at fixtures.
-  `version` is the binary's own, for the pinned URL.
+  content through the fs port into entries, loud when a promised file is not
+  there. `contentRoot` is injected: the bin anchors it at `dist/content` next to
+  its own compiled location, tests point at fixtures. `version` is the binary's
+  own, for the pinned URL.
 
 The content itself is a build artifact: `scripts/build-content.ts` copies the
 cards named by `RULE_CARDS` plus their link closure, and the architecture

@@ -55,18 +55,14 @@ import type {
   ResolvedConfig,
 } from "../../lib/config/config.service.ts"
 import {
-  discoverConfig,
-  explicitConfigPath,
+  createConfigLoader,
   importConfigDefault,
-  readPackageSurface,
-  tsconfigPathOf,
 } from "../../lib/config/adapters/loader.adapter.ts"
-import {
-  scanCoverage,
-  statSizes,
-} from "../../lib/config/adapters/scan.adapter.ts"
-import { readExplainEntries } from "../../lib/explain/adapters/content.adapter.ts"
+import { createCoverageScan } from "../../lib/config/adapters/scan.adapter.ts"
+import { createContentReader } from "../../lib/explain/adapters/content.adapter.ts"
 import { createOxcEngine } from "../../lib/extraction/adapters/oxc-extraction.adapter.ts"
+import { createNodeFs } from "../../lib/fs/adapters/node-fs.adapter.ts"
+import type { Fs } from "../../lib/fs/fs.port.ts"
 import { createPackageMetaReader } from "../../lib/extraction/adapters/package-meta.adapter.ts"
 import { createPlainTsReader } from "../../lib/extraction/adapters/plain-ts-reader.adapter.ts"
 import { createTestRunnerReader } from "../../lib/extraction/adapters/test-runner-reader.adapter.ts"
@@ -112,6 +108,14 @@ const CONTENT_ROOT = fileURLToPath(
 )
 
 type Writer = { write(chunk: string): unknown; isTTY?: boolean }
+
+/** The fs kernel and the readers over it, instantiated once per run. */
+type Deps = {
+  fs: Fs
+  loader: ReturnType<typeof createConfigLoader>
+  scan: ReturnType<typeof createCoverageScan>
+  content: ReturnType<typeof createContentReader>
+}
 
 export type MainIo = {
   argv: readonly string[]
@@ -186,11 +190,12 @@ const serviceCountOf = (roots: Iterable<string | null>): number =>
 const loadFor = async (
   io: MainIo,
   parsed: ParsedCli,
+  loader: Deps["loader"],
 ): Promise<ResolvedConfig> => {
   const configPath =
     parsed.config === null
-      ? discoverConfig(io.cwd)
-      : explicitConfigPath(io.cwd, parsed.config)
+      ? await loader.discoverConfig(io.cwd)
+      : await loader.explicitConfigPath(io.cwd, parsed.config)
   if (configPath === null) {
     return resolveConfig(
       {},
@@ -210,10 +215,15 @@ const loadFor = async (
   })
 }
 
-const runStatus = async (io: MainIo, parsed: ParsedCli, colors: Colors) => {
+const runStatus = async (
+  io: MainIo,
+  parsed: ParsedCli,
+  colors: Colors,
+  deps: Deps,
+) => {
   let config: ResolvedConfig
   try {
-    config = await loadFor(io, parsed)
+    config = await loadFor(io, parsed, deps.loader)
   } catch (error) {
     io.stderr.write(`${asConfigError(error).message}\n`)
     io.stdout.write(
@@ -229,7 +239,7 @@ const runStatus = async (io: MainIo, parsed: ParsedCli, colors: Colors) => {
     return 0
   }
 
-  const files = await scanCoverage(config)
+  const files = await deps.scan.scanCoverage(config)
   // classify is total by contract — extraction throws on a gap; bare trusts it
   const classifications = config.flavor.classify(files)
   const classificationOf = (path: string) =>
@@ -266,12 +276,12 @@ const runStatus = async (io: MainIo, parsed: ParsedCli, colors: Colors) => {
     return 0
   }
   const isBlob = (path: string): boolean => blobByPath.get(path) === true
-  const sizes = statSizes(config.root, files)
+  const sizes = await deps.scan.statSizes(config.root, files)
   // the field's claim, tallied at scan speed — no parse; a field this version
   // cannot read teaches on stderr and the segment is skipped: bare stays 0
   let surface: PackageSurface | null
   try {
-    surface = readPackageSurface(config.root)
+    surface = await deps.loader.readPackageSurface(config.root)
   } catch (error) {
     io.stderr.write(`${asConfigError(error).message}\n`)
     surface = null
@@ -324,21 +334,23 @@ const runCheck = async (
   parsed: ParsedCli,
   action: Extract<ParsedCli["action"], { command: "check" }>,
   colors: Colors,
+  deps: Deps,
 ): Promise<number> => {
   let config: ResolvedConfig
   let tsconfigPath: string | null
   let surface: PackageSurface | null
   try {
-    config = await loadFor(io, parsed)
-    tsconfigPath = tsconfigPathOf(config)
-    surface = readPackageSurface(config.root)
+    config = await loadFor(io, parsed, deps.loader)
+    tsconfigPath = await deps.loader.tsconfigPathOf(config)
+    surface = await deps.loader.readPackageSurface(config.root)
   } catch (error) {
     io.stderr.write(`${asConfigError(error).message}\n`)
     return 2
   }
 
-  const files = await scanCoverage(config)
+  const files = await deps.scan.scanCoverage(config)
   const engine = createOxcEngine({
+    fs: deps.fs,
     ...(tsconfigPath === null ? {} : { tsconfigPath }),
     alias: config.alias,
   })
@@ -348,13 +360,14 @@ const runCheck = async (
     readers: config.readers,
   })
   const packageMeta = createPackageMetaReader({
+    fs: deps.fs,
     resolve: engine.resolve,
     anchor: join(config.root, "package.json"),
     classifyEntry: classifyStockEntry,
   })
   let graph: ImportGraph
   try {
-    graph = extractGraph({
+    graph = await extractGraph({
       root: config.root,
       files,
       isAssembly: config.isAssembly,
@@ -362,8 +375,9 @@ const runCheck = async (
       isBoot: config.isBoot,
       external: config.external,
       // the consumer patch wins over producer fields — reviewer of record
-      externalLayerOf: (specifier) =>
-        config.externalLayers(specifier) ?? packageMeta.layerOf(specifier),
+      externalLayerOf: async (specifier) =>
+        config.externalLayers(specifier) ??
+        (await packageMeta.layerOf(specifier)),
       pure: config.pure,
       driverTech: config.driverTech,
     })
@@ -383,7 +397,7 @@ const runCheck = async (
       ? surfaceReport.violations
       : DETECTORS[check](graph, config),
   )
-  const sizes = statSizes(config.root, files)
+  const sizes = await deps.scan.statSizes(config.root, files)
   const stats: GraphStats = {
     files: graph.modules.size,
     ...sizeStatsOf(
@@ -416,7 +430,7 @@ const runCheck = async (
   const explanations =
     (action.explain || action.explainOnly) && firedRules.length > 0
       ? renderExplain(
-          readExplainEntries({
+          await deps.content.readExplainEntries({
             contentRoot: CONTENT_ROOT,
             rules: firedRules,
             version: VERSION,
@@ -459,6 +473,13 @@ export const main = async (io: MainIo): Promise<number> => {
   }
   const colors = colorsFor(io, parsed.noColor)
   const { action } = parsed
+  const fs = createNodeFs()
+  const deps: Deps = {
+    fs,
+    loader: createConfigLoader({ fs }),
+    scan: createCoverageScan({ fs }),
+    content: createContentReader({ fs }),
+  }
 
   switch (action.command) {
     case "help":
@@ -471,9 +492,9 @@ export const main = async (io: MainIo): Promise<number> => {
       io.stdout.write(`deblob ${VERSION}\n`)
       return 0
     case "status":
-      return runStatus(io, parsed, colors)
+      return runStatus(io, parsed, colors, deps)
     case "check":
-      return runCheck(io, parsed, action, colors)
+      return runCheck(io, parsed, action, colors, deps)
     case "explain": {
       const rules = new Set<RuleId>()
       const unknown = action.topics.filter((topic) => {
@@ -493,7 +514,7 @@ export const main = async (io: MainIo): Promise<number> => {
       }
       io.stdout.write(
         renderExplain(
-          readExplainEntries({
+          await deps.content.readExplainEntries({
             contentRoot: CONTENT_ROOT,
             rules: [...rules].sort(byRuleOrder),
             version: VERSION,

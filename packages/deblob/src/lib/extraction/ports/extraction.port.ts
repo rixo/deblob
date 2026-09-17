@@ -63,7 +63,7 @@ export interface ExtractionEngine {
    * the file stays a graph node without outgoing edges). Parse failures on a
    * supported kind throw.
    */
-  extract(absolutePath: string): FileExtraction | null
+  extract(absolutePath: string): Promise<FileExtraction | null>
 
   /** Resolve a specifier as imported from the given file. */
   resolve(fromAbsolutePath: string, specifier: string): Resolution

@@ -8,9 +8,9 @@
  * model; the consumer's `externalLayers` is the override.
  */
 
-import { existsSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
+import type { Fs } from "../../fs/fs.port.ts"
 import type { FlavorLayer } from "../graph.model.ts"
 import { exportsKeyFor, exportsSubpathsOf } from "../exports-map.model.ts"
 import { packageNameOf, specifierMatcher } from "../graph.model.ts"
@@ -36,17 +36,19 @@ const patternsIn = (field: Record<string, unknown>, key: string): string[] => {
 }
 
 export const createPackageMetaReader = ({
+  fs,
   resolve,
   anchor,
   classifyEntry,
 }: {
+  fs: Pick<Fs, "readFile">
   /** The engine's resolver — the same lens extraction sees packages through. */
   resolve: ExtractionEngine["resolve"]
   /** Absolute file path resolution anchors at (the consumer's root). */
   anchor: string
   /** The stock naming rule — the field claims it, whatever flavor is local. */
   classifyEntry: (subpath: string) => FlavorLayer | null
-}): { layerOf: (specifier: string) => FlavorLayer | null } => {
+}): { layerOf: (specifier: string) => Promise<FlavorLayer | null> } => {
   /** Package name → its claim, `null` for none. */
   const claims = new Map<string, Claim | null>()
 
@@ -83,15 +85,17 @@ export const createPackageMetaReader = ({
    * declared-external or stray subpath seen first must not blank the package's
    * claim for the subpaths that follow.
    */
-  const probe = (specifier: string): Claim | null | undefined => {
+  const probe = async (
+    specifier: string,
+  ): Promise<Claim | null | undefined> => {
     const resolution = resolve(anchor, specifier)
     if (resolution.kind !== "file") return undefined
     for (let dir = dirname(resolution.path); ;) {
-      const manifestPath = join(dir, "package.json")
-      if (existsSync(manifestPath)) {
+      const text = await fs.readFile(join(dir, "package.json"))
+      if (text !== null) {
         let parsed: unknown
         try {
-          parsed = JSON.parse(readFileSync(manifestPath, "utf8"))
+          parsed = JSON.parse(text)
         } catch {
           // a stranger's broken manifest carries no readable claim — degrade
           // to unlabeled, never break the consumer's run
@@ -111,12 +115,12 @@ export const createPackageMetaReader = ({
     }
   }
 
-  const layerOf = (specifier: string): FlavorLayer | null => {
+  const layerOf = async (specifier: string): Promise<FlavorLayer | null> => {
     const name = packageNameOf(specifier)
     if (name === null || name.startsWith("node:")) return null
     let claim = claims.get(name)
     if (claim === undefined) {
-      claim = probe(specifier)
+      claim = await probe(specifier)
       if (claim !== undefined) claims.set(name, claim)
     }
     if (claim === null || claim === undefined) return null

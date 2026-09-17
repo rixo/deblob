@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url"
 import { describe, expect, test } from "vitest"
 
+import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import { createPlainTsReader } from "./adapters/plain-ts-reader.adapter.ts"
 import { createTestRunnerReader } from "./adapters/test-runner-reader.adapter.ts"
@@ -31,14 +32,17 @@ const FILES = [
 ]
 
 /** Test factory: the reading fixture's graph, with or without the second driver. */
-const levelsOf = (files: readonly string[] = FILES) => {
+const levelsOf = async (files: readonly string[] = FILES) => {
   const extraction = createExtraction({
-    engine: createOxcEngine({ tsconfigPath: `${root}tsconfig.json` }),
+    engine: createOxcEngine({
+      fs: createNodeFs(),
+      tsconfigPath: `${root}tsconfig.json`,
+    }),
     flavor: createTsSuffixesFactoriesFlavor(),
     readers: [createPlainTsReader(), createTestRunnerReader()],
   })
   return useCaseLevels(
-    extraction.extractGraph({
+    await extraction.extractGraph({
       root,
       files,
       driverTech: (specifier) => specifier === "some-made-up-parser",
@@ -47,8 +51,8 @@ const levelsOf = (files: readonly string[] = FILES) => {
 }
 
 describe("useCaseLevels", () => {
-  test("a use case called from a driver's hook is primary, traced through the assembly's returned record to its service", () => {
-    const { primary } = levelsOf()
+  test("a use case called from a driver's hook is primary, traced through the assembly's returned record to its service", async () => {
+    const { primary } = await levelsOf()
     expect(
       primary.map(({ service, member, driver, span }) => [
         service,
@@ -67,8 +71,8 @@ describe("useCaseLevels", () => {
     ])
   })
 
-  test("a use case on an instance the reading cannot trace is listed unresolved; an adapter or a model instance reached through the records is neither", () => {
-    const { primary, unresolved } = levelsOf()
+  test("a use case on an instance the reading cannot trace is listed unresolved; an adapter or a model instance reached through the records is neither", async () => {
+    const { primary, unresolved } = await levelsOf()
     expect(
       unresolved.map(({ driver, member, span }) => [driver, member, span.line]),
     ).toEqual([
@@ -87,8 +91,8 @@ describe("useCaseLevels", () => {
     expect(primary.map(({ member }) => member)).not.toContain("registry.get")
   })
 
-  test("a sub-driver's hook counts once its parameters are bound: the same use case, another driver", () => {
-    const { primary } = levelsOf(
+  test("a sub-driver's hook counts once its parameters are bound: the same use case, another driver", async () => {
+    const { primary } = await levelsOf(
       FILES.filter((file) => file !== "src/other.driver.ts"),
     )
     expect(
@@ -96,8 +100,8 @@ describe("useCaseLevels", () => {
     ).toContainEqual(["check", "src/sub.driver.ts"])
   })
 
-  test("test hooks never label", () => {
-    const { primary, unresolved } = levelsOf()
+  test("test hooks never label", async () => {
+    const { primary, unresolved } = await levelsOf()
     expect(primary.map(({ driver }) => driver)).not.toContain(
       "src/app/app.service.spec.ts",
     )

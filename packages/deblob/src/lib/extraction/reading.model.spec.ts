@@ -1,6 +1,8 @@
+import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, test } from "vitest"
 
+import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import type {
   CalleeKind,
@@ -59,14 +61,29 @@ const TARGETS: Readonly<Record<string, ImportTargetKind>> = {
   "./outside.ts": { kind: "external", package: null, claim: "tech" },
 }
 
-const engine = createOxcEngine()
+const fs = createNodeFs()
+const engine = createOxcEngine({ fs })
+const fixtureDir = fixture("")
+
+/**
+ * Every reader fixture parsed once, up front, so `read` stays a plain function
+ * over a tree the cases share — the reading never writes to it.
+ */
+const extractions = new Map(
+  await Promise.all(
+    (await fs.glob(["*.ts"], { cwd: fixtureDir })).map(
+      async (name) =>
+        [name, await engine.extract(join(fixtureDir, name))] as const,
+    ),
+  ),
+)
 
 /** Test factory: a fixture read as the given kind with the given tech. */
 const read = (
   name: string,
   overrides: Partial<Omit<ReadInput, "program" | "source">> = {},
 ): FileReading => {
-  const extraction = engine.extract(fixture(name))
+  const extraction = extractions.get(name) ?? null
   if (extraction === null) throw new Error(`no extraction for ${name}`)
   return readModule({
     program: extraction.program,
@@ -405,8 +422,8 @@ describe("readModule", () => {
   })
 
   describe("total over the tree", () => {
-    test("tripwire: a node type the reader has never seen is walked for its calls, never a throw", () => {
-      const extraction = engine.extract(fixture("root-forms.ts"))
+    test("tripwire: a node type the reader has never seen is walked for its calls, never a throw", async () => {
+      const extraction = await engine.extract(fixture("root-forms.ts"))
       if (extraction === null) throw new Error("no extraction")
       // wrap the first root call in a synthetic statement carrying a synthetic expression
       const body = extraction.program.body as unknown as Record<

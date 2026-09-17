@@ -43,21 +43,24 @@ adapters over the platform; assembly owns the load → resolve sequence.
 
 ## Adapters
 
-- `adapters/loader.adapter.ts` — the platform as the one concrete tech:
-  `discoverConfig(cwd)` walks upward for `deblob.config.{ts,js,mjs}`,
-  `explicitConfigPath` honors `-c`, `importConfigDefault` loads the file through
-  native `import()` (Node strips types; erasable syntax only), `tsconfigPathOf`
-  finds the tsconfig feeding resolution, `readPackageSurface(root)` reads the
-  package's own `deblob` field and exports map for the surface check — a key
-  this version cannot honor, a malformed `blob`, or a field without an exports
-  map fail loud there.
-- `adapters/scan.adapter.ts` — `scanCoverage(config)` globs the governed subtree
-  under the full-scan model (every covered file is a graph node, orphans
-  included, hidden paths never) and gates it on the config's `covers`;
-  `statSizes` feeds the size-weighted blob percentage.
+- `adapters/loader.adapter.ts` — `createConfigLoader({ fs })` over the fs port
+  (`lib/fs/`), promise-only: `discoverConfig(cwd)` walks upward for
+  `deblob.config.{ts,js,mjs}`, `explicitConfigPath` honors `-c`,
+  `tsconfigPathOf` finds the tsconfig feeding resolution,
+  `readPackageSurface(root)` reads the package's own `deblob` field and exports
+  map for the surface check — a key this version cannot honor, a malformed
+  `blob`, or a field without an exports map fail loud there. Outside the
+  factory, `importConfigDefault` loads the file through native `import()` (Node
+  strips types; erasable syntax only): a platform call no port reads.
+- `adapters/scan.adapter.ts` — `createCoverageScan({ fs })`:
+  `scanCoverage(config)` globs the governed subtree through the port under the
+  full-scan model (every covered file is a graph node, orphans included, hidden
+  paths never) and gates it on the config's `covers`; `statSizes` feeds the
+  size-weighted blob percentage, loud on a covered file gone since the scan.
 
-Not behind a port on purpose: config crosses into the core as data, and reading
-it is assembly's job. The adapters never see the resolution.
+Assembly owns the load → resolve sequence and never hands the adapters the
+resolution; the disk they read is the fs port's, so a run over a tree of strings
+(the memory adapter) loads and scans exactly as one over the disk.
 
 ## What it does not do
 

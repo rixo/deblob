@@ -1,9 +1,9 @@
-import { readFileSync } from "node:fs"
 import { dirname } from "node:path"
 
 import { parseSync } from "oxc-parser"
 import { ResolverFactory } from "oxc-resolver"
 
+import type { Fs } from "../../fs/fs.port.ts"
 import type { RuntimeEntry } from "../graph.model.ts"
 import type {
   ExtractionEngine,
@@ -148,12 +148,15 @@ const collectRuntimeContent = (program: AstNode): RuntimeEntry[] => {
 }
 
 export const createOxcEngine = ({
+  fs,
   tsconfigPath,
   alias,
 }: {
+  /** The source reads; resolution is oxc-resolver's own, over the disk. */
+  fs: Pick<Fs, "readFile">
   tsconfigPath?: string
   alias?: Readonly<Record<string, readonly string[]>>
-} = {}): ExtractionEngine => {
+}): ExtractionEngine => {
   // JS-oriented defaults silently misresolve TS — conditionNames and
   // extensionAlias are always set, never left to the resolver's defaults.
   const resolver = new ResolverFactory({
@@ -192,10 +195,15 @@ export const createOxcEngine = ({
       : {}),
   })
 
-  const extract = (absolutePath: string): FileExtraction | null => {
+  const extract = async (
+    absolutePath: string,
+  ): Promise<FileExtraction | null> => {
     if (!PARSEABLE.test(absolutePath)) return null
 
-    const source = readFileSync(absolutePath, "utf8")
+    const source = await fs.readFile(absolutePath)
+    // a covered file is one the scan listed: nothing there is a race or a
+    // caller's mistake, never a parse result
+    if (source === null) throw new Error(`no such file: ${absolutePath}`)
     const result = parseSync(absolutePath, source)
 
     if (result.errors.length > 0) {
