@@ -3,14 +3,16 @@
  * server with the ws channel at `/deblob/ws`, a watcher, the protocol served,
  * and the built bundle at `/` when there is one to serve. Takes its world as a
  * value (cwd, port, bundle, streams) so the whole thing runs in-process; the
- * bin shim owns the only `process` glue. Two callers: the package script
- * `serve` (the dev cycle, data half only) and the CLI's `view` verb.
+ * bin shim owns the only `process` glue. `serve` is the assembly, with two
+ * callers: this file's `main`, the package script `serve` (the dev cycle, data
+ * half only), and the CLI's `view` verb.
  */
 
 import { createServer } from "node:http"
 import type { AddressInfo } from "node:net"
 import { inspect } from "node:util"
 
+import { asConfigErrorOrRethrow } from "../../lib/config/config.model.ts"
 import { createChokidarWatcher } from "../../lib/snapshot/adapters/chokidar-watcher.adapter.ts"
 import { createWsChannel } from "../../lib/snapshot/adapters/ws-channel.adapter.ts"
 import { allowsHandshake } from "../../lib/snapshot/handshake.model.ts"
@@ -41,7 +43,13 @@ export type ServeIo = {
   stderr: Writer
 }
 
-export const main = async (io: ServeIo) => {
+/**
+ * The server, started — or a throw, the cwd's `ConfigError` included, before
+ * anything listens: presenting it is each caller's.
+ */
+export const serve = async (
+  io: ServeIo,
+): Promise<{ port: number; close: () => Promise<void> }> => {
   // the server's own failures, in full, where a dev server's user looks
   const report: Report = (error) => {
     io.stderr.write(`${inspect(error)}\n`)
@@ -126,4 +134,29 @@ export const main = async (io: ServeIo) => {
       await new Promise<void>((resolve) => server.close(() => resolve()))
     },
   }
+}
+
+export type MainIo = Omit<ServeIo, "bundle"> & {
+  /** The stop, ctrl-c as a value: the server closes, and `main` answers 0. */
+  signal: AbortSignal
+}
+
+/**
+ * The package script `serve`: the data half alone — in the dev cycle Vite
+ * serves the page — until stopped. A config it cannot read is the line `check`
+ * prints, exit 2, nothing listening.
+ */
+export const main = async (io: MainIo): Promise<number> => {
+  let close: () => Promise<void>
+  try {
+    ;({ close } = await serve({ ...io, bundle: null }))
+  } catch (error) {
+    io.stderr.write(`${asConfigErrorOrRethrow(error).message}\n`)
+    return 2
+  }
+  await new Promise<void>((resolve) => {
+    io.signal.addEventListener("abort", () => resolve(), { once: true })
+  })
+  await close()
+  return 0
 }

@@ -66,8 +66,8 @@ export const isExtractionError = (error: unknown): error is ExtractionError =>
   (error as { name?: unknown }).name === "ExtractionError"
 
 /**
- * The presentable failure, or the bug kept flying — `asConfigError`'s twin for
- * a catch that expects extraction's own errors and nothing else.
+ * The presentable failure, or the bug kept flying — `asConfigErrorOrRethrow`'s
+ * twin for a catch that expects extraction's own errors and nothing else.
  */
 export const asExtractionError = (error: unknown): ExtractionError => {
   if (isExtractionError(error)) return error

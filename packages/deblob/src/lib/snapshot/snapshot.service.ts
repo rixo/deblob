@@ -123,8 +123,17 @@ export const serveSnapshots = ({
     let again = false
 
     const keepWatching = async (dirs: readonly string[]): Promise<void> => {
-      if (watch === null) watch = await watcher.watch(dirs, rerun)
-      else await watch.update(dirs)
+      if (watch !== null) {
+        await watch.update(dirs)
+        return
+      }
+      const opened = await watcher.watch(dirs, rerun)
+      // the client left while it opened: its close found nothing to close
+      if (closed) {
+        await opened.close()
+        return
+      }
+      watch = opened
     }
 
     /** One run of `project`: the answer, and the set to watch before it goes. */

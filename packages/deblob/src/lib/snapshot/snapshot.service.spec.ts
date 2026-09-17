@@ -197,7 +197,7 @@ const fakeRuns = () => {
 const connectServed = async () => {
   const { channel, connect } = createMemoryChannel()
   const { report, reported } = createMemoryReport()
-  const { watcher, change, watching } = createMemoryWatcher()
+  const { watcher, change, watching, hold } = createMemoryWatcher()
   const runs = fakeRuns()
   serveSnapshots({
     channel,
@@ -213,6 +213,7 @@ const connectServed = async () => {
     reported,
     change,
     watching,
+    hold,
     release: runs.release,
     fail: runs.fail,
     settle,
@@ -371,6 +372,21 @@ describe("serveSnapshots", () => {
     const { sent, send, close, settle, watching } = await connectServed()
     const selecting = send({ type: "select", project: "/FAKE_A" })
     await close()
+    await selecting
+    await settle()
+    expect(sent).toHaveLength(2)
+    expect(watching()).toEqual([])
+  })
+
+  test("a client gone while its watch is still opening: the watch is closed once up, nothing sent", async () => {
+    const { sent, send, close, settle, watching, hold } = await connectServed()
+    const release = hold()
+    const selecting = send({ type: "select", project: "/FAKE_A" })
+    await settle()
+    // the old watch closed, the new one not up yet
+    expect(watching()).toEqual([])
+    await close()
+    release()
     await selecting
     await settle()
     expect(sent).toHaveLength(2)

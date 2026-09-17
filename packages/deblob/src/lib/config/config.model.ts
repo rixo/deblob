@@ -24,7 +24,7 @@ export const isConfigError = (error: unknown): error is ConfigError =>
  * The runner's catch filter: config errors are handled (message + exit code),
  * anything else is a bug and keeps flying.
  */
-export const asConfigError = (error: unknown): ConfigError => {
+export const asConfigErrorOrRethrow = (error: unknown): ConfigError => {
   if (isConfigError(error)) return error
   throw error
 }

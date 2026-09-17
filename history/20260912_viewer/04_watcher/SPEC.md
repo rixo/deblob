@@ -246,7 +246,15 @@ Surfaced while building, recorded for later rulings; none changed the cut.
   instance per directory, where that cannot happen, and awaits every `ready`.
   The "one chokidar instance per set" in § API above no longer holds. With one
   instance over the set, the two new tests missed the first write in 8 runs out
-  of 8; with one per directory they passed 8 out of 8.
+  of 8; with one per directory they passed 8 out of 8. Upstream (checked
+  2026-09-17): reported in 3.x as paulmillr/chokidar#1011 and #1110, both closed
+  unfixed in a bulk cleanup on 2024-07-01; PR #1289 names this exact double
+  count and was closed unmerged when 4.0.0 shipped; 5.0.0 (2025-11) is still the
+  latest release and chokidar's `main` still has both calls. No upstream fix to
+  wait for: the one-instance-per-directory shape stays. Vite 8.3 bundles
+  chokidar 3.6 with the same code, so its bundled copy is no way around it. Also
+  found, not reported upstream: `getWatched()` lists a directory before its
+  watcher is attached, so it cannot tell whether a watch is up.
 - **Two tabs on one project are two chokidar instances** and two extractions per
   change (§ Open, accepted). The set is re-listed on every run.
 - ~~**The source keeps last-answer-wins** (step 03's finding); the server now
@@ -258,6 +266,19 @@ Surfaced while building, recorded for later rulings; none changed the cut.
 - **A change in a covered subdirectory during a project's very first run** is
   not seen: only the root is watched until the run's set is known. The next
   change is.
+- ~~**A watch opened for a client that already left was never closed.**~~ —
+  found and fixed 2026-09-17. The serve script's SIGTERM test hung: a client
+  that disconnected before its first snapshot left 8 filesystem watchers open
+  after the server closed, so the process never exited. Two races, one fix each.
+  In the service, `onClose` closed only a watch that existed; a `watcher.watch`
+  still opening was assigned afterwards and kept — now a watch that opens after
+  the close is closed at once. In the chokidar adapter, a `close` during an
+  `update` closed the old instances, and the update then kept the new ones — now
+  an update that finishes after the close closes what it opened. Tested with a
+  memory watcher that can hold `watch` and `update` pending (`hold()`), and with
+  a real `update` left in flight across a `close`; both tests failed before the
+  fix. In the dev cycle, each page reload during a first load had leaked its
+  watchers for the life of the server.
 
 ## Open, to rule at ratification
 

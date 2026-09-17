@@ -6,11 +6,17 @@ import process from "node:process"
 
 import { main } from "./main.ts"
 
-await main({
+// ctrl-c: the signal replaces the default kill, so the server closes and the
+// exit code is still main's
+const stopping = new AbortController()
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => stopping.abort())
+}
+
+process.exitCode = await main({
   cwd: process.cwd(),
   port: Number(process.env["PORT"] ?? 5175),
-  // the data half alone: in the dev cycle Vite serves the page
-  bundle: null,
   stdout: process.stdout,
   stderr: process.stderr,
+  signal: stopping.signal,
 })

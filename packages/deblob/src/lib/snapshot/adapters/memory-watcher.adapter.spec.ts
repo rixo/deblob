@@ -27,3 +27,26 @@ test("a change reaches the watches holding that directory; update and close move
   await second.close()
   expect(watching()).toEqual([])
 })
+
+test("held: watch and update stay pending, nothing moves, until the release", async () => {
+  const { watcher, watching, hold } = createMemoryWatcher()
+  const early = await watcher.watch(["/FAKE_A"], () => {})
+
+  const release = hold()
+  let opened = false
+  const opening = watcher
+    .watch(["/FAKE_B"], () => {})
+    .then((watch) => {
+      opened = true
+      return watch
+    })
+  const updating = early.update(["/FAKE_C"])
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(opened).toBe(false)
+  expect(watching()).toEqual([["/FAKE_A"]])
+
+  release()
+  await opening
+  await updating
+  expect(watching()).toEqual([["/FAKE_C"], ["/FAKE_B"]])
+})

@@ -288,9 +288,13 @@ step's cut.
 - **`sizeStatsOf`, `provenanceOf`, `serviceCountOf`** live in
   `cli/render.model.ts` and the snapshot model imports them cross-service:
   kernel candidates.
-- **Two roots.** `snapshot.project.root` is `config.root` (discovery may walk up
-  from the listed directory); `projects[].root` is the directory as listed. Same
-  in practice; different when a project's config sits above it.
+- ~~**Two roots.** `snapshot.project.root` is `config.root` (discovery may walk
+  up from the listed directory); `projects[].root` is the directory as listed.
+  Same in practice; different when a project's config sits above it.~~ — closed
+  at step 04 (cecef2e) by the ruling that a listed directory is its own project:
+  a run reads the config at the listed directory exactly (`loadConfigAt` →
+  `configAt`, the root resolved as given), so both roots are the listed
+  directory. SPEC 04 said so; this entry was not struck at the time.
 - ~~**Out-of-order answers: the last wins.** Rapid selects can answer out of
   order, and the source takes each answer as it comes. Keying on
   `snapshot.project.root` would drop every answer of a project whose config sits
@@ -312,9 +316,16 @@ step's cut.
   no exit code), the server reports it and keeps serving. Doctrine says an
   `ExtractionError` and its guard in the extraction model, the parse failure as
   its first actionable case; a step of its own.
-- **The serve bin has no presentation for a `ConfigError` at startup:** a broken
-  cwd config crashes with the stack. Step 05's verb inherits the CLI's
-  presentation; until then, acceptable for a package-script dev server.
+- ~~**The serve bin has no presentation for a `ConfigError` at startup:** a
+  broken cwd config crashes with the stack. Step 05's verb inherits the CLI's
+  presentation; until then, acceptable for a package-script dev server.~~ —
+  fixed 2026-09-17 by splitting the serve driver: `serve(io)` is the assembly
+  both callers share and throws, the `ConfigError` included; `main(io)` is the
+  package script's own edge — it prints the message, the line `check` prints,
+  and answers 2, or serves until its abort signal and answers 0. The bin wires
+  SIGINT/SIGTERM to that signal, as the CLI's does. `deblob view` keeps its own
+  catch. The catch filter was renamed `asConfigErrorOrRethrow` on the way: the
+  rethrow was not visible at the call site.
 - ~~**The serve test reads the viewer package's real config.** A
   `deblob.local.json` dropped there by hand — the intended dev use — changes
   `projects` and breaks its "1 project" assertion. The test could build its own

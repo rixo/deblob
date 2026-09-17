@@ -52,7 +52,7 @@ import {
   SURFACE_NOT_CLAIMED,
 } from "../../lib/cli/render.model.ts"
 import type { Colors, GraphStats } from "../../lib/cli/render.model.ts"
-import { asConfigError } from "../../lib/config/config.model.ts"
+import { asConfigErrorOrRethrow } from "../../lib/config/config.model.ts"
 import {
   overlayLocalConfig,
   resolveConfig,
@@ -90,7 +90,7 @@ import type {
 import type { FlavorClassification } from "../../lib/extraction/ports/flavor.port.ts"
 import { createRecognition } from "../../lib/extraction/recognition.model.ts"
 import { INDEX as VIEWER_INDEX } from "../../lib/view/bundle.model.ts"
-import { main as serveView } from "../serve/main.ts"
+import { serve } from "../serve/main.ts"
 
 /**
  * The stock readers, in the order they bind by default: the test runner before
@@ -255,7 +255,7 @@ const runStatus = async (
   try {
     config = await loadFor(io, parsed, deps.loader)
   } catch (error) {
-    io.stderr.write(`${asConfigError(error).message}\n`)
+    io.stderr.write(`${asConfigErrorOrRethrow(error).message}\n`)
     io.stdout.write(
       renderBareStatus(
         {
@@ -313,7 +313,7 @@ const runStatus = async (
   try {
     surface = await deps.loader.readPackageSurface(config.root)
   } catch (error) {
-    io.stderr.write(`${asConfigError(error).message}\n`)
+    io.stderr.write(`${asConfigErrorOrRethrow(error).message}\n`)
     surface = null
   }
   io.stdout.write(
@@ -375,7 +375,7 @@ const runView = async (
   }
   let close: () => Promise<void>
   try {
-    ;({ close } = await serveView({
+    ;({ close } = await serve({
       cwd: io.cwd,
       port: action.port ?? DEFAULT_VIEW_PORT,
       bundle: io.bundle,
@@ -383,7 +383,7 @@ const runView = async (
       stderr: io.stderr,
     }))
   } catch (error) {
-    io.stderr.write(`${asConfigError(error).message}\n`)
+    io.stderr.write(`${asConfigErrorOrRethrow(error).message}\n`)
     return 2
   }
   await new Promise<void>((resolve) => {
@@ -417,7 +417,7 @@ const runCheck = async (
     tsconfigPath = await deps.loader.tsconfigPathOf(config)
     surface = await deps.loader.readPackageSurface(config.root)
   } catch (error) {
-    io.stderr.write(`${asConfigError(error).message}\n`)
+    io.stderr.write(`${asConfigErrorOrRethrow(error).message}\n`)
     return 2
   }
 

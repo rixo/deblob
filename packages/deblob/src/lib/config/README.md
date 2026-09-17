@@ -41,8 +41,8 @@ adapters over the platform; assembly owns the load → resolve sequence.
   key in the local file fails naming that file — after the merge the source of a
   key is gone, so this is the one place that message can come from.
 - `config.model.ts` — `ConfigError`, its duck-typed guard `isConfigError` (by
-  name; `instanceof` breaks across realms) and `asConfigError`, the coverage
-  constants (`DEFAULT_INCLUDE`, the non-removable `EXCLUDE_BASELINE`,
+  name; `instanceof` breaks across realms) and `asConfigErrorOrRethrow`, the
+  coverage constants (`DEFAULT_INCLUDE`, the non-removable `EXCLUDE_BASELINE`,
   `COVERAGE_EXTENSIONS` — the script extensions; another extension enters
   coverage only named by a designation or a reader binding), the config-import
   error message.

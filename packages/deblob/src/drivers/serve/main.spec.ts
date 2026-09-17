@@ -8,7 +8,7 @@ import WebSocket from "ws"
 
 import type { ServerMessage, Snapshot } from "@deblob/viewer/snapshot.model"
 
-import { main, WS_PATH } from "./main.ts"
+import { main, serve, WS_PATH } from "./main.ts"
 
 const here = (path: string): string =>
   fileURLToPath(new URL(path, import.meta.url))
@@ -46,6 +46,8 @@ const viewerProject = async () => {
   return { root, a: join(root, "FAKE_A"), b: join(root, "FAKE_B") }
 }
 
+const brokenConfigDir = here("../../lib/config/__fixtures__/throws")
+
 /** A real client: the first `count` messages, then closed; `after` sees each. */
 const receive = (
   url: string,
@@ -71,7 +73,7 @@ const receive = (
 test("serves the projects of the cwd's config, then the first snapshot; select answers the other", async () => {
   const { root, a, b } = await viewerProject()
   let out = ""
-  const { port, close } = await main({
+  const { port, close } = await serve({
     cwd: root,
     port: 0,
     bundle: null,
@@ -121,7 +123,7 @@ test("serves the projects of the cwd's config, then the first snapshot; select a
 
 test("a file written under the shown project pushes its snapshot again", async () => {
   const { root, a } = await viewerProject()
-  const { port, close } = await main({
+  const { port, close } = await serve({
     cwd: root,
     port: 0,
     bundle: null,
@@ -150,7 +152,7 @@ test("a file written under the shown project pushes its snapshot again", async (
 test("a handshake that is not the viewer's is refused, and the refusal is said on stderr", async () => {
   const { root } = await viewerProject()
   let err = ""
-  const { port, close } = await main({
+  const { port, close } = await serve({
     cwd: root,
     port: 0,
     bundle: null,
@@ -183,7 +185,7 @@ test("a handshake that is not the viewer's is refused, and the refusal is said o
 
 test("without a bundle there is nothing to serve: a plain request is answered 404, not left hanging", async () => {
   const { root } = await viewerProject()
-  const { port, close } = await main({
+  const { port, close } = await serve({
     cwd: root,
     port: 0,
     bundle: null,
@@ -202,7 +204,7 @@ test("without a bundle there is nothing to serve: a plain request is answered 40
 test("the server's own failures go to stderr in full; it keeps serving", async () => {
   const { root } = await viewerProject()
   let err = ""
-  const { port, close } = await main({
+  const { port, close } = await serve({
     cwd: root,
     port: 0,
     bundle: null,
@@ -227,12 +229,71 @@ test("the server's own failures go to stderr in full; it keeps serving", async (
   }
 })
 
-test("bin shim (child process smoke): PORT in, the address line out, a client served", async () => {
+test("the script serves the data half until stopped, then exits 0", async () => {
+  const { root } = await viewerProject()
+  const stopping = new AbortController()
+  let out = ""
+  const exited = main({
+    cwd: root,
+    port: 0,
+    stdout: { write: (chunk: string) => (out += chunk) },
+    stderr: { write: () => {} },
+    signal: stopping.signal,
+  })
+  while (out === "") await new Promise((r) => setTimeout(r, 5))
+  const port = /ws:\/\/127\.0\.0\.1:(\d+)\//.exec(out)?.[1]
+  const [projects] = await receive(`ws://127.0.0.1:${port}${WS_PATH}`, 1)
+  expect(projects?.type).toBe("projects")
+
+  stopping.abort()
+  await expect(exited).resolves.toBe(0)
+  // closed: nothing answers on the port any more
+  await expect(fetch(`http://127.0.0.1:${port}`)).rejects.toThrow()
+})
+
+test("the script on a config it cannot read: the line check prints, exit 2, nothing started", async () => {
+  let out = ""
+  let err = ""
+  const code = await main({
+    cwd: brokenConfigDir,
+    port: 0,
+    stdout: { write: (chunk: string) => (out += chunk) },
+    stderr: { write: (chunk: string) => (err += chunk) },
+    // never stopped: a config error answers without waiting for it
+    signal: new AbortController().signal,
+  })
+  expect(code).toBe(2)
+  expect(out).toBe("")
+  expect(err).toContain("deblob.config.ts")
+  // the message alone, not the error printed in full
+  expect(err).not.toContain("    at ")
+})
+
+test("bin shim (child process smoke): a config it cannot read exits 2, the message on stderr", async () => {
+  const child = spawn(process.execPath, [here("bin.ts")], {
+    cwd: brokenConfigDir,
+    env: { ...process.env, PORT: "0" },
+    stdio: ["ignore", "pipe", "pipe"],
+  })
+  let err = ""
+  child.stderr.on("data", (chunk: Buffer) => (err += String(chunk)))
+  const code = await new Promise<number | null>((resolve) => {
+    child.on("close", resolve)
+  })
+  expect(code).toBe(2)
+  expect(err).toContain("deblob.config.ts")
+  expect(err).not.toContain("    at ")
+})
+
+test("bin shim (child process smoke): PORT in, the address line out, a client served, SIGTERM exits 0", async () => {
   const { root } = await viewerProject()
   const child = spawn(process.execPath, [here("bin.ts")], {
     cwd: root,
     env: { ...process.env, PORT: "0" },
     stdio: ["ignore", "pipe", "pipe"],
+  })
+  const closed = new Promise<number | null>((resolve) => {
+    child.on("close", resolve)
   })
   try {
     const line = await new Promise<string>((resolve) => {
@@ -245,6 +306,8 @@ test("bin shim (child process smoke): PORT in, the address line out, a client se
   } finally {
     child.kill()
   }
+  // the stop is main's: the server closed, the exit code its answer
+  await expect(closed).resolves.toBe(0)
 })
 
 const FAKE_INDEX = "<!doctype html>FAKE INDEX"
@@ -264,7 +327,7 @@ test("given a bundle, the page and its assets are served beside the channel", as
   const { root } = await viewerProject()
   const bundle = await bundleDir()
   let out = ""
-  const { port, close } = await main({
+  const { port, close } = await serve({
     cwd: root,
     port: 0,
     bundle,
@@ -306,7 +369,7 @@ test("given a bundle, the page and its assets are served beside the channel", as
 test("a bundle root that is not a directory: reported in full, 500 to the client", async () => {
   const { root } = await viewerProject()
   let err = ""
-  const { port, close } = await main({
+  const { port, close } = await serve({
     cwd: root,
     port: 0,
     // a file where a directory was expected — a broken install, not a miss

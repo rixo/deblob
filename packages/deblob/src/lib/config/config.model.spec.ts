@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest"
 import {
   ConfigError,
   COVERAGE_EXTENSIONS,
-  asConfigError,
+  asConfigErrorOrRethrow,
   hasCoverageExtension,
   isConfigError,
   configImportErrorMessage,
@@ -22,12 +22,12 @@ describe("isConfigError", () => {
   })
 })
 
-describe("asConfigError", () => {
+describe("asConfigErrorOrRethrow", () => {
   test("passes a ConfigError through, rethrows anything else", () => {
     const teaching = new ConfigError("SOME_MADE_UP_MESSAGE")
-    expect(asConfigError(teaching)).toBe(teaching)
+    expect(asConfigErrorOrRethrow(teaching)).toBe(teaching)
     const bug = new Error("SOME_MADE_UP_BUG")
-    expect(() => asConfigError(bug)).toThrow(bug)
+    expect(() => asConfigErrorOrRethrow(bug)).toThrow(bug)
   })
 })
 

@@ -88,8 +88,9 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
   watched. Polling where a filesystem emits nothing: chokidar's
   `CHOKIDAR_USEPOLLING`, untouched.
 - `adapters/memory-watcher.adapter.ts` — `createMemoryWatcher()` →
-  `{ watcher, change(dir), watching }`: the test fires the changes and reads the
-  live sets.
+  `{ watcher, change(dir), watching, hold }`: the test fires the changes, reads
+  the live sets, and with `hold()` keeps `watch` and `update` pending until it
+  releases them — a real watcher's time to come up.
 - `adapters/memory-project-source.adapter.ts` —
   `createMemoryProjectSource({ projects, now })`: the world in memory, projects
   keyed by directory; an unknown directory fails like a missing project.
@@ -100,17 +101,20 @@ manifest name — and `scan.adapter.ts`) and the extraction service.
 
 ## Drivers (`src/drivers/`)
 
-- `serve/` — the view server, with two callers. The package script `serve` (run
-  from source, `PORT` in the environment, default 5175) is the dev cycle's data
-  half alone: the projects of the cwd's config, an HTTP server with the channel
-  at `/deblob/ws`, the chokidar watcher (100 ms quiet), the protocol served; its
-  own failures on stderr in full, and it keeps serving. The CLI's `view` verb
-  calls the same assembly with a bundle root, and the same server then answers
-  the page and its assets at `/` ([view](../view/README.md)) — one port for
-  both, since the channel rides the HTTP server's upgrade. Either way the
-  channel takes `allowsHandshake`, and a refusal is one line on stderr naming
-  the origin — not a bug, so not `report`'s, but a server that turns clients
-  away without a word cannot be debugged.
+- `serve/` — the view server. `serve(io)` is the assembly, with two callers: the
+  projects of the cwd's config, an HTTP server with the channel at `/deblob/ws`,
+  the chokidar watcher (100 ms quiet), the protocol served; its own failures on
+  stderr in full, and it keeps serving. A cwd config it cannot read is not one
+  of those: it throws before anything listens, and each caller presents it. The
+  package script `serve` (run from source, `PORT` in the environment,
+  default 5175) is `main(io)`, the dev cycle's data half alone: the config's
+  message on stderr and exit 2, or serving until SIGINT/SIGTERM and exit 0. The
+  CLI's `view` verb calls the same assembly with a bundle root, and the same
+  server then answers the page and its assets at `/` ([view](../view/README.md))
+  — one port for both, since the channel rides the HTTP server's upgrade. Either
+  way the channel takes `allowsHandshake`, and a refusal is one line on stderr
+  naming the origin — not a bug, so not `report`'s, but a server that turns
+  clients away without a word cannot be debugged.
 - `snapshot/` — the script driver, package script `snapshot`: executed, never
   imported; cwd in as the project root (exactly, nothing above it), the snapshot
   as one JSON line on stdout, exit 0; a config error on stderr, exit 2. The

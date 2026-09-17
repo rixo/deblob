@@ -36,7 +36,9 @@ export const createChokidarWatcher = ({
      * One instance per directory, resolved once each is up. Not one instance
      * over the set: chokidar 5 counts a path that fails (missing, a loop, a
      * name too long) as ready twice, so its `ready` fires before the rest of
-     * the set is watched. With a single path per instance, it cannot.
+     * the set is watched. With a single path per instance, it cannot. Known
+     * upstream since 3.x (paulmillr/chokidar#1011, #1110), the fix (#1289)
+     * closed unmerged; still in 5.0.0.
      */
     const open = (set: readonly string[]): Promise<FSWatcher[]> =>
       Promise.all(
@@ -57,15 +59,23 @@ export const createChokidarWatcher = ({
       await Promise.all(instances.map((instance) => instance.close()))
     }
     let instances = await open(dirs)
+    let closed = false
     const watch: Watch = {
       // fresh instances, ready, before the old ones go: no gap, and chokidar's
       // `add` has no ready to await — its initial listing would race the caller
       update: async (next) => {
+        const fresh = await open(next)
+        // closed while they opened: the close never saw them
+        if (closed) {
+          await closeAll(fresh)
+          return
+        }
         const previous = instances
-        instances = await open(next)
+        instances = fresh
         await closeAll(previous)
       },
       close: async () => {
+        closed = true
         if (timer !== null) clearTimeout(timer)
         timer = null
         await closeAll(instances)

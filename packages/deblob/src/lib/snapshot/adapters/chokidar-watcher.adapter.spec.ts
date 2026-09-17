@@ -76,6 +76,24 @@ test("one change per burst, hidden entries ignored, a directory outside the set 
   expect(reported).toEqual([])
 })
 
+test("a close while an update is still opening: the update's instances are closed too, nothing fires", async () => {
+  const root = await tempTree()
+  const sub = join(root, "FAKE_SUB")
+  const { report } = createMemoryReport()
+  const watcher = createChokidarWatcher({ quietMs: QUIET_MS, report })
+  const fired: number[] = []
+  const watch = await watcher.watch([root], () => fired.push(Date.now()))
+  // not awaited: the close lands while the next instances are opening
+  const updating = watch.update([root, sub])
+  await watch.close()
+  await updating
+
+  await writeFile(join(root, "FAKE_ONE.ts"), "")
+  await writeFile(join(sub, "FAKE_TWO.ts"), "")
+  await settle()
+  expect(fired).toHaveLength(0)
+})
+
 test("a watched directory whose own name is hidden is watched; hidden entries inside it are not", async () => {
   const root = await tempTree()
   const dotted = join(root, ".FAKE_DOTTED")

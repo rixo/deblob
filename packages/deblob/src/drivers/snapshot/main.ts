@@ -8,7 +8,7 @@
  * Exit contract: 0 snapshot written, 2 config error (message on stderr).
  */
 
-import { asConfigError } from "../../lib/config/config.model.ts"
+import { asConfigErrorOrRethrow } from "../../lib/config/config.model.ts"
 import { createSnapshotService } from "../../lib/snapshot/snapshot.service.ts"
 import { createProjectSource, extractionFor } from "../wiring.ts"
 
@@ -28,7 +28,7 @@ export const main = async (io: SnapshotIo): Promise<number> => {
   try {
     io.stdout.write(`${JSON.stringify(await snapshotOf(io.cwd))}\n`)
   } catch (error) {
-    io.stderr.write(`${asConfigError(error).message}\n`)
+    io.stderr.write(`${asConfigErrorOrRethrow(error).message}\n`)
     return 2
   }
   return 0
