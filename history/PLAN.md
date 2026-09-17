@@ -69,6 +69,31 @@
 
 ### Ideas
 
+- **`deblob-test` skill — no test pins an internal shape** (2026-09-17) — the
+  guidance the testing area lacks. "Test public API and behavior" did not
+  transfer: agents anchor "public" on the `export` keyword and pin a reader's
+  return shape (hook line numbers, kind lists, bound callees). The rule restated
+  with the audience named: an expectation is a sentence the reviewer would sign
+  without opening the code. For the reading-to-rules chain that is a verdict:
+  minimal repro snippet → red / green / why (ESLint's RuleTester and rustc's UI
+  tests are the precedent — source plus expected diagnostics, no AST-level
+  units); for config or slugs it is "this input yields these readers". Coverage
+  stays at 100 from those tests alone, so coverage becomes a pruning tool: a
+  branch no compiling snippet reaches is dead. The type checker is the floor for
+  "fake" code; a contrived compiling snippet is a legitimate case (never "nobody
+  writes that"). Verdict cases are cheap to write before the code exists and
+  stay red until the chain is right — red-first without unit-level design first,
+  the reason TDD-via-agent was given up and may now be tried again. Open at
+  graduation: the case shape for multi-file snippets (a driver's reading depends
+  on what it imports; in-memory files fit the fs kernel baseline); how the
+  Behavior panel links a verdict case to its rule (`describe` named after the
+  rule, cases nested); what happens to the reading spec once the driver rule's
+  verdict cases exist (step 03 checkpoint 3 is the first natural rewrite).
+  Later, possibly `deblob-bdd`: rixo's argument is capitalisation, not ceremony:
+  a scenario layer makes a chunk reviewable without reading its code, and a step
+  validated once is a trusted brick reused with confidence, so review cost falls
+  with reuse instead of growing with the suite; no hands-on data yet, an
+  experiment to run after `deblob-test` has served one chapter.
 - **Service README check** (2026-09-15) — every service directory carries a
   `README.md`: the implementation guide demands it (the service's living doc),
   the graph already knows every service root, and the terrain shows it is the

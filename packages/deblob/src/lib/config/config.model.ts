@@ -49,9 +49,11 @@ export const EXCLUDE_BASELINE: readonly string[] = [
 ]
 
 /**
- * The extensions coverage can meaningfully node — `.svelte`/`.vue` enter as
- * `parsed: false` nodes until their extractors land. A constant, not a config
- * key; presets are the future home of extending it.
+ * The script extensions coverage nodes by themselves. A file of another
+ * extension enters coverage only when a designation glob or a reader binding
+ * names it (`ResolvedConfig.covers`): a `.svelte` route named under `drivers`
+ * is a driver node, unparsed; one named by nothing is outside the graph, not
+ * blob — canon's letter for a tech no reader rules yet.
  */
 export const COVERAGE_EXTENSIONS: readonly string[] = [
   ".ts",
@@ -62,8 +64,6 @@ export const COVERAGE_EXTENSIONS: readonly string[] = [
   ".jsx",
   ".mjs",
   ".cjs",
-  ".svelte",
-  ".vue",
 ]
 
 export const hasCoverageExtension = (path: string): boolean =>

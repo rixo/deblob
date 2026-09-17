@@ -523,6 +523,16 @@ describe("bare deblob — status, always exit 0", () => {
     expect(out).toContain("config error (details on stderr)")
     expect(out).not.toContain("% blob")
   })
+
+  test("one file under two designation keys: bare recognizes as check does — the teaching error on stderr, stat lines skipped, still exit 0", async () => {
+    const { code, out, err } = await run([], {
+      cwd: here("__fixtures__/twice-designated"),
+    })
+    expect(code).toBe(0)
+    expect(err).toContain('designated "assembly" and "boot"')
+    expect(out).toContain("config error (details on stderr)")
+    expect(out).not.toContain("% blob")
+  })
 })
 
 describe("color plumbing", () => {

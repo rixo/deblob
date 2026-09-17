@@ -4,8 +4,8 @@ import makeDefault from "./default.assembly.ts"
 import { createOpaqueAssembly } from "./opaque.assembly.ts"
 import { registerSub } from "./sub.driver.ts"
 
-// a second call site for the sub-driver, disagreeing on the first argument:
-// that parameter falls back to unknown, the second stays an instance
+// two more sites for the sub-driver: one disagreeing on the first argument
+// (line 11), one agreeing in kind but not in origin (the last) — two worlds
 export const other = async () => {
   const services = await createCliAssembly(process.cwd(), process.env)
   registerSub("not-the-parser", services)
@@ -26,4 +26,5 @@ export const other = async () => {
     // a member of a model instance the flavor named: not a service's use case
     services.registry.get("k")
   })
+  registerSub(process.argv, opaque)
 }

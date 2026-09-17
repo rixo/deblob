@@ -22,34 +22,52 @@ root statements — calls classified, definitions with their value kind and
 whether they are readonly where the syntax shows it (code, a primitive-valued
 initializer, `as const`, `Object.freeze`, a `Readonly*`, `readonly T[]`,
 primitive or literal annotation; no alias resolution, no inference — an alias
-reads `false`), branches with what their test reads off — and, for the outside
-kinds, its top-level functions with their hooks cut and the open part the reader
-could not place. An outside-kind file no tech covers, or an unparsed one, has
-none: recognized and open.
+reads `false`), branches with what their test reads off, assignments with their
+target root's kind — and, for the outside kinds, its top-level functions with
+their hooks cut (a non-exported function only ever called directly in its file
+is a tracked local: not a function of the file but read at each site as the
+site's own text, the site's arguments its parameters, its hooks the site's, its
+return the call's) and the open part: what the reader genuinely could not place
+(a callee of kind unknown — an import the resolver could not land, `this`, a
+binding through itself — and a parameter no production site binds), never a
+fence over a tree it has. A callback handed to anything but a tech callee is
+read inline where it sits, its calls the enclosing body's, its returns the
+callee's; a call's result called inline is classified by its value. An
+outside-kind file no tech covers, or an unparsed one, has none: recognized and
+open.
 
 ## API
 
-- `createExtraction({ engine, flavor, techs? })` → `{ extractGraph }`.
-  `extractGraph({ root, files, isAssembly?, isDriver?, isBoot?, isTest?, external?, externalLayerOf?, pure?, driverTech?, configLoads? })`
+- `createExtraction({ engine, flavor, readers? })` → `{ extractGraph }`.
+  `extractGraph({ root, files, isAssembly?, isDriver?, isBoot?, external?, externalLayerOf?, pure?, driverTech?, configLoads? })`
   classifies the files through the flavor, parses each through the engine,
-  resolves every specifier, and returns the graph. The four designation matchers
-  are the config's globs for the kinds a framework names itself; recognition
-  takes the most specific claim first — test naming or `isTest` makes a test
-  file wherever it sits, then one designation wins over the flavor's word, and
-  two designations on one file throw with the file and both keys named.
-  `external` names specifiers the environment provides (a hit is a leaf, never
-  resolved); `externalLayerOf` answers the layer an external leaf carries,
-  composed by assembly from the consumer's `externalLayers` and producer
-  `deblob` fields. `techs` are the tech adapters, the first whose kinds hold a
-  file's reads it; `pure` and `driverTech` are what the reader resolves a
-  driver's externals against; `configLoads` are the declared loads, each naming
-  a covered file or the run fails loud (`load-file-not-covered`). After every
-  file is read, the graph pass binds parameters at their call sites: an assembly
-  function or a sub-driver's wiring function called from another outside-kind
-  file takes each parameter's kind from the arguments, joined over every site
-  (`null`, unknown, where sites disagree; a site in a test file does not bind —
-  a test hands fakes), and the file is read again with them — to a fixed point,
-  since a binding can make the next site's argument known.
+  resolves every specifier, and returns the graph. The three designation
+  matchers are the config's globs for the kinds a framework names itself;
+  recognition (`recognition.model.ts`, shared with the bare status) takes the
+  most specific claim first — a reader of one kind designates it by binding (the
+  test runner's naming makes a test file wherever it sits), then one designation
+  wins over the flavor's word, and two designations on one file throw with the
+  file and both keys named. `external` names specifiers the environment provides
+  (a hit is a leaf, never resolved); `externalLayerOf` answers the layer an
+  external leaf carries, composed by assembly from the consumer's
+  `externalLayers` and producer `deblob` fields. `readers` are the readers in
+  precedence order (config's bindings first, then the stock ones): the first
+  whose binding matches a file and whose kinds hold its kind reads it; `pure`
+  and `driverTech` are what the reading resolves a driver's externals against;
+  `configLoads` are the declared loads, each naming a covered file or the run
+  fails loud (`load-file-not-covered`). After every file is read, the graph pass
+  binds parameters at their call sites, one world per site: an assembly function
+  or a sub-driver's wiring function called from another outside-kind file has
+  one world per distinct argument vector its production sites hand it (a site in
+  a test file opens none — a test hands fakes; a site in its own file none
+  either), and the file is read once per world, that function bound from that
+  site — `ModuleNode.readings`, each with its `World` (function, inducing site,
+  arguments); `ModuleNode.reading` binds every function from its first world. A
+  rule judges the function in every world as if that site were the only caller
+  and carries the site; sites disagreeing is no violation. The pass runs to a
+  fixed point, since a binding can make the next site's argument known. A
+  function nothing calls across files has no world: one reading, its parameters
+  unknown and open.
 - `graph.model.ts` — the graph vocabulary, `LAYERS`, `packageNameOf`, the
   two-wildcard specifier pattern grammar (`specifierPattern`,
   `specifierMatcher`) shared by `external`, `externalLayers`, and `blob`
@@ -70,7 +88,12 @@ none: recognized and open.
   assembly's returned record entry by entry while the records are literal; the
   rest listed unresolved. Test hooks never label. Instrumental is the
   complement.
-- `reader.model.ts` — the reader: the tech-agnostic walk over a file's tree,
+- `recognition.model.ts` —
+  `createRecognition({ readers, isAssembly?, isDriver?, isBoot? })`: the kind of
+  a covered file (`kindOf`) and the reader that reads it (`readerOf`), one
+  operation for extraction and the bare status. Plain data in — a reader's
+  binding and kinds — never the port.
+- `reading.model.ts` — the reading: the tech-agnostic walk over a file's tree,
   pure over ESTree and total (a node it does not know is walked for its calls).
   Lexical scope, then one kinds table: a callee is what the binding at the root
   of its chain is — an import's target by layer (a service, adapter, assembly or
@@ -88,8 +111,8 @@ none: recognized and open.
   load by member name — and by file when the instance is traced to a factory
   that is not an assembly's record — is marked, its result a tech value. The
   cut: a function handed to a tech callee is a hook, nested hooks included; one
-  handed to anything else is open. Takes plain data, never the port: the service
-  chooses the tech.
+  handed to anything else is read inline where it sits. Takes plain data, never
+  the port: the service chooses the tech.
 
 ## Ports
 
@@ -106,11 +129,14 @@ none: recognized and open.
   export name — what tells a model factory from a model function, the stock rule
   being `create` followed by a capital; optional `typeOnlyExempt` is the
   flavor's type-only stance (`runtime-import`).
-- `ports/tech.port.ts` — `Tech`: canon's reading of a technology, one adapter
-  per tech as the flavor is one per naming convention. A tech is the kinds it
-  reads, the packages it claims as tech, and the driver rules it exempts;
-  recognition is the config's and the cut is the reader's, so a tech that needs
-  a cut of its own adds it here with the case that needs it.
+- `ports/reader.port.ts` — `Reader`: canon's reading of a technology, one reader
+  per tech as the flavor is one per naming convention. A reader is its binding
+  (root-relative globs, the builtin one; config binds more, first), the kinds it
+  reads among the files it binds (one kind = the binding designates it), the
+  packages it claims as tech, and the driver rules it exempts; the cut is the
+  reading's, so a tech that needs a cut of its own adds it here with the case
+  that needs it — as will the first reader whose files the default engine cannot
+  parse, with its engine.
 
 ## Adapters
 
@@ -119,17 +145,20 @@ none: recognized and open.
   through the project's tsconfig `paths` and config aliases.
 - `adapters/ts-suffixes-factories-flavor.adapter.ts` — the stock flavor: kind
   from the file suffix (`.model`, `.port`, `.service`, `.adapter`, `.assembly`,
-  `.driver`, `.boot`; `.spec` and `.test` are the test kind), service roots from
-  where the hexagon's own suffixed files sit — an outside-kind file marks none —
-  grouping directories collapsed to their nearest real service;
-  `classifyStockEntry` is the same rule over a specifier tail. `STOCK_FLAVORS`
-  is the registry assembly injects into config resolution.
-- `adapters/plain-ts-tech.adapter.ts` — the plain-TypeScript tech: assembly,
-  driver and boot files; claims nothing (builtins and host globals are tech by
-  the reader's table, third-party packages by `driverTech`); exempts nothing.
-- `adapters/test-runner-tech.adapter.ts` — the test tech: spec files; claims the
-  runners it knows (a census, `driverTech` for the next one); exempts
-  registration, the call count, services-only and definitions.
+  `.driver`, `.boot`; test naming is not the flavor's, see the test runner),
+  service roots from where the hexagon's own suffixed files sit — an
+  outside-kind file marks none — grouping directories collapsed to their nearest
+  real service; `classifyStockEntry` is the same rule over a specifier tail.
+  `STOCK_FLAVORS` is the registry assembly injects into config resolution.
+- `adapters/plain-ts-reader.adapter.ts` — the plain-TypeScript reader: binds
+  every script file, reads the assembly, driver and boot ones among them; claims
+  nothing (builtins and host globals are tech by the reading's table,
+  third-party packages by `driverTech`); exempts nothing.
+- `adapters/test-runner-reader.adapter.ts` — the test reader: binds the test
+  naming (`*.spec.*`, `*.test.*`, `__tests__/`) and reads the test kind only, so
+  its binding is what makes a file a test file — canon's "spec files by the test
+  globs"; claims the runners it knows (a census, `driverTech` for the next one);
+  exempts registration, the call count, services-only and definitions.
 - `adapters/package-meta.adapter.ts` — the cross-package reader: resolves a bare
   specifier to its owning package.json, reads the `deblob` field and the exports
   map, answers the layer a subpath claims. Anything short of a readable claim

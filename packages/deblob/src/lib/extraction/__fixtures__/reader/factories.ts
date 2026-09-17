@@ -19,3 +19,5 @@ export const main = () => {
 
 // at module root: a factory call, named by the flavor
 export const ROOT_INSTANCE = createHelper()
+// the two locals referenced as values: not tracked, so their calls read `local`
+export const LOCALS = [createLocalThing, localFn]

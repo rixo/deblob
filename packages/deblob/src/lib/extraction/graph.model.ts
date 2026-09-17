@@ -66,6 +66,15 @@ export const isExtractionError = (error: unknown): error is ExtractionError =>
   (error as { name?: unknown }).name === "ExtractionError"
 
 /**
+ * The presentable failure, or the bug kept flying — `asConfigError`'s twin for
+ * a catch that expects extraction's own errors and nothing else.
+ */
+export const asExtractionError = (error: unknown): ExtractionError => {
+  if (isExtractionError(error)) return error
+  throw error
+}
+
+/**
  * Bare-specifier package name (`zod`, `@scope/name`, `node:path`); `null` for
  * relative/absolute specifiers.
  */
@@ -107,9 +116,10 @@ export const specifierMatcher = (
 /**
  * What a flavor can say about a file: any kind, from the path alone. The stock
  * flavor reads the outside kinds from their suffixes (`.assembly.ts`,
- * `.driver.ts`, `.boot.ts`) and test naming as `test`; the caller's designation
- * matchers (`assembly`, `drivers`, `boot`, `tests` config globs) OR on top for
- * a framework that owns the file name.
+ * `.driver.ts`, `.boot.ts`); recognition lays a single-kind reader's binding
+ * (the test runner's naming → `test`) and the caller's designation matchers
+ * (`assembly`, `drivers`, `boot` config globs) on top, for a framework that
+ * owns the file name.
  */
 export type FlavorLayer = Layer
 
@@ -149,12 +159,32 @@ export type ModuleNode = {
   runtimeContent: readonly RuntimeEntry[]
   /**
    * What the reader saw: root statements for every parsed file; functions and
-   * hooks for the outside kinds, cut with the file's tech. `null` when the
-   * engine parsed nothing, or when the file is of an outside kind no tech
-   * covers — recognized and open.
+   * hooks for the outside kinds, cut with the file's tech, every function bound
+   * by its first world. `null` when the engine parsed nothing, or when the file
+   * is of an outside kind no tech covers — recognized and open.
    */
   reading: FileReading | null
+  /**
+   * The file read once per world: an exported function has one world per
+   * distinct argument vector its production call sites hand it, and each
+   * world's reading binds that function from that site, the others from their
+   * first. A rule judges the named function in every world as if that site were
+   * the only caller, and carries the site. Empty for a file nothing calls
+   * across files — its parameters unknown, its one reading `reading`.
+   */
+  readings: readonly WorldReading[]
 }
+
+/** One binding of an exported function: the site, and what it handed. */
+export type World = {
+  /** The function bound, by export name (`"default"` for the default export). */
+  name: string
+  /** The production call site whose arguments bind it — the inducing site. */
+  site: { path: string; span: Span }
+  args: readonly ArgValue[]
+}
+
+export type WorldReading = { world: World; reading: FileReading }
 
 /** The driver rules a tech's shape exempts (`test-is-assembly-and-driver`). */
 export type Exemption =
@@ -214,7 +244,12 @@ export type CalleeKind =
   | { kind: "tech"; package: string | null }
   | { kind: "unclaimed"; package: string }
   | { kind: "language" }
-  /** A local function; `factory` is the flavor's word on its name. */
+  /**
+   * A local function the reader does not see whole — exported, passed as a
+   * value, or called from inside its own inlining; `factory` is the flavor's
+   * word on its name. A tracked local (non-exported, only ever called directly)
+   * is read at its sites and never a callee.
+   */
   | { kind: "local"; name: string; factory: boolean }
   | { kind: "use-case"; member: string; origin: InstanceOrigin | null }
   | { kind: "unknown" }
@@ -287,6 +322,12 @@ export type ReadStatement =
       record: readonly { key: string; value: ArgValue }[] | null
       span: Span
     }
+  /**
+   * An assignment statement (`a.b = x`, `[a] = x`, `n -= 1`): the target root's
+   * value kind — a hook may write tech-held state, nothing else may write at
+   * all. Never a call.
+   */
+  | { kind: "assignment"; target: ValueKind; span: Span }
   | { kind: "other"; span: Span }
 
 export type ReadHook = {
@@ -308,9 +349,15 @@ export type ReadFunction = {
   hooks: readonly ReadHook[]
 }
 
+/**
+ * What the reader could not place, and only that: a callee of kind unknown (an
+ * import the resolver could not land, `this`, a binding through itself, a value
+ * of kind unknown), a parameter no production site binds. Genuine ignorance —
+ * never a fence over a tree the reader has (step 03 § The open part, audited).
+ */
 export type OpenPart = {
   span: Span
-  why: "uncut-callback" | "unknown-callee" | "unbound-parameter"
+  why: "unknown-callee" | "unbound-parameter"
 }
 
 export type FileReading = {
@@ -320,7 +367,10 @@ export type FileReading = {
   root: readonly ReadStatement[]
   /** Hooks registered from module root — a spec file's `test()` bodies. */
   hooks: readonly ReadHook[]
-  /** Top-level function definitions; empty for the inside kinds. */
+  /**
+   * Top-level function definitions, the tracked locals excluded (read at their
+   * sites); empty for the inside kinds.
+   */
   functions: readonly ReadFunction[]
   /** What the reader could not place — never a fact a rule fires on. */
   open: readonly OpenPart[]

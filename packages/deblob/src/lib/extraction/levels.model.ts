@@ -14,6 +14,7 @@ import type {
   InstanceOrigin,
   ModuleNode,
   ReadCall,
+  ReadFunction,
   ReadHook,
   ReadStatement,
   Span,
@@ -105,9 +106,26 @@ export const useCaseLevels = (graph: ImportGraph): UseCaseLevels => {
 
   for (const node of graph.modules.values()) {
     if (node.layer !== "driver" || node.reading === null) continue
+    // every world resolves: a function bound at two sites with different
+    // instances is primary for both; a function with no world reads once
+    const { reading } = node
     const hooks = hooksOf([
-      ...node.reading.hooks,
-      ...node.reading.functions.flatMap((fn) => fn.hooks),
+      ...reading.hooks,
+      ...reading.functions.flatMap((fn) => {
+        const name = fn.name ?? "default"
+        const worlds = node.readings.filter(({ world }) => world.name === name)
+        return worlds.length === 0
+          ? fn.hooks
+          : worlds.flatMap(
+              // the same file read again: the function is there by name
+              (bound) =>
+                (
+                  bound.reading.functions.find(
+                    (candidate) => (candidate.name ?? "default") === name,
+                  ) as ReadFunction
+                ).hooks,
+            )
+      }),
     ])
     for (const hook of hooks) {
       for (const call of callsOf(hook.body)) {

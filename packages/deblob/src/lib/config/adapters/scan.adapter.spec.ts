@@ -2,7 +2,11 @@ import { fileURLToPath } from "node:url"
 
 import { describe, expect, test } from "vitest"
 
-import { DEFAULT_INCLUDE, EXCLUDE_BASELINE } from "../config.model.ts"
+import {
+  DEFAULT_INCLUDE,
+  EXCLUDE_BASELINE,
+  hasCoverageExtension,
+} from "../config.model.ts"
 import { scanCoverage, statSizes } from "./scan.adapter.ts"
 
 const root = fileURLToPath(
@@ -10,31 +14,49 @@ const root = fileURLToPath(
 )
 
 const scan = (
-  overrides: Partial<{ include: string[]; exclude: string[] }> = {},
+  overrides: Partial<{
+    include: string[]
+    exclude: string[]
+    covers: (path: string) => boolean
+  }> = {},
 ) =>
   scanCoverage({
     root,
     include: overrides.include ?? [...DEFAULT_INCLUDE],
     exclude: [...EXCLUDE_BASELINE, ...(overrides.exclude ?? [])],
+    covers: overrides.covers ?? hasCoverageExtension,
   })
 
 describe("scanCoverage", () => {
-  test("covers the whole tree by default — baseline out, extensions gated, hidden skipped, sorted", async () => {
+  test("covers the whole tree by default — baseline out, the gate applied, hidden skipped, sorted", async () => {
     expect(await scan()).toEqual([
+      "scripts/task.js",
+      "src/app.model.ts",
+      "src/app.ts",
+    ])
+    // absent by construction: node_modules/ and dist/ (baseline),
+    // .hidden-tool/ (dot-segment), styles.css, notes.md and widget.svelte
+    // (the gate: a script extension, or named by a designation or a binding)
+  })
+
+  test("the gate is the config's: a file named by a designation or a binding enters whatever its extension", async () => {
+    expect(
+      await scan({
+        covers: (path) =>
+          hasCoverageExtension(path) || path === "src/widget.svelte",
+      }),
+    ).toEqual([
       "scripts/task.js",
       "src/app.model.ts",
       "src/app.ts",
       "src/widget.svelte",
     ])
-    // absent by construction: node_modules/ and dist/ (baseline),
-    // .hidden-tool/ (dot-segment), styles.css and notes.md (extension gate)
   })
 
   test("appended user excludes remove more", async () => {
     expect(await scan({ exclude: ["scripts/**"] })).toEqual([
       "src/app.model.ts",
       "src/app.ts",
-      "src/widget.svelte",
     ])
   })
 
@@ -42,7 +64,6 @@ describe("scanCoverage", () => {
     expect(await scan({ include: ["src/**"] })).toEqual([
       "src/app.model.ts",
       "src/app.ts",
-      "src/widget.svelte",
     ])
   })
 })

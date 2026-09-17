@@ -94,6 +94,12 @@ export const main = async (param: string, ...rest: unknown[]) => {
   if (pick) helper()
   const picked = param ? inst.run() : helper()
   if (picked) helper()
+  this.made = 1
+  Math.made = 1
+  ;[1].map((n) => {
+    if (n) return
+    return helper()
+  })
   return sub
 }
 

@@ -1,14 +1,14 @@
 /**
- * The reader — the tech-agnostic walk over a module's syntax tree that yields
- * its reading: every call classified by what its callee is and where its result
- * goes, every definition, every branch, and the hooks a tech's calls were
- * handed. Pure over ESTree, total: a node it does not know is walked through
- * for the calls it contains and otherwise ignored, never a throw. It takes
- * plain data — the file's kind, its tech's name and exemptions, what each
- * import lands on — never a port; the extraction service chooses the tech and
- * hands the reader that data.
+ * The reading — the tech-agnostic walk over a module's syntax tree that yields
+ * it: every call classified by what its callee is and where its result goes,
+ * every definition, every branch, and the hooks a tech's calls were handed.
+ * Pure over ESTree, total: a node it does not know is walked through for the
+ * calls it contains and otherwise ignored, never a throw. It takes plain data —
+ * the file's kind, its reader's tech name and exemptions, what each import
+ * lands on — never a port; the extraction service picks the reader (a `Reader`,
+ * one per technology, bound to files by glob) and hands the walk that data.
  *
- * The reader reads a file with its tech, and the result is the file's reading.
+ * A file is read with its reader's tech, and the result is the file's reading.
  * What varies per technology (claims, exemptions) arrives resolved; what every
  * technology shares is here: the lexical scope, the kinds table, the cut — a
  * hook is a function handed to a tech callee — and the language lists, which
@@ -65,11 +65,12 @@ export type ReadInput = {
   isFactory?: (name: string) => boolean
   /**
    * What the file's exported functions were called with, by export name
-   * (`"default"` for the default export) and by position — the graph pass's
-   * word; `null` where call sites disagree. A parameter no entry binds is
-   * unknown and open.
+   * (`"default"` for the default export) and by position — one world's word,
+   * the graph pass's: the arguments of one production call site. A parameter
+   * past the site's arguments, or of a function no entry binds, is unknown and
+   * open.
    */
-  paramKinds?: ReadonlyMap<string, readonly (ArgValue | null)[]>
+  paramKinds?: ReadonlyMap<string, readonly ArgValue[]>
   /** The declared config loads, `<file>#<name>` split. */
   configLoads?: readonly { file: string; name: string }[]
 }
@@ -377,7 +378,12 @@ type Resolved = {
 
 type Binding = {
   name: string
-  kind: "import" | "definition" | "parameter" | "catch"
+  /**
+   * A `callback` is an inline callback's parameter: what the callee hands back,
+   * a computed value — not the function's own parameter, so a branch on it is
+   * no wiring.
+   */
+  kind: "import" | "definition" | "parameter" | "catch" | "callback"
   span: Span
   import: ImportBinding | null
   /** The declarator's initializer, when the binding came from one. */
@@ -756,6 +762,7 @@ export const readModule = ({
             path: [],
           }
         case "catch":
+        case "callback":
           return { kind: "computed", origin: null, path: [] }
         case "definition": {
           if (binding.isFunction)
@@ -791,6 +798,42 @@ export const readModule = ({
 
   let scope: Scope = { bindings: new Map(), parent: null }
   let body: Body = { statements: [], hooks: [] }
+  /**
+   * The frame a `return` belongs to: `null` for a function of the file's own
+   * (emitted as a `return` statement); for a body read inline — a callback, or
+   * a tracked local at one of its sites — the context its value flows to, and
+   * what it returned, which is the inlined call's value.
+   */
+  type Frame = { ctx: Ctx; value: Resolved | null; returns: number }
+  let frame: Frame | null = null
+
+  const withFrame = (ctx: Ctx | null, run: () => void): Frame | null => {
+    const outer = frame
+    frame = ctx === null ? null : { ctx, value: null, returns: 0 }
+    const inner = frame
+    try {
+      run()
+      return inner
+    } finally {
+      frame = outer
+    }
+  }
+
+  /**
+   * Tracked locals — non-exported top-level functions every reference to which
+   * is a direct call in this file (rixo, 2026-09-17): the reader sees all of
+   * it, so each is read at its sites as the site's own code and is no function
+   * of the file. Keyed by the root binding, so a shadowing local is never taken
+   * for one. Filled once the root scope is declared.
+   */
+  const tracked = new Map<Binding, AstNode>()
+  /** The tracked locals being read at a site: a call to one reads `local`. */
+  const inlining = new Set<Binding>()
+  /**
+   * An inlined call's value by call node — a binding's initializer is evaluated
+   * again, without emitting, when the binding resolves.
+   */
+  const inlineMemo = new Map<AstNode, Resolved>()
 
   const inScope = <T>(bindings: Binding[], run: () => T): T => {
     const outer = scope
@@ -849,6 +892,28 @@ export const readModule = ({
       current = unwrap(current["object"] as AstNode)
     }
     return { root: current, members, computed }
+  }
+
+  /**
+   * The value kind at the root of an assignment target: a binding's own kind (a
+   * reassigned `let` or parameter reads computed), a free name's (a host global
+   * is the tech), the root of a member chain (`ctx.body = …` writes tech-held
+   * state when `ctx` is a hook's parameter), `computed` for a destructuring
+   * pattern.
+   */
+  const assignmentTargetKind = (target: AstNode): ValueKind => {
+    const root =
+      target.type === "MemberExpression" ? chainOf(target).root : target
+    if (root.type === "Identifier") {
+      const name = root["name"] as string
+      const binding = lookup(scope, name)
+      if (binding === null)
+        return LANGUAGE_GLOBALS.has(name) ? "computed" : "tech"
+      return resolveBinding(binding).kind
+    }
+    if (root.type === "ObjectPattern" || root.type === "ArrayPattern")
+      return "computed"
+    return evaluate(root, { kind: "computed" }, false).kind
   }
 
   const memberCallee = (
@@ -920,30 +985,28 @@ export const readModule = ({
     if (root.type === "ImportExpression") {
       const value = evaluate(root, { kind: "computed" }, emitting)
       const specifier = literalSourceOf(root)
-      if (specifier === null || members.length === 0) return { kind: "unknown" }
+      // a non-literal specifier: the promise of a module the reader cannot
+      // name, a computed value — its members are the language's
+      if (specifier === null) return memberCallee(value, members)
       const { callee, rest } = calleeOfImport(
         { specifier, imported: "*", typeOnly: false },
         members,
       )
-      void value
       return rest.length === 0 ? callee : memberCallee(resultOf(callee), rest)
     }
-    if (
+    // any other root — a call's result, an expression — is classified by its
+    // value kind, called inline or through a member chain
+    // (`cac().command("x").action(cb)`, `services[name]()`): an instance
+    // called is a use case with the member unknown, a tech value the tech, a
+    // computed or literal value the language; `unknown` only for a value of
+    // kind unknown (`this`, a binding through itself)
+    const value =
       root.type === "CallExpression" ||
       root.type === "NewExpression" ||
       root.type === "TaggedTemplateExpression"
-    ) {
-      // a call's result called: unknown when called inline, a chain when a
-      // member is called on it (`cac().command("x").action(cb)`)
-      const value = evaluateCall(root, { kind: "computed" }, emitting)
-      return members.length === 0
-        ? { kind: "unknown" }
-        : memberCallee(value, members)
-    }
-    const value = evaluate(root, { kind: "computed" }, emitting)
-    return members.length === 0
-      ? { kind: "unknown" }
-      : memberCallee(value, members)
+        ? evaluateCall(root, { kind: "computed" }, emitting)
+        : evaluate(root, { kind: "computed" }, emitting)
+    return memberCallee(value, members)
   }
 
   /** `import("./x")` or `require("./x")` (the host's, unbound): the specifier. */
@@ -976,12 +1039,183 @@ export const readModule = ({
         newBinding(name, "parameter", node, { isHookParam: true }),
       ),
     )
-    const inner = inScope(params, () => inBody(() => walkFunctionBody(fn)))
+    const inner = inScope(params, () =>
+      inBody(() => withFrame(null, () => walkFunctionBody(fn))),
+    )
     return {
       span: spanOf(fn),
       registeredBy,
       body: inner.statements,
       hooks: inner.hooks,
+    }
+  }
+
+  /**
+   * A callback read inline — handed to a callee that is not the tech's, or in
+   * an inside kind: its statements are the enclosing body's, its parameters
+   * computed values (what the language or the inside hands back — a tech's hook
+   * parameter is the one tech-held case, and that is the cut), and what it
+   * returns goes to the callee it was handed to.
+   */
+  const readInline = (fn: AstNode, callee: CalleeKind): void => {
+    const params = (fn["params"] as AstNode[]).flatMap((param) =>
+      patternNames(param).map(({ name, node }) =>
+        newBinding(name, "callback", node),
+      ),
+    )
+    const returned: Ctx = { kind: "argument", to: callee }
+    inScope(params, () =>
+      withFrame(returned, () => {
+        const fnBody = fn["body"] as AstNode
+        if (fnBody.type === "BlockStatement")
+          walkBlock(fnBody["body"] as AstNode[])
+        else evaluate(fnBody, returned, true)
+      }),
+    )
+  }
+
+  /**
+   * A tracked local read at one of its sites, as if its body were the site's
+   * text: each argument is evaluated as bound to its parameter — a call's
+   * result flow becomes the parameter's, a binding handed over shares its flow
+   * with the parameter, so what the body does with it is recorded on the
+   * caller's binding; a missing argument is `undefined`, a literal; a callback
+   * is read at the site. Its statements are the site's body's, its hooks
+   * registered where the site sits, its `return` value the call's — one
+   * return's value, `undefined` for none, computed for several. A call to a
+   * tracked local from inside one being read (recursion, or two locals calling
+   * each other) is not read again: it reads `local`.
+   */
+  const inlineLocal = (
+    fn: AstNode,
+    binding: Binding,
+    argNodes: readonly AstNode[],
+    callee: CalleeKind,
+    ctx: Ctx,
+  ): Resolved => {
+    const byPosition = (fn["params"] as AstNode[]).map((param) =>
+      patternNames(param).map(({ name, path, node }) => ({
+        target: newBinding(name, "parameter", node),
+        path,
+      })),
+    )
+    const params = byPosition.flat().map(({ target }) => target)
+    /**
+     * An argument bound to the parameter names it reaches: by key through a
+     * record literal handed to a destructuring pattern (`{ cli: process }`
+     * binds `cli` to the tech, not to the record's joined kind); otherwise the
+     * whole value, evaluated as bound to the first name — a call's result flow
+     * becomes the name's — and a binding handed over shares its flow with every
+     * name it reaches.
+     */
+    const bindArgument = (
+      node: AstNode,
+      targets: readonly { target: Binding; path: readonly string[] }[],
+    ): void => {
+      const inner = unwrap(node)
+      if (
+        inner.type === "ObjectExpression" &&
+        targets.length > 0 &&
+        targets.every(({ path }) => path.length > 0)
+      ) {
+        for (const property of inner["properties"] as AstNode[]) {
+          if (property.type === "SpreadElement") {
+            evaluate(
+              property["argument"] as AstNode,
+              { kind: "computed" },
+              true,
+            )
+            continue
+          }
+          const key = property["key"] as AstNode
+          const computedKey = property["computed"] === true
+          if (computedKey) evaluate(key, { kind: "computed" }, true)
+          const name = computedKey
+            ? null
+            : key.type === "Identifier"
+              ? (key["name"] as string)
+              : String(key["value"])
+          const reached = targets.flatMap(({ target, path }) =>
+            name !== null && path[0] === name
+              ? [{ target, path: path.slice(1) }]
+              : [],
+          )
+          if (reached.length === 0)
+            evaluate(property["value"] as AstNode, { kind: "discarded" }, true)
+          else bindArgument(property["value"] as AstNode, reached)
+        }
+        // a name the record does not carry stays `undefined`, a literal
+        return
+      }
+      const first = targets[0]?.target
+      let value: Resolved
+      if (isFunctionNode(inner)) {
+        readInline(inner, callee)
+        value = { kind: "function", origin: null, path: [] }
+      } else {
+        // an argument no parameter receives is evaluated and dropped
+        value = evaluate(
+          node,
+          first === undefined
+            ? { kind: "discarded" }
+            : { kind: "bound", binding: first },
+          true,
+        )
+      }
+      const handed =
+        inner.type === "Identifier"
+          ? lookup(scope, inner["name"] as string)
+          : null
+      for (const { target, path } of targets) {
+        target.memo = {
+          kind: value.kind,
+          origin: value.origin,
+          path: [...value.path, ...path],
+        }
+        if (first !== undefined && target !== first) {
+          target.results = first.results
+          target.boundCallees = first.boundCallees
+          target.boundLoad = first.boundLoad
+        }
+        if (handed !== null && handed.results !== null) {
+          target.results = handed.results
+          target.boundLoad = handed.boundLoad
+        }
+      }
+    }
+    argNodes.forEach((arg, index) => {
+      const targets = byPosition[index] ?? []
+      if (arg.type === "SpreadElement") {
+        evaluate(arg["argument"] as AstNode, { kind: "computed" }, true)
+        for (const { target } of targets)
+          target.memo = { kind: "computed", origin: null, path: [] }
+        return
+      }
+      bindArgument(arg, targets)
+    })
+    for (const target of params)
+      if (target.memo === null)
+        target.memo = { kind: "literal", origin: null, path: [] }
+    inlining.add(binding)
+    try {
+      let expression: Resolved | null = null
+      const inner = inScope(params, () =>
+        withFrame(ctx, () => {
+          const fnBody = fn["body"] as AstNode
+          if (fnBody.type === "BlockStatement")
+            walkBlock(fnBody["body"] as AstNode[])
+          else expression = evaluate(fnBody, ctx, true)
+        }),
+      )
+      if (expression !== null) return expression
+      const returned = inner as Frame
+      if (returned.returns === 1 && returned.value !== null)
+        return returned.value
+      return returned.returns === 0
+        ? { kind: "literal", origin: null, path: [] }
+        : { kind: "computed", origin: null, path: [] }
+    } finally {
+      inlining.delete(binding)
     }
   }
 
@@ -1033,17 +1267,65 @@ export const readModule = ({
     })
   }
 
+  /**
+   * A call's arguments, evaluated in order, as passed. The cut happens here: a
+   * function handed to a tech callee is a hook, in an outside-kind file. Handed
+   * to anything else — the language, a use case, a local — or in an inside
+   * kind, where hooks are no concept, it is read inline: its calls count where
+   * the callback sits.
+   */
+  const readArgs = (
+    argNodes: readonly AstNode[],
+    callee: CalleeKind,
+    registeredBy: ReadCall,
+    emitting: boolean,
+  ): ArgValue[] => {
+    const args: ArgValue[] = []
+    for (const arg of argNodes) {
+      const inner = unwrap(arg)
+      if (isFunctionNode(inner)) {
+        args.push({ kind: "function", origin: null, path: [] })
+        if (!emitting) continue
+        if (callee.kind === "tech" && tech !== null)
+          body.hooks.push(readHook(inner, registeredBy))
+        else readInline(inner, callee)
+        continue
+      }
+      if (arg.type === "SpreadElement") {
+        evaluate(arg["argument"] as AstNode, { kind: "computed" }, emitting)
+        args.push({ kind: "computed", origin: null, path: [] })
+        continue
+      }
+      const value = evaluate(arg, { kind: "argument", to: callee }, emitting)
+      args.push({ kind: value.kind, origin: value.origin, path: value.path })
+    }
+    return args
+  }
+
   const evaluateCall = (
     node: AstNode,
     ctx: Ctx,
     emitting: boolean,
   ): Resolved => {
+    // an inlined call, evaluated again for a binding's resolution: its value
+    const memo = inlineMemo.get(node)
+    if (!emitting && memo !== undefined) return memo
     const isTagged = node.type === "TaggedTemplateExpression"
     const calleeNode = (isTagged ? node["tag"] : node["callee"]) as AstNode
     const callee = calleeOf(calleeNode, emitting)
     const argNodes = isTagged
       ? ((node["quasi"] as AstNode)["expressions"] as AstNode[])
       : (node["arguments"] as AstNode[])
+    if (emitting && callee.kind === "local") {
+      // a local callee is a binding of this scope by construction
+      const binding = lookup(scope, callee.name) as Binding
+      const fn = tracked.get(binding)
+      if (fn !== undefined && !inlining.has(binding)) {
+        const value = inlineLocal(fn, binding, argNodes, callee, ctx)
+        inlineMemo.set(node, value)
+        return value
+      }
+    }
     // a bound result's flow is its binding's uses, filled as they come; an
     // unbound one reaches its own position only
     let results: ResultUse[]
@@ -1063,25 +1345,7 @@ export const readModule = ({
       result: results,
       load,
     }
-    const args: ArgValue[] = []
-    for (const arg of argNodes) {
-      const inner = unwrap(arg)
-      if (isFunctionNode(inner)) {
-        args.push({ kind: "function", origin: null, path: [] })
-        if (!emitting) continue
-        if (callee.kind === "tech") body.hooks.push(readHook(inner, call))
-        else open.push({ span: spanOf(inner), why: "uncut-callback" })
-        continue
-      }
-      if (arg.type === "SpreadElement") {
-        evaluate(arg["argument"] as AstNode, { kind: "computed" }, emitting)
-        args.push({ kind: "computed", origin: null, path: [] })
-        continue
-      }
-      const value = evaluate(arg, { kind: "argument", to: callee }, emitting)
-      args.push({ kind: value.kind, origin: value.origin, path: value.path })
-    }
-    call.args = args
+    call.args = readArgs(argNodes, callee, call, emitting)
     if (emitting) {
       if (callee.kind === "unknown")
         open.push({ span: spanOf(calleeNode), why: "unknown-callee" })
@@ -1480,12 +1744,30 @@ export const readModule = ({
       case "ExpressionStatement": {
         const expression = statement["expression"] as AstNode
         evaluate(expression, { kind: "discarded" }, true)
-        if (unwrap(expression).type === "AssignmentExpression")
+        const inner = unwrap(expression)
+        if (inner.type === "AssignmentExpression")
+          emit({
+            kind: "assignment",
+            target: assignmentTargetKind(unwrap(inner["left"] as AstNode)),
+            span: spanOf(statement),
+          })
+        // an increment is a write too, with no target kind to carry
+        else if (inner.type === "UpdateExpression")
           emit({ kind: "other", span: spanOf(statement) })
         return
       }
       case "ReturnStatement": {
         const argument = statement["argument"]
+        if (frame !== null) {
+          // a body read inline: the value flows to the frame's context, and
+          // is what the inlined call evaluates to — no statement
+          const value = isNode(argument)
+            ? evaluate(argument, frame.ctx, true)
+            : { kind: "literal" as const, origin: null, path: [] }
+          frame.returns += 1
+          if (frame.value === null) frame.value = value
+          return
+        }
         emitReturn(isNode(argument) ? argument : null, spanOf(statement))
         return
       }
@@ -1599,6 +1881,87 @@ export const readModule = ({
     }
   }
 
+  // the tracked locals: every non-exported top-level function is a candidate;
+  // it is tracked when every reference to its name in the file is a direct
+  // call — one passed as a value, taken as a member's root, tagged, or
+  // constructed is not seen whole, and stays a function of the file
+  const candidates = new Map<string, AstNode>()
+  for (const statement of rootStatements) {
+    if (statement.type === "FunctionDeclaration") {
+      // a root function statement is named: the anonymous form is the
+      // default export's, under its own declaration node
+      const id = statement["id"] as AstNode
+      candidates.set(id["name"] as string, statement)
+    } else if (statement.type === "VariableDeclaration") {
+      const declarators = statement["declarations"] as AstNode[]
+      const single = declarators.length === 1 ? declarators[0] : undefined
+      const id = single?.["id"]
+      const init = single?.["init"]
+      if (single && isNode(id) && id.type === "Identifier" && isNode(init)) {
+        const fn = unwrap(init)
+        if (isFunctionNode(fn)) candidates.set(id["name"] as string, fn)
+      }
+    }
+  }
+  for (const name of exportedNames) candidates.delete(name)
+  const references = new Map(
+    [...candidates.keys()].map((name) => [name, { direct: 0, other: 0 }]),
+  )
+  const countReferences = (
+    node: unknown,
+    parent: AstNode | null,
+    key: string,
+  ): void => {
+    if (Array.isArray(node)) {
+      for (const item of node) countReferences(item, parent, key)
+      return
+    }
+    if (!isNode(node) || node.type.startsWith("TS")) return
+    if (node.type === "Identifier") {
+      const count = references.get(node["name"] as string)
+      if (count === undefined || parent === null) return
+      // not a reference: a property name, a key, a label, an import or
+      // export name, the declaration's own name
+      const named =
+        (parent.type === "MemberExpression" && key === "property") ||
+        ((parent.type === "Property" ||
+          parent.type === "MethodDefinition" ||
+          parent.type === "PropertyDefinition") &&
+          key === "key")
+      if (named && parent["computed"] !== true) return
+      if (
+        key === "label" ||
+        parent.type === "ImportSpecifier" ||
+        parent.type === "ExportSpecifier" ||
+        (key === "id" &&
+          (parent.type === "FunctionDeclaration" ||
+            parent.type === "FunctionExpression" ||
+            parent.type === "VariableDeclarator"))
+      )
+        return
+      if (parent.type === "CallExpression" && key === "callee")
+        count.direct += 1
+      else count.other += 1
+      return
+    }
+    for (const [childKey, child] of Object.entries(node)) {
+      if (childKey === "type" || childKey === "loc" || childKey === "range")
+        continue
+      countReferences(child, node, childKey)
+    }
+  }
+  if (candidates.size > 0) countReferences(rootStatements, null, "body")
+  for (const [name, fn] of candidates) {
+    const count = references.get(name) as { direct: number; other: number }
+    const binding = lookup(scope, name)
+    if (count.other === 0 && count.direct > 0 && binding !== null)
+      tracked.set(binding, fn)
+  }
+  const isTrackedName = (name: string): boolean => {
+    const binding = lookup(scope, name)
+    return binding !== null && tracked.has(binding)
+  }
+
   const functions: ReadFunction[] = []
 
   const readFunction = (
@@ -1627,7 +1990,9 @@ export const readModule = ({
         return binding
       }),
     )
-    const inner = inScope(params, () => inBody(() => walkFunctionBody(fn)))
+    const inner = inScope(params, () =>
+      inBody(() => withFrame(null, () => walkFunctionBody(fn))),
+    )
     for (const param of unbound)
       open.push({ span: param.span, why: "unbound-parameter" })
     functions.push({
@@ -1672,11 +2037,9 @@ export const readModule = ({
       }
       case "FunctionDeclaration": {
         const id = statement["id"] as AstNode
-        readFunction(
-          statement,
-          id["name"] as string,
-          exported || exportedNames.has(id["name"] as string),
-        )
+        const name = id["name"] as string
+        if (isTrackedName(name)) return true
+        readFunction(statement, name, exported || exportedNames.has(name))
         return true
       }
       case "VariableDeclaration": {
@@ -1689,6 +2052,7 @@ export const readModule = ({
         const fn = unwrap(init)
         if (!isFunctionNode(fn)) return false
         const name = id["name"] as string
+        if (isTrackedName(name)) return true
         readFunction(fn, name, exported || exportedNames.has(name))
         return true
       }

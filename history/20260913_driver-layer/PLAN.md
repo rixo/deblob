@@ -94,6 +94,18 @@ the draft, noted for the ruleset's completeness).
   bugs long term"), carded under Ideas for a later iteration. Config key, not a
   flavor property: naming is the flavor's, a type annotation is the language's.
   Canon's sentence follows in the same commit.
+- **Unknown is for reader deficiency only (2026-09-17, step 03).** The
+  half-known-tech fence (a callback the reading cannot cut, an unparsed file, a
+  tech no reader rules) is lenient because the checker lacks the knowledge.
+  Everywhere the reader has the full tree and the closed grammar — a callback
+  handed to a language call, a parameter with several call sites, a call on a
+  call's result, an assignment at module root — "unknown, not judged" was the
+  same fence applied by resemblance, and it is wrong there: with full knowledge,
+  what cannot be positively read as legal is judged as it reads. Parameters with
+  disagreeing call sites are read once per world, each judged as the only
+  caller, infractions attributed to the inducing site, no violation for the
+  disagreement itself; the open part shrinks to genuine ignorance. The audit and
+  its rulings: SPEC 03 § The open part, audited.
 
 ## Review board — internal consistency
 
@@ -226,17 +238,37 @@ may reopen the service example and the config pattern section.
 - `02_flavor-factories` — the flavor says what a factory is (`create*`
   convention, composition-unit exports); unlocks the model-callee case of the
   assembly reader, the root-factory-call check of `stateless-modules`, and the
-  readonly opt-in config. SPEC drafted 2026-09-16 in
-  `02_flavor-factories/SPEC.md`, to ratify: `isFactory` on the flavor port (name
-  only), the two model rows and the `local` callee widened, `readonly` as a fact
-  on root definitions with a `mutableModuleState` opt-out key, and the
-  graph-pass fix found dogfooding (test-file call sites do not bind parameters).
-- `03_outside-rules` — `deblob check` enforces the assembly, driver, boot and
-  test rules: config keys (`boot`, `drivers`, `tests`, `loads`), the three kinds
-  in `Layer`, the new slugs in `RULE_IDS`, three violation members, three
-  detectors, three explain cards. Proto API drafted 2026-09-15 in
-  `03_outside-rules/SPEC.md`, to ratify when the step opens; after 01 and 02.
-- `04_alignment-review` — the checks are implemented; one pass over every rule
+  readonly check. SPEC in `02_flavor-factories/SPEC.md`: `isFactory` on the
+  flavor port (name only), the two model rows and the `local` callee widened,
+  `readonly` as a fact on root definitions with a `mutableModuleState` opt-out
+  key (the opt-in reversed, see Rulings), and the graph-pass fix found
+  dogfooding (test-file call sites do not bind parameters). Implemented
+  2026-09-16 in three checkpoints (the graph pass, the flavor's word, readonly),
+  each with a "Landed" section in the SPEC; 03's amendments listed in the SPEC,
+  not applied to the proto. Landed as `e2e9592` (2026-09-16).
+- `03_outside-rules` — opened as "`deblob check` enforces the assembly, driver,
+  boot and test rules" (SPEC rewritten 2026-09-16 in `03_outside-rules/SPEC.md`;
+  the proto of 2026-09-15 in git history at `e2e9592`); CUT 2026-09-17 after two
+  of its six checkpoints, the rules carried to 04. What landed: row 53's readers
+  in shape (`Reader` port, `files` bindings, the stock readers as builtin
+  bindings, `readers` key in, `tests` out, recognition as one operation for
+  extraction and the bare status), coverage without `.svelte`/`.vue` unless
+  designated or bound, and the open part shrunk (SPEC § The open part, audited:
+  callbacks to non-tech callees read inline, a called result classified by its
+  value, `assignment`, one reading per world with `readings` on the node,
+  tracked locals — rixo's Q3 reversal at the handback). Each checkpoint has a
+  "Landed" section in the SPEC. Landed 2026-09-17 (sha in 04's entry once cut).
+- `04_outside-rules` — the rules, re-cut from 03 under the test method ruled at
+  03's handback: `deblob check` enforces the assembly, driver, boot and test
+  rules — nine slugs in `RULE_IDS` plus `stateless-modules`' first detector,
+  four checks, the import halves as matrix cells — each proven by verdict cases
+  (a tree of source strings through the real chain, red or green with why; no
+  test pins a reading), which needs the fs port with a node and a memory adapter
+  first (placement-debt's `03_fs-kernel`, pulled forward from 09; the run
+  service stays there). SPEC 03's rule sections are the contract, amended in
+  `04_outside-rules/SPEC.md`; the reading spec is cut against coverage once the
+  cases are green. Drafted 2026-09-17, to ratify before the build.
+- `05_alignment-review` — the checks are implemented; one pass over every rule
   canon states for the outside kinds against what `deblob check` enforces, with
   the tests as the proof: per canon statement (each Summary bullet and the
   matrix's rows and cells), the detector and the test that proves it, by name;
@@ -244,26 +276,80 @@ may reopen the service example and the config pattern section.
   mechanism waiting on the flavor, a tech's open part). A claim with no test is
   not implemented; a test with no canon line is a rule canon does not state and
   goes back to this board as a question. Recorded as a table in the step's SPEC;
-  mismatches fixed there or carded on this board before 05.
-- `05_cli-restructure` — deblob's own CLI: `cli.boot.ts` (today's `bin.ts`),
+  mismatches fixed there or carded on this board before 06.
+- `06_cli-restructure` — deblob's own CLI: `cli.boot.ts` (today's `bin.ts`),
   `cli.driver.ts` (cac, one hook per command), `cli.assembly.ts` (factory calls,
   returns the CLI service), `lib/cli/cli.service.ts` (parse, dispatch, render;
   io port). Today's `main.ts` is red under every driver rule.
-- `06_slugs` — code, skills, README follow canon (`test-setup-assembly` →
+- `07_slugs` — code, skills, README follow canon (`test-setup-assembly` →
   `test-is-assembly-and-driver`, the new assembly/driver/boot rules); breaking,
   accepted. Implementation guide's config pattern (lazy `getConfig()` in the
   root) rewritten as the declared load. Knowledge files realigned with this
   board's rulings in the same pass — Sharing step 5 in `knowledge/sharing.md`
   first; no piecemeal skill edits before then.
-- `07_container-whitelist` — config key for a runtime container library, when
+- `08_container-whitelist` — config key for a runtime container library, when
   someone needs it.
-- `08_placement-debt-recut` — placement-debt steps 02–05 re-cut under this
-  chapter; step 01 unchanged.
+- `09_placement-debt-recut` — placement-debt steps 02, 04 and 05 re-cut under
+  this chapter (03, the fs kernel, is 04's first checkpoint); step 01 unchanged.
+
+Renumbered 2026-09-17 when 03 was cut: SPEC 03's text still says 04 for the
+alignment review, 05 for the CLI restructure, 06 for the slugs.
 
 ## Future
 
 ### Ideas
 
+- **Purity over inside bodies — the host-global half of `service-purity`**
+  (rixo, 2026-09-17, step 03 checkpoint 2's verdict game). `service-purity`
+  reads imports only: a concrete package or builtin imported into model or
+  service. A host global used in a model or service function body —
+  `console.log`, `setTimeout`, `process.env`, `Date.now`, `Math.random` — goes
+  unreported today. The reader classifies every free name as tech since
+  checkpoint 2, but for inside kinds it reads root statements only and never
+  walks function bodies. The detector needs the walk extended into inside-kind
+  functions (the same extension the "one tech per adapter" card waits on for
+  adapter bodies), then one rule: no tech callee, no tech value read, in a model
+  or service body — canon § Model: "time, randomness, `globalThis` are inputs
+  passed by the caller, not discoveries". Language globals (`Math.max`, `JSON`)
+  stay legal; `Date.now` and `Math.random` are the language's by the lists and
+  need a named exception — the ambient-access members of intrinsics. At root,
+  checkpoint 3's root-call rule already catches a tech call.
+- **The depth is ours; the reviewer judges verdicts** (rixo, 2026-09-17, from
+  step 03 checkpoint 2's handback; a guiding principle to lift to the method
+  docs when its home is ruled). The reader's depth is JavaScript's: a call hides
+  in a callback, behind a computed member, on the result of a result, and
+  curried factories (`f()()`) are common — agents write them freely. Three ways
+  out: strict authoring rules (kills progressive deblob), dodging the shapes
+  (the reviewer has to open the code to trust the map — the failure mode of
+  "emerging clarity"), or absorbing the depth in the reader so it becomes a
+  reliable detail the reviewer never opens. Ruled: the third. Consequences: the
+  reader answers for every shape and the fixtures enumerate shapes on purpose;
+  its two reviewable properties are that the open part is empty on real trees
+  and that the violations make sense; reader decisions are presented to the
+  reviewer as red/green verdicts on realistic code, the shape account kept in
+  the SPEC's Landed; skipping the reviewer's understanding because the detail is
+  fine is the danger, since the minute decisions build the whole. See SPEC 03 §
+  The reviewer's level.
+- **Public by importer count — a canon question for 04** (rixo, 2026-09-17, from
+  the review of `recognition.model.ts`). Canon places the test surface at public
+  names (§ Distillation: extracted to model, logic "grows a test surface of its
+  own") and refuses tests at every seam (§ Architectural seams are not test
+  instructions). Public is a placement fact, and placement is what an agent
+  controls: the failure mode is over-slicing — a private helper cut into a
+  public model file to claim a test surface and a unit on the map. The symmetric
+  one is fattening a service to dodge the test tax, burying concepts.
+  Distillation's guidance ("a consumer beyond the birth use case") has a
+  measurable form the graph already holds: a public model export with one
+  importer, inside its own service, is a slice; one with an importer outside its
+  service is a unit. Recognition passes (extraction and the bare status). The
+  fattening side has no count, only the distillation question. Also the
+  Behavior-panel criterion: a unit of meaning is a public name with a root
+  `describe` of its own, private logic rides under its parent's tests, so the
+  test rule and the map rule are one. To dig in depth at 04's alignment review:
+  whether the importer count becomes a rule, a diagnostic, or stays guidance;
+  and how fixtures-by-shape (the reader's, the check fixture's) are canon's
+  answer to test explosion at big units, so that slicing is never justified by
+  combinatorics alone.
 - **Readonly typing holes** (rixo, 2026-09-16, low priority; the readonly fact
   itself is step 02's). The reader's `readonly` is syntactic — oxc hands the
   annotation nodes, no alias resolution, no inference — so a `const t: Table`

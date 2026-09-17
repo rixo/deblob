@@ -38,13 +38,6 @@ const LAYER_SUFFIX =
 const ROOT_MARKING_SUFFIX =
   /\.(?:model|port|service|adapter)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
 
-/**
- * `test-is-assembly-and-driver` — test naming is this flavor's opinion (same
- * extension set as layer suffixes). Closed carve-out: `__tests__/` and other
- * directory conventions stay to the config's `tests` globs.
- */
-const TEST_SUFFIX = /\.(?:spec|test)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
-
 /** Layer/visibility grouping dirs — filing, never service roots. */
 const GROUPING_DIRS = new Set([
   "model",
@@ -64,8 +57,12 @@ const baseOf = (dir: string): string => {
   return slash === -1 ? dir : dir.slice(slash + 1)
 }
 
+/**
+ * The suffix's word; test naming is not this flavor's — a test file is one the
+ * test runner's binding names (canon: "spec files by the test globs"), and a
+ * `.spec.ts` file reads blob here until recognition asks the reader.
+ */
 const layerOf = (path: string): FlavorLayer => {
-  if (TEST_SUFFIX.test(path)) return "test"
   const match = LAYER_SUFFIX.exec(path)
   if (!match) return "blob"
   // the regex alternation and the record keys are the same set

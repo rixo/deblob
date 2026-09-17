@@ -11,6 +11,7 @@ import type {
   ReadHook,
   ReadStatement,
   UnresolvedImport,
+  World,
   EdgeTarget,
 } from "./graph.model.ts"
 import {
@@ -26,9 +27,11 @@ import type {
   FlavorClassification,
   FlavorResolver,
 } from "./ports/flavor.port.ts"
-import type { Tech } from "./ports/tech.port.ts"
-import type { ImportTargetKind } from "./reader.model.ts"
-import { readModule } from "./reader.model.ts"
+import type { Reader } from "./ports/reader.port.ts"
+import type { ImportTargetKind } from "./reading.model.ts"
+import { readModule } from "./reading.model.ts"
+import type { Designations } from "./recognition.model.ts"
+import { createRecognition } from "./recognition.model.ts"
 
 const toPosix = (path: string): string => path.split(sep).join("/")
 
@@ -72,20 +75,28 @@ const sameArg = (a: ArgValue, b: ArgValue): boolean =>
   a.origin?.name === b.origin?.name &&
   a.path.join(".") === b.path.join(".")
 
+const sameArgs = (a: readonly ArgValue[], b: readonly ArgValue[]): boolean =>
+  a.length === b.length && a.every((arg, index) => sameArg(arg, b[index]!))
+
 /**
- * The parameter bindings the call sites give: file → exported function →
- * argument per position, `null` where two sites disagree or one is short. Only
- * an assembly function or a driver's wiring function is a target — the two
- * exports the outside kinds call across files. A site in a test file does not
- * bind: a test hands fakes, no evidence of what production hands.
+ * The worlds the call sites open: file → one world per exported function and
+ * distinct argument vector, in site order, the first site of a vector kept as
+ * the inducing one. Only an assembly function or a driver's wiring function is
+ * a target — the two exports the outside kinds call across files; a site in the
+ * target's own file binds nothing (a second function there is the rules'
+ * business before its body is). A site in a test file does not bind: a test
+ * hands fakes, no evidence of what production hands. Sites are read off every
+ * world of the calling file, since an argument can be that file's own bound
+ * parameter handed on.
  */
-const paramBindingsOf = (
+const worldsOf = (
   modules: ReadonlyMap<string, ModuleNode>,
-): Map<string, Map<string, (ArgValue | null)[]>> => {
-  const bindings = new Map<string, Map<string, (ArgValue | null)[]>>()
+): Map<string, World[]> => {
+  const worlds = new Map<string, World[]>()
   for (const [from, node] of modules) {
     if (node.reading === null || node.layer === "test") continue
-    for (const call of readingCalls(node.reading)) {
+    const readings = [node.reading, ...node.readings.map((r) => r.reading)]
+    for (const call of readings.flatMap(readingCalls)) {
       const { callee } = call
       const target =
         callee.kind === "wiring" ||
@@ -93,44 +104,54 @@ const paramBindingsOf = (
           ? { path: callee.path, name: callee.name }
           : null
       if (target === null || target.path === from) continue
-      const byName =
-        bindings.get(target.path) ?? new Map<string, (ArgValue | null)[]>()
-      bindings.set(target.path, byName)
-      const seen = byName.get(target.name)
-      if (seen === undefined) {
-        byName.set(target.name, [...call.args])
+      const known = worlds.get(target.path) ?? []
+      worlds.set(target.path, known)
+      if (
+        known.some(
+          (world) =>
+            world.name === target.name && sameArgs(world.args, call.args),
+        )
+      )
         continue
-      }
-      // a later site: agree or fall to unknown, position by position
-      const width = Math.max(seen.length, call.args.length)
-      for (let index = 0; index < width; index += 1) {
-        const known = seen[index]
-        const arg = call.args[index]
-        seen[index] =
-          known !== undefined &&
-          known !== null &&
-          arg !== undefined &&
-          sameArg(known, arg)
-            ? known
-            : null
-      }
+      known.push({
+        name: target.name,
+        site: { path: from, span: call.span },
+        args: call.args,
+      })
     }
   }
-  return bindings
+  return worlds
+}
+
+/**
+ * One reading's bindings: every function from its first world, the named one
+ * from the given world.
+ */
+const paramKindsOf = (
+  worlds: readonly World[],
+  bound?: World,
+): Map<string, readonly ArgValue[]> => {
+  const byName = new Map<string, readonly ArgValue[]>()
+  for (const world of worlds)
+    if (!byName.has(world.name)) byName.set(world.name, world.args)
+  if (bound) byName.set(bound.name, bound.args)
+  return byName
 }
 
 export const createExtraction = ({
   engine,
   flavor,
-  techs = [],
+  readers = [],
 }: {
   engine: ExtractionEngine
   flavor: FlavorResolver
   /**
-   * The techs, one adapter per technology: the first whose kinds hold a file's
-   * reads it. None = every outside-kind file is recognized and open.
+   * The readers, one per technology, in precedence order (config's bindings
+   * first, then the stock ones): the first whose binding matches a file and
+   * whose kinds hold its kind reads it. None = every outside-kind file is
+   * recognized and open.
    */
-  techs?: readonly Tech[]
+  readers?: readonly Reader[]
 }) => {
   const extractGraph = ({
     root,
@@ -138,28 +159,15 @@ export const createExtraction = ({
     isAssembly,
     isDriver,
     isBoot,
-    isTest,
     external,
     externalLayerOf,
     pure = [],
     driverTech = () => false,
     configLoads = [],
-  }: {
+  }: Designations & {
     root: string
     /** Coverage set: paths relative to `root`, POSIX-style. */
     files: readonly string[]
-    /**
-     * The designations — the config's globs for the kinds a framework names
-     * itself. Recognition, most specific claim first: test naming or `isTest`
-     * makes a test file wherever it sits; then one designation wins over the
-     * flavor's word; two designations on one file is a config error, thrown
-     * here with the file and both keys named. Absent = the flavor's word is
-     * final.
-     */
-    isAssembly?: (path: string) => boolean
-    isDriver?: (path: string) => boolean
-    isBoot?: (path: string) => boolean
-    isTest?: (path: string) => boolean
     /**
      * Declared externals — returns the matching declared pattern, or `null`. A
      * hit is a leaf known by declaration (the environment provides it, nothing
@@ -202,34 +210,21 @@ export const createExtraction = ({
     const edges = new Map<string, ImportEdge>()
     const unresolved: UnresolvedImport[] = []
 
-    const designations: readonly (readonly [
-      key: string,
-      layer: Layer,
-      matches: ((path: string) => boolean) | undefined,
-    ])[] = [
-      ["assembly", "assembly", isAssembly],
-      ["drivers", "driver", isDriver],
-      ["boot", "boot", isBoot],
-    ]
-
-    /** The file's kind: test first, then one designation, then the flavor. */
-    const layerOf = (file: string, flavorLayer: Layer): Layer => {
-      if (flavorLayer === "test" || isTest?.(file)) return "test"
-      const designated = designations.filter(([, , matches]) => matches?.(file))
-      if (designated.length > 1) {
-        // a config mistake found where the file set is — extraction's own
-        // failure, actionable, presented by the driver
-        throw new ExtractionError(
-          "designation-conflict",
-          `${file} is designated ${designated.map(([key]) => `"${key}"`).join(" and ")} in deblob config — a file has one kind; narrow the globs`,
-        )
-      }
-      return designated[0]?.[1] ?? flavorLayer
-    }
+    const recognition = createRecognition({
+      readers,
+      ...(isAssembly ? { isAssembly } : {}),
+      ...(isDriver ? { isDriver } : {}),
+      ...(isBoot ? { isBoot } : {}),
+    })
+    /**
+     * The file's kind: a reader's designation, then the config's, then the
+     * flavor.
+     */
+    const layerOf = recognition.kindOf
 
     /** What an import lands on, for the reader: the target's kind, or the claim. */
     const importTargetKindOf = (
-      tech: Tech | null,
+      tech: Reader | null,
       target: EdgeTarget | null,
       specifier: string,
     ): ImportTargetKind => {
@@ -272,10 +267,9 @@ export const createExtraction = ({
       layer: Layer,
       extraction: FileExtraction,
       landed: ReadonlyMap<string, EdgeTarget | null>,
-      paramKinds?: ReadonlyMap<string, readonly (ArgValue | null)[]>,
+      paramKinds?: ReadonlyMap<string, readonly ArgValue[]>,
     ): FileReading | null => {
-      const tech =
-        techs.find((candidate) => candidate.kinds.includes(layer)) ?? null
+      const tech = recognition.readerOf(file, layer)
       if (OUTSIDE_KINDS.has(layer) && tech === null) return null
       // every literal specifier the reader can ask about is an import the
       // engine listed — a miss is an unresolved one
@@ -426,37 +420,51 @@ export const createExtraction = ({
         parsed: extraction !== null,
         runtimeContent: extraction ? extraction.runtimeContent : [],
         reading: extraction ? readingOf(file, layer, extraction, landed) : null,
+        readings: [],
       })
     }
 
-    // the graph pass: parameters are bound at their call sites. An assembly
-    // function or a sub-driver's wiring function called from another
-    // outside-kind file takes its parameters' kinds from the arguments,
-    // joined over every production site (a test's fakes bind nothing) — the
-    // files that gained a binding are read again with it, the tree parsed
-    // again rather than kept. A binding can make another site's argument
-    // known (a root assembly's parameter handed on to a group assembly), so
-    // the pass runs to a fixed point: one round per level of the call chain,
-    // at most one per file.
+    // the graph pass: parameters are bound at their call sites, one world
+    // per distinct argument vector. An assembly function or a sub-driver's
+    // wiring function called from another outside-kind file is read once per
+    // world, its parameters' kinds that world's arguments (a test's fakes
+    // open nothing) — the tree parsed again rather than kept; `reading` binds
+    // every function from its first world. A binding can make another site's
+    // argument known (a root assembly's parameter handed on to a group
+    // assembly), so the pass runs to a fixed point: one round per level of
+    // the call chain, at most one per file.
     let previous = ""
     for (let round = 0; round < modules.size; round += 1) {
-      const bindings = paramBindingsOf(modules)
-      const current = JSON.stringify(
-        [...bindings].map(([file, byName]) => [file, [...byName]]),
-      )
+      const worlds = worldsOf(modules)
+      const current = JSON.stringify([...worlds])
       if (current === previous) break
       previous = current
-      for (const [file, paramKinds] of bindings) {
-        // a bound file is an assembly or a driver that parsed: both exist
+      for (const [file, fileWorlds] of worlds) {
+        // a bound file is an assembly or a driver, so the node and its landed
+        // imports exist; one no reader covers (a designated `+page.svelte`,
+        // unparsed or unbound) has no reading in any world — recognized and
+        // open, its callers' worlds notwithstanding
         const node = modules.get(file) as ModuleNode
+        if (node.reading === null) continue
         const landed = landedByFile.get(file) as ReadonlyMap<
           string,
           EdgeTarget | null
         >
-        const extraction = engine.extract(resolve(root, file)) as FileExtraction
+        const read = (bound?: World): FileReading =>
+          readingOf(
+            file,
+            node.layer,
+            engine.extract(resolve(root, file)) as FileExtraction,
+            landed,
+            paramKindsOf(fileWorlds, bound),
+          ) as FileReading
         modules.set(file, {
           ...node,
-          reading: readingOf(file, node.layer, extraction, landed, paramKinds),
+          reading: read(),
+          readings: fileWorlds.map((world) => ({
+            world,
+            reading: read(world),
+          })),
         })
       }
     }

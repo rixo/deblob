@@ -40,6 +40,7 @@ const graph = (
         parsed: true,
         runtimeContent: spec.runtimeContent ?? [],
         reading: null,
+        readings: [],
       },
     ]),
   ),

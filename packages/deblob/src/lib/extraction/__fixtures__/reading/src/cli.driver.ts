@@ -31,6 +31,12 @@ export const main = async () => {
   files.map((file) => file)
   Promise.resolve().then(() => services.app.check({ cwd: "." }))
   registerDefault(cli)
+  cli.command("write").action((opts) => {
+    opts.body = 1
+    process.exitCode = 1
+  })
+  registerPage(cli)
 }
 
 import registerDefault from "./default.driver.ts"
+import registerPage from "./routes/+page.svelte"

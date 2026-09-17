@@ -2,8 +2,8 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, test } from "vitest"
 
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
-import { createPlainTsTech } from "./adapters/plain-ts-tech.adapter.ts"
-import { createTestRunnerTech } from "./adapters/test-runner-tech.adapter.ts"
+import { createPlainTsReader } from "./adapters/plain-ts-reader.adapter.ts"
+import { createTestRunnerReader } from "./adapters/test-runner-reader.adapter.ts"
 import { createTsSuffixesFactoriesFlavor } from "./adapters/ts-suffixes-factories-flavor.adapter.ts"
 import { createExtraction } from "./extraction.service.ts"
 import { useCaseLevels } from "./levels.model.ts"
@@ -35,7 +35,7 @@ const levelsOf = (files: readonly string[] = FILES) => {
   const extraction = createExtraction({
     engine: createOxcEngine({ tsconfigPath: `${root}tsconfig.json` }),
     flavor: createTsSuffixesFactoriesFlavor(),
-    techs: [createPlainTsTech(), createTestRunnerTech()],
+    readers: [createPlainTsReader(), createTestRunnerReader()],
   })
   return useCaseLevels(
     extraction.extractGraph({
@@ -60,6 +60,9 @@ describe("useCaseLevels", () => {
       ["src/app/app.service.ts", "check", "src/cli.driver.ts", 16],
       ["src/app/app.service.ts", "status", "src/cli.driver.ts", 20],
       ["src/app/app.service.ts", "check", "src/cli.driver.ts", 26],
+      // the sub-driver's hook, in the world where its parser is tech —
+      // the other site's world reads no hook, and disagreement kills nothing
+      ["src/app/app.service.ts", "check", "src/sub.driver.ts", 4],
       ["src/app/app.service.ts", "check", "src/other.driver.ts", 20],
     ])
   })
@@ -69,6 +72,9 @@ describe("useCaseLevels", () => {
     expect(
       unresolved.map(({ driver, member, span }) => [driver, member, span.line]),
     ).toEqual([
+      // the sub-driver in its third world: the instance came from the opaque
+      // assembly, whose record the reading cannot see
+      ["src/sub.driver.ts", "app.check", 4],
       // a record returned through a binding
       ["src/other.driver.ts", "app.status", 18],
       // an instance at an assembly's root, no function to trace

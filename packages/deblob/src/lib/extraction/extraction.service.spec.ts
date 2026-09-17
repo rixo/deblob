@@ -4,15 +4,17 @@ import { describe, expect, test } from "vitest"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import { createTsSuffixesFactoriesFlavor } from "./adapters/ts-suffixes-factories-flavor.adapter.ts"
 import { createExtraction } from "./extraction.service.ts"
-import { createPlainTsTech } from "./adapters/plain-ts-tech.adapter.ts"
-import { createTestRunnerTech } from "./adapters/test-runner-tech.adapter.ts"
+import { createPlainTsReader } from "./adapters/plain-ts-reader.adapter.ts"
+import { createTestRunnerReader } from "./adapters/test-runner-reader.adapter.ts"
 import type {
   ImportEdge,
   ImportGraph,
+  Layer,
   ReadCall,
   ReadStatement,
 } from "./graph.model.ts"
-import { isExtractionError } from "./graph.model.ts"
+import { asExtractionError, isExtractionError } from "./graph.model.ts"
+import type { Reader } from "./ports/reader.port.ts"
 import type { ExtractionEngine } from "./ports/extraction.port.ts"
 
 /** A parsed nothing — what a fake engine hands the reader. */
@@ -33,24 +35,35 @@ type Designations = {
   isAssembly?: (path: string) => boolean
   isDriver?: (path: string) => boolean
   isBoot?: (path: string) => boolean
-  isTest?: (path: string) => boolean
 }
 
 const extractFixture = ({
   fixture,
   files,
+  readers = [],
   ...designations
 }: {
   fixture: string
   files: readonly string[]
+  readers?: readonly Reader[]
 } & Designations): ImportGraph => {
   const root = fixtureRoot(fixture)
   const extraction = createExtraction({
     engine: createOxcEngine({ tsconfigPath: `${root}tsconfig.json` }),
     flavor: createTsSuffixesFactoriesFlavor(),
+    readers,
   })
   return extraction.extractGraph({ root, files, ...designations })
 }
+
+/** A reader of one kind over the files named — the binding that designates. */
+const fakeReader = (kind: Layer, files: readonly string[]): Reader => ({
+  name: "some-made-up-reader",
+  files,
+  kinds: [kind],
+  claims: () => false,
+  exempts: [],
+})
 
 const FORMS_FILES = [
   "src/dep.ts",
@@ -489,15 +502,29 @@ describe("extractGraph over the forms fixture", () => {
     })
   })
 
-  test("the test kind wins over every designation — a spec file is one wherever it sits", () => {
+  test("a single-kind reader's binding designates its kind, over every designation — a test file is one wherever it sits", () => {
     const graph = extractFixture({
       fixture: "forms",
       files: FORMS_FILES,
+      readers: [fakeReader("test", ["src/app.ts"])],
       isDriver: () => true,
-      isTest: (path) => path === "src/app.ts",
     })
     expect(graph.modules.get("src/app.ts")).toMatchObject({ layer: "test" })
     expect(graph.modules.get("src/dep.ts")).toMatchObject({ layer: "driver" })
+  })
+
+  test("a reader of several kinds designates nothing — the file keeps the flavor's word", () => {
+    const graph = extractFixture({
+      fixture: "forms",
+      files: FORMS_FILES,
+      readers: [
+        {
+          ...fakeReader("driver", ["src/app.ts"]),
+          kinds: ["driver", "boot"],
+        },
+      ],
+    })
+    expect(graph.modules.get("src/app.ts")).toMatchObject({ layer: "blob" })
   })
 
   test("an unparsed file takes its designated kind too — the web fence, recognized and open", () => {
@@ -539,6 +566,10 @@ describe("extractGraph over the forms fixture", () => {
         Object.assign(new Error("SOME_MADE_UP"), { name: "ExtractionError" }),
       ),
     ).toBe(true)
+    // the presenting twin: extraction's own error comes back, a bug keeps flying
+    expect(asExtractionError(thrown)).toBe(thrown)
+    const bug = new Error("SOME_MADE_UP_BUG")
+    expect(() => asExtractionError(bug)).toThrow(bug)
   })
 })
 
@@ -870,11 +901,11 @@ describe("the reading on the graph — the reading fixture", () => {
   ]
 
   /**
-   * Test factory: the fixture project with both stock techs and the project's
+   * Test factory: the fixture project with both stock readers and the project's
    * claims.
    */
   const extractReading = (
-    techs = [createPlainTsTech(), createTestRunnerTech()],
+    readers = [createPlainTsReader(), createTestRunnerReader()],
     configLoads: readonly { file: string; name: string }[] = [
       { file: "src/app/app.service.ts", name: "load" },
     ],
@@ -883,7 +914,7 @@ describe("the reading on the graph — the reading fixture", () => {
     const extraction = createExtraction({
       engine: createOxcEngine({ tsconfigPath: `${root}tsconfig.json` }),
       flavor: createTsSuffixesFactoriesFlavor(),
-      techs,
+      readers,
     })
     return extraction.extractGraph({
       root,
@@ -913,7 +944,7 @@ describe("the reading on the graph — the reading fixture", () => {
   const kindsOf = (calls: readonly ReadCall[]) =>
     calls.map((call) => call.callee.kind)
 
-  test("chooses the tech by kind: plain-ts for assembly, driver and boot; test-runner for test; none inside", () => {
+  test("chooses the reader by binding and kind: plain-ts for assembly, driver and boot; test-runner for the files its naming binds; none inside", () => {
     const graph = extractReading()
     expect(readingOf(graph, "src/cli.assembly.ts").tech).toBe("plain-ts")
     expect(readingOf(graph, "src/cli.driver.ts").tech).toBe("plain-ts")
@@ -938,21 +969,47 @@ describe("the reading on the graph — the reading fixture", () => {
 
   test("an unparsed designated file has no reading — recognized and open", () => {
     const graph = extractReading()
+    // the CLI driver calls its wiring function: a world for it, which no
+    // reader reads — no reading in any world either
     expect(graph.modules.get("src/routes/+page.svelte")).toMatchObject({
       layer: "driver",
       parsed: false,
       reading: null,
+      readings: [],
     })
   })
 
-  test("tripwire: an outside kind no injected tech covers reads as null, no throw", () => {
-    const graph = extractReading([createTestRunnerTech()])
+  test("tripwire: an outside kind no injected reader covers reads as null, no throw", () => {
+    const graph = extractReading([createTestRunnerReader()])
+    // the boot calls `main()`: a world for the driver, which no reader reads
+    // in any world — no reading, and no world reading either
     expect(graph.modules.get("src/cli.driver.ts")).toMatchObject({
       layer: "driver",
       parsed: true,
       reading: null,
+      readings: [],
     })
     expect(readingOf(graph, "src/globals.spec.ts").tech).toBe("test-runner")
+  })
+
+  test("a configured binding comes first, and the kinds filter holds: plain-ts bound over the spec naming does not read a test file", () => {
+    const graph = extractReading([
+      { ...createPlainTsReader(), files: ["**/*.spec.ts"] },
+      createTestRunnerReader(),
+    ])
+    // the runner's binding still designates the kind, plain-ts reads no test
+    // kind, so the file falls to the runner — not to null
+    expect(readingOf(graph, "src/globals.spec.ts").tech).toBe("test-runner")
+    expect(graph.modules.get("src/globals.spec.ts")?.layer).toBe("test")
+    // a binding the runner gains from config reads with the four exemptions
+    const bound = extractReading([
+      { ...createTestRunnerReader(), files: ["src/legacy.ts"] },
+      createPlainTsReader(),
+      createTestRunnerReader(),
+    ])
+    expect(bound.modules.get("src/legacy.ts")).toMatchObject({ layer: "test" })
+    expect(readingOf(bound, "src/legacy.ts").exempts).toHaveLength(4)
+    expect(bound.modules.get("src/globals.spec.ts")?.layer).toBe("test")
   })
 
   test("a driver: externals by claim, purity and complement; hooks cut, nested; the open part", () => {
@@ -987,7 +1044,13 @@ describe("the reading on the graph — the reading fixture", () => {
       calls.find((call) => call.span.line === 29)?.args.map((arg) => arg.kind),
     ).toEqual(["tech", "instance"])
     // the hooks: one use-case call each, through the assembly's returned record
-    expect(main.hooks.map((hook) => hook.span.line)).toEqual([15, 19, 24])
+    expect(main.hooks.map((hook) => hook.span.line)).toEqual([15, 19, 24, 34])
+    // assignments in a hook: statements of their own, the target root's kind
+    // — the hook's parameter and the host global are both tech-held
+    expect(main.hooks[3]?.body).toEqual([
+      { kind: "assignment", target: "tech", span: expect.anything() },
+      { kind: "assignment", target: "tech", span: expect.anything() },
+    ])
     expect(kindsOf(callsOf(main.hooks[0]?.body ?? []))).toEqual(["use-case"])
     expect(callsOf(main.hooks[0]?.body ?? [])[0]?.callee).toEqual({
       kind: "use-case",
@@ -1018,16 +1081,29 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(kindsOf(callsOf(main.hooks[2]?.hooks[0]?.body ?? []))).toEqual([
       "use-case",
     ])
-    // `.map` and `.then` callbacks: not hooks, open
-    expect(
-      readingOf(extractReading(), "src/cli.driver.ts").open.map((part) => [
-        part.why,
-        part.span.line,
-      ]),
-    ).toEqual([
-      ["uncut-callback", 31],
-      ["uncut-callback", 32],
+    // `.map` and `.then` callbacks: not hooks — read inline where they sit.
+    // The use case hidden in the `.then` is a call of the wiring zone, its
+    // result handed to the language; nothing open
+    expect(at(31)).toEqual([{ kind: "language" }])
+    expect(at(32)).toEqual([
+      { kind: "language" },
+      {
+        kind: "use-case",
+        member: "app.check",
+        origin: {
+          path: "src/cli.assembly.ts",
+          name: "createCliAssembly",
+          layer: "assembly",
+        },
+      },
+      { kind: "language" },
     ])
+    expect(
+      calls.find(
+        (call) => call.span.line === 32 && call.callee.kind === "use-case",
+      )?.result,
+    ).toEqual([{ kind: "argument", to: { kind: "language" } }])
+    expect(readingOf(extractReading(), "src/cli.driver.ts").open).toEqual([])
   })
 
   test("an assembly: factories by file kind, a use case on an instance, controls by their test", () => {
@@ -1172,24 +1248,65 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(thrown).toMatchObject({ code: "load-file-not-covered" })
   })
 
-  test("a sub-driver: parameters bound at its call sites — two sites disagreeing on the parser leave it unknown, the services stay an instance", () => {
-    const reading = readingOf(extractReading(), "src/sub.driver.ts")
-    const [register] = reading.functions
-    expect(register?.params).toEqual([
-      { name: "cli", kind: "unknown" },
+  test("a sub-driver called from two sites with different kinds: one reading per world, each judged as the only caller; `reading` binds from the first", () => {
+    const graph = extractReading()
+    const node = graph.modules.get("src/sub.driver.ts")
+    expect(
+      node?.readings.map(({ world }) => [
+        world.name,
+        world.site.path,
+        world.site.span.line,
+        world.args.map((arg) => arg.kind),
+      ]),
+    ).toEqual([
+      ["registerSub", "src/cli.driver.ts", 29, ["tech", "instance"]],
+      ["registerSub", "src/other.driver.ts", 11, ["literal", "instance"]],
+      // the same kinds as the first, another origin for the instance
+      ["registerSub", "src/other.driver.ts", 29, ["tech", "instance"]],
+    ])
+    expect(
+      node?.readings.map(({ world }) => world.args[1]?.origin?.name),
+    ).toEqual([
+      "createCliAssembly",
+      "createCliAssembly",
+      "createOpaqueAssembly",
+    ])
+    // the spec file's site opens no world
+    expect(
+      node?.readings.some(({ world }) => world.site.path.endsWith(".spec.ts")),
+    ).toBe(false)
+    // `reading`, and the first world: the parser is tech, the hook is cut
+    const [first] = readingOf(graph, "src/sub.driver.ts").functions
+    expect(first?.params).toEqual([
+      { name: "cli", kind: "tech" },
       { name: "services", kind: "instance" },
     ])
-    expect(kindsOf(callsOf(register?.body ?? []))).toEqual([
-      "unknown",
-      "unknown",
+    expect(kindsOf(callsOf(first?.body ?? []))).toEqual(["tech", "tech"])
+    expect(first?.hooks).toHaveLength(1)
+    expect(node?.readings[0]?.reading.functions[0]?.params).toEqual(
+      first?.params,
+    )
+    // the second world: the parser a literal, so `.command` and `.action`
+    // are the language's, and the callback is no hook — read inline, its use
+    // case a call of the wiring zone. Nothing unknown, nothing open
+    const second = node?.readings[1]?.reading
+    expect(second?.functions[0]?.params).toEqual([
+      { name: "cli", kind: "literal" },
+      { name: "services", kind: "instance" },
     ])
-    // the callback is handed to an unknown callee: not a hook, open
-    expect(reading.open.map((part) => part.why)).toEqual([
-      "unknown-callee",
-      "uncut-callback",
-      "unknown-callee",
-      "unbound-parameter",
+    expect(kindsOf(callsOf(second?.functions[0]?.body ?? []))).toEqual([
+      "language",
+      "use-case",
+      "language",
     ])
+    expect(second?.functions[0]?.hooks).toEqual([])
+    expect(node?.readings.map(({ reading }) => reading.open)).toEqual([
+      [],
+      [],
+      [],
+    ])
+    // a function nothing calls across files opens no world: one reading
+    expect(graph.modules.get("src/other.driver.ts")?.readings).toEqual([])
   })
 
   test("a sub-driver with one agreeing site: the parser is tech, the hook is cut, the use case traced through the record", () => {
@@ -1197,7 +1314,7 @@ describe("the reading on the graph — the reading fixture", () => {
     const extraction = createExtraction({
       engine: createOxcEngine({ tsconfigPath: `${root}tsconfig.json` }),
       flavor: createTsSuffixesFactoriesFlavor(),
-      techs: [createPlainTsTech(), createTestRunnerTech()],
+      readers: [createPlainTsReader(), createTestRunnerReader()],
     })
     // only cli.driver.ts calls it once other.driver.ts is left out
     const single = extraction.extractGraph({
@@ -1236,7 +1353,7 @@ describe("the reading on the graph — the reading fixture", () => {
     const extraction = createExtraction({
       engine: createOxcEngine({ tsconfigPath: `${root}tsconfig.json` }),
       flavor: { classify: (files) => stock.classify(files) },
-      techs: [createPlainTsTech()],
+      readers: [createPlainTsReader()],
     })
     const graph = extraction.extractGraph({ root, files: READING_FILES })
     const [assembly] = readingOf(graph, "src/cli.assembly.ts").functions

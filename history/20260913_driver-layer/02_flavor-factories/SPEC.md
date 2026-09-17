@@ -379,7 +379,9 @@ What the code settled against the sketch above:
   two widened table rows and the `local` payload, the `readonly` fact and its
   forms in one line, the test-site rule of the graph pass.
 - `lib/config/README.md`: `mutableModuleState`.
-- `03_outside-rules/SPEC.md`: the amendments above, dated.
+- `03_outside-rules/SPEC.md`: not edited. The amendments are listed above, in §
+  Amendments to 03's proto, for 03's opening to absorb — 03's SPEC is rewritten
+  at that point (all the new rules, row 53's reader binding).
 - Chapter PLAN: step 01's landing sha written; step 02 entry closed with its
   sha; the Ideas card "Readonly-typed root bindings as a strict-flavor check"
   dissolved into this step (it is a config key, not a flavor) and replaced by

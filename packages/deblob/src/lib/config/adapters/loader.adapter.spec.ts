@@ -31,17 +31,23 @@ const fakeFlavor = (): FlavorResolver => ({
 })
 
 const FLAVORS = { [STOCK_FLAVOR_NAME]: () => fakeFlavor() }
+/** No stock reader: the loader's cases are about the load, not the binding. */
+const READERS = {}
 
 /** The assembly sequence (main's loadFor), composed here for the fixture cases. */
 const load = async (cwd: string) => {
   const configPath = discoverConfig(cwd)
   if (configPath === null) {
-    return resolveConfig({}, { root: cwd, configPath: null, flavors: FLAVORS })
+    return resolveConfig(
+      {},
+      { root: cwd, configPath: null, flavors: FLAVORS, readers: READERS },
+    )
   }
   return resolveConfig(await importConfigDefault(configPath), {
     root: dirname(configPath),
     configPath,
     flavors: FLAVORS,
+    readers: READERS,
   })
 }
 

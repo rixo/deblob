@@ -50,7 +50,10 @@ import {
 import type { Colors, GraphStats } from "../../lib/cli/render.model.ts"
 import { asConfigError } from "../../lib/config/config.model.ts"
 import { resolveConfig } from "../../lib/config/config.service.ts"
-import type { ResolvedConfig } from "../../lib/config/config.service.ts"
+import type {
+  ReaderRegistry,
+  ResolvedConfig,
+} from "../../lib/config/config.service.ts"
 import {
   discoverConfig,
   explicitConfigPath,
@@ -65,14 +68,15 @@ import {
 import { readExplainEntries } from "../../lib/explain/adapters/content.adapter.ts"
 import { createOxcEngine } from "../../lib/extraction/adapters/oxc-extraction.adapter.ts"
 import { createPackageMetaReader } from "../../lib/extraction/adapters/package-meta.adapter.ts"
-import { createPlainTsTech } from "../../lib/extraction/adapters/plain-ts-tech.adapter.ts"
-import { createTestRunnerTech } from "../../lib/extraction/adapters/test-runner-tech.adapter.ts"
+import { createPlainTsReader } from "../../lib/extraction/adapters/plain-ts-reader.adapter.ts"
+import { createTestRunnerReader } from "../../lib/extraction/adapters/test-runner-reader.adapter.ts"
 import {
   classifyStockEntry,
   STOCK_FLAVORS,
 } from "../../lib/extraction/adapters/ts-suffixes-factories-flavor.adapter.ts"
 import { createExtraction } from "../../lib/extraction/extraction.service.ts"
 import {
+  asExtractionError,
   isExtractionError,
   specifierMatcher,
 } from "../../lib/extraction/graph.model.ts"
@@ -81,6 +85,16 @@ import type {
   ModuleNode,
 } from "../../lib/extraction/graph.model.ts"
 import type { FlavorClassification } from "../../lib/extraction/ports/flavor.port.ts"
+import { createRecognition } from "../../lib/extraction/recognition.model.ts"
+
+/**
+ * The stock readers, in the order they bind by default: the test runner before
+ * plain TS, so its naming designates the test kind first.
+ */
+const STOCK_READERS: ReaderRegistry = {
+  "test-runner": createTestRunnerReader,
+  "plain-ts": createPlainTsReader,
+}
 
 const VERSION = (
   JSON.parse(
@@ -180,13 +194,19 @@ const loadFor = async (
   if (configPath === null) {
     return resolveConfig(
       {},
-      { root: resolve(io.cwd), configPath: null, flavors: STOCK_FLAVORS },
+      {
+        root: resolve(io.cwd),
+        configPath: null,
+        flavors: STOCK_FLAVORS,
+        readers: STOCK_READERS,
+      },
     )
   }
   return resolveConfig(await importConfigDefault(configPath), {
     root: dirname(configPath),
     configPath,
     flavors: STOCK_FLAVORS,
+    readers: STOCK_READERS,
   })
 }
 
@@ -214,8 +234,38 @@ const runStatus = async (io: MainIo, parsed: ParsedCli, colors: Colors) => {
   const classifications = config.flavor.classify(files)
   const classificationOf = (path: string) =>
     classifications.get(path) as FlavorClassification
-  const isBlob = (path: string): boolean =>
-    !config.isAssembly(path) && classificationOf(path).layer === "blob"
+  // the same recognition as extraction's, so bare and check count one way;
+  // its one failure (a file under two designation keys) is the user's, told
+  // on stderr like a config error — bare stays 0
+  const { kindOf } = createRecognition({
+    readers: config.readers,
+    isAssembly: config.isAssembly,
+    isDriver: config.isDriver,
+    isBoot: config.isBoot,
+  })
+  let blobByPath: ReadonlyMap<string, boolean>
+  try {
+    blobByPath = new Map(
+      files.map((path) => [
+        path,
+        kindOf(path, classificationOf(path).layer) === "blob",
+      ]),
+    )
+  } catch (error) {
+    io.stderr.write(`${asExtractionError(error).message}\n`)
+    io.stdout.write(
+      renderBareStatus(
+        {
+          version: VERSION,
+          provenance: "config error (details on stderr)",
+          stats: null,
+        },
+        colors,
+      ),
+    )
+    return 0
+  }
+  const isBlob = (path: string): boolean => blobByPath.get(path) === true
   const sizes = statSizes(config.root, files)
   // the field's claim, tallied at scan speed — no parse; a field this version
   // cannot read teaches on stderr and the segment is skipped: bare stays 0
@@ -295,7 +345,7 @@ const runCheck = async (
   const { extractGraph } = createExtraction({
     engine,
     flavor: config.flavor,
-    techs: [createPlainTsTech(), createTestRunnerTech()],
+    readers: config.readers,
   })
   const packageMeta = createPackageMetaReader({
     resolve: engine.resolve,
@@ -310,7 +360,6 @@ const runCheck = async (
       isAssembly: config.isAssembly,
       isDriver: config.isDriver,
       isBoot: config.isBoot,
-      isTest: config.isTest,
       external: config.external,
       // the consumer patch wins over producer fields — reviewer of record
       externalLayerOf: (specifier) =>
