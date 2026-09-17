@@ -94,6 +94,34 @@ test("a close while an update is still opening: the update's instances are close
   expect(fired).toHaveLength(0)
 })
 
+test("two updates in flight at once: the set the last call asked for is the one watched", async () => {
+  const root = await tempTree()
+  const sub = join(root, "FAKE_SUB")
+  const other = join(root, "FAKE_OTHER")
+  await mkdir(other)
+  const { report, reported } = createMemoryReport()
+  const watcher = createChokidarWatcher({ quietMs: QUIET_MS, report })
+  const fired: number[] = []
+  const watch = await watcher.watch([root, sub], () => fired.push(Date.now()))
+  cleanups.push(() => watch.close())
+
+  // not awaited: the second call arrives while the first is still opening, and
+  // it asks for the set the first one is about to take apart
+  const first = watch.update([root, other])
+  const second = watch.update([root, sub])
+  await Promise.all([first, second])
+
+  await writeFile(join(sub, "FAKE_ONE.ts"), "")
+  await until(fired, 1)
+  await settle()
+
+  // the first call's directory went with it
+  await writeFile(join(other, "FAKE_TWO.ts"), "")
+  await settle()
+  expect(fired).toHaveLength(1)
+  expect(reported).toEqual([])
+})
+
 test("a watched directory whose own name is hidden is watched; hidden entries inside it are not", async () => {
   const root = await tempTree()
   const dotted = join(root, ".FAKE_DOTTED")

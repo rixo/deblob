@@ -93,8 +93,12 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
   chokidar's own errors reported. One instance per directory rather than one
   over the set because chokidar 5 counts a path that fails (missing, a loop) as
   ready twice, so a shared instance says `ready` before the rest of the set is
-  watched. Polling where a filesystem emits nothing: chokidar's
-  `CHOKIDAR_USEPOLLING`, untouched.
+  watched. An update watches the difference — a directory still wanted keeps its
+  instance, so it is never briefly unwatched and its entries are never listed
+  again, and an update to the same set costs nothing; the added ones are ready
+  before the removed ones go. Diffs are applied one at a time, in the order the
+  calls are made, so the last call's set is the one watched. Polling where a
+  filesystem emits nothing: chokidar's `CHOKIDAR_USEPOLLING`, untouched.
 - `adapters/memory-watcher.adapter.ts` — `createMemoryWatcher()` →
   `{ watcher, change(dir), watching, hold }`: the test fires the changes, reads
   the live sets, and with `hold()` keeps `watch` and `update` pending until it

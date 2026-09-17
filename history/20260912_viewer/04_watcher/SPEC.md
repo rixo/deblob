@@ -278,8 +278,28 @@ Surfaced while building, recorded for later rulings; none changed the cut.
   `error` and is still watched where it sits. Two consequences: a first run now
   often runs twice (a change during the pre-run scan window is an event, and
   latest-wins collapses it into one more run), and the post-run refresh re-opens
-  a set the pre-run watch already holds — a skip when the set is unchanged is
-  worth its own row.
+  a set the pre-run watch already holds — closed by the entry below.
+- ~~**`update` replaced the whole set on every run**, so every snapshot push
+  tore down and rebuilt every watcher to arrive at the same set.~~ — fixed
+  2026-09-18. The service asks for the set after each run, so the cost was
+  systematic: one full teardown per save, in the latency path between the
+  snapshot being computed and being sent, and the set only changes when a
+  covered directory appears or disappears. Measured on this checkout: an update
+  to the set already watched costs 0.0–0.1 ms, where opening the set and closing
+  the old one — what every update did — costs 6.3 ms over 22 directories
+  (`packages/deblob`) and 27.6 ms over 159 (the whole checkout). How it got
+  there: the adapter first held one chokidar instance over the whole set, where
+  changing the set meant replacing the instance (`add()` has no ready to await —
+  rixo's ruling at step 04). The one-instance-per-directory fix removed that
+  constraint and left the replace-everything body behind. `update` now watches
+  the difference: what stays keeps its instance, added ones are ready before
+  removed ones go, an update to the same set does nothing. The port's promise
+  ("no gap: what stays watched keeps its watch") is only now literally true.
+  Diffs are also chained, so the last call's set is the one watched whatever the
+  call durations — replace-all left that to whichever call finished last, and a
+  diff without the chain could answer "watched" to a caller whose set an older
+  call then took apart. The service needs no unchanged-set guard, and the memory
+  watcher needs no update counter: both were patches for this.
 - ~~**A watch opened for a client that already left was never closed.**~~ —
   found and fixed 2026-09-17. The serve script's SIGTERM test hung: a client
   that disconnected before its first snapshot left 8 filesystem watchers open
