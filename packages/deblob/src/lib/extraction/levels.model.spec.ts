@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest"
 
 import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
+import { createOxcResolver } from "./adapters/oxc-resolver.adapter.ts"
 import { createPlainTsReader } from "./adapters/plain-ts-reader.adapter.ts"
 import { createTestRunnerReader } from "./adapters/test-runner-reader.adapter.ts"
 import { createTsSuffixesFactoriesFlavor } from "./adapters/ts-suffixes-factories-flavor.adapter.ts"
@@ -34,10 +35,8 @@ const FILES = [
 /** Test factory: the reading fixture's graph, with or without the second driver. */
 const levelsOf = async (files: readonly string[] = FILES) => {
   const extraction = createExtraction({
-    engine: createOxcEngine({
-      fs: createNodeFs(),
-      tsconfigPath: `${root}tsconfig.json`,
-    }),
+    engine: createOxcEngine({ fs: createNodeFs() }),
+    resolver: createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
     flavor: createTsSuffixesFactoriesFlavor(),
     readers: [createPlainTsReader(), createTestRunnerReader()],
   })

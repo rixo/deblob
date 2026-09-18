@@ -28,6 +28,7 @@ import type {
   FlavorResolver,
 } from "./ports/flavor.port.ts"
 import type { Reader } from "./ports/reader.port.ts"
+import type { Resolver } from "./ports/resolver.port.ts"
 import type { ImportTargetKind } from "./reading.model.ts"
 import { readModule } from "./reading.model.ts"
 import type { Designations } from "./recognition.model.ts"
@@ -140,10 +141,12 @@ const paramKindsOf = (
 
 export const createExtraction = ({
   engine,
+  resolver,
   flavor,
   readers = [],
 }: {
   engine: ExtractionEngine
+  resolver: Resolver
   flavor: FlavorResolver
   /**
    * The readers, one per technology, in precedence order (config's bindings
@@ -319,7 +322,7 @@ export const createExtraction = ({
           },
         }
       }
-      const resolution = engine.resolve(fromAbsolutePath, specifier)
+      const resolution = await resolver.resolve(fromAbsolutePath, specifier)
       if (resolution.kind === "unresolved") return { reason: resolution.reason }
       if (resolution.kind === "builtin") {
         // package carries the resolver's normalized name (`path` →

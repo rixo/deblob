@@ -1,8 +1,9 @@
 # extraction
 
 Turns a coverage set of files into the classified import graph — the one value
-every check reads. Parsing and resolution sit behind a port; naming rules sit
-behind another; the service in the middle knows neither engine nor flavor.
+every check reads. Parsing sits behind a port, resolution behind another, naming
+rules behind a third; the service in the middle knows neither engine nor
+resolver nor flavor.
 
 ## What it produces
 
@@ -38,7 +39,8 @@ open.
 
 ## API
 
-- `createExtraction({ engine, flavor, readers? })` → `{ extractGraph }`.
+- `createExtraction({ engine, resolver, flavor, readers? })` →
+  `{ extractGraph }`.
   `extractGraph({ root, files, isAssembly?, isDriver?, isBoot?, external?, externalLayerOf?, pure?, driverTech?, configLoads? })`
   classifies the files through the flavor, parses each through the engine,
   resolves every specifier, and resolves to the graph — async since the engine
@@ -121,9 +123,12 @@ open.
 - `ports/extraction.port.ts` — `ExtractionEngine`: `extract(absolutePath)`
   resolves to import occurrences, runtime content, and the parsed program with
   its source — ESTree with TypeScript nodes, the standard shape, not the
-  engine's — or `null` when the engine has no extractor for that file kind;
-  `resolve(from, specifier)` yields a file, a builtin, or an unresolved reason.
+  engine's — or `null` when the engine has no extractor for that file kind.
   Engine shapes never leak through it; the tree is read per file and dropped.
+- `ports/resolver.port.ts` — `Resolver`: `resolve(from, specifier)` resolves to
+  a file, a builtin under its `node:` name, or an unresolved reason. Split off
+  the engine because parsing reads a string and resolution reads a tree: the
+  node run's tree is the disk, a case's is the fs port's.
 - `ports/flavor.port.ts` — `FlavorResolver`: `classify(files)` maps the whole
   coverage set to layer, service root, and privacy at once (path-only,
   set-based); optional `classifyEntry(subpath)` is the naming rule read across
@@ -142,13 +147,24 @@ open.
 
 ## Adapters
 
-- `adapters/oxc-extraction.adapter.ts` —
-  `createOxcEngine({ fs, tsconfigPath?, alias? })`, the engine over `oxc-parser`
-  and `oxc-resolver`: the source read through the fs port (a covered file not
+- `adapters/oxc-extraction.adapter.ts` — `createOxcEngine({ fs })`, the parser
+  over `oxc-parser`: the source read through the fs port (a covered file not
   there is loud, never a parse result), ESM records plus an AST walk for
-  `require(...)`, resolution through the project's tsconfig `paths` and config
-  aliases — oxc-resolver's own, over the disk (the resolver port that frees it
-  is step 04's checkpoint 2).
+  `require(...)`.
+- `adapters/oxc-resolver.adapter.ts` —
+  `createOxcResolver({ tsconfigPath?, alias? })`, the resolver over
+  `oxc-resolver` for the node run: the project's tsconfig `paths` and config
+  aliases, exports maps, symlinks. It reads the disk itself and cannot be handed
+  the fs port.
+- `adapters/fs-resolver.adapter.ts` — `createFsResolver({ fs })`, the resolver
+  over the fs port for a case's tree of strings — deliberately the smaller one:
+  relative and absolute specifiers with the script extensions, the `.js` → `.ts`
+  aliases and `index`; a builtin under its `node:` name; a bare specifier by the
+  nearest `node_modules` in the tree (its manifest's `main`, else `index`). No
+  tsconfig paths, no exports maps, no symlinks. The port ships its own suite,
+  `resolver-test-suite.service.ts` (a conformance kit over the `test` unit's
+  `TestingApi` port): each adapter's spec materializes `RESOLVER_TREE` where its
+  adapter reads and runs the kit under its own name.
 - `adapters/ts-suffixes-factories-flavor.adapter.ts` — the stock flavor: kind
   from the file suffix (`.model`, `.port`, `.service`, `.adapter`, `.assembly`,
   `.driver`, `.boot`; test naming is not the flavor's, see the test runner),

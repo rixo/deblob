@@ -5,7 +5,7 @@ import { dirname, join } from "node:path"
 import { afterAll, describe, expect, test } from "vitest"
 
 import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
-import type { Resolution } from "../ports/extraction.port.ts"
+import type { Resolution } from "../ports/resolver.port.ts"
 import { classifyStockEntry } from "./ts-suffixes-factories-flavor.adapter.ts"
 import { createPackageMetaReader } from "./package-meta.adapter.ts"
 
@@ -32,7 +32,10 @@ const workspace = async (
     await writeFile(join(root, path), content)
   }
   let resolved = 0
-  const resolve = (_from: string, specifier: string): Resolution => {
+  const resolve = async (
+    _from: string,
+    specifier: string,
+  ): Promise<Resolution> => {
     resolved += 1
     if (specifier.startsWith("node:")) {
       return { kind: "builtin", specifier }

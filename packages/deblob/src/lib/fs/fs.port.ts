@@ -9,7 +9,10 @@ export interface Fs {
   readFile(path: string): Promise<string | null>
   /** A file or a directory is at the path. */
   exists(path: string): Promise<boolean>
-  /** A file's size in bytes; `null` when nothing is at the path. */
+  /**
+   * A file's size in bytes; `null` when nothing is at the path, or what is
+   * there is not a file — so `stat` is also the "is a file" question.
+   */
   stat(path: string): Promise<{ size: number } | null>
   /**
    * Files under `cwd` matching the patterns and none of the ignores, as

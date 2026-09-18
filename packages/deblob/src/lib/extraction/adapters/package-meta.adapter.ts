@@ -14,7 +14,7 @@ import type { Fs } from "../../fs/fs.port.ts"
 import type { FlavorLayer } from "../graph.model.ts"
 import { exportsKeyFor, exportsSubpathsOf } from "../exports-map.model.ts"
 import { packageNameOf, specifierMatcher } from "../graph.model.ts"
-import type { ExtractionEngine } from "../ports/extraction.port.ts"
+import type { Resolver } from "../ports/resolver.port.ts"
 
 /**
  * A readable claim: the field is present; `keyFor` is the exports surface it
@@ -42,8 +42,8 @@ export const createPackageMetaReader = ({
   classifyEntry,
 }: {
   fs: Pick<Fs, "readFile">
-  /** The engine's resolver — the same lens extraction sees packages through. */
-  resolve: ExtractionEngine["resolve"]
+  /** The run's resolver — the same lens extraction sees packages through. */
+  resolve: Resolver["resolve"]
   /** Absolute file path resolution anchors at (the consumer's root). */
   anchor: string
   /** The stock naming rule — the field claims it, whatever flavor is local. */
@@ -88,7 +88,7 @@ export const createPackageMetaReader = ({
   const probe = async (
     specifier: string,
   ): Promise<Claim | null | undefined> => {
-    const resolution = resolve(anchor, specifier)
+    const resolution = await resolve(anchor, specifier)
     if (resolution.kind !== "file") return undefined
     for (let dir = dirname(resolution.path); ;) {
       const text = await fs.readFile(join(dir, "package.json"))

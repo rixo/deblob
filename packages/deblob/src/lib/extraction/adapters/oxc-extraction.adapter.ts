@@ -1,7 +1,6 @@
 import { dirname } from "node:path"
 
 import { parseSync } from "oxc-parser"
-import { ResolverFactory } from "oxc-resolver"
 
 import type { Fs } from "../../fs/fs.port.ts"
 import type { RuntimeEntry } from "../graph.model.ts"
@@ -9,7 +8,6 @@ import type {
   ExtractionEngine,
   FileExtraction,
   ImportRecord,
-  Resolution,
 } from "../ports/extraction.port.ts"
 
 const PARSEABLE = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
@@ -147,54 +145,12 @@ const collectRuntimeContent = (program: AstNode): RuntimeEntry[] => {
   return entries
 }
 
+/** The parser over oxc: a string in, the ESTree program out. */
 export const createOxcEngine = ({
   fs,
-  tsconfigPath,
-  alias,
 }: {
-  /** The source reads; resolution is oxc-resolver's own, over the disk. */
   fs: Pick<Fs, "readFile">
-  tsconfigPath?: string
-  alias?: Readonly<Record<string, readonly string[]>>
 }): ExtractionEngine => {
-  // JS-oriented defaults silently misresolve TS — conditionNames and
-  // extensionAlias are always set, never left to the resolver's defaults.
-  const resolver = new ResolverFactory({
-    conditionNames: ["import", "require", "node", "default"],
-    extensions: [
-      ".ts",
-      ".tsx",
-      ".mts",
-      ".cts",
-      ".js",
-      ".jsx",
-      ".mjs",
-      ".cjs",
-      ".json",
-    ],
-    extensionAlias: {
-      ".js": [".ts", ".tsx", ".js"],
-      ".jsx": [".tsx", ".jsx"],
-      ".mjs": [".mts", ".mjs"],
-      ".cjs": [".cts", ".cjs"],
-    },
-    builtinModules: true,
-    // never `tsconfig: "auto"` — probed nonfunctional for paths mapping
-    // (11.24.2, 2026-08-27): a knob that silently resolves nothing is worse
-    // than none. Explicit configFile (wired from deblob's own root/config by
-    // assembly) or tsconfig-less.
-    ...(tsconfigPath
-      ? { tsconfig: { configFile: tsconfigPath, references: "auto" as const } }
-      : {}),
-    ...(alias
-      ? {
-          alias: Object.fromEntries(
-            Object.entries(alias).map(([key, targets]) => [key, [...targets]]),
-          ),
-        }
-      : {}),
-  })
-
   const extract = async (
     absolutePath: string,
   ): Promise<FileExtraction | null> => {
@@ -305,16 +261,5 @@ export const createOxcEngine = ({
     }
   }
 
-  const resolve = (fromAbsolutePath: string, specifier: string): Resolution => {
-    const result = resolver.sync(dirname(fromAbsolutePath), specifier)
-    if (result.builtin)
-      return { kind: "builtin", specifier: result.builtin.resolved }
-    if (result.path) return { kind: "file", path: result.path }
-    // the resolver always sets `error` when it yields neither path nor
-    // builtin — the fallback exists for the optional type only
-    /* v8 ignore next */
-    return { kind: "unresolved", reason: result.error ?? "unresolved" }
-  }
-
-  return { extract, resolve }
+  return { extract }
 }

@@ -66,34 +66,84 @@
   `future/arch-pass/` — blocked: svench taxonomy feeds the F1–F3 resolution.
 - **README/living-doc structure** — next normalization target (sdd open
   question).
+- **"Unit" for the packaging thing** (rixo, 2026-09-18) — end the synonymy
+  between service the layer and service the directory: the directory, its root,
+  the DAG's nodes, the README requirement all say **unit**; the layer keeps
+  "service". One move, not a drip: canon and the guides (every "service" meaning
+  the directory, "service anatomy", "service root"); the slug `no-service-cycle`
+  → `no-unit-cycle` (`service-purity` stays, it is the layer) — breaking, rides
+  the driver-layer chapter's 07 slug migration so users migrate once; code and
+  output (the flavor's `serviceRoot`, the graph vocabulary, the CLI's "N
+  services" line and its goldens, the READMEs); the skills' placement cards and
+  the memory notes. Prose lands everywhere in the same step as the slug.
 
 ### Ideas
 
+- **Global kernels are born day 0, not at the second consumer** (rixo,
+  2026-09-18) — canon's kernel sentences read as "extract when two consumers
+  collide": § Kernel ("typically extracted to prevent dependency cycles between
+  consumers"), Sharing step 3 ("when two services both need the same types or
+  functions and the dependency would otherwise be mutual"), and Distillation's
+  "a consumer beyond the birth use case" — and agents throw them back when told
+  fs should obviously be a kernel (deblob itself skipped the fs kernel for two
+  months on that reading: six port-less sync readers). The nuance to write: some
+  concepts are shared _language_, not shared domain — the filesystem, logging,
+  time, the test runner as a port — and waiting for a second consumer is
+  counter-productive on every level: filing them under the first consumer's unit
+  is semantically wrong (fs is nobody's domain), it hides them from plain view
+  so the next session does not find them and writes an almost-identical twin,
+  and the "second consumer" was never in doubt. Rule shape: a concept that is
+  obviously platform-wide is a kernel on its first use; the second-consumer test
+  governs _domain_ concepts only. One paragraph in § Kernel and a line in
+  Distillation; the placement card's "forcing signal is a second consumer" gets
+  the same nuance; the `fs-kernel-baseline` memory is the field record.
+- **Recipe book — hard situations, elegant deblob moves** (2026-09-18; maybe a
+  practical guide holding recipes, gotchas and worked examples, ruled at
+  graduation) — the skill's progressive-disclosure slot: a "when stuck" index in
+  the deblob SKILL's Deeper section, one line per hardship pointing at a
+  knowledge card (situation → tension → the move → why → where). Guidance, not
+  canon; the human-first source ruled at graduation. Recipes collected as they
+  happen in `future/recipe-book/recipes/`, one file each, dated, problem stated
+  generic-first with the deblob instance as the worked example (rixo: a recipe
+  whose problem needs our situation is no recipe; a house opinion deblob has no
+  verdict on is no recipe either — async-first was cut on that ground) — five
+  banked from the driver-layer step 04 review night (the port ships its suite as
+  a conformance kit; a harness is service + assembly front with the trigger in
+  the test; shared test code closing a cycle between units — not ratified, kept
+  for a fresh-eye assessment; two verdicts in one test, named apart — a gotcha,
+  "when you catch yourself thinking…" material, not a recipe; tests pin verdicts
+  not shapes — not a recipe but THE `deblob-test` story, kept as illustration
+  material for that chapter) → `future/recipe-book/`.
 - **`deblob-test` skill — no test pins an internal shape** (2026-09-17) — the
-  guidance the testing area lacks. "Test public API and behavior" did not
-  transfer: agents anchor "public" on the `export` keyword and pin a reader's
-  return shape (hook line numbers, kind lists, bound callees). The rule restated
-  with the audience named: an expectation is a sentence the reviewer would sign
-  without opening the code. For the reading-to-rules chain that is a verdict:
-  minimal repro snippet → red / green / why (ESLint's RuleTester and rustc's UI
-  tests are the precedent — source plus expected diagnostics, no AST-level
-  units); for config or slugs it is "this input yields these readers". Coverage
-  stays at 100 from those tests alone, so coverage becomes a pruning tool: a
-  branch no compiling snippet reaches is dead. The type checker is the floor for
-  "fake" code; a contrived compiling snippet is a legitimate case (never "nobody
-  writes that"). Verdict cases are cheap to write before the code exists and
-  stay red until the chain is right — red-first without unit-level design first,
-  the reason TDD-via-agent was given up and may now be tried again. Open at
-  graduation: the case shape for multi-file snippets (a driver's reading depends
-  on what it imports; in-memory files fit the fs kernel baseline); how the
-  Behavior panel links a verdict case to its rule (`describe` named after the
-  rule, cases nested); what happens to the reading spec once the driver rule's
-  verdict cases exist (step 03 checkpoint 3 is the first natural rewrite).
-  Later, possibly `deblob-bdd`: rixo's argument is capitalisation, not ceremony:
-  a scenario layer makes a chunk reviewable without reading its code, and a step
-  validated once is a trusted brick reused with confidence, so review cost falls
-  with reuse instead of growing with the suite; no hands-on data yet, an
-  experiment to run after `deblob-test` has served one chapter.
+  guidance the testing area lacks. Illustration material with real examples:
+  `future/recipe-book/recipes/tests-pin-verdicts-not-shapes.md`. "Test public
+  API and behavior" did not transfer: agents anchor "public" on the `export`
+  keyword and pin a reader's return shape (hook line numbers, kind lists, bound
+  callees). The rule restated with the audience named: an expectation is a
+  sentence the reviewer would sign without opening the code. For the
+  reading-to-rules chain that is a verdict: minimal repro snippet → red / green
+  / why (ESLint's RuleTester and rustc's UI tests are the precedent — source
+  plus expected diagnostics, no AST-level units); for config or slugs it is
+  "this input yields these readers". Coverage stays at 100 from those tests
+  alone, so coverage becomes a pruning tool: a branch no compiling snippet
+  reaches is dead. The type checker is the floor for "fake" code; a contrived
+  compiling snippet is a legitimate case (never "nobody writes that"). Verdict
+  cases are cheap to write before the code exists and stay red until the chain
+  is right — red-first without unit-level design first, the reason TDD-via-agent
+  was given up and may now be tried again. Open at graduation: the case shape
+  for multi-file snippets (a driver's reading depends on what it imports;
+  in-memory files fit the fs kernel baseline); how the Behavior panel links a
+  verdict case to its rule (`describe` named after the rule, cases nested); what
+  happens to the reading spec once the driver rule's verdict cases exist (step
+  03 checkpoint 3 is the first natural rewrite). Ruled 2026-09-17 on the way:
+  proper `it` form — a verb-first behavior sentence about the unit, `test` for
+  corpus rows and tripwires, Jasmine nesting — the cheap end of BDD as the habit
+  to build first. Later, possibly `deblob-bdd`: rixo's argument is
+  capitalisation, not ceremony: a scenario layer makes a chunk reviewable
+  without reading its code, and a step validated once is a trusted brick reused
+  with confidence, so review cost falls with reuse instead of growing with the
+  suite; no hands-on data yet, an experiment to run after `deblob-test` has
+  served one chapter.
 - **Service README check** (2026-09-15) — every service directory carries a
   `README.md`: the implementation guide demands it (the service's living doc),
   the graph already knows every service root, and the terrain shows it is the

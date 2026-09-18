@@ -61,6 +61,7 @@ import {
 import { createCoverageScan } from "../../lib/config/adapters/scan.adapter.ts"
 import { createContentReader } from "../../lib/explain/adapters/content.adapter.ts"
 import { createOxcEngine } from "../../lib/extraction/adapters/oxc-extraction.adapter.ts"
+import { createOxcResolver } from "../../lib/extraction/adapters/oxc-resolver.adapter.ts"
 import { createNodeFs } from "../../lib/fs/adapters/node-fs.adapter.ts"
 import type { Fs } from "../../lib/fs/fs.port.ts"
 import { createPackageMetaReader } from "../../lib/extraction/adapters/package-meta.adapter.ts"
@@ -349,19 +350,20 @@ const runCheck = async (
   }
 
   const files = await deps.scan.scanCoverage(config)
-  const engine = createOxcEngine({
-    fs: deps.fs,
+  const engine = createOxcEngine({ fs: deps.fs })
+  const resolver = createOxcResolver({
     ...(tsconfigPath === null ? {} : { tsconfigPath }),
     alias: config.alias,
   })
   const { extractGraph } = createExtraction({
     engine,
+    resolver,
     flavor: config.flavor,
     readers: config.readers,
   })
   const packageMeta = createPackageMetaReader({
     fs: deps.fs,
-    resolve: engine.resolve,
+    resolve: resolver.resolve,
     anchor: join(config.root, "package.json"),
     classifyEntry: classifyStockEntry,
   })

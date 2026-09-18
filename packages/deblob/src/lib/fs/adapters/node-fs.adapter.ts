@@ -38,7 +38,7 @@ export const createNodeFs = (): Fs => {
     exists: async (path) => (await statOrNull(path)) !== null,
     stat: async (path) => {
       const stats = await statOrNull(path)
-      return stats === null ? null : { size: stats.size }
+      return stats === null || !stats.isFile() ? null : { size: stats.size }
     },
     glob: (patterns, { cwd, ignore = [] }) =>
       glob([...patterns], {

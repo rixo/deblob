@@ -160,9 +160,10 @@ land red as their own commit, the check that greens them as the next.
    existing suite green, self-check 0, coverage 100. Mechanical, no verdict
    changes — first because every later checkpoint runs on it.
 2. **Resolution and the harness.** The resolver port and its two adapters; the
-   engine split; `cases.ts`; one green case through the whole chain (a driver
-   importing an assembly importing a service, no marker) and one red case on an
-   existing rule (`inward-deps`) to prove the markers.
+   engine split; `cases.ts` (landed as `lib/cases/runner/`, a service behind a
+   check port with an assembly front, see Landed); one green case through the
+   whole chain (a driver importing an assembly importing a service, no marker)
+   and one red case on an existing rule (`inward-deps`) to prove the markers.
 3. **Slugs, matrix, modules** — 03's checkpoint 3 with the cases first:
    `RULE_IDS`, `CHECK_RULES`, `RULE_CARDS`, the cells and the type exemption,
    `checkModules`, the renderer's messages, the CLI wiring, the readonly fixes
@@ -185,8 +186,10 @@ What the code settled against the sketch above:
   long), `adapters/memory-fs.adapter.ts` (`createMemoryFs(files)`, absolute path
   → content; a directory exists when a file sits under it; `glob` is picomatch
   over the keys under `cwd`, `dot: false` like the disk, ignores matched with
-  `dot: true` so a baseline exclude works either way; `files` exposed).
-  `fs.port.spec.ts` is the contract test, one tree read through both. The
+  `dot: true` so a baseline exclude works either way; `files` exposed). The
+  contract was first a `fs.port.spec.ts` running one tree through both adapters;
+  reshaped at checkpoint 2's review into the conformance kit (see Landed —
+  checkpoint 2), since a port owns its suite but knows no adapter. The
   self-check counts the directory as a sixth service: a port marks a root, no
   service file needed — a kernel.
 - The five readers take the port narrowed to what they use
@@ -215,7 +218,7 @@ What the code settled against the sketch above:
   fixture once at module top (top-level `await`, the fixture directory listed
   through the port's own `glob`) so `read` stays a plain function — the reading
   never writes to the tree, and the one test that mutates one parses its own.
-  New cases: the contract test (both adapters), the node adapter's failures, a
+  New cases: the port's suite over both adapters, the node adapter's failures, a
   scan over a memory tree, the vanished file, the missing shipped content, the
   engine's missing file.
 - Docs: `lib/fs/README.md` new; the config, extraction and explain READMEs say
@@ -224,6 +227,103 @@ What the code settled against the sketch above:
 - Gates: typecheck clean; suite 661 passing, the two `rule-content` slug
   assertions red (07); coverage 100 on all four axes; self-check 0 violations,
   64 files, 6 services; the package builds; prettier from the root.
+
+### Landed — checkpoint 2, 2026-09-17 (resolution and the harness)
+
+What the code settled against the sketch above:
+
+- `ports/resolver.port.ts`, `Resolver`: `resolve(from, specifier)` resolves to a
+  file, a builtin under its `node:` name, or a reason; `Resolution` moved here
+  from the engine port, which is now parse-only (`createOxcEngine({ fs })` →
+  `{ extract }`). `createExtraction({ engine, resolver, flavor, readers })`; the
+  package-meta reader takes `Resolver["resolve"]`. Promise-only like the fs
+  port: oxc-resolver's `async` for the node adapter
+  (`createOxcResolver({ tsconfigPath?, alias? })`, moved out of the engine
+  verbatim), the fs port underneath for `createFsResolver({ fs })`.
+- The fs-port resolver, as sketched and no more: relative and absolute
+  specifiers with the script extensions, the `.js` → `.ts` aliases and `index`;
+  a builtin (`node:module`'s `isBuiltin`) normalized to `node:`; a bare
+  specifier by the nearest `node_modules/<name>` up the tree, the manifest's
+  `main` else `index`, a subpath as a path. "Else external" of the sketch read
+  as: unresolved, exactly as the node run reports a package that is not there —
+  a case declares it in `external` or ships it under `node_modules/` in the
+  tree. The port's suite runs one tree through both adapters: the shared part a
+  case may rely on (first as `resolver.port.spec.ts`, reshaped below).
+- `Fs.stat` refined: `null` for a directory too (node: `isFile()`), so `stat` is
+  the "is a file" question the resolver asks; pinned in the fs port's suite.
+- **The corpus has its own service directory, `lib/cases/`, and the harness is a
+  service behind a port** — decision 5 said "a spec-side assembly next to the
+  check specs"; two things reshaped it at the review. The DAG first: every file
+  counts for `no-service-cycle`, specs included, so a spec in `check/` importing
+  a harness that imports `check/` closes a cycle (the self-check caught it: one
+  `dag` violation, then zero). Then the layer: a file that builds the chain,
+  runs it and asserts is a driver's work plus a test's, red under
+  `assembly-builds-only` once it exists, and vitest in an assembly is tech in
+  the wrong place. rixo: "having the test triggers in the driver is what deblob
+  is crying for us to do" — service plus assembly front, the trigger in the
+  test. Landed as `lib/cases/runner/`, a unit with its README:
+  `markers.model.ts` (the grammar, the match, `reportedOf`, `Case`, `Row`,
+  `AS_MARKED`), `ports/check.port.ts`
+  (`Check.run({ config, checks? }) → violations`, the tree bound at assembly,
+  throws on an import the tree does not resolve), `runner.service.ts`
+  (`createRunner({ check })` → `judge(row)`: markers, the port, the match —
+  specced over a fake port), `cases.assembly.ts` (`assembleCase(files)` →
+  `{ judge, check }`: the memory adapters from the tree, the real chain wired
+  over them as the port's one adapter today — the `DETECTORS` table and
+  `STOCK_READERS` duplicated from `main`, the run service of 09 replacing that
+  wiring in place — nothing here runs a case). The corpus: one spec per check,
+  `layers.spec.ts` and `dag.spec.ts` today, the root `describe` the check's
+  name, a `test.each` table of `Row`s and two lines — the test builds its
+  instance and calls `judge`, `expect(await judge(row)).toEqual(AS_MARKED)`, a
+  failure the diff of the two lists, one verdict line each; the test runner is
+  named in spec files only. The corpus files carry no layer suffix and sit in no
+  service, so they open no DAG edge. (Along the way, dropped: a `GREEN` constant
+  — the case's verdict is "as marked", never "green"; a `toBeAsMarked` matcher
+  from a runner setup file; an `expectAsMarked` helper — each a test-kind file
+  without a name, the shape above needs none.)
+- **Markers, and the line a violation does not have** — decision 4 said file,
+  line, slug; today's violations carry no line at all (edge- and file-level,
+  `Violation` has no span). Settled as: a violation without a line matches its
+  file's markers by slug alone, consuming one; a violation with a line (the
+  outside rules of checkpoints 3–5, read off spans) matches exactly. A cycle is
+  reported on every file that closes it — a service cycle's hops by their
+  importing file, a module cycle's files. The match lists both directions,
+  `file:line slug`, sorted, so a failing case reads as a diff of verdict lines.
+  `markers.model.ts` owns the grammar (`// red <slug>[, <slug>]*[: why]`, an
+  unknown slug loud) and the match; its own spec.
+- The proof: the corpus rows (`layers.spec.ts`: a model importing a service red
+  `inward-deps, runtime-import` on the import line; a bare import landing in the
+  tree's `node_modules` and read as concrete in a service —
+  `service-purity, runtime-import`; `dag.spec.ts`: a service cycle and a runtime
+  module cycle red on every closing file), the runner's spec over a fake port
+  (as marked; both lying directions; the config and checks handed through), the
+  assembly's spec (a green driver → assembly → service tree through every check;
+  an unresolved import throwing; the checks by name and a `package.json`
+  reaching the surface check), the marker model's spec.
+- **No port specs: a port ships its suite as a conformance kit** (rixo at the
+  review: a port may hold its suite — "rather sexy" — but cannot know its
+  adapters; a `resolver.port.spec.ts` importing both adapters had passed the DAG
+  only by being test kind inside the same service). Landed as a root unit
+  `lib/test/` (`testing-api.port.ts`: `TestingApi` — `describe`, `it`, `equal`,
+  `matches`, the four things a suite says;
+  `adapters/vitest-testing-api.adapter.ts`, four one-liners) and one conformance
+  service next to each port with two adapters:
+  `extraction/resolver-test-suite.service.ts` (`RESOLVER_TREE`,
+  `createResolverTestSuite({ suite }).run({ name, make })`, thirteen sentences)
+  and `fs/fs-test-suite.service.ts` (`FS_TREE`, eight). The service knows the
+  tree and the sentences, never a runner nor an adapter; an adapter's spec —
+  `oxc-resolver`, `fs-resolver`, `node-fs`, `memory-fs`, each its own file —
+  materializes the tree where its adapter reads (a temp dir, or strings) and
+  runs the kit under the adapter's factory name; the node-fs failures and the
+  memory-fs `files` exposure stay as those specs' own `it`s. A third-party
+  adapter conforms with the same six lines in its own repo. The self-check
+  counts `test` as an eighth service.
+- Docs: `lib/cases/README.md` and `lib/cases/runner/README.md` new (rixo: a full
+  unit implies a README); the extraction README says the three ports and the
+  three adapters; the fs README says what `stat` is.
+- Gates: typecheck clean; suite 688 passing, the two `rule-content` slug
+  assertions red (07); coverage 100 on all four axes; self-check 0 violations,
+  77 files, 7 services; the package builds; prettier from the root.
 
 ## Docs
 

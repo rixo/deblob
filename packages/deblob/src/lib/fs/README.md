@@ -1,15 +1,17 @@
 # fs
 
 The filesystem behind a port — the kernel every reader of the disk shares. One
-port, two adapters, one contract test over both. No service: the kernel holds
-the contract, the consumers (config's loader and scan, extraction's engine and
-package-meta reader, explain's content reader) take it injected and never name
-the adapter.
+port, two adapters, the port's own suite as a conformance kit
+(`fs-test-suite.service.ts`, over the `test` unit's `TestingApi` port) that each
+adapter's spec runs over `FS_TREE` materialized where that adapter reads. No
+service: the kernel holds the contract; a consumer takes the port injected,
+narrowed to what it uses, and never names the adapter.
 
 ## Port
 
 - `fs.port.ts` — `Fs`, promise-only: `readFile(path) → string | null`,
-  `exists(path)`, `stat(path) → { size } | null`,
+  `exists(path)`, `stat(path) → { size } | null` (a file's; a directory reads
+  `null`, so `stat` is also the "is a file" question),
   `glob(patterns, { cwd, ignore? }) → cwd-relative POSIX paths`. The exact set
   the readers use today, read as a ceiling: a member arrives with the code that
   reads it. A missing path is `null` or `false`, never a throw; any other

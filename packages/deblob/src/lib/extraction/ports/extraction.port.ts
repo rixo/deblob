@@ -1,9 +1,9 @@
 /**
- * The engine contract — parsing/resolution engines are adapters behind this
- * port (the architecture's answer to the TS 7 rupture). Implementations must
- * not leak engine shapes (spans, napi types) through it. The syntax tree itself
- * is not an engine shape: ESTree is the standard every parser targets, and the
- * reader walks it.
+ * The engine contract — parsing engines are adapters behind this port (the
+ * architecture's answer to the TS 7 rupture); resolution is its own port,
+ * `resolver.port.ts`. Implementations must not leak engine shapes (spans, napi
+ * types) through it. The syntax tree itself is not an engine shape: ESTree is
+ * the standard every parser targets, and the reader walks it.
  */
 
 import type { Program } from "@oxc-project/types"
@@ -51,11 +51,6 @@ export type FileExtraction = {
   source: string
 }
 
-export type Resolution =
-  | { kind: "file"; path: string }
-  | { kind: "builtin"; specifier: string }
-  | { kind: "unresolved"; reason: string }
-
 export interface ExtractionEngine {
   /**
    * Read and parse one file, yielding its import occurrences. Returns `null`
@@ -64,7 +59,4 @@ export interface ExtractionEngine {
    * supported kind throw.
    */
   extract(absolutePath: string): Promise<FileExtraction | null>
-
-  /** Resolve a specifier as imported from the given file. */
-  resolve(fromAbsolutePath: string, specifier: string): Resolution
 }

@@ -257,7 +257,7 @@ may reopen the service example and the config pattern section.
   callbacks to non-tech callees read inline, a called result classified by its
   value, `assignment`, one reading per world with `readings` on the node,
   tracked locals — rixo's Q3 reversal at the handback). Each checkpoint has a
-  "Landed" section in the SPEC. Landed 2026-09-17 (sha in 04's entry once cut).
+  "Landed" section in the SPEC. Landed 2026-09-17.
 - `04_outside-rules` — the rules, re-cut from 03 under the test method ruled at
   03's handback: `deblob check` enforces the assembly, driver, boot and test
   rules — nine slugs in `RULE_IDS` plus `stateless-modules`' first detector,
