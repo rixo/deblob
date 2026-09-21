@@ -70,12 +70,12 @@ const outwardRules = (
 
 /**
  * Rules cited for a forbidden module cell, `null` for a legal one — base
- * citations; the `runtime-import` hint ("import type is fine") is appended by
- * the caller wherever the cell's type variant is exempt. Total over `Layer` by
- * the compiler. The driver and boot rows cite what `RULE_IDS` names today: the
- * composition seals and `blob-quarantine`. A driver importing model, or a boot
- * importing anything but its driver, is canon's letter with no slug yet
- * (`driver-calls-services-only`, `boot-one-call` — steps 03 and 06 of the
+ * citations; the `runtime-import` hint ("only import type is allowed") is
+ * appended by the caller wherever the cell's type variant is exempt. Total over
+ * `Layer` by the compiler. The driver and boot rows cite what `RULE_IDS` names
+ * today: the composition seals and `blob-quarantine`. A driver importing model,
+ * or a boot importing anything but its driver, is canon's letter with no slug
+ * yet (`driver-calls-services-only`, `boot-one-call` — steps 03 and 06 of the
  * driver-layer chapter), so those cells read legal here until then.
  */
 const moduleCellRules = (
@@ -184,7 +184,8 @@ export const checkLayers = (
       if (isOwnPrivate(importer, target)) continue
       const rules = moduleCellRules(importerLayer, target.layer)
       if (rules) {
-        // the `runtime-import` hint: "import type is fine" — only where that is true
+        // the `runtime-import` hint: "only import type is allowed" — only where
+        // the cell's type variant is exempt
         const cited: readonly RuleId[] = cellExempt
           ? [...rules, "runtime-import"]
           : rules

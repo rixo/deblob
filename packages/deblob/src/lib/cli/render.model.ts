@@ -129,7 +129,9 @@ const layersMessage = (violation: LayersViolation, prefix: string): string => {
   const { rules, importerLayer } = violation
   // runtime-import in the citation = this cell's type variant is exempt
   // (06 ruling)
-  const hint = rules.includes("runtime-import") ? "; import type is fine" : ""
+  const hint = rules.includes("runtime-import")
+    ? "; only import type is allowed"
+    : ""
   if (
     rules.includes("service-assembly-only") ||
     rules.includes("adapter-assembly-only")

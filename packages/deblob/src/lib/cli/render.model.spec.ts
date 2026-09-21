@@ -309,7 +309,7 @@ describe("renderCheckResults", () => {
         }),
       )
       expect(output).toContain(".service.ts is assembly-only")
-      expect(output).toContain("import type is fine")
+      expect(output).toContain("only import type is allowed")
       expect(output).toContain("(service-assembly-only, runtime-import)")
     })
 
@@ -322,7 +322,7 @@ describe("renderCheckResults", () => {
         }),
       )
       expect(output).toContain(".adapter.ts is assembly-only")
-      expect(output).not.toContain("import type is fine")
+      expect(output).not.toContain("only import type is allowed")
       expect(output).toContain("(adapter-assembly-only)")
     })
 

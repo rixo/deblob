@@ -21,7 +21,7 @@ export type LayersViolation = {
   ruleset: Ruleset
   /**
    * Cited rules within the ruleset — a finding may cite two (the seal plus
-   * `runtime-import` when the hint is "import type is fine").
+   * `runtime-import` when the hint is "only import type is allowed").
    */
   rules: readonly RuleId[]
   /** The offending importer. */

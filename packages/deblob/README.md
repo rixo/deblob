@@ -53,7 +53,8 @@ Violations cite their rule and print the offending edge:
 src/invoice
   src/invoice/pdf-render.service.ts
     layers   imports node:fs — service layer cannot depend on concrete;
-             import type is fine (service-purity, runtime-import)
+             only import type is allowed
+             (service-purity, runtime-import)
 ```
 
 Not in v0, on purpose: autofix (not deblob's job — fixing belongs to whoever

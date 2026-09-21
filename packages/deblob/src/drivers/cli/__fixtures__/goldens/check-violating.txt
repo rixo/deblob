@@ -10,7 +10,8 @@ src/invoice
              (layer-in-path)
   src/invoice/pdf-render.service.ts
     layers   imports node:fs — service layer cannot depend on concrete;
-             import type is fine (service-purity, runtime-import)
+             only import type is allowed
+             (service-purity, runtime-import)
   src/invoice/renderer.port.ts
     ports    exports const SOME_MADE_UP_DEFAULT — ports are types only;
              runtime belongs in an adapter or model (ports-types-only)
