@@ -555,6 +555,12 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
   Not solved today; canon states the imported half only.
 - **The strict marker grammar** (ruled 2026-09-18, parked 2026-09-21 by rixo:
   the corpus is under review and the migration rewrites every marker in it).
+  LANDED 2026-09-21 night, once the corpus was stamped whole. The migration
+  changed no verdict: the same 17 rows fail with the same 46 entries. The one
+  reading added in landing: "the next code line" skips blank and comment lines.
+  The edge-level markers of `lib/cases/layers.spec.ts` and
+  `lib/cases/dag.spec.ts` moved to the end of their files, their why naming the
+  import; two row names lost "on the import line" / "closing lines" accordingly.
   `// red: <slug>[, <slug>]* [-- <why>]`, and the trigger form `// via:` the
   same. A line that looks like a marker (`//\s*red\b`, case-insensitive) and
   fails the grammar is a loud error naming file and line — today a malformed

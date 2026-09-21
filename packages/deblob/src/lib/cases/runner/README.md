@@ -12,17 +12,22 @@ both builds and fires.
   row's markers, asks the check port for the violations under the row's config
   and checks, resolves to the match. `Case` and `Row` (`markers.model.ts`) are
   what a spec hands it; `AS_MARKED` is the match a row asserts.
-- `markers.model.ts` — the marker grammar and the match. `// red <slug>` at a
-  line's end, several slugs comma-separated, an optional `: why` for the reader
-  (never compared; the message is the renderer's, proven in the CLI golden). An
-  unknown slug is loud. `// via <slug>`, same form, marks a line that triggers a
-  red elsewhere — a root call running a helper whose body is red at its own line
-  — and matches an entry of the violation's `via` list. `matchVerdicts` runs
-  both directions and lists each, `file:line slug` or `file:line via slug`,
-  sorted; a violation without a line (today's edge-level ones) matches its
-  file's markers by slug, consuming one; `reportedOf` names every file that
-  closes a cycle. `stripMarkers` is the grammar's inverse, for a corpus author
-  who wants the same tree claiming green.
+- `markers.model.ts` — the marker grammar and the match.
+  `// red: <slug>[, <slug>]* [-- <why>]`: one violation per slug, a repeated
+  slug counts twice, the why is for the reader (never compared; the message is
+  the renderer's, proven in the CLI golden). At a line's end it claims that
+  line; alone on its line it claims the next code line, so stacked markers each
+  claim it with their own why; alone at the end of the file it claims the file,
+  the form for a violation without a line (today's edge-level ones).
+  `// via: <slug>`, same form, marks a line that triggers a red elsewhere — a
+  root call running a helper whose body is red at its own line — and matches an
+  entry of the violation's `via` list. Loud: an unknown slug, anything that
+  looks like a marker (`// red`, `// via`, any case) and fails the grammar, a
+  marker after another comment. `matchVerdicts` runs both directions, counted,
+  and lists each, `file:line slug`, `file slug` or `file:line via slug`, sorted;
+  a line claim never stands for a file claim, nor the reverse; `reportedOf`
+  names every file that closes a cycle. `stripMarkers` is the grammar's inverse,
+  for a corpus author who wants the same tree claiming green.
 - `cases.assembly.ts` — `assembleCase(files)` → `{ judge, check }`: the memory
   adapters built from the tree, the real chain wired over them, the runner over
   it. Returns the check port too, for a spec that wants the violations.

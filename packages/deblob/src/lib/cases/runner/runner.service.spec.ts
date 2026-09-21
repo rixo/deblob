@@ -27,7 +27,7 @@ describe("createRunner", () => {
     expect(
       await judge({
         files: {
-          "src/a.model.ts": `import { x } from "./x.service.ts" // red inward-deps\nexport const A = x`,
+          "src/a.model.ts": `import { x } from "./x.service.ts"\nexport const A = x\n// red: inward-deps`,
         },
       }),
     ).toEqual(AS_MARKED)
@@ -40,13 +40,23 @@ describe("createRunner", () => {
       await judge({
         files: {
           "src/a.model.ts": `export const A = 1`,
-          "src/b.model.ts": `export const B = 1 // red private-sealed: not really`,
+          "src/b.model.ts": `export const B = 1 // red: private-sealed -- not really`,
         },
       }),
     ).toEqual({
       missing: ["src/b.model.ts:1 private-sealed"],
       unexpected: ["src/a.model.ts inward-deps"],
     })
+  })
+
+  it("rejects a row whose marker does not parse, never judging it green", async () => {
+    const { check } = fakeCheck([])
+    const { judge } = createRunner({ check })
+    await expect(
+      judge({
+        files: { "src/a.model.ts": `export const A = 1 // red inward-deps` },
+      }),
+    ).rejects.toThrow(/src\/a\.model\.ts:1: malformed marker/)
   })
 
   it("hands the port the row's config and the checks it names, every check when it names none", async () => {

@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
+import type { RuleId } from "../../check/rule.model.ts"
 import type { Violation } from "../../check/violation.model.ts"
+import type { Marker, Reported } from "./markers.model.ts"
 import {
   markersOf,
   matchVerdicts,
@@ -8,56 +10,74 @@ import {
   stripMarkers,
 } from "./markers.model.ts"
 
+const red = (
+  line: number | null,
+  slug: RuleId,
+  why: string | null = null,
+): Marker => ({
+  kind: "red",
+  file: "src/a.ts",
+  line,
+  slug,
+  why,
+})
+
 describe("markersOf", () => {
-  it("reads `// red <slug>` at a line's end, several slugs, an optional why; other comments are not markers", () => {
+  it("reads `// red: <slug>` at a line's end as a claim on that line, several slugs, an optional why; other comments are not markers", () => {
     const source = [
-      'import { x } from "./x.ts" // red inward-deps: a model importing a service',
+      'import { x } from "./x.ts" // red: inward-deps -- a model importing a service',
       "const a = 1 // not a marker",
-      "run() //red private-sealed, inward-deps",
-      "// red inward-deps",
+      "run() // red: private-sealed, inward-deps",
     ].join("\n")
-    expect(markersOf("src/a.model.ts", source)).toEqual([
-      {
-        kind: "red",
-        file: "src/a.model.ts",
-        line: 1,
-        slug: "inward-deps",
-        why: "a model importing a service",
-      },
-      {
-        kind: "red",
-        file: "src/a.model.ts",
-        line: 3,
-        slug: "private-sealed",
-        why: null,
-      },
-      {
-        kind: "red",
-        file: "src/a.model.ts",
-        line: 3,
-        slug: "inward-deps",
-        why: null,
-      },
-      {
-        kind: "red",
-        file: "src/a.model.ts",
-        line: 4,
-        slug: "inward-deps",
-        why: null,
-      },
+    expect(markersOf("src/a.ts", source)).toEqual([
+      red(1, "inward-deps", "a model importing a service"),
+      red(3, "private-sealed"),
+      red(3, "inward-deps"),
     ])
   })
 
-  it("reads `// via <slug>` as a trigger marker, same form", () => {
+  it("counts a slug repeated in one marker as two violations", () => {
+    expect(
+      markersOf("src/a.ts", "run() // red: inert-modules, inert-modules"),
+    ).toEqual([red(1, "inert-modules"), red(1, "inert-modules")])
+  })
+
+  it("claims the next code line for a marker alone on its line, past blanks and comments, each stacked marker with its own why", () => {
+    const source = [
+      "// red: inert-modules -- the binding",
+      "",
+      "// a plain comment",
+      "// red: inert-modules -- the call",
+      "const x = run() // red: ambient-access",
+    ].join("\n")
+    expect(markersOf("src/a.ts", source)).toEqual([
+      red(5, "inert-modules", "the binding"),
+      red(5, "inert-modules", "the call"),
+      red(5, "ambient-access"),
+    ])
+  })
+
+  it("claims the file for a marker alone with no code after it", () => {
+    const source = [
+      'import { x } from "./x.ts"',
+      "// red: inward-deps -- the import of x",
+      "",
+    ].join("\n")
+    expect(markersOf("src/a.ts", source)).toEqual([
+      red(null, "inward-deps", "the import of x"),
+    ])
+  })
+
+  it("reads `// via: <slug>` as a trigger marker, same form", () => {
     expect(
       markersOf(
-        "src/a.model.ts",
-        "export const N: number = helper() // via inert-modules: runs helper on import",
+        "src/a.ts",
+        "export const N: number = helper() // via: inert-modules -- runs helper on import",
       ),
     ).toEqual([
       {
         kind: "via",
-        file: "src/a.model.ts",
+        file: "src/a.ts",
         line: 1,
         slug: "inert-modules",
         why: "runs helper on import",
@@ -67,18 +87,42 @@ describe("markersOf", () => {
 
   it("throws on a marker naming no rule, with the line", () => {
     expect(() =>
-      markersOf("src/a.ts", "x()\ny() // red some-made-up-rule"),
+      markersOf("src/a.ts", "x()\ny() // red: some-made-up-rule"),
     ).toThrow(/src\/a\.ts:2: marker names no rule: some-made-up-rule/)
+  })
+
+  test.each([
+    ["the old form, no colon", "run() // red inward-deps"],
+    ["the old why", "run() // red: inward-deps: why"],
+    ["no space after the slashes", "run() //red: inward-deps"],
+    ["another case", "run() // Red: inward-deps"],
+    ["no slug", "run() // red:"],
+    ["an empty why", "run() // red: inward-deps --"],
+    [
+      "a second marker on the line",
+      "run() // red: inward-deps // red: inward-deps",
+    ],
+    ["the old trigger form", "run() // via inert-modules"],
+  ])("throws on a malformed marker, with the line: %s", (_, text) => {
+    expect(() => markersOf("src/a.ts", `x()\n${text}`)).toThrow(
+      /src\/a\.ts:2: malformed marker/,
+    )
+  })
+
+  it("throws on a marker after another comment, with the line", () => {
+    expect(() =>
+      markersOf("src/a.ts", "run() // a note // red: inward-deps"),
+    ).toThrow(/src\/a\.ts:1: a marker after a comment/)
   })
 })
 
 describe("stripMarkers", () => {
-  it("removes exactly the markers, other comments and code untouched", () => {
+  it("removes exactly the markers, other comments and code untouched, a marker's own line left blank", () => {
     expect(
       stripMarkers(
-        'import { x } from "./x.ts" // red inward-deps: why\nconst a = 1 // kept\nrun() //red private-sealed\nhelper() // via inert-modules',
+        'import { x } from "./x.ts" // red: inward-deps -- why\nconst a = 1 // kept\n// red: private-sealed\nhelper() // via: inert-modules',
       ),
-    ).toBe('import { x } from "./x.ts"\nconst a = 1 // kept\nrun()\nhelper()')
+    ).toBe('import { x } from "./x.ts"\nconst a = 1 // kept\n\nhelper()')
   })
 })
 
@@ -187,25 +231,10 @@ describe("matchVerdicts", () => {
     ).toEqual({ missing: [], unexpected: [] })
   })
 
-  it("matches a report without a line to its file's marker by slug, once", () => {
+  it("matches a report without a line to a file claim, one claim per report", () => {
     expect(
       matchVerdicts(
-        [
-          {
-            kind: "red",
-            file: "src/a.ts",
-            line: 3,
-            slug: "inward-deps",
-            why: null,
-          },
-          {
-            kind: "red",
-            file: "src/a.ts",
-            line: 9,
-            slug: "inward-deps",
-            why: null,
-          },
-        ],
+        [red(null, "inward-deps"), red(null, "inward-deps")],
         [
           { file: "src/a.ts", line: null, slugs: ["inward-deps"], via: [] },
           { file: "src/a.ts", line: null, slugs: ["inward-deps"], via: [] },
@@ -213,6 +242,37 @@ describe("matchVerdicts", () => {
         ],
       ),
     ).toEqual({ missing: [], unexpected: ["src/a.ts inward-deps"] })
+  })
+
+  it("never lets a line claim stand for a report without a line, nor the reverse", () => {
+    expect(
+      matchVerdicts(
+        [red(3, "inward-deps"), red(null, "inert-modules")],
+        [
+          { file: "src/a.ts", line: null, slugs: ["inward-deps"], via: [] },
+          { file: "src/a.ts", line: 5, slugs: ["inert-modules"], via: [] },
+        ],
+      ),
+    ).toEqual({
+      missing: ["src/a.ts inert-modules", "src/a.ts:3 inward-deps"],
+      unexpected: ["src/a.ts inward-deps", "src/a.ts:5 inert-modules"],
+    })
+  })
+
+  it("counts: a line marked twice needs two reports, and a second report needs a second marker", () => {
+    const once: Reported = {
+      file: "src/a.ts",
+      line: 2,
+      slugs: ["inert-modules"],
+      via: [],
+    }
+    expect(
+      matchVerdicts([red(2, "inert-modules"), red(2, "inert-modules")], [once]),
+    ).toEqual({ missing: ["src/a.ts:2 inert-modules"], unexpected: [] })
+    expect(matchVerdicts([red(2, "inert-modules")], [once, once])).toEqual({
+      missing: [],
+      unexpected: ["src/a.ts:2 inert-modules"],
+    })
   })
 
   it("lists both directions, sorted: marked-not-reported and reported-not-marked", () => {

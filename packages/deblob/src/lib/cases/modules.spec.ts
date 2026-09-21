@@ -47,7 +47,7 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/table.model.ts": `
         import { createRates } from "./rates.model.ts"
-        const RATES = createRates() // red inert-modules: a call result is not provably immutable — the binding, not the call
+        const RATES = createRates() // red: inert-modules -- a call result is not provably immutable — the binding, not the call
         export const BASE: number = createRates().base
         export const scale = (n: number) => n * 2
         export const DOUBLE: number = scale(1)
@@ -82,7 +82,7 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/clock/adapters/system-clock.adapter.ts": `
         export const nameOf = (name: string) => "clock:" + name
-        export const NAME: string = nameOf("system") // red inert-modules: a local of an adapter, whose layer may touch the tech — the side effect cannot be ruled out
+        export const NAME: string = nameOf("system") // red: inert-modules -- a local of an adapter, whose layer may touch the tech — the side effect cannot be ruled out
         export const createSystemClock = () => ({ now: () => Date.now() })
       `,
     },
@@ -95,10 +95,10 @@ const ROOT_CALLS: readonly Row[] = [
     files: {
       "src/cli.driver.ts": `
         const readHome = () => {
-          const home = process.cwd() // red inert-modules: the helper's body is the root's, so its tech call is a root call
+          const home = process.cwd() // red: inert-modules -- the helper's body is the root's, so its tech call is a root call
           return home.length
         }
-        export const HOME_LENGTH: number = readHome() // via inert-modules: the root call that runs readHome's body on import
+        export const HOME_LENGTH: number = readHome() // via: inert-modules -- the root call that runs readHome's body on import
         export const main = () => {
           process.on("ready", () => readHome())
         }
@@ -111,7 +111,7 @@ const ROOT_CALLS: readonly Row[] = [
     name: "a service calling into tech at root is red: a host global is the tech's, a language global is not",
     files: {
       "src/paths.service.ts": `
-        export const HOME: string = process.cwd() // red inert-modules, ambient-access: tech reached at import time, and the environment discovered
+        export const HOME: string = process.cwd() // red: inert-modules, ambient-access -- tech reached at import time, and the environment discovered
         export const ONE_LABEL: string = String(1)
         export const createPaths = () => ({ home: HOME })
       `,
@@ -127,7 +127,7 @@ const ROOT_CALLS: readonly Row[] = [
         if (process.env["SOME_MADE_UP_DEBUG"]) {
           throw new Error("made up")
         }
-        if (process.cwd() === "/") { // red inert-modules: a call, presumed to have side effects
+        if (process.cwd() === "/") { // red: inert-modules -- a call, presumed to have side effects
           throw new Error("made up")
         }
         export const createEnvServer = () => ({ port: 3000 })
@@ -149,8 +149,8 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/cli.driver.ts": `
         import { createCliAssembly } from "./cli.assembly.ts"
-        const services = createCliAssembly() // red inert-modules: a call result is not provably immutable
-        services.app.run() // red inert-modules: a use case runs at import time
+        const services = createCliAssembly() // red: inert-modules -- a call result is not provably immutable
+        services.app.run() // red: inert-modules -- a use case runs at import time
         export const main = () => {
           process.on("ready", () => services.app.run())
         }
@@ -186,10 +186,10 @@ const ROOT_CALLS: readonly Row[] = [
         import { describe, expect, it } from "vitest"
         import { createApp } from "./app.service.ts"
         import { main } from "./cli.driver.ts"
-        const app = createApp() // red inert-modules: a call result is not provably immutable, and every test shares it
-        let calls = 0 // red inert-modules: mutable state at spec root
+        const app = createApp() // red: inert-modules -- a call result is not provably immutable, and every test shares it
+        let calls = 0 // red: inert-modules -- mutable state at spec root
         const twice = (n: number) => n * 2
-        main() // red inert-modules: the driver's wiring runs at import time — the exemption is registrations into the runner, not any call
+        main() // red: inert-modules -- the driver's wiring runs at import time — the exemption is registrations into the runner, not any call
         describe("app", () => {
           it("runs", () => {
             calls += 1
@@ -209,7 +209,7 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/cli.assembly.ts": `
         import { createApp } from "./app.service.ts"
-        const app = createApp() // red inert-modules: built at import time, and a call result is not provably immutable
+        const app = createApp() // red: inert-modules -- built at import time, and a call result is not provably immutable
         export const createCliAssembly = () => ({ app })
       `,
       "src/cli.driver.ts": `
@@ -276,23 +276,23 @@ const READONLY_BINDINGS: readonly Row[] = [
     files: {
       "src/forms.model.ts": `
         type Table = Readonly<{ a: number }>
-        export let counter = 0 // red inert-modules: let
-        export var legacy = 0 // red inert-modules: var
-        export const RESULT = Math.max(1, 2) // red inert-modules: a call result, nothing proven
-        export const RECORD = { a: 1 } // red inert-modules: a record literal without as const
-        export const LIST = [1] // red inert-modules: an array literal without as const
-        export const CACHE = new Map<string, number>() // red inert-modules: a mutable collection
-        export const MEMBER = RECORD.a // red inert-modules: a member read, not followed
-        export const ALIASED = RESULT // red inert-modules: another binding, not followed
-        export const AWAITED = await Promise.resolve(1) // red inert-modules: an awaited value
-        export const TABLE: Table = { a: 1 } // red inert-modules: an alias annotation the reader cannot see through
-        export const WRAPPED: Readonly<Table> = { a: 1 } // red inert-modules: the wrapper is readonly, its member is a named type — unproven
-        export const NESTED: Readonly<{ inner: { n: number } }> = { inner: { n: 1 } } // red inert-modules: Readonly is one level, the inner record is mutable
-        export const FROZEN_SHALLOW = Object.freeze({ inner: { n: 1 } }) // red inert-modules: a freeze is one level, the inner literal is not frozen
-        export const MUTABLE_MAP: Readonly<Map<string, number>> = new Map() // red inert-modules: Readonly over a Map keeps the mutators — set still compiles
-        export const MAP_OF_UNPROVEN: ReadonlyMap<string, Table> = new Map() // red inert-modules: readonly at the map, a named type at its values
-        export const { a: PICKED } = RECORD // red inert-modules: destructured from a binding, not from Object.freeze
-        export default { a: 1 } // red inert-modules: a default export of a record literal
+        export let counter = 0 // red: inert-modules -- let
+        export var legacy = 0 // red: inert-modules -- var
+        export const RESULT = Math.max(1, 2) // red: inert-modules -- a call result, nothing proven
+        export const RECORD = { a: 1 } // red: inert-modules -- a record literal without as const
+        export const LIST = [1] // red: inert-modules -- an array literal without as const
+        export const CACHE = new Map<string, number>() // red: inert-modules -- a mutable collection
+        export const MEMBER = RECORD.a // red: inert-modules -- a member read, not followed
+        export const ALIASED = RESULT // red: inert-modules -- another binding, not followed
+        export const AWAITED = await Promise.resolve(1) // red: inert-modules -- an awaited value
+        export const TABLE: Table = { a: 1 } // red: inert-modules -- an alias annotation the reader cannot see through
+        export const WRAPPED: Readonly<Table> = { a: 1 } // red: inert-modules -- the wrapper is readonly, its member is a named type — unproven
+        export const NESTED: Readonly<{ inner: { n: number } }> = { inner: { n: 1 } } // red: inert-modules -- Readonly is one level, the inner record is mutable
+        export const FROZEN_SHALLOW = Object.freeze({ inner: { n: 1 } }) // red: inert-modules -- a freeze is one level, the inner literal is not frozen
+        export const MUTABLE_MAP: Readonly<Map<string, number>> = new Map() // red: inert-modules -- Readonly over a Map keeps the mutators — set still compiles
+        export const MAP_OF_UNPROVEN: ReadonlyMap<string, Table> = new Map() // red: inert-modules -- readonly at the map, a named type at its values
+        export const { a: PICKED } = RECORD // red: inert-modules -- destructured from a binding, not from Object.freeze
+        export default { a: 1 } // red: inert-modules -- a default export of a record literal
       `,
     },
   },
@@ -305,9 +305,9 @@ const READONLY_BINDINGS: readonly Row[] = [
     name: "a tech read stored at root is red whatever its type, and an alias does not launder it",
     files: {
       "src/server/adapters/env-server.adapter.ts": `
-        export const SOME_MADE_UP_PORT: string = process.env["SOME_MADE_UP_PORT"] ?? "3000" // red inert-modules: captured at load time — the type proves nothing about the source
-        const env = process.env // red inert-modules: the tech's own object, captured
-        export const SOME_MADE_UP_HOST: string = env["SOME_MADE_UP_HOST"] ?? "localhost" // red inert-modules: still a read of the tech, through the alias
+        export const SOME_MADE_UP_PORT: string = process.env["SOME_MADE_UP_PORT"] ?? "3000" // red: inert-modules -- captured at load time — the type proves nothing about the source
+        const env = process.env // red: inert-modules -- the tech's own object, captured
+        export const SOME_MADE_UP_HOST: string = env["SOME_MADE_UP_HOST"] ?? "localhost" // red: inert-modules -- still a read of the tech, through the alias
         export const createEnvServer = () => ({ port: SOME_MADE_UP_PORT })
       `,
     },
@@ -327,7 +327,7 @@ const READONLY_BINDINGS: readonly Row[] = [
         export let counter = 0
         export const CACHE = new Map<string, number>()
         export const SOME_MADE_UP_PORT: string = process.env["SOME_MADE_UP_PORT"] ?? "3000"
-        export const HOME: string = process.cwd() // red inert-modules: a call is presumed to have side effects — the setting is about state
+        export const HOME: string = process.cwd() // red: inert-modules -- a call is presumed to have side effects — the setting is about state
         export const createMemoryCache = () => ({ hit: () => counter++ })
       `,
     },
@@ -354,7 +354,7 @@ const ROOT_STATEMENTS: readonly Row[] = [
       `,
       "src/state.model.ts": `
         export const COUNT: number = 0
-        COUNT_HOLDER.n = 1 // red inert-modules: the same shape, in a file that claims something
+        COUNT_HOLDER.n = 1 // red: inert-modules -- the same shape, in a file that claims something
       `,
     },
   },
@@ -369,8 +369,8 @@ const ROOT_STATEMENTS: readonly Row[] = [
     files: {
       "src/state.model.ts": `
         export const STATE: Readonly<{ n: number; extra?: number }> = { n: 0, extra: 1 }
-        STATE.n = 1 // red inert-modules: a module's evaluation mutates nothing
-        delete STATE.extra // red inert-modules
+        STATE.n = 1 // red: inert-modules -- a module's evaluation mutates nothing
+        delete STATE.extra // red: inert-modules
       `,
     },
   },
@@ -396,7 +396,7 @@ const ROOT_STATEMENTS: readonly Row[] = [
       "src/guard.model.ts": `
         export const SOME_MADE_UP_DEBUG: boolean = false
         if (SOME_MADE_UP_DEBUG) {
-          console.log("debug") // red inert-modules: a tech call at root, under a branch or not
+          console.log("debug") // red: inert-modules -- a tech call at root, under a branch or not
         }
         export const isDebug = () => SOME_MADE_UP_DEBUG
       `,
@@ -425,7 +425,7 @@ const ROOT_STATEMENTS: readonly Row[] = [
       "src/counts.model.ts": `
         export const SOME_MADE_UP_COUNTS: Readonly<{ n: number }> = { n: 0 }
         for (const key of ["a", "b"]) {
-          SOME_MADE_UP_COUNTS.n = key.length // red inert-modules: a module's evaluation mutates nothing, in a loop or not
+          SOME_MADE_UP_COUNTS.n = key.length // red: inert-modules -- a module's evaluation mutates nothing, in a loop or not
         }
       `,
     },
@@ -448,8 +448,8 @@ const INLINED_SCOPE: readonly Row[] = [
     name: "a tracked local reaching the host is red at its own line when it is inlined into a root callback",
     files: {
       "src/paths.model.ts": `
-        const readHome = () => process.cwd() // red inert-modules: the host's tech at import time, at the line the inlined body puts it
-        export const HOMES: readonly string[] = ["a"].map(() => readHome()) // via inert-modules: the root callback that runs readHome's body on import
+        const readHome = () => process.cwd() // red: inert-modules -- the host's tech at import time, at the line the inlined body puts it
+        export const HOMES: readonly string[] = ["a"].map(() => readHome()) // via: inert-modules -- the root callback that runs readHome's body on import
       `,
     },
   },
@@ -459,8 +459,8 @@ const INLINED_SCOPE: readonly Row[] = [
     name: "the same local, at a site whose callback parameter rebinds the very name it reads: the red is unmoved",
     files: {
       "src/paths.model.ts": `
-        const readHome = () => process.cwd() // red inert-modules: the callback's own \`process\` is not the one readHome reads
-        export const HOMES: readonly string[] = ["a"].map((process) => readHome()) // via inert-modules: the root callback that runs readHome's body on import
+        const readHome = () => process.cwd() // red: inert-modules -- the callback's own \`process\` is not the one readHome reads
+        export const HOMES: readonly string[] = ["a"].map((process) => readHome()) // via: inert-modules -- the root callback that runs readHome's body on import
       `,
     },
   },

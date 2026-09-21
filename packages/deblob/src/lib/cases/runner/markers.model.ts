@@ -1,18 +1,26 @@
 /**
  * The verdict markers a case writes in its source, and the match against what
- * the checks reported. A line that must be red carries `// red <slug>` at its
- * end — several slugs comma-separated, an optional `: why` for the reader,
- * never compared. A tree with no marker claims green everywhere: the match
- * lists what was marked and not reported, and what was reported and not marked.
- * A violation without a line (today's edge-level ones) matches its file's
- * markers by slug alone, consuming one; the outside rules carry lines.
+ * the checks reported. A marker is `// red: <slug>[, <slug>]* [-- <why>]`: one
+ * violation per slug, a slug repeated is two violations, the why is for the
+ * reader and never compared. At a line's end it claims that line. Alone on its
+ * line it claims the next code line, so several stacked above one line claim it
+ * each with its own why; alone at the end of the file it claims the file — the
+ * form for a violation that carries no line (today's edge-level ones). A tree
+ * with no marker claims green everywhere: the match lists what was marked and
+ * not reported, and what was reported and not marked, counted, and strict both
+ * ways — a violation with a line never satisfies a file claim, nor the
+ * reverse.
  *
  * A red can be triggered from elsewhere: a helper's tech call is red at its own
  * line, but it runs on import because a root statement calls the helper. Each
- * such trigger line carries `// via <slug>`, same form, and matches an entry of
- * a reported violation's `via` list. A `via` marker names the slug, not the red
- * it triggers: two reds of one slug in one file, each with its own triggers,
- * cannot be told apart by the markers.
+ * such trigger line carries `// via: <slug>`, same form, and matches an entry
+ * of a reported violation's `via` list. A `via` marker names the slug, not the
+ * red it triggers: two reds of one slug in one file, each with its own
+ * triggers, cannot be told apart by the markers.
+ *
+ * A comment that looks like a marker (`// red`, `// via`, any case) and fails
+ * the grammar is loud, and so is a marker after another comment on its line: a
+ * malformed marker read as nothing would pass its row green.
  */
 
 import type { RuleId } from "../../check/rule.model.ts"
@@ -37,7 +45,8 @@ export type Marker = {
   /** `red`: this line is the violation; `via`: this line triggers one. */
   kind: "red" | "via"
   file: string
-  line: number
+  /** The line claimed; `null` claims the file. */
+  line: number | null
   slug: RuleId
   /** Prose for the reviewer, kept for the listing, never matched. */
   why: string | null
@@ -56,7 +65,10 @@ export type Reported = {
 }
 
 export type VerdictMatch = {
-  /** Marked, not reported: `file:line slug`, or `file:line via slug`. */
+  /**
+   * Marked, not reported: `file:line slug`, `file slug` for a file claim, or
+   * `file:line via slug`; a key marked twice and reported once is listed once.
+   */
   missing: string[]
   /**
    * Reported, not marked: `file:line slug`, `file slug` without a line, or
@@ -68,35 +80,106 @@ export type VerdictMatch = {
 /** The match a row asserts: as marked, nothing more, nothing less. */
 export const AS_MARKED: VerdictMatch = { missing: [], unexpected: [] }
 
+/** Anything a reader would take for a marker, well-formed or not. */
+const LOOKS_LIKE_MARKER = /\/\/\s*(?:red|via)\b/i
+
 const MARKER =
-  /\/\/\s*(red|via)\s+([A-Za-z0-9-]+(?:\s*,\s*[A-Za-z0-9-]+)*)(?::\s*(.*?))?\s*$/
+  /^\/\/ (red|via): ([a-z]+(?:-[a-z]+)*(?:, [a-z]+(?:-[a-z]+)*)*)(?: -- (\S.*))?$/
+
+const GRAMMAR = "`// red: <slug>[, <slug>]* [-- <why>]`, or `// via:` the same"
 
 const isRuleId = (value: string): value is RuleId =>
   (RULE_IDS as readonly string[]).includes(value)
 
-/** The markers of one file, top to bottom; an unknown slug is loud. */
-export const markersOf = (file: string, source: string): Marker[] =>
-  source.split("\n").flatMap((text, index) => {
-    const match = MARKER.exec(text)
-    if (match === null) return []
-    const kind = match[1] as Marker["kind"]
-    const why = match[3] === undefined ? null : match[3]
-    return (match[2] as string).split(",").map((raw) => {
-      const slug = raw.trim()
-      if (!isRuleId(slug)) {
-        throw new Error(
-          `${file}:${index + 1}: marker names no rule: ${slug} (rules: ${RULE_IDS.join(", ")})`,
-        )
-      }
-      return { kind, file, line: index + 1, slug, why }
-    })
-  })
+type LineMarkers = {
+  /** Where the marker starts: the code before it stays. */
+  at: number
+  /** Nothing but the marker on the line. */
+  alone: boolean
+  kind: Marker["kind"]
+  slugs: RuleId[]
+  why: string | null
+}
 
-/** The source with its markers removed — the same tree, claiming green. */
+/** One line's marker, `null` when it has none; loud when malformed. */
+const lineMarkersOf = (
+  file: string,
+  text: string,
+  line: number,
+): LineMarkers | null => {
+  const found = LOOKS_LIKE_MARKER.exec(text)
+  if (found === null) return null
+  const where = `${file}:${line}`
+  const before = text.slice(0, found.index)
+  if (before.includes("//")) {
+    throw new Error(`${where}: a marker after a comment: ${text.trim()}`)
+  }
+  const match = MARKER.exec(text.slice(found.index).trimEnd())
+  if (match === null) {
+    throw new Error(
+      `${where}: malformed marker: ${text.trim()} (expected ${GRAMMAR})`,
+    )
+  }
+  const slugs = (match[2] as string).split(", ")
+  for (const slug of slugs) {
+    if (!isRuleId(slug)) {
+      throw new Error(
+        `${where}: marker names no rule: ${slug} (rules: ${RULE_IDS.join(", ")})`,
+      )
+    }
+  }
+  return {
+    at: found.index,
+    alone: before.trim() === "",
+    kind: match[1] as Marker["kind"],
+    slugs: slugs as RuleId[],
+    why: match[3] ?? null,
+  }
+}
+
+/** Not a line a marker above can claim: blank, or a comment. */
+const isCodeLine = (text: string): boolean => {
+  const trimmed = text.trim()
+  return trimmed !== "" && !trimmed.startsWith("//")
+}
+
+/**
+ * The markers of one file, top to bottom. A marker alone on its line claims the
+ * next code line, or the file when no code follows.
+ */
+export const markersOf = (file: string, source: string): Marker[] => {
+  const lines = source.split("\n")
+  return lines.flatMap((text, index) => {
+    const found = lineMarkersOf(file, text, index + 1)
+    if (found === null) return []
+    let line: number | null = index + 1
+    if (found.alone) {
+      const next = lines.findIndex(
+        (other, at) => at > index && isCodeLine(other),
+      )
+      line = next === -1 ? null : next + 1
+    }
+    return found.slugs.map((slug) => ({
+      kind: found.kind,
+      file,
+      line,
+      slug,
+      why: found.why,
+    }))
+  })
+}
+
+/**
+ * The source with its markers removed — the same tree, claiming green. A marker
+ * alone on its line leaves the line blank, so line numbers hold.
+ */
 export const stripMarkers = (source: string): string =>
   source
     .split("\n")
-    .map((text) => text.replace(MARKER, "").trimEnd())
+    .map((text, index) => {
+      const found = lineMarkersOf("source", text, index + 1)
+      return found === null ? text : text.slice(0, found.at).trimEnd()
+    })
     .join("\n")
 
 /**
@@ -111,7 +194,7 @@ export const reportedOf = (violation: Violation): Reported[] => {
         ? violation.hops.map((hop) => hop.via.from)
         : violation.files
   // the outside rules judge statements, so they name a line and match on it;
-  // the edge-level checks have none and match by slug within the file
+  // the edge-level checks have none and match a file claim
   const line = "line" in violation ? violation.line : null
   const via = "via" in violation ? violation.via : []
   return files.map((file) => ({ file, line, slugs: violation.rules, via }))
@@ -121,22 +204,34 @@ const key = (file: string, line: number | null, slug: string): string =>
   line === null ? `${file} ${slug}` : `${file}:${line} ${slug}`
 
 const viaKey = (site: Site, slug: string): string =>
-  `${site.file}:${site.line} via ${slug}`
+  key(site.file, site.line, `via ${slug}`)
 
-/** Every marker against every report, both directions, sorted for the diff. */
+const markerKey = (marker: Marker): string =>
+  key(
+    marker.file,
+    marker.line,
+    marker.kind === "via" ? `via ${marker.slug}` : marker.slug,
+  )
+
+/**
+ * Every marker against every report, both directions, counted — a key marked
+ * twice needs two reports — and sorted for the diff.
+ */
 export const matchVerdicts = (
   markers: readonly Marker[],
   reported: readonly Reported[],
 ): VerdictMatch => {
-  const open = new Map<string, Marker>(
-    markers.map((marker) => [
-      marker.kind === "via"
-        ? viaKey(marker, marker.slug)
-        : key(marker.file, marker.line, marker.slug),
-      marker,
-    ]),
-  )
+  const open = new Map<string, number>()
+  for (const marker of markers) {
+    const at = markerKey(marker)
+    open.set(at, (open.get(at) ?? 0) + 1)
+  }
   const unexpected: string[] = []
+  const claim = (at: string): void => {
+    const left = open.get(at) ?? 0
+    if (left === 0) unexpected.push(at)
+    else open.set(at, left - 1)
+  }
   // a trigger shared by two reds of one slug is one marker: judged once
   const triggers = new Set<string>()
   for (const report of reported) {
@@ -145,21 +240,13 @@ export const matchVerdicts = (
         const trigger = viaKey(site, slug)
         if (triggers.has(trigger)) continue
         triggers.add(trigger)
-        if (!open.delete(trigger)) unexpected.push(trigger)
+        claim(trigger)
       }
-      if (report.line !== null) {
-        const exact = key(report.file, report.line, slug)
-        if (open.delete(exact)) continue
-        unexpected.push(exact)
-        continue
-      }
-      // no line to match on: the first open marker of that file and slug
-      const found = [...open.entries()].find(
-        ([, marker]) => marker.file === report.file && marker.slug === slug,
-      )
-      if (found) open.delete(found[0])
-      else unexpected.push(key(report.file, null, slug))
+      claim(key(report.file, report.line, slug))
     }
   }
-  return { missing: [...open.keys()].sort(), unexpected: unexpected.sort() }
+  const missing = [...open].flatMap(([at, left]) =>
+    Array.from({ length: left }, () => at),
+  )
+  return { missing: missing.sort(), unexpected: unexpected.sort() }
 }
