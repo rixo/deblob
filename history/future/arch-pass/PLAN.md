@@ -61,10 +61,10 @@ here as the two Ideas below.
 
 ### Ideas (from the model-abstractness landing)
 
-- **`check state` detector** — `stateless-modules` is now AST-decidable:
-  top-level `let`/`var`, module-root mutable collections (write-detection, or
-  `const` + `ReadonlyMap`/`Readonly` annotation — `Object.freeze` is a no-op on
-  Map/Set internals), exported live instances; ambient access (`Date.now`,
+- **`check state` detector** — `inert-modules` is now AST-decidable: top-level
+  `let`/`var`, module-root mutable collections (write-detection, or `const` +
+  `ReadonlyMap`/`Readonly` annotation — `Object.freeze` is a no-op on Map/Set
+  internals), exported live instances; ambient access (`Date.now`,
   `Math.random`, `globalThis`) is callable-name detectable, no import to see.
   Earns its place through its own future card. First field sighting
   (2026-09-09): a `.service.ts` holding a `let cache` at module scope and

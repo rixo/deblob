@@ -298,7 +298,7 @@ export type ReadStatement =
        * a function or `Object.freeze(…)`, or whose annotation is a `Readonly*`
        * type, a `readonly` array, a primitive keyword or a literal type.
        * Syntactic: no alias resolution, no inference (a `const` typed with an
-       * alias reads `false`). `stateless-modules` reads it unless config says
+       * alias reads `false`). `inert-modules` reads it unless config says
        * `mutableModuleState`.
        */
       readonly: boolean

@@ -200,14 +200,14 @@ export type DagViolation = {
 )
 
 /**
- * `stateless-modules`. The first violation to carry a line: the outside rules
- * judge statements, not edges, so the offending site is a place in a file and
- * the report says which.
+ * `inert-modules`. The first violation to carry a line: the outside rules judge
+ * statements, not edges, so the offending site is a place in a file and the
+ * report says which.
  */
 export type ModulesViolation = {
   check: "modules"
   ruleset: Ruleset
-  /** Always `stateless-modules` — module discipline, one rule per shape. */
+  /** Always `inert-modules` — module discipline, one rule per shape. */
   rules: readonly RuleId[]
   /** The offending file. */
   file: string

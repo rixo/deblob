@@ -219,7 +219,7 @@ const unwrap = (node: AstNode): AstNode => {
 // Immutability a type checker would know and this reader reads off the
 // syntax alone: no alias resolution, no inference. A census of the forms
 // TypeScript types as readonly without a checker; what is not listed reads
-// `false`, the strict side. `stateless-modules` reads it unless config says
+// `false`, the strict side. `inert-modules` reads it unless config says
 // `mutableModuleState`.
 
 /** Type keywords whose values are primitives — immutable by nature. */

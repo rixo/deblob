@@ -513,7 +513,7 @@ describe("renderCheckResults", () => {
       const output = message({
         check: "modules",
         ruleset: "arch",
-        rules: ["stateless-modules"],
+        rules: ["inert-modules"],
         file: "src/billing/refund.model.ts",
         serviceRoot: "src/billing",
         line: 7,
@@ -522,7 +522,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain(
         "line 7 runs on import — a module's evaluation performs no side effect; move it inside a factory or a function",
       )
-      expect(output).toContain("(stateless-modules)")
+      expect(output).toContain("(inert-modules)")
     })
 
     test("ports shapes: export, contains, runtime edges both directions", () => {

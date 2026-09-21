@@ -265,6 +265,20 @@ high-level as the golden gate, mutation testing over line coverage, coverage
 measured per set — gets its own chapter when it has paid off once here, on the
 plan's own rule: do not prescribe the method before it has earned it.
 
+**Renamed the same evening: `stateless-modules` is `inert-modules`** (rixo). The
+rule forbids two things at module root, mutable state and side effects on
+import, and since the day's ruling that a tech read stored at root captures the
+machine's state, it forbids what "stateless" does not name at all — a `: string`
+bound from `process.env` is red. `pure-modules` was considered and set aside:
+`service-purity`, `chain-purity` and the `pure` config key are about what a
+module's code may touch, judged by imports and layers, where this rule is about
+what loading the file does, in every layer, adapters included. "Inert" says it:
+loading neither acts nor leaves anything that could change. Code, canon, skills
+and the current plans carry the new name; this file's earlier sections and the
+dated chapters keep the old one as written. A rule name is public API: the
+rename ships as a breaking change, alongside `test-setup-assembly` →
+`test-is-assembly-and-driver`.
+
 ## Ruling 2026-09-20 — inlining is the reading principle, not a rule's clause
 
 Where the reader can conceptually inline a callee, it inlines it and the
@@ -522,6 +536,22 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
   rather than a canon one: something has to declare "these files are roots of
   the graph even though nothing imports them", and the framework is what knows.
   Not solved today; canon states the imported half only.
+- **Effect-free tech calls, declared by the tech's reading** (rixo, 2026-09-21).
+  Canon: "a call is presumed to have side effects until the tech's reading
+  declares that call effect-free". Today no reading declares any, so
+  `process.cwd()` at root is red even stored under `mutableModuleState`. The
+  Node reading would list the calls that only read (`process.cwd`, `Date.now`,
+  `os.platform`…); a listed call then falls back to the property-read case —
+  green in a condition, captured state when stored. Start empty and add on real
+  need; the same reading slot where the test tech declares its root
+  registrations (the "exemptions belong to the readings" note). Bundlers'
+  precedent: a call is impure unless annotated (`/*#__PURE__*/`,
+  `"sideEffects": false`).
+- **A strict mode for property reads** (rixo, 2026-09-21). Canon presumes a
+  property read free of side effects; in JavaScript a getter or a Proxy can run
+  code on read (a reactive store tracking a dependency, `document.cookie`). A
+  config switch that treats a tech property read like a call — Rollup's
+  `propertyReadSideEffects` is the precedent. Card only: no use case yet.
 - **Purity over inside bodies — the host-global half of `service-purity`**
   (rixo, 2026-09-17, step 03 checkpoint 2's verdict game). `service-purity`
   reads imports only: a concrete package or builtin imported into model or
@@ -617,3 +647,10 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
   `pure` and `driverTech`; a stream or handle passed down → the nested-adapter
   clause: the adapter grows its own port and a nested adapter, or takes the
   function from assembly. The declaration is the escape, and it leaves a trace.
+  **Revisit (rixo, 2026-09-21):** the corpus rows that let an adapter read
+  `process.env` / call `process.cwd()` are accepted for now only because an
+  adapter's tech is unknown today (`driverTech` exists, nothing for adapters). A
+  Figma adapter binding to the Node runtime is probably not ok; a Node adapter
+  doing it is. When adapters get a tech, those rows are re-judged: the condition
+  row and the alias row in `lib/cases/modules.spec.ts`, the adapter row in
+  `lib/cases/layers.spec.ts`, the `mutableModuleState` row.

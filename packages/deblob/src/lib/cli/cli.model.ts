@@ -43,7 +43,7 @@ export const CHECK_RULES: Readonly<Record<CheckName, readonly RuleId[]>> = {
   barrels: ["layer-in-path"],
   ports: ["ports-types-only"],
   surface: ["layer-in-path", "chain-purity"],
-  modules: ["stateless-modules"],
+  modules: ["inert-modules"],
 }
 
 export type CliAction =

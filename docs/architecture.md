@@ -222,8 +222,8 @@ by what it may do, and the widest import rights carry the narrowest verb lists.
 Inside the hexagon, innermost first:
 
 - **Model** (`.model.ts`) — domain knowledge. Abstract: no dependencies beyond
-  model, no ambient environment access, stateless modules. The most constrained,
-  the most valuable.
+  model, no ambient environment access, inert modules. The most constrained, the
+  most valuable.
 - **Ports** (`.port.ts`) — type-only contracts at the hexagonal boundary. No
   runtime code. Adapters implement them; service code depends on them.
 - **Service** (`.service.ts`) — decisions. Orchestration, use cases, injected
@@ -275,10 +275,10 @@ I/O, time, randomness, platform — is what makes code concrete:
 - Depends on nothing outside the model layer — no ports, no concrete imports
 - No ambient environment access (`ambient-access`) — time, randomness,
   `globalThis` are inputs passed by the caller, not discoveries
-- Stateless modules (`stateless-modules`) — no module-level mutable state,
-  exported or not: no top-level `let`, no unfrozen collections, nothing a
-  closure could capture at module scope; state lives inside factories, and a
-  module exports factories, never instances
+- Inert modules (`inert-modules`) — no module-level mutable state, exported or
+  not: no top-level `let`, no unfrozen collections, nothing a closure could
+  capture at module scope; state lives inside factories, and a module exports
+  factories, never instances
 - Factories with closure state are model when they depend on nothing — domain
   machines, entities, dependency-free reactive stores. The moment a factory
   takes a port or a service, it is a composition unit and belongs in the service
@@ -411,7 +411,7 @@ factory to call (anchors in the [Summary](#summary)):
   a value computed from one, is a decision the map cannot show; it belongs to
   the service or adapter that owns it. Nothing but assembly functions is
   defined, as many per file as the author wants, and nothing sits at module root
-  but imports (`stateless-modules`).
+  but imports (`inert-modules`).
 - **`assembly-driver-only`** — an assembly file is imported only by drivers and
   other assemblies, type imports included. An assembly has no contract of its
   own; its shape is the services it returns, and `runtime-import`'s exemption
@@ -621,7 +621,7 @@ The CLI's boot is `cli.boot.ts`. A single-page app's boot calls the driver's
 `main()` that mounts the root component. A framework that loads route files
 itself, or a test runner that loads spec files, is a boot outside the program,
 so those drivers have none in the tree. The boot is the exemption
-`stateless-modules` needs to hold everywhere else.
+`inert-modules` needs to hold everywhere else.
 
 ### Visibility: public by default, private by intention
 
@@ -914,8 +914,8 @@ needs tooling that knows service boundaries.
   test file is assembly and driver in one** — the setup builds units with
   fixtures (test-purpose adapters, same isolation rules), the test bodies are
   hooks, registered by calls at module root that the test tech owns
-  (`stateless-modules` exempts the registration, not mutable state). Recognized
-  by the configured test globs. It imports anything, blob included; it defines
+  (`inert-modules` exempts the registration, not mutable state). Recognized by
+  the configured test globs. It imports anything, blob included; it defines
   anything; the hook count and services-only do not apply; nothing imports it.
   Shared test code gets none of this and is placed by what it is: a fake or
   in-memory implementation is an adapter, a test factory an assembly function, a
@@ -973,12 +973,13 @@ needs tooling that knows service boundaries.
 
 **Module discipline:**
 
-- <a id="stateless-modules"></a>`stateless-modules` — **Modules are stateless**
-  — a module's evaluation creates no mutable state and performs no side effect,
-  so that importing a file does nothing and the file can be tested in its own
-  right. State lives in factory closures: a factory is a function, it does
-  nothing until called, and an instance exists only where it was called, reached
-  by argument and never by import. What is red at module root follows from that
+- <a id="inert-modules"></a>`inert-modules` — **Modules are inert** — a module's
+  evaluation creates no mutable state and performs no side effect, so that
+  importing a file does nothing and the file can be tested in its own right.
+  Inert: loading it neither acts nor leaves anything behind that could change.
+  State lives in factory closures: a factory is a function, it does nothing
+  until called, and an instance exists only where it was called, reached by
+  argument and never by import. What is red at module root follows from that
   sentence, and the shapes below are the known ones, not a closed list — a shape
   nobody has written down yet is judged by the rule, not waved through for being
   absent here. A binding whose immutability the syntax does not prove — proof
@@ -986,24 +987,34 @@ needs tooling that knows service boundaries.
   `Object.freeze` over a literal, each proven to its depth: `as const` is deep,
   `Readonly<…>` is one level, a named type the reader cannot resolve proves
   nothing (`Readonly<Store>`), and `Readonly<Map<…>>` does not even remove the
-  mutators. A readonly map or set is proof over the binding, not over the value:
+  mutators. A value read from the tech is proven by no type: stored in a root
+  binding, it captures the machine's state at load time, and `: string` says
+  nothing about where the string came from —
+  `export const PORT: string = process.env["PORT"] ?? "3000"` is red, and the
+  file cannot be tested under another environment without reloading it. A
+  readonly map or set is proof over the binding, not over the value:
   `Object.freeze` cannot lock a Map, so a codebase without the types has no way
-  to write one — and such a codebase turns this check off in config anyway. And
-  a call that reaches the tech, runs a use case, or goes into a local function
-  of a file whose layer may touch the tech — an adapter's, a blob's — where the
-  reader cannot rule the side effect out. And a root statement that is neither
-  of those and still does something when the module is evaluated: an assignment,
-  a `delete`, and their like — whatever sits at root runs on import, so a
-  statement that only makes sense at run time is a side effect at load time. A
-  `throw` is not one: it creates no state and touches nothing outside, and a
-  crash on import is the author's call to make. What decides it — an environment
-  read, say — is judged where it sits, by its layer. Root calls are the lane the
-  first two targets use to get around the rule, not the crime: a factory call at
-  root is not itself the violation, what it binds is, when that binding is not
-  provably immutable. Exemptions, by contrast, are a closed list, since an open
-  set of escapes is a hole: two shapes are exempt by kind, the boot's one call
-  and a spec file's registration calls into the runner. Assembly and driver need
-  no exception — each builds inside its function.
+  to write one — and such a codebase turns this half off in config anyway
+  (`mutableModuleState: true`), which lifts the bindings and nothing else. And a
+  call that reaches the tech, runs a use case, or goes into a local function of
+  a file whose layer may touch the tech — an adapter's, a blob's — where the
+  reader cannot rule the side effect out. A property read is presumed free of
+  side effects and a call is not: `if (process.env["X"])` at root is green,
+  `process.cwd()` at root is red, stored or not, until the tech's reading
+  declares that call effect-free — and the config setting, being about state,
+  does not lift it. And a root statement that is neither of those and still does
+  something when the module is evaluated: an assignment, a `delete`, and their
+  like — whatever sits at root runs on import, so a statement that only makes
+  sense at run time is a side effect at load time. A `throw` is not one: it
+  creates no state and touches nothing outside, and a crash on import is the
+  author's call to make. What decides it — an environment read, say — is judged
+  where it sits, by its layer. Root calls are the lane the first two targets use
+  to get around the rule, not the crime: a factory call at root is not itself
+  the violation, what it binds is, when that binding is not provably immutable.
+  Exemptions, by contrast, are a closed list, since an open set of escapes is a
+  hole: two shapes are exempt by kind, the boot's one call and a spec file's
+  registration calls into the runner. Assembly and driver need no exception —
+  each builds inside its function.
 
 ---
 

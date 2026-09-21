@@ -43,7 +43,7 @@ export const RULE_IDS = [
   "test-through-contract",
   "test-setup-assembly",
   // module discipline
-  "stateless-modules",
+  "inert-modules",
 ] as const
 
 export type RuleId = (typeof RULE_IDS)[number]

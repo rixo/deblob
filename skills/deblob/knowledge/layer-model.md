@@ -19,10 +19,10 @@ randomness, platform):
 - No ambient environment access (`ambient-access`) — time, randomness,
   `globalThis`, the environment are inputs passed by the caller, not
   discoveries.
-- Modules are stateless (`stateless-modules`) — no module-level mutable state,
-  exported or not (top-level `let`, unfrozen collections, anything a closure
-  could capture at module scope); state lives inside factories, and instances
-  are created by callers, never exported.
+- Modules are inert (`inert-modules`) — no module-level mutable state, exported
+  or not (top-level `let`, unfrozen collections, anything a closure could
+  capture at module scope); state lives inside factories, and instances are
+  created by callers, never exported.
 - **Self-contained factories are model code** — closure state is fine when the
   factory depends on nothing (domain machines, entities, dependency-free
   reactive stores). A factory taking a port or a service is a composition unit →

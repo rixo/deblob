@@ -218,9 +218,9 @@
 - **Flat `history/` at scale** — 250+ entries strain a flat dir; mechanical fix
   (year subdirs / index) when the pain lands.
 - **Mutation tool, manual, per file** (rixo, 2026-09-21; wait until the
-  `stateless-modules` rows are all green) — StrykerJS with its Vitest runner,
-  run by hand on the file under review (`--mutate <file>`), never across the
-  whole codebase. Why: the test rows only protect what they notice breaking, and
+  `inert-modules` rows are all green) — StrykerJS with its Vitest runner, run by
+  hand on the file under review (`--mutate <file>`), never across the whole
+  codebase. Why: the test rows only protect what they notice breaking, and
   hand-picked breaks come from whoever wrote the code, so they share its blind
   spots. A tool generates them mechanically. First manual run on
   `packages/deblob/src/lib/check/modules.model.ts`: 9 hand-made breaks, 7

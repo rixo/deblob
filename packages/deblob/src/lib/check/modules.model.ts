@@ -1,8 +1,8 @@
 /**
- * `check modules` — `stateless-modules`, module discipline. A module's
- * evaluation creates no mutable state and performs no side effect, so importing
- * a file does nothing and the file can be tested in its own right. What is red
- * at module root follows from that sentence, and canon's shapes are the known
+ * `check modules` — `inert-modules`, module discipline. A module's evaluation
+ * creates no mutable state and performs no side effect, so importing a file
+ * does nothing and the file can be tested in its own right. What is red at
+ * module root follows from that sentence, and canon's shapes are the known
  * ones, not a closed list.
  *
  * This detector holds one of them: a root statement that is neither a call nor
@@ -63,7 +63,7 @@ const judgeModule = (node: ModuleNode): ModulesViolation[] => {
     .map((statement) => ({
       check: "modules" as const,
       ruleset: "arch" as const,
-      rules: ["stateless-modules" as const],
+      rules: ["inert-modules" as const],
       file: node.path,
       serviceRoot: node.serviceRoot,
       line: statement.span.line,

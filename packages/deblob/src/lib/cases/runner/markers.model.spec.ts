@@ -61,12 +61,12 @@ describe("reportedOf", () => {
   it("names a statement-level violation's line, so it matches its marker there and nowhere else", () => {
     const violation = {
       check: "modules",
-      rules: ["stateless-modules"],
+      rules: ["inert-modules"],
       file: "src/a.model.ts",
       line: 4,
     } as unknown as Violation
     expect(reportedOf(violation)).toEqual([
-      { file: "src/a.model.ts", line: 4, slugs: ["stateless-modules"] },
+      { file: "src/a.model.ts", line: 4, slugs: ["inert-modules"] },
     ])
     expect(
       matchVerdicts(
@@ -74,15 +74,15 @@ describe("reportedOf", () => {
           {
             file: "src/a.model.ts",
             line: 3,
-            slug: "stateless-modules",
+            slug: "inert-modules",
             why: null,
           },
         ],
         reportedOf(violation),
       ),
     ).toEqual({
-      missing: ["src/a.model.ts:3 stateless-modules"],
-      unexpected: ["src/a.model.ts:4 stateless-modules"],
+      missing: ["src/a.model.ts:3 inert-modules"],
+      unexpected: ["src/a.model.ts:4 inert-modules"],
     })
   })
 

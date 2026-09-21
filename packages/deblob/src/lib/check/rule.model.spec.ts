@@ -27,7 +27,7 @@ describe("isRuleId", () => {
 describe("ruleOrder", () => {
   test("is the summary's display order — layer rules first, module discipline last", () => {
     expect(ruleOrder("inward-deps")).toBe(0)
-    expect(ruleOrder("stateless-modules")).toBe(RULE_IDS.length - 1)
+    expect(ruleOrder("inert-modules")).toBe(RULE_IDS.length - 1)
     expect(ruleOrder("no-service-cycle")).toBeLessThan(
       ruleOrder("no-runtime-cycle"),
     )
