@@ -1,7 +1,7 @@
 ---
 source:
   docs/architecture.md § Testing through the contract (`test-through-contract`,
-  `test-setup-assembly`)
+  `test-is-outside`)
 ---
 
 # Testing through the contract

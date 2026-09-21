@@ -75,7 +75,7 @@ const outwardRules = (
  * `Layer` by the compiler. The driver and boot rows cite what `RULE_IDS` names
  * today: the composition seals and `blob-quarantine`. A driver importing model,
  * or a boot importing anything but its driver, is canon's letter with no slug
- * yet (`driver-calls-services-only`, `boot-one-call` — steps 03 and 06 of the
+ * yet (`driver-calls-services`, `boot-one-call` — steps 03 and 06 of the
  * driver-layer chapter), so those cells read legal here until then.
  */
 const moduleCellRules = (

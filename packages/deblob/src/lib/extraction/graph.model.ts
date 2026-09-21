@@ -186,7 +186,7 @@ export type World = {
 
 export type WorldReading = { world: World; reading: FileReading }
 
-/** The driver rules a tech's shape exempts (`test-is-assembly-and-driver`). */
+/** The driver rules a tech's shape exempts (`test-is-outside`). */
 export type Exemption =
   "registration" | "call-count" | "services-only" | "definitions"
 

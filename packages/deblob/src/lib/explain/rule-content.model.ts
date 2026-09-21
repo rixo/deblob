@@ -48,7 +48,7 @@ export const RULE_CARDS: Readonly<Record<RuleId, readonly string[]>> = {
   "no-service-cycle": [card("acyclic")],
   "no-runtime-cycle": [card("acyclic")],
   "test-through-contract": [card("testing-contract")],
-  "test-setup-assembly": [card("testing-isolation")],
+  "test-is-outside": [card("testing-isolation")],
   // service discipline — no v0 detector cites it, but the mapping stays
   // total over the summary so a stray citation still resolves
   "inert-modules": [card("layer-service")],

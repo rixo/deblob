@@ -246,8 +246,8 @@ Outside it, inward to outward:
   evaluation performs a call. Two rights: import one driver, call it.
 - **Test** (files matched by the test globs) — assembly and driver in one, by
   the shape of the test tech. Imports anything, blob included; defines anything;
-  imported by nothing (`test-is-assembly-and-driver`). Shared test code is not
-  test kind: it is an adapter, an assembly, a model or a driver, by what it is.
+  imported by nothing (`test-is-outside`). Shared test code is not test kind: it
+  is an adapter, an assembly, a model or a driver, by what it is.
 
 Suffixless files are blob — no layer declaration, no layer guarantees.
 
@@ -503,9 +503,9 @@ The driver rules make thin the only legal shape:
   registration. Arguments are tech values, instances, literals. Wiring may also
   sit inside a hook — an assembly imported lazily on first event, cached in the
   wiring function's closure; the rule says what may sit outside them.
-- **`one-call-per-hook`** — a hook may wire, and it makes exactly one use-case
-  call. Two calls mean the sequence between them is a use case nobody owns: it
-  gets a facade service, with a contract and a test, and the two become its
+- **`hook-one-call`** — a hook may wire, and it makes exactly one use-case call.
+  Two calls mean the sequence between them is a use case nobody owns: it gets a
+  facade service, with a contract and a test, and the two become its
   subfunctions. Zero calls is a violation too: a hook with no use case is logic
   with no home. The call is unconditional, and the hook translates nothing
   around it: arguments are tech values, instances and literals, unchanged; the
@@ -518,22 +518,22 @@ The driver rules make thin the only legal shape:
   rule that closes the loop; the others exist to make it unavoidable. Ruled for
   plain-TypeScript drivers; a web reading says where the line sits when the view
   model is the tech's.
-- **`driver-calls-services-only`** — a driver calls use cases, assembly
-  factories, sub-driver wiring functions, and its own tech. Never an adapter: an
-  adapter call from a hook is an effect no contract covers. Never a model:
-  parsing and rendering are use cases of a service. A driver's tech is what its
-  reading claims, or what the project declares as tech for a technology no
-  reading knows yet; an external import neither claims is a violation whose
-  resolution is the declaration, and a pure library is model and red regardless.
-- **`driver-defines-hooks-only`** — the only definitions in a driver are its
-  hooks and at most one wiring function: a root driver's `main()`, which takes
-  nothing and reads its tech itself, or a sub-driver's
+- **`driver-calls-services`** — a driver calls use cases, assembly factories,
+  sub-driver wiring functions, and its own tech. Never an adapter: an adapter
+  call from a hook is an effect no contract covers. Never a model: parsing and
+  rendering are use cases of a service. A driver's tech is what its reading
+  claims, or what the project declares as tech for a technology no reading knows
+  yet; an external import neither claims is a violation whose resolution is the
+  declaration, and a pure library is model and red regardless.
+- **`driver-hooks-only`** — the only definitions in a driver are its hooks and
+  at most one wiring function: a root driver's `main()`, which takes nothing and
+  reads its tech itself, or a sub-driver's
   `registerCheckCommands(cli, services)`, which takes tech and instances from
   its parent. Anything else is residue: a local `parseFoo` is a model without a
   test, a table of lambdas a service without a contract.
-- **`driver-to-driver-wiring`** — a driver imports another driver only to call
-  its wiring function, during its own wiring, passing tech and instances. Never
-  a hook, never data from the hexagon. This is how one entry point splits its
+- **`sub-driver-wiring`** — a driver imports another driver only to call its
+  wiring function, during its own wiring, passing tech and instances. Never a
+  hook, never data from the hexagon. This is how one entry point splits its
   hooks across files: a CLI whose command groups each live in their own driver,
   a server whose route files the main driver mounts, a spec file calling a
   shared `registerMatchers(expect)`. The sub-driver exports that one wiring
@@ -910,19 +910,19 @@ needs tooling that knows service boundaries.
 - <a id="test-through-contract"></a>`test-through-contract` — **Tests go through
   the contract** — input via public API, assertions on documented behavior, no
   implementation details.
-- <a id="test-is-assembly-and-driver"></a>`test-is-assembly-and-driver` — **A
-  test file is assembly and driver in one** — the setup builds units with
-  fixtures (test-purpose adapters, same isolation rules), the test bodies are
-  hooks, registered by calls at module root that the test tech owns
-  (`inert-modules` exempts the registration, not mutable state). Recognized by
-  the configured test globs. It imports anything, blob included; it defines
-  anything; the hook count and services-only do not apply; nothing imports it.
-  Shared test code gets none of this and is placed by what it is: a fake or
-  in-memory implementation is an adapter, a test factory an assembly function, a
-  data builder model, and a matcher, fixture or shared hook registered on the
-  runner a driver whose wiring function the spec file calls with the tech. Test
-  edges count for rights and coverage, never for use-case level. End-to-end
-  tests are neither: users of the shipped drivers, outside the graph.
+- <a id="test-is-outside"></a>`test-is-outside` — **A test file is assembly and
+  driver in one** — the setup builds units with fixtures (test-purpose adapters,
+  same isolation rules), the test bodies are hooks, registered by calls at
+  module root that the test tech owns (`inert-modules` exempts the registration,
+  not mutable state). Recognized by the configured test globs. It imports
+  anything, blob included; it defines anything; the hook count and services-only
+  do not apply; nothing imports it. Shared test code gets none of this and is
+  placed by what it is: a fake or in-memory implementation is an adapter, a test
+  factory an assembly function, a data builder model, and a matcher, fixture or
+  shared hook registered on the runner a driver whose wiring function the spec
+  file calls with the tech. Test edges count for rights and coverage, never for
+  use-case level. End-to-end tests are neither: users of the shipped drivers,
+  outside the graph.
 
 **Assembly rules** (detail in
 [Assembly — the composition root](#assembly--the-composition-root)):
@@ -946,21 +946,20 @@ needs tooling that knows service boundaries.
 - <a id="wiring-outside-hooks"></a>`wiring-outside-hooks` — **Outside its hooks,
   a driver only wires** — assembly calls, tech setup, sub-driver registration;
   arguments are tech values, instances, literals.
-- <a id="one-call-per-hook"></a>`one-call-per-hook` — **Each hook makes exactly
-  one use-case call, unconditional, with tech values, instances and literals as
+- <a id="hook-one-call"></a>`hook-one-call` — **Each hook makes exactly one
+  use-case call, unconditional, with tech values, instances and literals as
   arguments and its result returned or handed whole to the tech** — a second
   call means a facade service is missing; zero means logic with no home; a
   translation around the call is the facade's use case. Hooks are cut by the
   tech's reading; the test tech exempts the count.
-- <a id="driver-calls-services-only"></a>`driver-calls-services-only` — **A
-  driver calls services, assembly, sub-driver wiring and its own tech, nothing
-  else** — never an adapter, never a model.
-- <a id="driver-defines-hooks-only"></a>`driver-defines-hooks-only` — **A driver
-  defines nothing but its hooks and one wiring function** — any other definition
-  is residue.
-- <a id="driver-to-driver-wiring"></a>`driver-to-driver-wiring` — **A driver
-  imports another driver only to call its wiring function** — passing tech and
-  instances; never a hook, never hexagon data.
+- <a id="driver-calls-services"></a>`driver-calls-services` — **A driver calls
+  services, assembly, sub-driver wiring and its own tech, nothing else** — never
+  an adapter, never a model.
+- <a id="driver-hooks-only"></a>`driver-hooks-only` — **A driver defines nothing
+  but its hooks and one wiring function** — any other definition is residue.
+- <a id="sub-driver-wiring"></a>`sub-driver-wiring` — **A driver imports another
+  driver only to call its wiring function** — passing tech and instances; never
+  a hook, never hexagon data.
 - <a id="driver-not-imported"></a>`driver-not-imported` — **Nothing but a boot
   or another driver imports a driver** — type imports included; the boot starts
   the root driver, drivers import drivers only to call their wiring functions.
@@ -1072,9 +1071,9 @@ boundary that defines the contract.
 
 ### Test isolation
 
-A test file is assembly and driver in one (`test-is-assembly-and-driver`). The
-setup half is assembly: the test creates a service instance by calling the
-factory with test-purpose dependencies, then exercises it from its hooks.
+A test file is assembly and driver in one (`test-is-outside`). The setup half is
+assembly: the test creates a service instance by calling the factory with
+test-purpose dependencies, then exercises it from its hooks.
 
 **Fixtures are adapters.** A fixture that provides canned data implements a port
 with deterministic data instead of an external system. Production adapters are

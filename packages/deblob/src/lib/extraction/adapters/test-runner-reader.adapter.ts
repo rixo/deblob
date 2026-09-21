@@ -33,10 +33,10 @@ const TEST_FILES: readonly string[] = [
 
 /**
  * The test reader: a spec file is assembly and driver in one
- * (`test-is-assembly-and-driver`). It reads the test kind only, so its binding
- * is what makes a file a test file. The file registers its hooks by root calls
- * into the runner, imports anything, defines anything, and makes as many calls
- * per hook as it likes — the four exemptions.
+ * (`test-is-outside`). It reads the test kind only, so its binding is what
+ * makes a file a test file. The file registers its hooks by root calls into the
+ * runner, imports anything, defines anything, and makes as many calls per hook
+ * as it likes — the four exemptions.
  */
 export const createTestRunnerReader = (): Reader => ({
   name: "test-runner",

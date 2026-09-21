@@ -4,9 +4,10 @@ source: docs/architecture.md § Test isolation, § The test factory pattern
 
 # Test isolation — setup is assembly, fixtures are adapters
 
-**Test setup is assembly** (`test-setup-assembly`): a test creates its service
-instance by calling the factory with test-purpose dependencies. Everything
-follows:
+**A test file is assembly and driver in one** (`test-is-outside`): its setup
+creates the service instance by calling the factory with test-purpose
+dependencies, its test bodies drive that instance. For the setup half,
+everything follows:
 
 - **Fixtures are adapters** — canned data implementing a port. Production
   adapters are fair game too if side effects are controlled and the test stays

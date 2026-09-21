@@ -279,6 +279,23 @@ dated chapters keep the old one as written. A rule name is public API: the
 rename ships as a breaking change, alongside `test-setup-assembly` →
 `test-is-assembly-and-driver`.
 
+**Renamed later that night: five outside-rule slugs, back to the slug grammar**
+(rixo). Registering `test-is-assembly-and-driver` in `RULE_IDS` failed the
+grammar test — two or three kebab words, ruled when the rules were first named
+(`history/20260908_rule-names/SPEC.md:51`). Canon carried four more names over
+three words, set in the 2026-09-13 talk before anyone checked them against the
+grammar; nothing had registered them, so nothing had failed. rixo kept the
+grammar ("constraints are good for you") and each name was redone short:
+`test-is-assembly-and-driver` → `test-is-outside` (a spec file is the outside
+with its restrictions loosened, not both kinds' rules at once),
+`one-call-per-hook` → `hook-one-call` (sibling of `boot-one-call`),
+`driver-calls-services-only` → `driver-calls-services`,
+`driver-defines-hooks-only` → `driver-hooks-only` (after `ports-types-only`),
+`driver-to-driver-wiring` → `sub-driver-wiring` (the rule is about imports, the
+moment of the wiring call and its arguments, not imports alone). Canon, code,
+skills and the step queue carry the new names; this file's earlier sections, the
+step SPECs and the research keep the old ones as written.
+
 ## Ruling 2026-09-20 — inlining is the reading principle, not a rule's clause
 
 Where the reader can conceptually inline a callee, it inlines it and the
@@ -508,11 +525,11 @@ may reopen the service example and the config pattern section.
   returns the CLI service), `lib/cli/cli.service.ts` (parse, dispatch, render;
   io port). Today's `main.ts` is red under every driver rule.
 - `07_slugs` — code, skills, README follow canon (`test-setup-assembly` →
-  `test-is-assembly-and-driver`, the new assembly/driver/boot rules); breaking,
-  accepted. Implementation guide's config pattern (lazy `getConfig()` in the
-  root) rewritten as the declared load. Knowledge files realigned with this
-  board's rulings in the same pass — Sharing step 5 in `knowledge/sharing.md`
-  first; no piecemeal skill edits before then.
+  `test-is-outside`, the new assembly/driver/boot rules); breaking, accepted.
+  Implementation guide's config pattern (lazy `getConfig()` in the root)
+  rewritten as the declared load. Knowledge files realigned with this board's
+  rulings in the same pass — Sharing step 5 in `knowledge/sharing.md` first; no
+  piecemeal skill edits before then.
 - `08_container-whitelist` — config key for a runtime container library, when
   someone needs it.
 - `09_placement-debt-recut` — placement-debt steps 02, 04 and 05 re-cut under

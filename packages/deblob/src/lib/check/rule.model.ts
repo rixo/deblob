@@ -41,7 +41,7 @@ export const RULE_IDS = [
   "no-runtime-cycle",
   // testing rules
   "test-through-contract",
-  "test-setup-assembly",
+  "test-is-outside",
   // module discipline
   "inert-modules",
 ] as const

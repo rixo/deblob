@@ -51,7 +51,7 @@ them.
 | ---------------------------------- | ----------------------------------------- | ----------------------- |
 | What do tests exercise and assert? | [testing-contract](testing-contract.md)   | `test-through-contract` |
 | Test at internal seams?            | [testing-seams](testing-seams.md)         | —                       |
-| Setup, fixtures, test factory?     | [testing-isolation](testing-isolation.md) | `test-setup-assembly`   |
+| Setup, fixtures, test factory?     | [testing-isolation](testing-isolation.md) | `test-is-outside`       |
 | Who are tests written for?         | [testing-reviewer](testing-reviewer.md)   | —                       |
 
 ## Implementation — the guide's flavor (TS/ESM)
