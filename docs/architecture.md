@@ -383,43 +383,43 @@ class, variable, type — other than the hooks, wiring functions and assembly
 functions the rules name. Assembly holds no tech and decides nothing but which
 factory to call (anchors in the [Summary](#summary)):
 
-- **`assembly-builds-only`** — every call in an assembly is a factory call: a
-  composition unit's, another assembly's, a model factory's when a
-  dependency-free instance must be shared between services, or a blob file's
-  when a dependency not yet extracted is built here and injected behind the port
-  that awaits it. Arguments are literals, tech values received as parameters (a
-  working directory, an environment, a framework's context handle passed through
-  and never called), or instances built or received here. It returns services —
-  one, or a record of services and shared model instances — and no adapter
-  unless a test is the caller. No use-case call: a use case whose result feeds a
-  factory is a pipeline hiding in the wiring. By default config is wired as a
-  dependency (the config service, the
-  [ubiquitous port](#config--the-ubiquitous-port)) and loaded inside the use
-  case that needs it. The exception is the **load**, a use case the graph itself
-  depends on — the config service's, when the graph varies with a config file.
-  Loads are declared, not inferred: nothing in the shape of a call tells a load
-  from a use case run for its effect, so the project names the use cases its
-  assemblies may await, one or several, and an undeclared call is a violation
-  whose resolution is the declaration. A load's result counts as tech values
-  from then on: it feeds factory arguments, conditions and loops, and nothing
-  computes on it. A branch or loop is wiring when what it tests or iterates is a
-  parameter or a loaded value, compared to a literal or for truthiness, and its
-  arms are factory calls. A condition on an instance, or on a value computed
-  from one, is a decision the map cannot show; it belongs to the service or
-  adapter that owns it. Nothing but assembly functions is defined, as many per
-  file as the author wants, and nothing sits at module root but imports
-  (`stateless-modules`).
+- **`assembly-builds-only`** — every call in an assembly is there to build: a
+  composition unit's factory, another assembly's, or a blob file's when a
+  dependency not yet extracted is built here and injected behind the port that
+  awaits it. A model call is allowed on the same terms as any other — its result
+  is passed on or returned, and nothing in the assembly touches it, which is
+  also how a dependency-free instance gets shared between services. Arguments
+  are literals, tech values received as parameters (a working directory, an
+  environment, a framework's context handle passed through and never called), or
+  instances built or received here. It returns services — one, or a record of
+  services and shared model instances — and no adapter unless a test is the
+  caller. No use-case call: a use case whose result feeds a factory is a
+  pipeline hiding in the wiring. By default config is wired as a dependency (the
+  config service, the [ubiquitous port](#config--the-ubiquitous-port)) and
+  loaded inside the use case that needs it. The exception is the **load**, a use
+  case the graph itself depends on — the config service's, when the graph varies
+  with a config file. Loads are declared, not inferred: nothing in the shape of
+  a call tells a load from a use case run for its effect, so the project names
+  the use cases its assemblies may await, one or several, and an undeclared call
+  is a violation whose resolution is the declaration. A load's result counts as
+  tech values from then on: it feeds factory arguments, conditions and loops,
+  and nothing computes on it. A branch or loop is wiring when what it tests or
+  iterates is a parameter or a loaded value, compared to a literal or for
+  truthiness, and its arms are factory calls. A condition on an instance, or on
+  a value computed from one, is a decision the map cannot show; it belongs to
+  the service or adapter that owns it. Nothing but assembly functions is
+  defined, as many per file as the author wants, and nothing sits at module root
+  but imports (`stateless-modules`).
 - **`assembly-driver-only`** — an assembly file is imported only by drivers and
   other assemblies, type imports included. An assembly has no contract of its
   own; its shape is the services it returns, and `runtime-import`'s exemption
   does not reach it. Consumers type against service APIs.
 
-What an assembly imports: composition units, other assemblies, model — its
-factories for shared instances, its values as arguments, never a function for a
-computed value (the flavor is what tells a factory from a function) — and blob,
-the only layer that may. Blob enters the graph here and nowhere else, as an
-instance behind a contract the service already holds (`blob-quarantine`). Never
-a driver, never concrete tech: tech values arrive as parameters. A runtime
+What an assembly imports: composition units, other assemblies, model — whatever
+it calls there, the result is passed on or returned and never computed with —
+and blob, the only layer that may. Blob enters the graph here and nowhere else,
+as an instance behind a contract the service already holds (`blob-quarantine`).
+Never a driver, never concrete tech: tech values arrive as parameters. A runtime
 container library is tech and enters only by explicit configuration; without
 that declaration the import is a violation. Deblob has no other opinion on
 containers: a container imports what it weaves, so it is an assembly by imports,
@@ -441,9 +441,10 @@ assembly that returns adapters can only be called by tests.
 How the checker reads it: by callee file kind and by result flow. A callee from
 a service, adapter, assembly or blob file is a factory by construction; a call
 result may only be passed on or returned, never branched on, computed with, or
-member-accessed. A model file holds both factories and functions and the import
-cannot tell them apart, so a model call whose result feeds a factory is the one
-shape the reader lets through — deterministic, no I/O.
+member-accessed. A model call is read on the same terms — its result is passed
+on or returned, and the assembly does nothing else with it — so whether that
+model export builds an instance or computes a value is a question the checker
+never has to ask, and never asks.
 
 What the rules do not guarantee: that a stateful service is built once. Two
 drivers calling the same assembly get two instances — valid, visible on the map
@@ -913,12 +914,14 @@ needs tooling that knows service boundaries.
 [Assembly — the composition root](#assembly--the-composition-root)):
 
 - <a id="assembly-builds-only"></a>`assembly-builds-only` — **Every call in an
-  assembly is a factory call** — arguments are literals, tech values received as
-  parameters, or instances; it returns services and shared model instances, and
-  adapters only when called by a test; no use-case call but the loads the
-  project declares, whose results count as tech values; a branch or loop on
-  parameters or loaded values with factory arms is wiring, none on an instance's
-  output; nothing at module root but imports.
+  assembly builds, and nothing there touches what was built** — arguments are
+  literals, tech values received as parameters, or instances; a call result is
+  passed on or returned, never computed with or member-accessed, whatever layer
+  it came from; it returns services and shared model instances, and adapters
+  only when called by a test; no use-case call but the loads the project
+  declares, whose results count as tech values; a branch or loop on parameters
+  or loaded values with factory arms is wiring, none on an instance's output;
+  nothing at module root but imports.
 - <a id="assembly-driver-only"></a>`assembly-driver-only` — **An assembly is
   imported only by drivers and assemblies** — type imports included; an assembly
   has no contract to depend on.
@@ -957,17 +960,34 @@ needs tooling that knows service boundaries.
 **Module discipline:**
 
 - <a id="stateless-modules"></a>`stateless-modules` — **Modules are stateless**
-  — a module's evaluation creates no mutable state and performs no side effect.
-  State lives in factory closures; a module exports factories, never instances;
-  an instance exists only where a factory was called, and reaches its users by
-  argument, never by import. A call at module root is legal only when its callee
-  is declared pure and its result immutable: `Object.freeze` on a literal is
-  what the rule wants, a factory call is what it forbids, and the flavor's
-  factory recognition makes that red. Root bindings are checked for a readonly
-  type by default; a codebase without the types turns that check off in config.
-  Two shapes are exempt by kind: the boot's one call, and a spec file's
-  registration calls into the runner. Assembly and driver need no exception —
-  each builds inside its function.
+  — a module's evaluation creates no mutable state and performs no side effect,
+  so that importing a file does nothing and the file can be tested in its own
+  right. State lives in factory closures: a factory is a function, it does
+  nothing until called, and an instance exists only where it was called, reached
+  by argument and never by import. What is red at module root follows from that
+  sentence, and the shapes below are the known ones, not a closed list — a shape
+  nobody has written down yet is judged by the rule, not waved through for being
+  absent here. A binding whose immutability the syntax does not prove — proof
+  being a primitive type, `as const`, a readonly array, record, map or set, or
+  `Object.freeze` over a literal, each proven to its depth: `as const` is deep,
+  `Readonly<…>` is one level, a named type the reader cannot resolve proves
+  nothing (`Readonly<Store>`), and `Readonly<Map<…>>` does not even remove the
+  mutators. A readonly map or set is proof over the binding, not over the value:
+  `Object.freeze` cannot lock a Map, so a codebase without the types has no way
+  to write one — and such a codebase turns this check off in config anyway. And
+  a call that reaches the tech, runs a use case, or goes into a local function
+  of a file whose layer may touch the tech — an adapter's, a blob's — where the
+  reader cannot rule the side effect out. And a root statement that is neither
+  of those and still does something when the module is evaluated: an assignment,
+  a `delete`, a `throw`, and their like — whatever sits at root runs on import,
+  so a statement that only makes sense at run time is a side effect at load
+  time. Root calls are the lane the first two targets use to get around the
+  rule, not the crime: a factory call at root is not itself the violation, what
+  it binds is, when that binding is not provably immutable. Exemptions, by
+  contrast, are a closed list, since an open set of escapes is a hole: two
+  shapes are exempt by kind, the boot's one call and a spec file's registration
+  calls into the runner. Assembly and driver need no exception — each builds
+  inside its function.
 
 ---
 

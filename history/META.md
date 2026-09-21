@@ -87,3 +87,38 @@ rulings recorded in place — and the public repo receives only sanitized
 distillates (doc edits, generic examples). The handoff queue in each private
 capture is the bridge. Research moves whose material is sensitive get a private
 home without losing the methodology's shape.
+
+## 2026-09-19 — ruling for ruling: a rule is grounded only by a stated benefit
+
+Reviewing the `stateless-modules` corpus, rixo asked why a root call to
+`createRange` is red where `makeRange` is green — same result, same readonly
+annotation, opposite verdicts. The agent defended the rule by citing canon:
+three sentences, all real, all on point. rixo answered with the intent the rule
+was born from, and the rule dissolved — the name predicted a property of a value
+that nothing enforces, and every verdict it produced was already produced, more
+honestly, by the readonly half.
+
+The wrong rule is not the lesson. How it was defended is. Citing the law as its
+own justification is how a ruleset rots into fanaticism: a formulation survives
+a review, gets cited, gets built on, and after a while nobody can say what it
+buys. Law for law's sake falls to misinterpretation, and then to zeal.
+
+The litmus from here on: **a rule is grounded only if it traces to a benefit
+canon states.** Not to a canon sentence — to a why. Short of that there is a
+hole, and it is one of two: the rule is fanaticism, or canon failed to state the
+benefit. Both are real, both must be closed rather than argued away. A ruleset
+is worth its weakest link.
+
+Four symptoms that point at such a hole, all four present in this incident:
+
+- a name that **predicts a property of a value** rather than naming what a file
+  is — a verdict from a declaration no compiler checks (`createX` returns state)
+  versus one from the architecture itself (`x.service.ts` is a service);
+- a rule that is a **consequence of another**, restated as its own — doubly
+  costly now that deblob reports every violation impacting a line: one problem,
+  two messages, two different fixes named;
+- prose **claiming what the tool cannot see** — "pure", "stateless",
+  "immutable", with no syntax named behind the claim;
+- **drift in both directions at once** — the code looser than canon (`freeze` of
+  anything, `Readonly<Store>` accepted) while the rule was tighter than sight
+  (the name). One audit finds both only if it looks for both.

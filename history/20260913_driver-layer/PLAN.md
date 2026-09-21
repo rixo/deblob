@@ -173,9 +173,97 @@ before more building):
    opening a detector. An earlier draft of this line put the corpus last, which
    read as re-verdicting after the code was already written.
 
-Nothing stashed: the red corpus is untracked and inert, it conflicts with no
-edit, and re-verdicting its 13 rows is the sharpest test that the fix is real
-(no `git stash` here — pop drops the staged state).
+Nothing parked: the red corpus is untracked and inert, it conflicts with no
+edit, and re-verdicting its rows is the sharpest test that the fix is real. (An
+earlier version of this line invoked a blanket ban on `git stash` as rixo's
+rule. It was never his — an agent invented it and it was quoted back at him for
+eleven days, 2026-09-21. The real constraint is narrower: `stash pop` without
+`--index` flattens the staged half, which is his review backlog.)
+
+## Ruling 2026-09-21 — one rule end to end first, stamp while red
+
+The chapter had built a wide red frontier before anything closed: a canon draft,
+54 board rows, a reader of 886 statements at 100% unit coverage — and **no check
+in the program consumes a `FileReading` at all**. The rules that will are this
+chapter's remaining steps. Measured, not argued: the corpus alone already
+executes 75% of the reader's statements while observing none of them. That is a
+batch, not a red-green cycle, and it is what "building on wind" named.
+
+The correction is the cycle, not a rewind. Nothing built is thrown away; what
+stops is adding to the reader before a verdict consumes it.
+
+**The ladder.** `stateless-modules` clause by clause, each closing corpus rows,
+the first carrying the missing wiring (a `modules` check, `KNOWN_CHECKS`,
+`CHECK_RULES`, detector registration in the CLI and the corpus assembly):
+
+| clause                                         | closes         | running |
+| ---------------------------------------------- | -------------- | ------- |
+| A — a root statement that still does something | R12            | 1       |
+| B — a binding the syntax does not prove        | R1, R10        | 3       |
+| C — a call reaching the tech                   | R4, R5, R13-15 | 8       |
+| the `mutableModuleState` opt-out               | R11            | 9       |
+| D — a call running a use case                  | R6             | 10      |
+| F — the exemptions by kind                     | R7, R8         | 12      |
+| E — a call into a local of an impure layer     | R3             | 13      |
+
+A is first because it is the smallest thing that can carry the wiring, not
+because it is worth the most — the first clause does not count for itself. C is
+where the inlining work becomes observable at all.
+
+**The ladder is not the chapter, and it is important not to read it as such.**
+The GOAL is a closed verb list for every kind outside the hexagon, and canon
+already carries eleven rules for it: `test-is-assembly-and-driver`,
+`assembly-builds-only`, `assembly-driver-only`, `wiring-outside-hooks`,
+`one-call-per-hook`, `driver-calls-services-only`, `driver-defines-hooks-only`,
+`driver-to-driver-wiring`, `driver-not-imported`, `boot-one-call`, and
+`stateless-modules` restated. `RULE_IDS` registers one of them — the last, which
+pre-existed. The other ten have no rule id, no detector, and **no corpus rows**:
+`modules.spec.ts` covers `stateless-modules` alone. So the ladder ends with the
+wiring built and one rule of eleven proven end to end, which is the point of
+doing it first and is roughly where the chapter's real cost begins. Each
+remaining rule wants the same four steps — canon sentence, rule id, cases
+stamped while red, detector — and the cases for them are unwritten.
+
+Found on the way and pre-existing: canon's anchor is
+`test-is-assembly-and-driver` while `RULE_IDS` still says `test-setup-assembly`.
+A rename that never reached the code, and the cause of the two failing `explain`
+tests. In scope here — the GOAL asks that slugs in code follow canon.
+
+**Why this rule first and not the ones we want.** Assembly laundering is what we
+are impatient to watch evaporate, and it cannot be reached early: the new rules
+are interlocked, an assembly without drivers and boot stops a program dead, and
+a partial set does not reduce laundering — it relocates it to whichever new
+layer is still unruled. The chapter closes as a set or not at all, so the order
+inside the set is free — and it is bought cheapest by the one rule that already
+has its slug registered and its cases written.
+
+**deblob flags itself red meanwhile** (rixo): accepted, and not the same quality
+of red as a finished tool reporting on itself. The checker is half-built, so its
+output is not yet a judgement on this codebase — holding the build to a green
+self-check would mean tuning the rules to what the code already does, which is
+backwards. The exemption ends with the chapter: once the set is complete, a red
+self-check means the code is wrong, not the meter.
+
+**Two stamps per clause**, because they answer different questions: rixo agrees
+the corpus row's verdict is right (the machinery works), then the same clause
+reads sanely on code neither of us wrote (the target is right). Only the second
+speaks to whether the vision holds, and only real adoption can settle it.
+
+**Stamp while red.** A row is stamped before its detector exists — once a case
+is seen to pass, "it works" is very hard to argue with. A row carries the canon
+sentence it embodies; one that cannot cite a sentence is policy invented in a
+test. Unstamped rows run as the queue but are not the gate and prove nothing: an
+agent wrote the marker and an agent would write the detector, and green would
+mean only that the two agree. Six rows are marked UNSTAMPED today.
+
+**Not now, deliberately.** Running the chain over an outside codebase is a
+smoke-and-remedy check on a clause that already works, not a prerequisite and
+not evidence about the vision: shapes counted in code written the old way rank
+by the past, and the rules most load-bearing for this architecture are exactly
+the ones that cannot fire there. The method itself — two test sets with the
+high-level as the golden gate, mutation testing over line coverage, coverage
+measured per set — gets its own chapter when it has paid off once here, on the
+plan's own rule: do not prescribe the method before it has earned it.
 
 ## Ruling 2026-09-20 — inlining is the reading principle, not a rule's clause
 
