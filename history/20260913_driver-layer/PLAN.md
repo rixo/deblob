@@ -511,6 +511,17 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
 
 ### Ideas
 
+- **An entry point nothing imports** (rixo, 2026-09-21, reassess near the end of
+  this chapter). The rule for an unruled tech is settled for imported files:
+  what the codebase imports lands in the graph, and what nothing claims is blob
+  until a reader is bound to it. Glob membership alone does not pull a file in.
+  That leaves the shape a web codebase is made of — `+page.svelte` and its like,
+  loaded by the framework and imported by nothing — invisible, since no edge
+  reaches it. For a SvelteKit app that is most of the app, and it is the concern
+  row 53 was circling. Most likely a reader or a config concern (`entryPoints`?)
+  rather than a canon one: something has to declare "these files are roots of
+  the graph even though nothing imports them", and the framework is what knows.
+  Not solved today; canon states the imported half only.
 - **Purity over inside bodies — the host-global half of `service-purity`**
   (rixo, 2026-09-17, step 03 checkpoint 2's verdict game). `service-purity`
   reads imports only: a concrete package or builtin imported into model or

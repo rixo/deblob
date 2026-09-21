@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url"
 import { checkBarrels } from "../../lib/check/barrels.model.ts"
 import { checkDag } from "../../lib/check/dag.model.ts"
 import { checkLayers } from "../../lib/check/layers.model.ts"
+import { checkModules } from "../../lib/check/modules.model.ts"
 import { checkPorts } from "../../lib/check/ports.model.ts"
 import { checkPrivate } from "../../lib/check/private.model.ts"
 import { checkSurface, tallySurface } from "../../lib/check/surface.model.ts"
@@ -149,6 +150,7 @@ const DETECTORS: Record<
   private: (graph) => checkPrivate(graph),
   barrels: (graph) => checkBarrels(graph),
   ports: (graph) => checkPorts(graph),
+  modules: (graph) => checkModules(graph),
 }
 
 /**

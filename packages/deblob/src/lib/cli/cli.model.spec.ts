@@ -196,6 +196,7 @@ describe("CHECK_RULES", () => {
       barrels: ["layer-in-path"],
       ports: ["ports-types-only"],
       surface: ["layer-in-path", "chain-purity"],
+      modules: ["stateless-modules"],
     })
   })
 

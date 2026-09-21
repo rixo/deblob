@@ -92,7 +92,10 @@ export const reportedOf = (violation: Violation): Reported[] => {
       : violation.shape === "service-cycle"
         ? violation.hops.map((hop) => hop.via.from)
         : violation.files
-  return files.map((file) => ({ file, line: null, slugs: violation.rules }))
+  // the outside rules judge statements, so they name a line and match on it;
+  // the edge-level checks have none and match by slug within the file
+  const line = "line" in violation ? violation.line : null
+  return files.map((file) => ({ file, line, slugs: violation.rules }))
 }
 
 const key = (file: string, line: number | null, slug: string): string =>

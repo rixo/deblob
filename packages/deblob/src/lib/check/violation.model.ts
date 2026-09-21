@@ -199,6 +199,31 @@ export type DagViolation = {
     }
 )
 
+/**
+ * `stateless-modules`. The first violation to carry a line: the outside rules
+ * judge statements, not edges, so the offending site is a place in a file and
+ * the report says which.
+ */
+export type ModulesViolation = {
+  check: "modules"
+  ruleset: Ruleset
+  /** Always `stateless-modules` — module discipline, one rule per shape. */
+  rules: readonly RuleId[]
+  /** The offending file. */
+  file: string
+  /** Grouping key; `null` = the `blob` bucket. */
+  serviceRoot: string | null
+  /** 1-indexed line of the offending statement. */
+  line: number
+} & {
+  /**
+   * A root statement that is neither a call nor a definition and still does
+   * something when the module is evaluated. Canon's other shapes — the unproven
+   * binding, the call that reaches out — come with their clauses.
+   */
+  shape: "root-statement"
+}
+
 /** The union grows one member per detector step. */
 export type Violation =
   | LayersViolation
@@ -207,3 +232,4 @@ export type Violation =
   | PortsViolation
   | DagViolation
   | SurfaceViolation
+  | ModulesViolation

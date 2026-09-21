@@ -509,6 +509,22 @@ describe("renderCheckResults", () => {
       ).toContain("import the layered file directly")
     })
 
+    test("a statement at module root names its line and the remedy", () => {
+      const output = message({
+        check: "modules",
+        ruleset: "arch",
+        rules: ["stateless-modules"],
+        file: "src/billing/refund.model.ts",
+        serviceRoot: "src/billing",
+        line: 7,
+        shape: "root-statement",
+      })
+      expect(output).toContain(
+        "line 7 runs on import — a module's evaluation performs no side effect; move it inside a factory or a function",
+      )
+      expect(output).toContain("(stateless-modules)")
+    })
+
     test("ports shapes: export, contains, runtime edges both directions", () => {
       expect(message(portsViolation())).toContain(
         "exports const SOME_MADE_UP_CONST — ports are types only",
@@ -791,7 +807,7 @@ describe("bare status", () => {
         "",
         "Commands",
         "  deblob check [what...]      run architecture checks",
-        "                              (dag · layers · private · barrels · ports · surface)",
+        "                              (dag · layers · private · barrels · ports · surface · modules)",
         "  deblob explain <topic...>   explain rules or checks",
         "  deblob --help               full help",
         "",

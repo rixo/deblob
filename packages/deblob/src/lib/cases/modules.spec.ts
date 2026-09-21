@@ -23,17 +23,16 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * a row where policy was invented in a test and dressed as a case; the citation
  * is also what makes a row reviewable in a minute rather than twenty.
  *
- * A row marked **UNSTAMPED** carries an open question. It runs like any other —
- * the corpus is the queue — but it is not the golden gate: it cannot be cited
- * as proof, and a detector agreeing with it would mean only that an agent wrote
- * the marker and an agent wrote the detector. Rows are stamped while red,
- * before the detector exists, since watching a case pass makes it very hard to
- * judge on its own merits. The stamp is on the verdict — is this what deblob
- * should say — never on the implementation.
+ * A row marked **UNSTAMPED** has not had its verdict read and accepted, or
+ * carries an open question. It runs like any other — the corpus is the queue —
+ * but it is not the golden gate: it cannot be cited as proof, and a detector
+ * agreeing with it would mean only that an agent wrote the marker and an agent
+ * wrote the detector. Rows are stamped while red, before the detector exists,
+ * since watching a case pass makes it very hard to judge on its own merits. The
+ * stamp is on the verdict — is this what deblob should say — never on the
+ * implementation.
  *
- * An unmarked row is not thereby stamped: it cites a ruling or a closed flag
- * from the chapter record, which is provenance, not a row-by-row reading. No
- * row in this file has been stamped as such yet.
+ * An unmarked row is stamped: its verdict has been read and accepted.
  */
 
 const ROOT_CALLS: readonly Row[] = [
@@ -41,6 +40,7 @@ const ROOT_CALLS: readonly Row[] = [
     // canon: "Root calls are the lane both targets use to get around the rule,
     // not the crime: a factory call at root is not itself the violation, what it
     // binds is, when that binding is not provably immutable."
+    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "a factory called at a model's root is not itself a violation: the call is legal, the binding is what must be proven",
     files: {
       "src/rates.model.ts": `
@@ -58,6 +58,7 @@ const ROOT_CALLS: readonly Row[] = [
   {
     // canon: the same sentence, read the other way — the green half. No clause
     // makes a callee's name a signal (ruled 2026-09-19).
+    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "a model's own function called at root is legal whatever it is named: create* draws no verdict",
     files: {
       "src/limits.model.ts": `
@@ -75,6 +76,7 @@ const ROOT_CALLS: readonly Row[] = [
     // canon: "a call that … goes into a local function of a file whose layer may
     // touch the tech — an adapter's, a blob's — where the reader cannot rule the
     // side effect out". Flag F1, closed 2026-09-20: the layer is the signal.
+    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "a local function called at root is legal in a model and red in an adapter: the adapter's layer may touch the tech",
     files: {
       "src/label.model.ts": `
@@ -92,6 +94,7 @@ const ROOT_CALLS: readonly Row[] = [
     // canon: "a call that reaches the tech". The body is read at the site, so the
     // tech call is a root call. Flag F6, closed 2026-09-20: one red, at the tech
     // call's own line, not a second on the local call.
+    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "a tracked local is read as the root's own body: a tech call inside it is red where the call sits",
     files: {
       "src/cli.driver.ts": `
@@ -108,6 +111,7 @@ const ROOT_CALLS: readonly Row[] = [
   },
   {
     // canon: "a call that reaches the tech".
+    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "a service calling into tech at root is red: a host global is the tech's, a language global is not",
     files: {
       "src/paths.service.ts": `
@@ -145,6 +149,7 @@ const ROOT_CALLS: readonly Row[] = [
     // canon: "Two shapes are exempt by kind: the boot's one call, and a spec
     // file's registration calls into the runner." Flag F3, ruled red 2026-09-20:
     // `main()` at a spec root is not a registration.
+    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "a spec file: registrations into the runner are legal, an instance and a let at root are red, a helper function is code",
     files: {
       "node_modules/vitest/package.json": JSON.stringify({
@@ -218,6 +223,7 @@ const READONLY_BINDINGS: readonly Row[] = [
     // canon: "proof being a primitive type, `as const`, a readonly array, record,
     // map or set, or `Object.freeze` over a literal, each proven to its depth".
     // The green half, form by form.
+    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "every form whose immutability the syntax proves is legal at a model's root",
     files: {
       "src/forms.model.ts": `
@@ -305,34 +311,96 @@ const READONLY_BINDINGS: readonly Row[] = [
 
 const ROOT_STATEMENTS: readonly Row[] = [
   {
-    // canon: "a root statement that is neither of those and still does
-    // something when the module is evaluated: an assignment, a `delete`, a
-    // `throw`, and their like". Landed 2026-09-21 on this row's account: the
-    // citation had nothing to point at, since canon enumerated two shapes and
-    // called the list closed. rixo ruled the set open — canon names the known
-    // shapes, the corpus pins what the rule means.
-    name: "a statement at root that is not a call or a definition is red: an assignment, a delete, a throw",
+    // canon: `blob-quarantine`, "Blob importing blob is fine: blob claims
+    // none." A rule judges what a file claims, so blob is exempt from every
+    // rule but the ones protecting another layer's claim. The side effect does
+    // leak to an importer, and quarantine is what bounds that — containment,
+    // not a second rule reaching in (rixo 2026-09-21: "having shit in your
+    // codebase is gonna stink somewhere; we're containing it as much as we
+    // can").
+    name: "blob is judged by nothing here: the same statements that are red in a model draw no verdict in an unplaced file",
     files: {
+      "src/legacy/wiring.ts": `
+        export const STATE: { n: number } = { n: 0 }
+        STATE.n = 1
+        delete STATE["gone"]
+        throw new Error("blob does what it wants")
+      `,
       "src/state.model.ts": `
-        export const STATE: { n: number; extra?: number } = { n: 0, extra: 1 }
-        STATE.n = 1 // red stateless-modules: a module's evaluation mutates nothing
-        delete STATE.extra // red stateless-modules
-        throw new Error("never at root") // red stateless-modules
+        export const COUNT: number = 0
+        COUNT_HOLDER.n = 1 // red stateless-modules: the same shape, in a file that claims something
       `,
     },
   },
   {
-    // canon: the same intent sentence for the throw, "a call that reaches the
-    // tech" for the log. A branch is no shelter: the arms are root code.
-    name: "a branch at root is read through for its arms: a tech call and a throw inside one are red on their own lines",
+    // canon: "a root statement that is neither of those and still does
+    // something when the module is evaluated: an assignment, a `delete`, and
+    // their like". Landed 2026-09-21 on this row's account: the citation had
+    // nothing to point at, since canon enumerated two shapes and called the
+    // list closed. rixo ruled the set open — canon names the known shapes, the
+    // corpus pins what the rule means.
+    name: "a statement at root that is not a call or a definition is red: an assignment, a delete",
+    files: {
+      "src/state.model.ts": `
+        export const STATE: Readonly<{ n: number; extra?: number }> = { n: 0, extra: 1 }
+        STATE.n = 1 // red stateless-modules: a module's evaluation mutates nothing
+        delete STATE.extra // red stateless-modules
+      `,
+    },
+  },
+  {
+    // canon: the same sentence, read the other way — a re-export does nothing
+    // when the module is evaluated: it binds no name here, and the edge it
+    // makes is the import graph's, judged by the import rules.
+    name: "a re-export at root does nothing on evaluation: a barrel draws no verdict",
+    files: {
+      "src/rates.model.ts": `
+        export const RATE: number = 1
+      `,
+      "src/all.model.ts": `
+        export * from "./rates.model.ts"
+      `,
+    },
+  },
+  {
+    // canon: "a call that reaches the tech". A branch is no shelter: the arms
+    // are root code.
+    name: "a branch at root is read through for its arms: a tech call inside one is red on its own line",
     files: {
       "src/guard.model.ts": `
-        export const ENABLED: boolean = true
-        if (process.env["MADE_UP_DEBUG"]) {
+        export const SOME_MADE_UP_DEBUG: boolean = false
+        if (SOME_MADE_UP_DEBUG) {
           console.log("debug") // red stateless-modules: a tech call at root, under a branch or not
         }
-        if (!ENABLED) throw new Error("disabled") // red stateless-modules: a throw at root, under a branch or not
-        export const isEnabled = () => ENABLED
+        export const isDebug = () => SOME_MADE_UP_DEBUG
+      `,
+    },
+  },
+  {
+    // canon: "A `throw` is not one: it creates no state and touches nothing
+    // outside, and a crash on import is the author's call to make." rixo
+    // 2026-09-21: guarding a crash the author wrote on purpose is nannying.
+    name: "a throw at root is the author's call: green under a branch or bare",
+    files: {
+      "src/guard.model.ts": `
+        export const SOME_MADE_UP_FLAG: boolean = true
+        if (!SOME_MADE_UP_FLAG) {
+          throw new Error("made up")
+        }
+        throw new Error("made up, unconditional")
+      `,
+    },
+  },
+  {
+    // canon: the same sentence. A loop is no shelter either: its body runs on
+    // import, once per turn.
+    name: "writing to a module-level object inside a loop at root is red on its own line",
+    files: {
+      "src/counts.model.ts": `
+        export const SOME_MADE_UP_COUNTS: Readonly<{ n: number }> = { n: 0 }
+        for (const key of ["a", "b"]) {
+          SOME_MADE_UP_COUNTS.n = key.length // red stateless-modules: a module's evaluation mutates nothing, in a loop or not
+        }
       `,
     },
   },

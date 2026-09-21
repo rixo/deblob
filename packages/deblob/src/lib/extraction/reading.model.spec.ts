@@ -396,7 +396,7 @@ describe("readModule", () => {
         "control:other:1",
         "control:other:1",
         "call:language",
-        "other",
+        "throw",
         "default:null:literal",
       ])
     })
@@ -425,7 +425,8 @@ describe("readModule", () => {
     test("tripwire: a node type the reader has never seen is walked for its calls, never a throw", async () => {
       const extraction = await engine.extract(fixture("root-forms.ts"))
       if (extraction === null) throw new Error("no extraction")
-      // wrap the first root call in a synthetic statement carrying a synthetic expression
+      // wrap the first root call in a synthetic statement carrying a synthetic
+      // expression — in a list, as a node's children can be
       const body = extraction.program.body as unknown as Record<
         string,
         unknown
@@ -441,13 +442,15 @@ describe("readModule", () => {
         type: "SomeMadeUpStatement",
         start: call["start"],
         end: call["end"],
-        inner: {
-          type: "SomeMadeUpExpression",
-          start: call["start"],
-          end: call["end"],
-          wrapped: call["expression"],
-          typed: { type: "TSMadeUpType", start: 0, end: 0 },
-        },
+        inner: [
+          {
+            type: "SomeMadeUpExpression",
+            start: call["start"],
+            end: call["end"],
+            wrapped: call["expression"],
+            typed: { type: "TSMadeUpType", start: 0, end: 0 },
+          },
+        ],
         block: { ...call },
       }
       body.splice(body.indexOf(call), 1, synthetic)
@@ -465,8 +468,9 @@ describe("readModule", () => {
       expect(index).toBeGreaterThan(-1)
       // the synthetic statement is listed as other, the expression inside it is
       // walked for its call, and the statement inside it is walked as one
-      expect(reading.root[index + 1]).toMatchObject({ kind: "call" })
-      expect(reading.root[index + 2]).toMatchObject({ kind: "call" })
+      const atCall = { kind: "call", call: { span: { start: call["start"] } } }
+      expect(reading.root[index + 1]).toMatchObject(atCall)
+      expect(reading.root[index + 2]).toMatchObject(atCall)
     })
   })
 

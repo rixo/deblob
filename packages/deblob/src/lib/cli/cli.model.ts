@@ -18,6 +18,7 @@ export const KNOWN_CHECKS = [
   "barrels",
   "ports",
   "surface",
+  "modules",
 ] as const
 
 export type CheckName = (typeof KNOWN_CHECKS)[number]
@@ -42,6 +43,7 @@ export const CHECK_RULES: Readonly<Record<CheckName, readonly RuleId[]>> = {
   barrels: ["layer-in-path"],
   ports: ["ports-types-only"],
   surface: ["layer-in-path", "chain-purity"],
+  modules: ["stateless-modules"],
 }
 
 export type CliAction =

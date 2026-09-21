@@ -13,6 +13,7 @@ import { join } from "node:path"
 import { checkBarrels } from "../../check/barrels.model.ts"
 import { checkDag } from "../../check/dag.model.ts"
 import { checkLayers } from "../../check/layers.model.ts"
+import { checkModules } from "../../check/modules.model.ts"
 import { checkPorts } from "../../check/ports.model.ts"
 import { checkPrivate } from "../../check/private.model.ts"
 import type { PackageSurface } from "../../check/surface.model.ts"
@@ -62,6 +63,7 @@ const DETECTORS: Record<
   private: (graph) => checkPrivate(graph),
   barrels: (graph) => checkBarrels(graph),
   ports: (graph) => checkPorts(graph),
+  modules: (graph) => checkModules(graph),
 }
 
 const runSurface = (

@@ -328,6 +328,12 @@ export type ReadStatement =
    * all. Never a call.
    */
   | { kind: "assignment"; target: ValueKind; span: Span }
+  /**
+   * A `throw`, apart from `other`: at a module's root it is the author's crash
+   * to write and changes nothing, where an unrecognised statement cannot be
+   * cleared. Its argument's calls are read like any other.
+   */
+  | { kind: "throw"; span: Span }
   | { kind: "other"; span: Span }
 
 export type ReadHook = {

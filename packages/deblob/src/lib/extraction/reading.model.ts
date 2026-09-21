@@ -1701,6 +1701,9 @@ export const readModule = ({
   const walkStatement = (statement: AstNode, exported = false): void => {
     switch (statement.type) {
       case "ImportDeclaration":
+      // a re-export is a module-graph statement, already an edge: it binds no
+      // name here and does nothing when the module is evaluated
+      case "ExportAllDeclaration":
       case "EmptyStatement":
       case "TSTypeAliasDeclaration":
       case "TSInterfaceDeclaration":
@@ -1769,8 +1772,12 @@ export const readModule = ({
             target: assignmentTargetKind(unwrap(inner["left"] as AstNode)),
             span: spanOf(statement),
           })
-        // an increment is a write too, with no target kind to carry
-        else if (inner.type === "UpdateExpression")
+        // an increment and a `delete` are writes too, with no target kind to
+        // carry — the one names no value, the other removes rather than sets
+        else if (
+          inner.type === "UpdateExpression" ||
+          (inner.type === "UnaryExpression" && inner["operator"] === "delete")
+        )
           emit({ kind: "other", span: spanOf(statement) })
         return
       }
@@ -1874,7 +1881,7 @@ export const readModule = ({
       }
       case "ThrowStatement":
         evaluate(statement["argument"] as AstNode, { kind: "computed" }, true)
-        emit({ kind: "other", span: spanOf(statement) })
+        emit({ kind: "throw", span: spanOf(statement) })
         return
       case "LabeledStatement":
         walkStatement(statement["body"] as AstNode)

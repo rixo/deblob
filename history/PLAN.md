@@ -217,3 +217,16 @@
   measured; → implementation guide §8 once the recipe exists.
 - **Flat `history/` at scale** — 250+ entries strain a flat dir; mechanical fix
   (year subdirs / index) when the pain lands.
+- **Mutation tool, manual, per file** (rixo, 2026-09-21; wait until the
+  `stateless-modules` rows are all green) — StrykerJS with its Vitest runner,
+  run by hand on the file under review (`--mutate <file>`), never across the
+  whole codebase. Why: the test rows only protect what they notice breaking, and
+  hand-picked breaks come from whoever wrote the code, so they share its blind
+  spots. A tool generates them mechanically. First manual run on
+  `packages/deblob/src/lib/check/modules.model.ts`: 9 hand-made breaks, 7
+  caught, both misses in reading inside a top-level `if`. Costs: Stryker refuses
+  to start when a test already fails, so it needs either a green suite or a way
+  to skip the rows that are red on purpose; and its survivors include mutants
+  that change nothing observable, which a human sorts by hand — cheap on a
+  60-line file, a long list on `reading.model.ts`. What it does not buy: it says
+  whether the rows notice breakage, not whether they ask the right questions.

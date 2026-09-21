@@ -486,9 +486,13 @@ stated in the reading, not a rule. Plain-TypeScript drivers carry the
 test globs, framework entry points by the framework's patterns. Web drivers are
 open, research in progress; the one thing claimed for them is the recognition
 rule: a component matching the declared driver globs may import an assembly, any
-other component doing so is a violation. A file of an unruled tech matching no
-driver glob is outside the graph until that tech is ruled — not blob: the suffix
-rule reads `.ts` files.
+other component doing so is a violation. What the codebase imports lands in the
+graph, whatever its extension: a file of an unruled tech, matching no driver
+glob and read by no reader, is blob until one is bound to it — the suffix rule
+reads `.ts` files, so nothing claims such a file, and unclaimed is what blob
+means. It is seen and counted like any other blob, since the honest report is
+that the tool cannot read it yet, not that it is absent. Matching a coverage
+glob is not itself enough to pull a file in; being imported is.
 
 The driver rules make thin the only legal shape:
 
@@ -979,15 +983,17 @@ needs tooling that knows service boundaries.
   of a file whose layer may touch the tech — an adapter's, a blob's — where the
   reader cannot rule the side effect out. And a root statement that is neither
   of those and still does something when the module is evaluated: an assignment,
-  a `delete`, a `throw`, and their like — whatever sits at root runs on import,
-  so a statement that only makes sense at run time is a side effect at load
-  time. Root calls are the lane the first two targets use to get around the
-  rule, not the crime: a factory call at root is not itself the violation, what
-  it binds is, when that binding is not provably immutable. Exemptions, by
-  contrast, are a closed list, since an open set of escapes is a hole: two
-  shapes are exempt by kind, the boot's one call and a spec file's registration
-  calls into the runner. Assembly and driver need no exception — each builds
-  inside its function.
+  a `delete`, and their like — whatever sits at root runs on import, so a
+  statement that only makes sense at run time is a side effect at load time. A
+  `throw` is not one: it creates no state and touches nothing outside, and a
+  crash on import is the author's call to make. What decides it — an environment
+  read, say — is judged where it sits, by its layer. Root calls are the lane the
+  first two targets use to get around the rule, not the crime: a factory call at
+  root is not itself the violation, what it binds is, when that binding is not
+  provably immutable. Exemptions, by contrast, are a closed list, since an open
+  set of escapes is a hole: two shapes are exempt by kind, the boot's one call
+  and a spec file's registration calls into the runner. Assembly and driver need
+  no exception — each builds inside its function.
 
 ---
 

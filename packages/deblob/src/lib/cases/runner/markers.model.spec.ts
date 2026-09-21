@@ -58,6 +58,34 @@ describe("reportedOf", () => {
     ])
   })
 
+  it("names a statement-level violation's line, so it matches its marker there and nowhere else", () => {
+    const violation = {
+      check: "modules",
+      rules: ["stateless-modules"],
+      file: "src/a.model.ts",
+      line: 4,
+    } as unknown as Violation
+    expect(reportedOf(violation)).toEqual([
+      { file: "src/a.model.ts", line: 4, slugs: ["stateless-modules"] },
+    ])
+    expect(
+      matchVerdicts(
+        [
+          {
+            file: "src/a.model.ts",
+            line: 3,
+            slug: "stateless-modules",
+            why: null,
+          },
+        ],
+        reportedOf(violation),
+      ),
+    ).toEqual({
+      missing: ["src/a.model.ts:3 stateless-modules"],
+      unexpected: ["src/a.model.ts:4 stateless-modules"],
+    })
+  })
+
   it("names every file closing a cycle: a service cycle's hops by importer, a module cycle's files", () => {
     const serviceCycle = {
       check: "dag",
