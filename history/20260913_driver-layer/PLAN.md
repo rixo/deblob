@@ -536,7 +536,15 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
   passed by the caller, not discoveries". Language globals (`Math.max`, `JSON`)
   stay legal; `Date.now` and `Math.random` are the language's by the lists and
   need a named exception — the ambient-access members of intrinsics. At root,
-  checkpoint 3's root-call rule already catches a tech call.
+  checkpoint 3's root-call rule already catches a tech call. **Ruled in part
+  2026-09-21:** the read half is its own rule, `ambient-access` (canon §
+  Summary), not a half of `service-purity` — that one judges imports, and the
+  fix differs. Its cases are in `lib/cases/layers.spec.ts`, red: a service and a
+  model reading `process.env`, `Date.now`, `Math.random`, at root and in
+  functions; `Math.min` / `Math.floor` green; an adapter green. Left open: the
+  detector (the body walk above), and the tech _callees_ this card also names —
+  `console.log`, `setTimeout` are I/O, not ambient reads, and no rule covers
+  them in a model or service body yet.
 - **The depth is ours; the reviewer judges verdicts** (rixo, 2026-09-17, from
   step 03 checkpoint 2's handback; a guiding principle to lift to the method
   docs when its home is ruled). The reader's depth is JavaScript's: a call hides

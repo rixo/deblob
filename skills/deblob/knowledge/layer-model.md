@@ -16,8 +16,9 @@ randomness, platform):
 - Depends on nothing outside the model layer — no ports, no concrete imports, no
   I/O. Model→model across services is legal (the constraint is layers, not
   packaging) — but mind the DAG: [acyclic](acyclic.md).
-- No ambient environment access — time, randomness, `globalThis` are inputs
-  passed by the caller, not discoveries.
+- No ambient environment access (`ambient-access`) — time, randomness,
+  `globalThis`, the environment are inputs passed by the caller, not
+  discoveries.
 - Modules are stateless (`stateless-modules`) — no module-level mutable state,
   exported or not (top-level `let`, unfrozen collections, anything a closure
   could capture at module scope); state lives inside factories, and instances

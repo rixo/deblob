@@ -26,6 +26,7 @@ export const RULE_IDS = [
   "layer-in-path",
   "chain-purity",
   "service-purity",
+  "ambient-access",
   "blob-quarantine",
   // composition rules
   "service-assembly-only",

@@ -35,6 +35,8 @@ export const RULE_CARDS: Readonly<Record<RuleId, readonly string[]>> = {
   "layer-in-path": [card("dependency-matrix")],
   "chain-purity": [card("dependency-matrix")],
   "service-purity": [card("dependency-matrix")],
+  // not an import rule: the model card carries the ambient-access bullet
+  "ambient-access": [card("layer-model")],
   "blob-quarantine": [card("dependency-matrix")],
   "service-assembly-only": [card("composition-rules")],
   "adapter-assembly-only": [card("composition-rules")],
