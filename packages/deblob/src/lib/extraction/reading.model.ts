@@ -824,9 +824,11 @@ export const readModule = ({
    * is a direct call in this file (rixo, 2026-09-17): the reader sees all of
    * it, so each is read at its sites as the site's own code and is no function
    * of the file. Keyed by the root binding, so a shadowing local is never taken
-   * for one. Filled once the root scope is declared.
+   * for one. Filled once the root scope is declared. Each carries the scope it
+   * was written in: what its body's free variables resolve against, wherever
+   * the body is read.
    */
-  const tracked = new Map<Binding, AstNode>()
+  const tracked = new Map<Binding, { fn: AstNode; scope: Scope }>()
   /** The tracked locals being read at a site: a call to one reads `local`. */
   const inlining = new Set<Binding>()
   /**
@@ -835,18 +837,28 @@ export const readModule = ({
    */
   const inlineMemo = new Map<AstNode, Resolved>()
 
-  const inScope = <T>(bindings: Binding[], run: () => T): T => {
+  /**
+   * A scope for the run, under the given parent. A body read where it was
+   * written takes the scope it sits in (`inScope`); a body read somewhere else
+   * takes the scope it was written in — an inlined body's free variables never
+   * resolve against the scope that adopts it, however deep the site sits.
+   */
+  const inScopeOf = <T>(
+    parent: Scope,
+    bindings: Binding[],
+    run: () => T,
+  ): T => {
     const outer = scope
-    scope = {
-      bindings: new Map(bindings.map((b) => [b.name, b])),
-      parent: outer,
-    }
+    scope = { bindings: new Map(bindings.map((b) => [b.name, b])), parent }
     try {
       return run()
     } finally {
       scope = outer
     }
   }
+
+  const inScope = <T>(bindings: Binding[], run: () => T): T =>
+    inScopeOf(scope, bindings, run)
 
   const inBody = (run: () => void): Body => {
     const outer = body
@@ -1085,14 +1097,20 @@ export const readModule = ({
    * return's value, `undefined` for none, computed for several. A call to a
    * tracked local from inside one being read (recursion, or two locals calling
    * each other) is not read again: it reads `local`.
+   *
+   * The arguments are the site's text and are evaluated in the site's scope;
+   * the body is the callee's and is read in the scope it was written in. A
+   * local or parameter at the site that shadows a name the body reads never
+   * captures it.
    */
   const inlineLocal = (
-    fn: AstNode,
+    local: { fn: AstNode; scope: Scope },
     binding: Binding,
     argNodes: readonly AstNode[],
     callee: CalleeKind,
     ctx: Ctx,
   ): Resolved => {
+    const { fn } = local
     const byPosition = (fn["params"] as AstNode[]).map((param) =>
       patternNames(param).map(({ name, path, node }) => ({
         target: newBinding(name, "parameter", node),
@@ -1199,7 +1217,7 @@ export const readModule = ({
     inlining.add(binding)
     try {
       let expression: Resolved | null = null
-      const inner = inScope(params, () =>
+      const inner = inScopeOf(local.scope, params, () =>
         withFrame(ctx, () => {
           const fnBody = fn["body"] as AstNode
           if (fnBody.type === "BlockStatement")
@@ -1319,9 +1337,9 @@ export const readModule = ({
     if (emitting && callee.kind === "local") {
       // a local callee is a binding of this scope by construction
       const binding = lookup(scope, callee.name) as Binding
-      const fn = tracked.get(binding)
-      if (fn !== undefined && !inlining.has(binding)) {
-        const value = inlineLocal(fn, binding, argNodes, callee, ctx)
+      const local = tracked.get(binding)
+      if (local !== undefined && !inlining.has(binding)) {
+        const value = inlineLocal(local, binding, argNodes, callee, ctx)
         inlineMemo.set(node, value)
         return value
       }
@@ -1955,7 +1973,11 @@ export const readModule = ({
     const count = references.get(name) as { direct: number; other: number }
     const binding = lookup(scope, name)
     if (count.other === 0 && count.direct > 0 && binding !== null)
-      tracked.set(binding, fn)
+      // the scope it is written in — always the root's, since this loop runs
+      // at top level over root statements only. Widening the candidates to
+      // nested functions means capturing each one's own declaring scope here,
+      // not this `scope`
+      tracked.set(binding, { fn, scope })
   }
   const isTrackedName = (name: string): boolean => {
     const binding = lookup(scope, name)

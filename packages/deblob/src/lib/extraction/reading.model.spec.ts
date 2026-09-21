@@ -969,6 +969,165 @@ describe("readModule", () => {
     })
   })
 
+  describe("tracked locals — an inlined body reads the scope it was written in", () => {
+    const reading = read("tracked-local-scope.ts")
+    /**
+     * The callee the reader reports, flattened to one line — its `kind` and the
+     * fields that identify the target. No interpretation: `local` says a local
+     * function binding, not which one or whose scope it is in.
+     */
+    const reaches = (callee: CalleeKind): string =>
+      callee.kind === "factory"
+        ? `factory ${callee.path}`
+        : callee.kind === "tech"
+          ? `tech ${callee.package ?? "host"}`
+          : callee.kind === "local"
+            ? `local ${callee.name}`
+            : callee.kind === "use-case"
+              ? `use-case ${callee.member} of ${callee.origin?.name ?? "(no origin)"}`
+              : callee.kind
+    const bodyOf = (name: string): readonly ReadStatement[] => {
+      const fn = reading.functions.find((read) => read.name === name)
+      if (!fn) throw new Error(`${name} not read`)
+      return fn.body
+    }
+    const readsIn = (name: string): string[] =>
+      callsOf(bodyOf(name)).map((call) => reaches(call.callee))
+    /** Every statement of the body, the arms of its branches included. */
+    const deep = (
+      statements: readonly ReadStatement[],
+    ): readonly ReadStatement[] =>
+      statements.flatMap((statement) =>
+        statement.kind === "control"
+          ? [statement, ...deep(statement.arms.flat())]
+          : [statement],
+      )
+    /** What each branch tests, and where that value came from. */
+    const branchesIn = (name: string): string[] =>
+      controls(deep(bodyOf(name))).map(
+        (branch) => `${branch.test} / ${branch.testOrigin}`,
+      )
+    /** The value kind of what each assignment writes to. */
+    const writesIn = (name: string): string[] =>
+      deep(bodyOf(name)).flatMap((statement) =>
+        statement.kind === "assignment" ? [statement.target] : [],
+      )
+
+    const SITES = [
+      "plainSite",
+      "shadowedByLocals",
+      "shadowedByParams",
+      "shadowedDeep",
+    ]
+
+    test('`helper` is no function of the file: it is read at its sites, so only the four sites are functions — `readsIn("helper")` has nothing to find', () => {
+      expect(reading.functions.map((fn) => fn.name)).toEqual([
+        "plainSite",
+        "shadowedByLocals",
+        "shadowedByParams",
+        "shadowedDeep",
+      ])
+      expect(() => readsIn("helper")).toThrow()
+    })
+
+    /**
+     * What `helper`'s own lines read as, wherever it is inlined. They land in a
+     * site's call list in place of the `helper()` call, which is why each
+     * expectation below carries more entries than the site has written calls.
+     *
+     * Established by the control site, which rebinds nothing — so these are
+     * helper's reading of its own text, not an artefact of a shadowing site,
+     * and every shadowed site is compared against a known value.
+     */
+    const HELPERS_LINES = [
+      "factory src/thing.service.ts", // createThing()
+      "tech some-tech", // work()
+      "tech host", // process.exit()
+      "tech host", // siteOnly(): helper's scope binds it nowhere
+      "factory src/thing.service.ts", // const thing = createThing()
+      "use-case run of createThing", // thing.run()
+      "use-case run of createThing", // if (mode) thing.run()
+    ]
+
+    test("the control: at a site that rebinds nothing, helper's lines are all there is to read", () => {
+      expect(readsIn("plainSite")).toEqual(HELPERS_LINES)
+    })
+
+    test("a use case's origin is the instance built in the body, never a binding of the same name at the site", () => {
+      // the site's `thing` is an object literal and carries no origin, so an
+      // origin read at the site would be `(no origin)`, not this factory
+      expect(
+        SITES.map((site) => readsIn(site).filter((r) => r.includes("of"))),
+      ).toEqual(
+        SITES.map(() => [
+          "use-case run of createThing",
+          "use-case run of createThing",
+        ]),
+      )
+    })
+
+    test("a branch tests the module's value, not the literal the site binds to that name", () => {
+      // `mode` is `process.env.MODE` where helper is written and a plain `0`
+      // at every site: reading the site's would give `literal / other`
+      expect(SITES.map(branchesIn)).toEqual([
+        ["tech / other"],
+        ["tech / other"],
+        ["tech / other"],
+        // `shadowedDeep` branches on its own `createThing` first — its local
+        // function, read in its own scope — then helper's branch inside it
+        ["function / other", "tech / other"],
+      ])
+    })
+
+    test("an assignment writes to the module's reassignable binding, not to the literal the site binds to that name", () => {
+      // `tally` is a root `let` where helper is written, a `const` string at
+      // every site: reading the site's would give `literal`
+      expect(SITES.map(writesIn)).toEqual(SITES.map(() => ["computed"]))
+    })
+
+    test("the same four names read as the import, the package and the host inside the inlined body, and as the site's own bindings on the site's own lines", () => {
+      expect(readsIn("shadowedByLocals")).toEqual([
+        // helper()        — the call itself is gone, its body read here
+        ...HELPERS_LINES,
+        // createThing()   — the site's `const`, not the import
+        "local createThing",
+        // work()          — the site's `const`, not some-tech
+        "local work",
+        // process.exit()  — a member on a local object, no tech value
+        "language",
+        // siteOnly()      — the site's `const`, in reach here and nowhere else
+        "local siteOnly",
+      ])
+    })
+
+    test("parameters rebind exactly as locals do: the body is unmoved, the site's own lines read the parameters", () => {
+      expect(readsIn("shadowedByParams")).toEqual([
+        // helper()
+        ...HELPERS_LINES,
+        // the site's own four lines: unbound parameters, so open — and in no
+        // case the import, the package or the host that helper's lines read
+        "unknown",
+        "unknown",
+        "unknown",
+        "unknown",
+      ])
+    })
+
+    test("the site's depth does not matter: rebindings spread over a function, a block and a callback capture nothing", () => {
+      expect(readsIn("shadowedDeep")).toEqual([
+        // helper(), from inside the innermost callback
+        ...HELPERS_LINES,
+        // the site's own four lines, reading the three nested rebindings
+        "local createThing",
+        "local work",
+        "language",
+        "local siteOnly",
+        // `[1].forEach(…)` itself, emitted after the callback it was handed
+        "language",
+      ])
+    })
+  })
+
   describe("readonly, the syntactic fact on root definitions", () => {
     const reading = read("readonly-forms.ts", { layer: "model", tech: null })
     const byName = new Map(
