@@ -215,6 +215,13 @@ export type ModulesViolation = {
   serviceRoot: string | null
   /** 1-indexed line of the offending statement. */
   line: number
+  /**
+   * The root statements that make this line run on import when it does not sit
+   * at root itself — a helper's body is red at its own line, and each root call
+   * reaching it is a trigger, in this file or another. Empty when the line is
+   * its own trigger.
+   */
+  via: readonly { file: string; line: number }[]
 } & {
   /**
    * A root statement that is neither a call nor a definition and still does

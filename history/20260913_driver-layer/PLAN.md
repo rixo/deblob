@@ -536,6 +536,21 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
   rather than a canon one: something has to declare "these files are roots of
   the graph even though nothing imports them", and the framework is what knows.
   Not solved today; canon states the imported half only.
+- **The strict marker grammar** (ruled 2026-09-18, parked 2026-09-21 by rixo:
+  the corpus is under review and the migration rewrites every marker in it).
+  `// red: <slug>[, <slug>]* [-- <why>]`, and the trigger form `// via:` the
+  same. A line that looks like a marker (`//\s*red\b`, case-insensitive) and
+  fails the grammar is a loud error naming file and line — today a malformed
+  marker parses as nothing and the row passes green. Repeated markers on one
+  line count, one violation each; no `(n)` count (dropped 2026-09-21: repetition
+  counts and carries a why per violation, which `(n)` cannot). Alone on its
+  line, a marker claims the next code line; alone at end of file, the file — the
+  form for violations that carry no line (the edge-level ones, whose markers
+  today match by slug alone and so are all ambiguous claims). A marker after a
+  comment (`// note // red: x`) is a loud error. Strict both ways: a violation
+  with a line on a file claim, or one without on a line claim, is both missing
+  and unexpected. Why (rixo): not counting assertions is a safe haven for
+  unintended changes; easier reviewing never buys a weaker test.
 - **Effect-free tech calls, declared by the tech's reading** (rixo, 2026-09-21).
   Canon: "a call is presumed to have side effects until the tech's reading
   declares that call effect-free". Today no reading declares any, so

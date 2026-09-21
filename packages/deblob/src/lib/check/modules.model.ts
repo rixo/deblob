@@ -67,6 +67,7 @@ const judgeModule = (node: ModuleNode): ModulesViolation[] => {
       file: node.path,
       serviceRoot: node.serviceRoot,
       line: statement.span.line,
+      via: [],
       shape: "root-statement" as const,
     }))
 }

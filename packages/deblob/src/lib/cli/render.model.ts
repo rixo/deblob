@@ -203,8 +203,15 @@ const messageOf = (violation: FileViolation, prefix: string): string => {
       return portsMessage(violation, prefix)
     case "surface":
       return surfaceMessage(violation, prefix)
-    case "modules":
-      return `line ${violation.line} runs on import — a module's evaluation performs no side effect; move it inside a factory or a function`
+    case "modules": {
+      // the trigger in full path:line, whatever file it sits in: the reader
+      // jumps to it, and it is where the load-time path enters
+      const via =
+        violation.via.length === 0
+          ? ""
+          : `, reached from ${violation.via.map((site) => `${prefix}${site.file}:${site.line}`).join(", ")}`
+      return `line ${violation.line} runs on import${via} — a module's evaluation performs no side effect; move it inside a factory or a function`
+    }
   }
 }
 

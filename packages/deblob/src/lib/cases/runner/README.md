@@ -15,11 +15,14 @@ both builds and fires.
 - `markers.model.ts` — the marker grammar and the match. `// red <slug>` at a
   line's end, several slugs comma-separated, an optional `: why` for the reader
   (never compared; the message is the renderer's, proven in the CLI golden). An
-  unknown slug is loud. `matchVerdicts` runs both directions and lists each,
-  `file:line slug`, sorted; a violation without a line (today's edge-level ones)
-  matches its file's markers by slug, consuming one; `reportedOf` names every
-  file that closes a cycle. `stripMarkers` is the grammar's inverse, for a
-  corpus author who wants the same tree claiming green.
+  unknown slug is loud. `// via <slug>`, same form, marks a line that triggers a
+  red elsewhere — a root call running a helper whose body is red at its own line
+  — and matches an entry of the violation's `via` list. `matchVerdicts` runs
+  both directions and lists each, `file:line slug` or `file:line via slug`,
+  sorted; a violation without a line (today's edge-level ones) matches its
+  file's markers by slug, consuming one; `reportedOf` names every file that
+  closes a cycle. `stripMarkers` is the grammar's inverse, for a corpus author
+  who wants the same tree claiming green.
 - `cases.assembly.ts` — `assembleCase(files)` → `{ judge, check }`: the memory
   adapters built from the tree, the real chain wired over them, the runner over
   it. Returns the check port too, for a spec that wants the violations.

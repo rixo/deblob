@@ -6,6 +6,13 @@
  * lists what was marked and not reported, and what was reported and not marked.
  * A violation without a line (today's edge-level ones) matches its file's
  * markers by slug alone, consuming one; the outside rules carry lines.
+ *
+ * A red can be triggered from elsewhere: a helper's tech call is red at its own
+ * line, but it runs on import because a root statement calls the helper. Each
+ * such trigger line carries `// via <slug>`, same form, and matches an entry of
+ * a reported violation's `via` list. A `via` marker names the slug, not the red
+ * it triggers: two reds of one slug in one file, each with its own triggers,
+ * cannot be told apart by the markers.
  */
 
 import type { RuleId } from "../../check/rule.model.ts"
@@ -27,6 +34,8 @@ export type Case = {
 export type Row = Case & { name: string }
 
 export type Marker = {
+  /** `red`: this line is the violation; `via`: this line triggers one. */
+  kind: "red" | "via"
   file: string
   line: number
   slug: RuleId
@@ -34,17 +43,25 @@ export type Marker = {
   why: string | null
 }
 
+/** A place in the tree: a trigger of a red, in any file. */
+export type Site = { file: string; line: number }
+
 /** What a check reported, reduced to what a marker can claim. */
 export type Reported = {
   file: string
   line: number | null
   slugs: readonly RuleId[]
+  /** The lines that trigger this red from elsewhere; empty when none. */
+  via: readonly Site[]
 }
 
 export type VerdictMatch = {
-  /** Marked, not reported: `file:line slug`. */
+  /** Marked, not reported: `file:line slug`, or `file:line via slug`. */
   missing: string[]
-  /** Reported, not marked: `file:line slug`, or `file slug` without a line. */
+  /**
+   * Reported, not marked: `file:line slug`, `file slug` without a line, or
+   * `file:line via slug`.
+   */
   unexpected: string[]
 }
 
@@ -52,7 +69,7 @@ export type VerdictMatch = {
 export const AS_MARKED: VerdictMatch = { missing: [], unexpected: [] }
 
 const MARKER =
-  /\/\/\s*red\s+([A-Za-z0-9-]+(?:\s*,\s*[A-Za-z0-9-]+)*)(?::\s*(.*?))?\s*$/
+  /\/\/\s*(red|via)\s+([A-Za-z0-9-]+(?:\s*,\s*[A-Za-z0-9-]+)*)(?::\s*(.*?))?\s*$/
 
 const isRuleId = (value: string): value is RuleId =>
   (RULE_IDS as readonly string[]).includes(value)
@@ -62,15 +79,16 @@ export const markersOf = (file: string, source: string): Marker[] =>
   source.split("\n").flatMap((text, index) => {
     const match = MARKER.exec(text)
     if (match === null) return []
-    const why = match[2] === undefined ? null : match[2]
-    return (match[1] as string).split(",").map((raw) => {
+    const kind = match[1] as Marker["kind"]
+    const why = match[3] === undefined ? null : match[3]
+    return (match[2] as string).split(",").map((raw) => {
       const slug = raw.trim()
       if (!isRuleId(slug)) {
         throw new Error(
           `${file}:${index + 1}: marker names no rule: ${slug} (rules: ${RULE_IDS.join(", ")})`,
         )
       }
-      return { file, line: index + 1, slug, why }
+      return { kind, file, line: index + 1, slug, why }
     })
   })
 
@@ -95,11 +113,15 @@ export const reportedOf = (violation: Violation): Reported[] => {
   // the outside rules judge statements, so they name a line and match on it;
   // the edge-level checks have none and match by slug within the file
   const line = "line" in violation ? violation.line : null
-  return files.map((file) => ({ file, line, slugs: violation.rules }))
+  const via = "via" in violation ? violation.via : []
+  return files.map((file) => ({ file, line, slugs: violation.rules, via }))
 }
 
 const key = (file: string, line: number | null, slug: string): string =>
   line === null ? `${file} ${slug}` : `${file}:${line} ${slug}`
+
+const viaKey = (site: Site, slug: string): string =>
+  `${site.file}:${site.line} via ${slug}`
 
 /** Every marker against every report, both directions, sorted for the diff. */
 export const matchVerdicts = (
@@ -108,13 +130,23 @@ export const matchVerdicts = (
 ): VerdictMatch => {
   const open = new Map<string, Marker>(
     markers.map((marker) => [
-      key(marker.file, marker.line, marker.slug),
+      marker.kind === "via"
+        ? viaKey(marker, marker.slug)
+        : key(marker.file, marker.line, marker.slug),
       marker,
     ]),
   )
   const unexpected: string[] = []
+  // a trigger shared by two reds of one slug is one marker: judged once
+  const triggers = new Set<string>()
   for (const report of reported) {
     for (const slug of report.slugs) {
+      for (const site of report.via) {
+        const trigger = viaKey(site, slug)
+        if (triggers.has(trigger)) continue
+        triggers.add(trigger)
+        if (!open.delete(trigger)) unexpected.push(trigger)
+      }
       if (report.line !== null) {
         const exact = key(report.file, report.line, slug)
         if (open.delete(exact)) continue

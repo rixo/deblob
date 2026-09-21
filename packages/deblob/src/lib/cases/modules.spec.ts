@@ -40,7 +40,6 @@ const ROOT_CALLS: readonly Row[] = [
     // canon: "Root calls are the lane both targets use to get around the rule,
     // not the crime: a factory call at root is not itself the violation, what it
     // binds is, when that binding is not provably immutable."
-    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "a factory called at a model's root is not itself a violation: the call is legal, the binding is what must be proven",
     files: {
       "src/rates.model.ts": `
@@ -58,7 +57,6 @@ const ROOT_CALLS: readonly Row[] = [
   {
     // canon: the same sentence, read the other way — the green half. No clause
     // makes a callee's name a signal (ruled 2026-09-19).
-    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "a model's own function called at root is legal whatever it is named: create* draws no verdict",
     files: {
       "src/limits.model.ts": `
@@ -76,7 +74,6 @@ const ROOT_CALLS: readonly Row[] = [
     // canon: "a call that … goes into a local function of a file whose layer may
     // touch the tech — an adapter's, a blob's — where the reader cannot rule the
     // side effect out". Flag F1, closed 2026-09-20: the layer is the signal.
-    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "a local function called at root is legal in a model and red in an adapter: the adapter's layer may touch the tech",
     files: {
       "src/label.model.ts": `
@@ -94,7 +91,6 @@ const ROOT_CALLS: readonly Row[] = [
     // canon: "a call that reaches the tech". The body is read at the site, so the
     // tech call is a root call. Flag F6, closed 2026-09-20: one red, at the tech
     // call's own line, not a second on the local call.
-    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "a tracked local is read as the root's own body: a tech call inside it is red where the call sits",
     files: {
       "src/cli.driver.ts": `
@@ -102,7 +98,7 @@ const ROOT_CALLS: readonly Row[] = [
           const home = process.cwd() // red inert-modules: the helper's body is the root's, so its tech call is a root call
           return home.length
         }
-        export const HOME_LENGTH: number = readHome()
+        export const HOME_LENGTH: number = readHome() // via inert-modules: the root call that runs readHome's body on import
         export const main = () => {
           process.on("ready", () => readHome())
         }
@@ -139,10 +135,9 @@ const ROOT_CALLS: readonly Row[] = [
     },
   },
   {
-    // canon: the binding half, plus "a call that … runs a use case".
-    // UNSTAMPED — flag F5 is open: whether the assembly call is itself
-    // tech-reaching, which would put two reds of one slug on one line, a shape
-    // the marker grammar cannot write. One red assumed, on the binding.
+    // canon: the binding half, plus "a call that … runs a use case". One red,
+    // on the binding: an assembly call counted as tech-reaching too would put
+    // two reds of one slug on one line, a shape the marker grammar cannot write.
     name: "a driver building its assembly at root is red on the binding and on the use case it calls next",
     files: {
       "src/app.service.ts": `
@@ -166,7 +161,6 @@ const ROOT_CALLS: readonly Row[] = [
     // canon: "Two shapes are exempt by kind: the boot's one call, and a spec
     // file's registration calls into the runner." Flag F3, ruled red 2026-09-20:
     // `main()` at a spec root is not a registration.
-    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "a spec file: registrations into the runner are legal, an instance and a let at root are red, a helper function is code",
     files: {
       "node_modules/vitest/package.json": JSON.stringify({
@@ -208,8 +202,6 @@ const ROOT_CALLS: readonly Row[] = [
   {
     // canon: "the boot's one call" exempt, and "Assembly and driver need no
     // exception — each builds inside its function."
-    // UNSTAMPED — flag F4: the assembly half is red by implication of that
-    // sentence, never ruled outright.
     name: "the boot's one call is exempt by kind; an assembly gets no exception, it builds inside its function",
     files: {
       "src/app.service.ts": `
@@ -240,7 +232,6 @@ const READONLY_BINDINGS: readonly Row[] = [
     // canon: "proof being a primitive type, `as const`, a readonly array, record,
     // map or set, or `Object.freeze` over a literal, each proven to its depth".
     // The green half, form by form.
-    // UNSTAMPED — cites a ruling, the row itself never reviewed.
     name: "every form whose immutability the syntax proves is legal at a model's root",
     files: {
       "src/forms.model.ts": `
@@ -454,24 +445,22 @@ const INLINED_SCOPE: readonly Row[] = [
   {
     // canon: "a call that reaches the tech", through the inlining ruling
     // (PLAN, 2026-09-20): the body is judged where the substitution puts it.
-    // UNSTAMPED — written 2026-09-20 by the agent, never reviewed.
     name: "a tracked local reaching the host is red at its own line when it is inlined into a root callback",
     files: {
       "src/paths.model.ts": `
         const readHome = () => process.cwd() // red inert-modules: the host's tech at import time, at the line the inlined body puts it
-        export const HOMES: readonly string[] = ["a"].map(() => readHome())
+        export const HOMES: readonly string[] = ["a"].map(() => readHome()) // via inert-modules: the root callback that runs readHome's body on import
       `,
     },
   },
   {
     // canon: as above. The falsification of the scope half of the inlining
     // ruling: leak the site's scope into the body and this row reports nothing.
-    // UNSTAMPED — written 2026-09-20 by the agent, never reviewed.
     name: "the same local, at a site whose callback parameter rebinds the very name it reads: the red is unmoved",
     files: {
       "src/paths.model.ts": `
         const readHome = () => process.cwd() // red inert-modules: the callback's own \`process\` is not the one readHome reads
-        export const HOMES: readonly string[] = ["a"].map((process) => readHome())
+        export const HOMES: readonly string[] = ["a"].map((process) => readHome()) // via inert-modules: the root callback that runs readHome's body on import
       `,
     },
   },

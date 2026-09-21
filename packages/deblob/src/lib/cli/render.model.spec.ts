@@ -517,12 +517,32 @@ describe("renderCheckResults", () => {
         file: "src/billing/refund.model.ts",
         serviceRoot: "src/billing",
         line: 7,
+        via: [],
         shape: "root-statement",
       })
       expect(output).toContain(
         "line 7 runs on import — a module's evaluation performs no side effect; move it inside a factory or a function",
       )
       expect(output).toContain("(inert-modules)")
+    })
+
+    test("a red triggered from elsewhere names every trigger as a full path:line, in its own file or another", () => {
+      const output = message({
+        check: "modules",
+        ruleset: "arch",
+        rules: ["inert-modules"],
+        file: "src/billing/refund.model.ts",
+        serviceRoot: "src/billing",
+        line: 7,
+        via: [
+          { file: "src/billing/refund.model.ts", line: 12 },
+          { file: "src/billing/ledger.model.ts", line: 3 },
+        ],
+        shape: "root-statement",
+      })
+      expect(output).toContain(
+        "line 7 runs on import, reached from src/billing/refund.model.ts:12, src/billing/ledger.model.ts:3 — a module's evaluation",
+      )
     })
 
     test("ports shapes: export, contains, runtime edges both directions", () => {
