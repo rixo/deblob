@@ -44,10 +44,11 @@ const ROWS: readonly Row[] = [
     name: "reading the environment in a service is ambient-access wherever it sits: at root, in a condition, in a function",
     files: {
       "src/server.service.ts": `
-        export const SOME_MADE_UP_PORT: string = process.env["SOME_MADE_UP_PORT"] ?? "3000" // red: ambient-access, stable-root -- discovered, not handed in — and captured at load time
-        if (!process.env["SOME_MADE_UP_KEY"]) throw new Error("made up") // red: ambient-access -- the read, not the throw
+        // missed red: ambient-access -- discovered, not handed in; ambient-access is not built yet
+        export const SOME_MADE_UP_PORT: string = process.env["SOME_MADE_UP_PORT"] ?? "3000" // red: stable-root -- captured at load time
+        if (!process.env["SOME_MADE_UP_KEY"]) throw new Error("made up") // missed red: ambient-access -- the read, not the throw; ambient-access is not built yet
         export const createServer = () => ({
-          host: () => process.env["SOME_MADE_UP_HOST"], // red: ambient-access
+          host: () => process.env["SOME_MADE_UP_HOST"], // missed red: ambient-access -- ambient-access is not built yet
         })
       `,
     },
@@ -60,9 +61,10 @@ const ROWS: readonly Row[] = [
     name: "reading the environment, the time or randomness in a model is ambient-access; a pure language global is not",
     files: {
       "src/mode.model.ts": `
-        export const SOME_MADE_UP_MODE: string = process.env["SOME_MADE_UP_MODE"] ?? "dev" // red: ambient-access, stable-root -- an input, and captured at load time
-        export const stamp = () => Date.now() // red: ambient-access -- time is an input
-        export const pick = (xs: readonly number[]) => xs[Math.floor(Math.random() * xs.length)] // red: ambient-access -- randomness is an input
+        // missed red: ambient-access -- an input; ambient-access is not built yet
+        export const SOME_MADE_UP_MODE: string = process.env["SOME_MADE_UP_MODE"] ?? "dev" // red: stable-root -- captured at load time
+        export const stamp = () => Date.now() // missed red: ambient-access -- time is an input; ambient-access is not built yet
+        export const pick = (xs: readonly number[]) => xs[Math.floor(Math.random() * xs.length)] // missed red: ambient-access -- randomness is an input; ambient-access is not built yet
         export const clamp = (n: number) => Math.min(n, 10)
       `,
     },
@@ -88,6 +90,8 @@ const ROWS: readonly Row[] = [
 describe("layers", () => {
   test.each(ROWS)("$name", async (row) => {
     const { judge } = assembleCase(row.files)
-    expect(await judge(row)).toEqual(AS_MARKED)
+    const { expectedFailures, ...match } = await judge(row)
+    if (expectedFailures.length > 0) console.info(expectedFailures.join("\n"))
+    expect(match).toEqual(AS_MARKED)
   })
 })

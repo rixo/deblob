@@ -1,15 +1,16 @@
 /**
  * The runner: judges a case — collects its markers, runs the chain through the
  * check port, matches. The verdict of a row is the match; whether the code is
- * red is what the markers say.
+ * red is what the markers say; where the reader is known wrong, the failure is
+ * expected.
  */
 
-import type { Case, VerdictMatch } from "./markers.model.ts"
+import type { Case, Verdict } from "./markers.model.ts"
 import { markersOf, matchVerdicts, reportedOf } from "./markers.model.ts"
 import type { Check } from "./ports/check.port.ts"
 
 export const createRunner = ({ check }: { check: Check }) => {
-  const judge = async (row: Case): Promise<VerdictMatch> => {
+  const judge = async (row: Case): Promise<Verdict> => {
     const markers = Object.entries(row.files).flatMap(([path, source]) =>
       markersOf(path, source),
     )

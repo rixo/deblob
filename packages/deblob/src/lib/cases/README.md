@@ -10,14 +10,24 @@ One spec per check, named after it — `layers.spec.ts`, `dag.spec.ts`, the
 outside checks as they land — the root `describe` the check's name, rows nested
 by the canon statement they prove. A row is a `Row`: the sentence the reviewer
 reads, the tree, the config and the checks it runs. The whole spec is the table
-and two lines:
+and four lines:
 
 ```ts
 test.each(ROWS)("$name", async (row) => {
   const { judge } = assembleCase(row.files)
-  expect(await judge(row)).toEqual(AS_MARKED)
+  const { expectedFailures, ...match } = await judge(row)
+  if (expectedFailures.length > 0) console.info(expectedFailures.join("\n"))
+  expect(match).toEqual(AS_MARKED)
 })
 ```
+
+A row states the right verdict. Where the reader cannot deliver it yet, the line
+marks an expected failure — `// false red:` or `// missed red:`, with what it
+waits for — and never carries the wrong verdict instead. Expected failures print
+under the row's name and fail nothing; one that passes fails the row until its
+marker goes. The suite is green on known failures, so a red run means something
+changed. (Vitest hides a passing test's console output when it detects an agent
+environment; a terminal shows it.)
 
 The test builds its instance and fires it, the way a test is the one kind that
 both builds and fires; the test runner is named nowhere else. A row's tree lives

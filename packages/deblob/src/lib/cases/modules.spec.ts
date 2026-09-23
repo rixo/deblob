@@ -30,7 +30,9 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * wrote the detector. Rows are stamped while red, before the detector exists,
  * since watching a case pass makes it very hard to judge on its own merits. The
  * stamp is on the verdict — is this what deblob should say — never on the
- * implementation.
+ * implementation. Where the reader gets a stamped verdict wrong, the line marks
+ * an expected failure with `false red` or `missed red`; a reader limit is never
+ * written as its wrong verdict.
  *
  * An unmarked row is stamped: its verdict has been read and accepted.
  */
@@ -82,7 +84,7 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/clock/adapters/system-clock.adapter.ts": `
         export const nameOf = (name: string) => "clock:" + name
-        export const NAME: string = nameOf("system") // red: stable-root -- a local of an adapter, whose layer may touch the tech — the side effect cannot be ruled out
+        export const NAME: string = nameOf("system") // missed red: stable-root -- a local of an adapter, whose layer may touch the tech — the side effect cannot be ruled out; the call shape is not built yet
         export const createSystemClock = () => ({ now: () => Date.now() })
       `,
     },
@@ -95,10 +97,10 @@ const ROOT_CALLS: readonly Row[] = [
     files: {
       "src/cli.driver.ts": `
         const readHome = () => {
-          const home = process.cwd() // red: stable-root -- the helper's body is the root's, so its tech call is a root call
+          const home = process.cwd() // missed red: stable-root -- the helper's body is the root's, so its tech call is a root call; the call shape is not built yet
           return home.length
         }
-        export const HOME_LENGTH: number = readHome() // via: stable-root -- the root call that runs readHome's body on import
+        export const HOME_LENGTH: number = readHome() // missed via: stable-root -- the root call that runs readHome's body on import; the call shape is not built yet
         export const main = () => {
           process.on("ready", () => readHome())
         }
@@ -111,7 +113,7 @@ const ROOT_CALLS: readonly Row[] = [
     name: "a service calling into tech at root is red: a host global is the tech's, a language global is not",
     files: {
       "src/paths.service.ts": `
-        export const HOME: string = process.cwd() // red: stable-root, ambient-access -- tech reached at import time, and the environment discovered
+        export const HOME: string = process.cwd() // missed red: stable-root, ambient-access -- tech reached at import time, and the environment discovered; the call shape and ambient-access are not built yet
         export const ONE_LABEL: string = String(1)
         export const createPaths = () => ({ home: HOME })
       `,
@@ -127,7 +129,7 @@ const ROOT_CALLS: readonly Row[] = [
         if (process.env["SOME_MADE_UP_DEBUG"]) {
           throw new Error("made up")
         }
-        if (process.cwd() === "/") { // red: stable-root -- a call, presumed to have side effects
+        if (process.cwd() === "/") { // missed red: stable-root -- a call, presumed to have side effects; the call shape is not built yet
           throw new Error("made up")
         }
         export const createEnvServer = () => ({ port: 3000 })
@@ -150,7 +152,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/cli.driver.ts": `
         import { createCliAssembly } from "./cli.assembly.ts"
         const services = createCliAssembly() // red: stable-root -- a call result is not provably immutable
-        services.app.run() // red: stable-root -- a use case runs at import time
+        services.app.run() // missed red: stable-root -- a use case runs at import time; the call shape is not built yet
         export const main = () => {
           process.on("ready", () => services.app.run())
         }
@@ -189,7 +191,7 @@ const ROOT_CALLS: readonly Row[] = [
         const app = createApp() // red: stable-root -- a call result is not provably immutable, and every test shares it
         let calls = 0 // red: stable-root -- mutable state at spec root
         const twice = (n: number) => n * 2
-        main() // red: stable-root -- the driver's wiring runs at import time — the exemption is registrations into the runner, not any call
+        main() // missed red: stable-root -- the driver's wiring runs at import time — the exemption is registrations into the runner, not any call; the call shape is not built yet
         describe("app", () => {
           it("runs", () => {
             calls += 1
@@ -376,7 +378,7 @@ const READONLY_BINDINGS: readonly Row[] = [
         if (Math.random() > 2) throw new Error("made up")
         export const LONGEST: number = Math.max(1, 2)
         export const CWDS: readonly string[] = ["a"].map(() =>
-          process.cwd(), // red: stable-root -- a call, red where it sits; the binding above stores its result and adds no red
+          process.cwd(), // missed red: stable-root -- a call, red where it sits; the binding above stores its result and adds no red; the call shape is not built yet
         )
         export const createMachineReads = () => ({ names: NAMES })
       `,
@@ -397,7 +399,7 @@ const READONLY_BINDINGS: readonly Row[] = [
         export let counter = 0
         export const CACHE = new Map<string, number>()
         export const SOME_MADE_UP_PORT: string = process.env["SOME_MADE_UP_PORT"] ?? "3000"
-        export const HOME: string = process.cwd() // red: stable-root -- a call is presumed to have side effects — the setting is about state
+        export const HOME: string = process.cwd() // missed red: stable-root -- a call is presumed to have side effects — the setting is about state; the call shape is not built yet
         export const createMemoryCache = () => ({ hit: () => counter++ })
       `,
     },
@@ -466,7 +468,7 @@ const ROOT_STATEMENTS: readonly Row[] = [
       "src/guard.model.ts": `
         export const SOME_MADE_UP_DEBUG: boolean = false
         if (SOME_MADE_UP_DEBUG) {
-          console.log("debug") // red: stable-root -- a tech call at root, under a branch or not
+          console.log("debug") // missed red: stable-root -- a tech call at root, under a branch or not; the call shape is not built yet
         }
         export const isDebug = () => SOME_MADE_UP_DEBUG
       `,
@@ -518,8 +520,8 @@ const INLINED_SCOPE: readonly Row[] = [
     name: "a tracked local reaching the host is red at its own line when it is inlined into a root callback",
     files: {
       "src/paths.model.ts": `
-        const readHome = () => process.cwd() // red: stable-root -- the host's tech at import time, at the line the inlined body puts it
-        export const HOMES: readonly string[] = ["a"].map(() => readHome()) // via: stable-root -- the root callback that runs readHome's body on import
+        const readHome = () => process.cwd() // missed red: stable-root -- the host's tech at import time, at the line the inlined body puts it; the call shape is not built yet
+        export const HOMES: readonly string[] = ["a"].map(() => readHome()) // missed via: stable-root -- the root callback that runs readHome's body on import; the call shape is not built yet
       `,
     },
   },
@@ -529,8 +531,8 @@ const INLINED_SCOPE: readonly Row[] = [
     name: "the same local, at a site whose callback parameter rebinds the very name it reads: the red is unmoved",
     files: {
       "src/paths.model.ts": `
-        const readHome = () => process.cwd() // red: stable-root -- the callback's own \`process\` is not the one readHome reads
-        export const HOMES: readonly string[] = ["a"].map((process) => readHome()) // via: stable-root -- the root callback that runs readHome's body on import
+        const readHome = () => process.cwd() // missed red: stable-root -- the callback's own \`process\` is not the one readHome reads; the call shape is not built yet
+        export const HOMES: readonly string[] = ["a"].map((process) => readHome()) // missed via: stable-root -- the root callback that runs readHome's body on import; the call shape is not built yet
       `,
     },
   },
@@ -554,9 +556,9 @@ const TYPE_NAMES: readonly Row[] = [
       "src/tables.model.ts": `
         type Table = Readonly<{ a: number }>
         type Loose = { a: number }
-        export const TABLE: Table = { a: 1 }
-        export const WRAPPED: Readonly<Table> = { a: 1 }
-        export const MAP_OF_PROVEN: ReadonlyMap<string, Table> = new Map()
+        export const TABLE: Table = { a: 1 } // false red: stable-root -- type names are not followed yet
+        export const WRAPPED: Readonly<Table> = { a: 1 } // false red: stable-root -- type names are not followed yet
+        export const MAP_OF_PROVEN: ReadonlyMap<string, Table> = new Map() // false red: stable-root -- type names are not followed yet
         export const LOOSE: Loose = { a: 1 } // red: stable-root -- the alias names a mutable record
         export const LOOSE_IN_LIST: readonly Loose[] = [] // red: stable-root -- a readonly list of mutable records
       `,
@@ -568,9 +570,9 @@ const TYPE_NAMES: readonly Row[] = [
       "src/boxes.model.ts": `
         type Frozen<T> = Readonly<T>
         type Boxed<T = number> = { readonly value: T }
-        export const FROZEN: Frozen<{ a: number }> = { a: 1 }
+        export const FROZEN: Frozen<{ a: number }> = { a: 1 } // false red: stable-root -- type names are not followed yet
         export const FROZEN_OUTER: Frozen<{ inner: { n: number } }> = { inner: { n: 1 } } // red: stable-root -- Readonly is one level, the substituted inner record is mutable
-        export const BOXED: Boxed = { value: 1 }
+        export const BOXED: Boxed = { value: 1 } // false red: stable-root -- type names are not followed yet
         export const BOXED_RECORD: Boxed<{ n: number }> = { value: { n: 1 } } // red: stable-root -- the argument is a mutable record
       `,
     },
@@ -590,12 +592,12 @@ const TYPE_NAMES: readonly Row[] = [
         interface Derived extends Base { readonly m: number }
         interface ReadonlyBase { readonly n: number }
         interface Extended extends ReadonlyBase { readonly m: number }
-        export const ORIGIN: Point = { x: 0, y: 0 }
+        export const ORIGIN: Point = { x: 0, y: 0 } // false red: stable-root -- type names are not followed yet
         export const LOOSE: Loose = { x: 0, y: 0 } // red: stable-root -- y is not readonly
-        export const WRAPPED_LOOSE: Readonly<Loose> = { x: 0, y: 0 }
+        export const WRAPPED_LOOSE: Readonly<Loose> = { x: 0, y: 0 } // false red: stable-root -- type names are not followed yet
         export const MERGED: Merged = { a: 1, b: 2 } // red: stable-root -- the second declaration adds a mutable member
         export const DERIVED: Derived = { n: 1, m: 2 } // red: stable-root -- n, inherited, is mutable
-        export const EXTENDED: Extended = { n: 1, m: 2 }
+        export const EXTENDED: Extended = { n: 1, m: 2 } // false red: stable-root -- type names are not followed yet
       `,
     },
   },
@@ -604,7 +606,7 @@ const TYPE_NAMES: readonly Row[] = [
     files: {
       "src/colors.model.ts": `
         enum Color { Red, Green }
-        export const DEFAULT_COLOR: Color = Color.Red
+        export const DEFAULT_COLOR: Color = Color.Red // false red: stable-root -- type names are not followed yet
       `,
     },
   },
@@ -628,10 +630,10 @@ const TYPE_NAMES: readonly Row[] = [
         import type { Table, Loose } from "./shapes.model.ts"
         import { type Point } from "./everything.model.ts"
         import type { Table as Relayed } from "./relay.model.ts"
-        export const TABLE: Table = { a: 1 }
+        export const TABLE: Table = { a: 1 } // false red: stable-root -- type names are not followed yet
         export const LOOSE: Loose = { a: 1 } // red: stable-root -- the imported alias names a mutable record
-        export const POINT: Point = { x: 0 }
-        export const RELAYED: Relayed = { a: 1 }
+        export const POINT: Point = { x: 0 } // false red: stable-root -- type names are not followed yet
+        export const RELAYED: Relayed = { a: 1 } // false red: stable-root -- type names are not followed yet
       `,
     },
   },
@@ -642,16 +644,15 @@ const TYPE_NAMES: readonly Row[] = [
     files: {
       "src/shadow.model.ts": `
         type Readonly<T> = T
-        export const SHADOWED: Readonly<{ a: number }> = { a: 1 } // red: stable-root -- this Readonly is the local one, which keeps the record as it is
+        export const SHADOWED: Readonly<{ a: number }> = { a: 1 } // missed red: stable-root -- this Readonly is the local one, which keeps the record as it is; type names are not followed yet
       `,
     },
   },
   {
-    // The step's boundary, written with the right verdicts:
-    // every value here is readonly, so every line is green. KNOWN FAILING —
-    // this step does not follow these names, the reader says red on all five
-    // (the comment on each line says what it waits for). Confessed here until
-    // the `!miss` marker lands; never written as `red`.
+    // The step's boundary, written with the right verdicts: every value here
+    // is readonly, so every line is green. This step does not follow these
+    // names and the reader says red on all five: each is an expected failure,
+    // saying what it waits for.
     name: "a readonly type reached through a class, typeof, a qualified name, a mapped type or a package proves",
     files: {
       "node_modules/some-made-up-package/package.json": JSON.stringify({
@@ -672,11 +673,11 @@ const TYPE_NAMES: readonly Row[] = [
         class Spot { readonly x = 1 }
         const BASE = { a: 1 } as const
         type Mapped = { readonly [K in "a"]: number }
-        export const SPOT: Spot = new Spot() // known failing: class types are not followed yet
-        export const COPY: typeof BASE = { a: 1 } // known failing: typeof is not followed yet
-        export const QUALIFIED: shapes.Table = { a: 1 } // known failing: qualified names are not followed yet
-        export const MAPPED: Mapped = { a: 1 } // known failing: mapped types are not read yet
-        export const PACKAGED: SomeMadeUpType = { a: 1 } // known failing: a package's types are the next step
+        export const SPOT: Spot = new Spot() // false red: stable-root -- class types are not followed yet
+        export const COPY: typeof BASE = { a: 1 } // false red: stable-root -- typeof is not followed yet
+        export const QUALIFIED: shapes.Table = { a: 1 } // false red: stable-root -- qualified names are not followed yet
+        export const MAPPED: Mapped = { a: 1 } // false red: stable-root -- mapped types are not read yet
+        export const PACKAGED: SomeMadeUpType = { a: 1 } // false red: stable-root -- a package's types are the next step
       `,
     },
   },
@@ -688,7 +689,7 @@ const TYPE_NAMES: readonly Row[] = [
       "src/lists.model.ts": `
         type List = { readonly head: number; readonly next: List | null }
         type Link = { readonly next: Link | null; value: number }
-        export const EMPTY: List = { head: 0, next: null }
+        export const EMPTY: List = { head: 0, next: null } // false red: stable-root -- type names are not followed yet
         export const LONE: Link = { next: null, value: 0 } // red: stable-root -- value is not readonly
       `,
     },
@@ -708,7 +709,7 @@ const TYPE_NAMES: readonly Row[] = [
       `,
       "src/uses.model.ts": `
         import type { Sheet } from "./middle.model.ts"
-        export const SHEET: Sheet = { a: 1 }
+        export const SHEET: Sheet = { a: 1 } // false red: stable-root -- type names are not followed yet
       `,
     },
   },
@@ -718,35 +719,45 @@ describe("modules", () => {
   describe("an inlined body reads the scope it was written in", () => {
     test.each(INLINED_SCOPE)("$name", async (row) => {
       const { judge } = assembleCase(row.files)
-      expect(await judge(row)).toEqual(AS_MARKED)
+      const { expectedFailures, ...match } = await judge(row)
+      if (expectedFailures.length > 0) console.info(expectedFailures.join("\n"))
+      expect(match).toEqual(AS_MARKED)
     })
   })
 
   describe("a root call is red when it reaches the tech, runs a use case, or enters a local of an impure layer", () => {
     test.each(ROOT_CALLS)("$name", async (row) => {
       const { judge } = assembleCase(row.files)
-      expect(await judge(row)).toEqual(AS_MARKED)
+      const { expectedFailures, ...match } = await judge(row)
+      if (expectedFailures.length > 0) console.info(expectedFailures.join("\n"))
+      expect(match).toEqual(AS_MARKED)
     })
   })
 
   describe("a root binding is red unless the syntax proves it immutable", () => {
     test.each(READONLY_BINDINGS)("$name", async (row) => {
       const { judge } = assembleCase(row.files)
-      expect(await judge(row)).toEqual(AS_MARKED)
+      const { expectedFailures, ...match } = await judge(row)
+      if (expectedFailures.length > 0) console.info(expectedFailures.join("\n"))
+      expect(match).toEqual(AS_MARKED)
     })
   })
 
   describe("a type name is followed to what it names", () => {
     test.each(TYPE_NAMES)("$name", async (row) => {
       const { judge } = assembleCase(row.files)
-      expect(await judge(row)).toEqual(AS_MARKED)
+      const { expectedFailures, ...match } = await judge(row)
+      if (expectedFailures.length > 0) console.info(expectedFailures.join("\n"))
+      expect(match).toEqual(AS_MARKED)
     })
   })
 
   describe("a module's evaluation performs no side effect", () => {
     test.each(ROOT_STATEMENTS)("$name", async (row) => {
       const { judge } = assembleCase(row.files)
-      expect(await judge(row)).toEqual(AS_MARKED)
+      const { expectedFailures, ...match } = await judge(row)
+      if (expectedFailures.length > 0) console.info(expectedFailures.join("\n"))
+      expect(match).toEqual(AS_MARKED)
     })
   })
 })

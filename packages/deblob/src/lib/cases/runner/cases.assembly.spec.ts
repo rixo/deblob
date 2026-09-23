@@ -35,7 +35,10 @@ describe("assembleCase", () => {
       `,
     }
     const { judge } = assembleCase(files)
-    expect(await judge({ files })).toEqual(AS_MARKED)
+    expect(await judge({ files })).toEqual({
+      ...AS_MARKED,
+      expectedFailures: [],
+    })
   })
 
   it("throws on a literal import the tree does not resolve, naming file, specifier and reason", async () => {

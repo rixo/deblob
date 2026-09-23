@@ -133,16 +133,16 @@ describe("markersOf", () => {
     ).toThrow(/src\/a\.ts:1: a marker after a comment/)
   })
 
-  describe("confessions", () => {
-    it("reads `// false red:` and `// missed red:` as a confession of each slug, with its why", () => {
+  describe("expected failures", () => {
+    it("reads `// false red:` and `// missed red:` as an expected failure of each slug, with its why", () => {
       const source = [
         "export const SPOT: Spot = new Spot() // false red: stable-root -- class types are not followed yet",
-        "export const X = f() // missed red: stable-root, ambient-access -- the call clause is not built",
+        "export const X = f() // missed red: stable-root, ambient-access -- the call shape is not built yet",
       ].join("\n")
       expect(markersOf("src/a.ts", source)).toEqual([
         {
           kind: "red",
-          confession: "false",
+          expectedFailure: "false",
           file: "src/a.ts",
           line: 1,
           slug: "stable-root",
@@ -150,19 +150,19 @@ describe("markersOf", () => {
         },
         {
           kind: "red",
-          confession: "missed",
+          expectedFailure: "missed",
           file: "src/a.ts",
           line: 2,
           slug: "stable-root",
-          why: "the call clause is not built",
+          why: "the call shape is not built yet",
         },
         {
           kind: "red",
-          confession: "missed",
+          expectedFailure: "missed",
           file: "src/a.ts",
           line: 2,
           slug: "ambient-access",
-          why: "the call clause is not built",
+          why: "the call shape is not built yet",
         },
       ])
     })
@@ -170,42 +170,50 @@ describe("markersOf", () => {
     it("reads `// false via:` and `// missed via:` the same, on trigger lines", () => {
       const source = [
         "export const A = helper() // false via: stable-root -- the helper is not followed yet",
-        "export const B = other() // missed via: stable-root -- the call clause is not built",
+        "export const B = other() // missed via: stable-root -- the call shape is not built yet",
       ].join("\n")
       expect(markersOf("src/a.ts", source)).toMatchObject([
-        { kind: "via", confession: "false", line: 1 },
-        { kind: "via", confession: "missed", line: 2 },
+        { kind: "via", expectedFailure: "false", line: 1 },
+        { kind: "via", expectedFailure: "missed", line: 2 },
       ])
     })
 
-    it("places a confession as any marker: stacked above a line with a plain claim, alone at the end of the file for the file", () => {
+    it("places an expected failure as any marker: stacked above a line with a plain claim, alone at the end of the file for the file", () => {
       const source = [
-        "// missed red: stable-root -- the call clause is not built",
+        "// missed red: stable-root -- the call shape is not built yet",
         "export const X = f() // red: ambient-access",
         'import { y } from "./y.ts"',
         "// false red: inward-deps -- the import is type-only",
       ].join("\n")
-      expect(markersOf("src/a.ts", source)).toMatchObject([
-        { confession: "missed", line: 2, slug: "stable-root" },
-        { confession: undefined, line: 2, slug: "ambient-access" },
-        { confession: "false", line: null, slug: "inward-deps" },
+      const markers = markersOf("src/a.ts", source)
+      expect(markers).toMatchObject([
+        { expectedFailure: "missed", line: 2, slug: "stable-root" },
+        { line: 2, slug: "ambient-access" },
+        { expectedFailure: "false", line: null, slug: "inward-deps" },
       ])
+      expect(markers[1]).not.toHaveProperty("expectedFailure")
     })
 
     test.each([
       [
-        "a confession word with no marker",
+        "`missed` with no `red` or `via`",
         "run() // missed: stable-root -- why",
       ],
-      ["a confession of green", "run() // false green: stable-root -- why"],
+      [
+        "an expected failure of green",
+        "run() // false green: stable-root -- why",
+      ],
       ["both words", "run() // false missed red: stable-root -- why"],
-      ["a confession without a why", "run() // false red: stable-root"],
+      ["an expected failure without a why", "run() // false red: stable-root"],
       ["another case", "run() // False red: stable-root -- why"],
-    ])("throws on a malformed confession, with the line: %s", (_, text) => {
-      expect(() => markersOf("src/a.ts", `x()\n${text}`)).toThrow(
-        /src\/a\.ts:2: malformed marker/,
-      )
-    })
+    ])(
+      "throws on a malformed expected failure, with the line: %s",
+      (_, text) => {
+        expect(() => markersOf("src/a.ts", `x()\n${text}`)).toThrow(
+          /src\/a\.ts:2: malformed marker/,
+        )
+      },
+    )
   })
 })
 
@@ -218,7 +226,7 @@ describe("stripMarkers", () => {
     ).toBe('import { x } from "./x.ts"\nconst a = 1 // kept\n\nhelper()')
   })
 
-  it("removes confessions the same way", () => {
+  it("removes expected failures the same way", () => {
     expect(
       stripMarkers(
         "run() // false red: stable-root -- why\n// missed via: stable-root -- why\nhelper()",
@@ -284,6 +292,8 @@ describe("reportedOf", () => {
     ).toEqual({
       missing: ["src/a.model.ts:3 stable-root"],
       unexpected: ["src/a.model.ts:4 stable-root"],
+      unexpectedPasses: [],
+      expectedFailures: [],
     })
   })
 
@@ -329,7 +339,12 @@ describe("matchVerdicts", () => {
         ],
         [{ file: "src/a.ts", line: 3, slugs: ["inward-deps"], via: [] }],
       ),
-    ).toEqual({ missing: [], unexpected: [] })
+    ).toEqual({
+      missing: [],
+      unexpected: [],
+      unexpectedPasses: [],
+      expectedFailures: [],
+    })
   })
 
   it("matches a report without a line to a file claim, one claim per report", () => {
@@ -342,7 +357,12 @@ describe("matchVerdicts", () => {
           { file: "src/a.ts", line: null, slugs: ["inward-deps"], via: [] },
         ],
       ),
-    ).toEqual({ missing: [], unexpected: ["src/a.ts inward-deps"] })
+    ).toEqual({
+      missing: [],
+      unexpected: ["src/a.ts inward-deps"],
+      unexpectedPasses: [],
+      expectedFailures: [],
+    })
   })
 
   it("never lets a line claim stand for a report without a line, nor the reverse", () => {
@@ -357,6 +377,8 @@ describe("matchVerdicts", () => {
     ).toEqual({
       missing: ["src/a.ts stable-root", "src/a.ts:3 inward-deps"],
       unexpected: ["src/a.ts inward-deps", "src/a.ts:5 stable-root"],
+      unexpectedPasses: [],
+      expectedFailures: [],
     })
   })
 
@@ -369,10 +391,17 @@ describe("matchVerdicts", () => {
     }
     expect(
       matchVerdicts([red(2, "stable-root"), red(2, "stable-root")], [once]),
-    ).toEqual({ missing: ["src/a.ts:2 stable-root"], unexpected: [] })
+    ).toEqual({
+      missing: ["src/a.ts:2 stable-root"],
+      unexpected: [],
+      unexpectedPasses: [],
+      expectedFailures: [],
+    })
     expect(matchVerdicts([red(2, "stable-root")], [once, once])).toEqual({
       missing: [],
       unexpected: ["src/a.ts:2 stable-root"],
+      unexpectedPasses: [],
+      expectedFailures: [],
     })
   })
 
@@ -408,6 +437,8 @@ describe("matchVerdicts", () => {
     ).toEqual({
       missing: ["src/b.ts:1 private-sealed"],
       unexpected: ["src/a.ts:3 runtime-import", "src/c.ts:7 layer-in-path"],
+      unexpectedPasses: [],
+      expectedFailures: [],
     })
   })
 
@@ -452,6 +483,8 @@ describe("matchVerdicts", () => {
     ).toEqual({
       missing: ["src/a.ts:8 via stable-root"],
       unexpected: ["src/b.ts:1 via stable-root"],
+      unexpectedPasses: [],
+      expectedFailures: [],
     })
   })
 
@@ -479,6 +512,8 @@ describe("matchVerdicts", () => {
     ).toEqual({
       missing: ["src/a.ts:5 stable-root"],
       unexpected: ["src/a.ts:2 stable-root", "src/a.ts:5 via stable-root"],
+      unexpectedPasses: [],
+      expectedFailures: [],
     })
   })
 
@@ -518,11 +553,16 @@ describe("matchVerdicts", () => {
           },
         ],
       ),
-    ).toEqual({ missing: [], unexpected: [] })
+    ).toEqual({
+      missing: [],
+      unexpected: [],
+      unexpectedPasses: [],
+      expectedFailures: [],
+    })
   })
 
-  describe("confessions", () => {
-    it("lists a false red the reader still reports as confessed, and the row stays as marked", () => {
+  describe("expected failures and unexpected passes", () => {
+    it("lists a false red the reader still reports as an expected failure, and the row stays as marked", () => {
       expect(
         matchSource(
           "export const SPOT: Spot = new Spot() // false red: stable-root -- class types are not followed yet",
@@ -531,14 +571,14 @@ describe("matchVerdicts", () => {
       ).toEqual({
         missing: [],
         unexpected: [],
-        settled: [],
-        confessed: [
+        unexpectedPasses: [],
+        expectedFailures: [
           "src/a.ts:1 false red stable-root -- class types are not followed yet",
         ],
       })
     })
 
-    it("settles a false red the reader no longer reports: the row fails until the marker goes", () => {
+    it("turns a false red the reader no longer reports into an unexpected pass: the row fails until the marker goes", () => {
       expect(
         matchSource(
           "export const SPOT: Spot = new Spot() // false red: stable-root -- class types are not followed yet",
@@ -547,38 +587,42 @@ describe("matchVerdicts", () => {
       ).toEqual({
         missing: [],
         unexpected: [],
-        settled: ["src/a.ts:1 false red stable-root — remove the marker"],
-        confessed: [],
+        unexpectedPasses: [
+          "src/a.ts:1 false red stable-root — remove the marker",
+        ],
+        expectedFailures: [],
       })
     })
 
-    it("lists a missed red the reader still misses as confessed", () => {
+    it("lists a missed red the reader still misses as an expected failure", () => {
       expect(
         matchSource(
-          "export const X = f() // missed red: stable-root -- the call clause is not built",
+          "export const X = f() // missed red: stable-root -- the call shape is not built yet",
           [],
         ),
       ).toEqual({
         missing: [],
         unexpected: [],
-        settled: [],
-        confessed: [
-          "src/a.ts:1 missed red stable-root -- the call clause is not built",
+        unexpectedPasses: [],
+        expectedFailures: [
+          "src/a.ts:1 missed red stable-root -- the call shape is not built yet",
         ],
       })
     })
 
-    it("settles a missed red the reader now reports", () => {
+    it("turns a missed red the reader now reports into an unexpected pass", () => {
       expect(
         matchSource(
-          "export const X = f() // missed red: stable-root -- the call clause is not built",
+          "export const X = f() // missed red: stable-root -- the call shape is not built yet",
           [[1, "stable-root"]],
         ),
       ).toEqual({
         missing: [],
         unexpected: [],
-        settled: ["src/a.ts:1 missed red stable-root — remove the marker"],
-        confessed: [],
+        unexpectedPasses: [
+          "src/a.ts:1 missed red stable-root — remove the marker",
+        ],
+        expectedFailures: [],
       })
     })
 
@@ -589,12 +633,14 @@ describe("matchVerdicts", () => {
           [[1, "stable-root"]],
         ),
       ).toMatchObject({
-        settled: ["src/a.ts:1 false red stable-root — remove the marker"],
-        confessed: ["src/a.ts:1 false red stable-root -- why"],
+        unexpectedPasses: [
+          "src/a.ts:1 false red stable-root — remove the marker",
+        ],
+        expectedFailures: ["src/a.ts:1 false red stable-root -- why"],
       })
     })
 
-    it("still catches a new error on a confessed line: another slug reported there is unexpected", () => {
+    it("still catches a new error on a line expected to fail: another slug reported there is unexpected", () => {
       expect(
         matchSource(
           "export const SPOT: Spot = new Spot() // false red: stable-root -- class types are not followed yet",
@@ -605,19 +651,19 @@ describe("matchVerdicts", () => {
         ),
       ).toMatchObject({
         unexpected: ["src/a.ts:1 ambient-access"],
-        settled: [],
+        unexpectedPasses: [],
       })
     })
 
-    it("gives a report to the plain claim first: a missed red of the same slug settles only on a second report", () => {
+    it("gives a report to the plain claim first: a missed red of the same slug passes unexpectedly only on a second report", () => {
       const source = [
         "// missed red: stable-root -- the second one is not built",
         "export const X = f() // red: stable-root -- the first one",
       ].join("\n")
       expect(matchSource(source, [[2, "stable-root"]])).toMatchObject({
         missing: [],
-        settled: [],
-        confessed: [
+        unexpectedPasses: [],
+        expectedFailures: [
           "src/a.ts:2 missed red stable-root -- the second one is not built",
         ],
       })
@@ -627,12 +673,14 @@ describe("matchVerdicts", () => {
           [2, "stable-root"],
         ]),
       ).toMatchObject({
-        settled: ["src/a.ts:2 missed red stable-root — remove the marker"],
-        confessed: [],
+        unexpectedPasses: [
+          "src/a.ts:2 missed red stable-root — remove the marker",
+        ],
+        expectedFailures: [],
       })
     })
 
-    it("confesses a report without a line with a confession alone at the end of the file", () => {
+    it("expects a report without a line to fail with a marker alone at the end of the file", () => {
       expect(
         matchSource(
           'import { y } from "./y.ts"\n// false red: inward-deps -- the import is type-only',
@@ -641,14 +689,14 @@ describe("matchVerdicts", () => {
       ).toEqual({
         missing: [],
         unexpected: [],
-        settled: [],
-        confessed: [
+        unexpectedPasses: [],
+        expectedFailures: [
           "src/a.ts false red inward-deps -- the import is type-only",
         ],
       })
     })
 
-    it("confesses a wrong trigger with a false via", () => {
+    it("expects a wrong trigger to fail with a false via", () => {
       expect(
         matchVerdicts(
           markersOf(
@@ -667,8 +715,8 @@ describe("matchVerdicts", () => {
       ).toEqual({
         missing: [],
         unexpected: [],
-        settled: [],
-        confessed: [
+        unexpectedPasses: [],
+        expectedFailures: [
           "src/a.ts:2 false via stable-root -- the helper is not followed yet",
         ],
       })

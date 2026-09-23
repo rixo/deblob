@@ -10,8 +10,9 @@ both builds and fires.
 
 - `runner.service.ts` — `createRunner({ check })` → `judge(row)`: collects the
   row's markers, asks the check port for the violations under the row's config
-  and checks, resolves to the match. `Case` and `Row` (`markers.model.ts`) are
-  what a spec hands it; `AS_MARKED` is the match a row asserts.
+  and checks, resolves to the verdict: the match and the expected failures still
+  failing. `Case` and `Row` (`markers.model.ts`) are what a spec hands it;
+  `AS_MARKED` is the match a row asserts.
 - `markers.model.ts` — the marker grammar and the match.
   `// red: <slug>[, <slug>]* [-- <why>]`: one violation per slug, a repeated
   slug counts twice, the why is for the reader (never compared; the message is
@@ -21,13 +22,23 @@ both builds and fires.
   the form for a violation without a line (today's edge-level ones).
   `// via: <slug>`, same form, marks a line that triggers a red elsewhere — a
   root call running a helper whose body is red at its own line — and matches an
-  entry of the violation's `via` list. Loud: an unknown slug, anything that
-  looks like a marker (`// red`, `// via`, any case) and fails the grammar, a
-  marker after another comment. `matchVerdicts` runs both directions, counted,
-  and lists each, `file:line slug`, `file slug` or `file:line via slug`, sorted;
-  a line claim never stands for a file claim, nor the reverse; `reportedOf`
-  names every file that closes a cycle. `stripMarkers` is the grammar's inverse,
-  for a corpus author who wants the same tree claiming green.
+  entry of the violation's `via` list. An expected failure states the right
+  verdict where the reader gets it wrong: `// false red: <slug> -- <why>`
+  (reported there, wrongly), `// missed red: <slug> -- <why>` (red there, not
+  reported), `false via` and `missed via` the same, the why required, placed as
+  any marker. Loud: an unknown slug, anything that looks like a marker
+  (`// red`, `// via`, `// false`, `// missed`, any case) and fails the grammar,
+  a marker after another comment. `matchVerdicts` runs both directions, counted
+  per slug, a report going to a plain claim first, then to an expected failure;
+  it lists `missing` and `unexpected`, `file:line slug`, `file slug` or
+  `file:line via slug`, sorted; `unexpectedPasses` for an expected failure that
+  passes (`file:line false red slug — remove the marker`), which fails the row
+  like the other two; and `expectedFailures` for one still failing, as its
+  marker reads, which fails nothing — the terms of `unittest` and pytest
+  (`xfail`, strict `XPASS`); a line claim never stands for a file claim, nor the
+  reverse; `reportedOf` names every file that closes a cycle. `stripMarkers` is
+  the grammar's inverse, for a corpus author who wants the same tree claiming
+  green.
 - `cases.assembly.ts` — `assembleCase(files)` → `{ judge, check }`: the memory
   adapters built from the tree, the real chain wired over them, the runner over
   it. Returns the check port too, for a spec that wants the violations.

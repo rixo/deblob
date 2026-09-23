@@ -30,7 +30,7 @@ describe("createRunner", () => {
           "src/a.model.ts": `import { x } from "./x.service.ts"\nexport const A = x\n// red: inward-deps`,
         },
       }),
-    ).toEqual(AS_MARKED)
+    ).toEqual({ ...AS_MARKED, expectedFailures: [] })
   })
 
   it("lists what the chain reports beyond the markers, and what the markers claim beyond the chain", async () => {
@@ -46,6 +46,8 @@ describe("createRunner", () => {
     ).toEqual({
       missing: ["src/b.model.ts:1 private-sealed"],
       unexpected: ["src/a.model.ts inward-deps"],
+      unexpectedPasses: [],
+      expectedFailures: [],
     })
   })
 

@@ -18,9 +18,20 @@
  * red it triggers: two reds of one slug in one file, each with its own
  * triggers, cannot be told apart by the markers.
  *
- * A comment that looks like a marker (`// red`, `// via`, any case) and fails
- * the grammar is loud, and so is a marker after another comment on its line: a
- * malformed marker read as nothing would pass its row green.
+ * A row states the right verdict; where the reader cannot deliver it yet, the
+ * line marks an expected failure instead of pinning the wrong verdict. `//
+ * false red: <slug> -- <why>`: the reader reports it there, wrongly — the right
+ * verdict is green. `// missed red: <slug> -- <why>`: it is red there, the
+ * reader misses it. `false via` and `missed via` the same; the why is required,
+ * placement is any marker's. Counted per slug like the plain claims, which take
+ * a report first. An expected failure still failing is listed and fails
+ * nothing; one that passes is an unexpected pass, and the row fails until the
+ * marker goes — `unittest`'s and pytest's terms (`xfail`, strict `XPASS`).
+ *
+ * A comment that looks like a marker (`// red`, `// via`, `// false`, `//
+ * missed`, any case) and fails the grammar is loud, and so is a marker after
+ * another comment on its line: a malformed marker read as nothing would pass
+ * its row green.
  */
 
 import type { RuleId } from "../../check/rule.model.ts"
@@ -44,6 +55,12 @@ export type Row = Case & { name: string }
 export type Marker = {
   /** `red`: this line is the violation; `via`: this line triggers one. */
   kind: "red" | "via"
+  /**
+   * How this claim is expected to fail: `false` — the reader reports it,
+   * wrongly; `missed` — the reader does not report it. Absent on a plain
+   * claim.
+   */
+  expectedFailure?: ExpectedFailure
   file: string
   /** The line claimed; `null` claims the file. */
   line: number | null
@@ -64,6 +81,8 @@ export type Reported = {
   via: readonly Site[]
 }
 
+export type ExpectedFailure = "false" | "missed"
+
 export type VerdictMatch = {
   /**
    * Marked, not reported: `file:line slug`, `file slug` for a file claim, or
@@ -75,18 +94,37 @@ export type VerdictMatch = {
    * `file:line via slug`.
    */
   unexpected: string[]
+  /**
+   * An expected failure that passes, the reader now right: `file:line false red
+   * slug — remove the marker`, and the same for `missed` and `via`.
+   */
+  unexpectedPasses: string[]
+}
+
+/** The match, and the expected failures — reported, never failing a row. */
+export type Verdict = VerdictMatch & {
+  /**
+   * The expected failures still failing, as the marker reads: `file:line missed
+   * red slug -- why`.
+   */
+  expectedFailures: string[]
 }
 
 /** The match a row asserts: as marked, nothing more, nothing less. */
-export const AS_MARKED: VerdictMatch = { missing: [], unexpected: [] }
+export const AS_MARKED: VerdictMatch = {
+  missing: [],
+  unexpected: [],
+  unexpectedPasses: [],
+}
 
 /** Anything a reader would take for a marker, well-formed or not. */
-const LOOKS_LIKE_MARKER = /\/\/\s*(?:red|via)\b/i
+const LOOKS_LIKE_MARKER = /\/\/\s*(?:red|via|false|missed)\b/i
 
 const MARKER =
-  /^\/\/ (red|via): ([a-z]+(?:-[a-z]+)*(?:, [a-z]+(?:-[a-z]+)*)*)(?: -- (\S.*))?$/
+  /^\/\/ (?:(false|missed) )?(red|via): ([a-z]+(?:-[a-z]+)*(?:, [a-z]+(?:-[a-z]+)*)*)(?: -- (\S.*))?$/
 
-const GRAMMAR = "`// red: <slug>[, <slug>]* [-- <why>]`, or `// via:` the same"
+const GRAMMAR =
+  "`// red: <slug>[, <slug>]* [-- <why>]`, `// via:` the same, or either as an expected failure: `// false red: <slug> -- <why>`, `// missed red:`"
 
 const isRuleId = (value: string): value is RuleId =>
   (RULE_IDS as readonly string[]).includes(value)
@@ -97,6 +135,7 @@ type LineMarkers = {
   /** Nothing but the marker on the line. */
   alone: boolean
   kind: Marker["kind"]
+  expectedFailure: ExpectedFailure | null
   slugs: RuleId[]
   why: string | null
 }
@@ -115,12 +154,13 @@ const lineMarkersOf = (
     throw new Error(`${where}: a marker after a comment: ${text.trim()}`)
   }
   const match = MARKER.exec(text.slice(found.index).trimEnd())
-  if (match === null) {
+  // an expected failure says what it waits for: without its why, malformed
+  if (match === null || (match[1] !== undefined && match[4] === undefined)) {
     throw new Error(
       `${where}: malformed marker: ${text.trim()} (expected ${GRAMMAR})`,
     )
   }
-  const slugs = (match[2] as string).split(", ")
+  const slugs = (match[3] as string).split(", ")
   for (const slug of slugs) {
     if (!isRuleId(slug)) {
       throw new Error(
@@ -131,9 +171,10 @@ const lineMarkersOf = (
   return {
     at: found.index,
     alone: before.trim() === "",
-    kind: match[1] as Marker["kind"],
+    kind: match[2] as Marker["kind"],
+    expectedFailure: (match[1] as ExpectedFailure | undefined) ?? null,
     slugs: slugs as RuleId[],
-    why: match[3] ?? null,
+    why: match[4] ?? null,
   }
 }
 
@@ -161,6 +202,9 @@ export const markersOf = (file: string, source: string): Marker[] => {
     }
     return found.slugs.map((slug) => ({
       kind: found.kind,
+      ...(found.expectedFailure === null
+        ? {}
+        : { expectedFailure: found.expectedFailure }),
       file,
       line,
       slug,
@@ -213,24 +257,61 @@ const markerKey = (marker: Marker): string =>
     marker.kind === "via" ? `via ${marker.slug}` : marker.slug,
   )
 
+/** An expected failure as its marker reads: `file:line false red slug`. */
+const expectedFailureOf = (marker: Marker): string =>
+  key(
+    marker.file,
+    marker.line,
+    `${marker.expectedFailure} ${marker.kind} ${marker.slug}`,
+  )
+
 /**
  * Every marker against every report, both directions, counted — a key marked
- * twice needs two reports — and sorted for the diff.
+ * twice needs two reports — and sorted for the diff. A report goes to a plain
+ * claim first, then to a `false` expected failure (still failing), then to a
+ * `missed` one (an unexpected pass); a `false` left over is an unexpected pass,
+ * a `missed` left over still failing.
  */
 export const matchVerdicts = (
   markers: readonly Marker[],
   reported: readonly Reported[],
-): VerdictMatch => {
+): Verdict => {
   const open = new Map<string, number>()
+  // the expected failures the markers declare, by kind, then by key
+  const declared = {
+    false: new Map<string, Marker[]>(),
+    missed: new Map<string, Marker[]>(),
+  }
   for (const marker of markers) {
     const at = markerKey(marker)
-    open.set(at, (open.get(at) ?? 0) + 1)
+    if (marker.expectedFailure === undefined) {
+      open.set(at, (open.get(at) ?? 0) + 1)
+    } else {
+      const byKey = declared[marker.expectedFailure]
+      byKey.set(at, [...(byKey.get(at) ?? []), marker])
+    }
   }
   const unexpected: string[] = []
+  const unexpectedPasses: string[] = []
+  const expectedFailures: string[] = []
+  const passUnexpectedly = (marker: Marker): void => {
+    unexpectedPasses.push(`${expectedFailureOf(marker)} — remove the marker`)
+  }
+  const failAsExpected = (marker: Marker): void => {
+    expectedFailures.push(`${expectedFailureOf(marker)} -- ${marker.why}`)
+  }
   const claim = (at: string): void => {
     const left = open.get(at) ?? 0
-    if (left === 0) unexpected.push(at)
-    else open.set(at, left - 1)
+    if (left > 0) {
+      open.set(at, left - 1)
+      return
+    }
+    const falseRed = declared.false.get(at)?.shift()
+    const missedRed =
+      falseRed === undefined ? declared.missed.get(at)?.shift() : undefined
+    if (falseRed !== undefined) failAsExpected(falseRed)
+    else if (missedRed !== undefined) passUnexpectedly(missedRed)
+    else unexpected.push(at)
   }
   // a trigger shared by two reds of one slug is one marker: judged once
   const triggers = new Set<string>()
@@ -248,5 +329,12 @@ export const matchVerdicts = (
   const missing = [...open].flatMap(([at, left]) =>
     Array.from({ length: left }, () => at),
   )
-  return { missing: missing.sort(), unexpected: unexpected.sort() }
+  for (const left of declared.false.values()) left.forEach(passUnexpectedly)
+  for (const left of declared.missed.values()) left.forEach(failAsExpected)
+  return {
+    missing: missing.sort(),
+    unexpected: unexpected.sort(),
+    unexpectedPasses: unexpectedPasses.sort(),
+    expectedFailures: expectedFailures.sort(),
+  }
 }
