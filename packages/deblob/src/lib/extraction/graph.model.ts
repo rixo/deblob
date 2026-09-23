@@ -293,15 +293,30 @@ export type ReadStatement =
       exported: boolean
       value: ValueKind
       /**
-       * Immutability visible at the binding — code (a function, class, enum), a
-       * `const` whose initializer is a primitive-valued expression, `as const`,
-       * a function or `Object.freeze(…)`, or whose annotation is a `Readonly*`
-       * type, a `readonly` array, a primitive keyword or a literal type.
-       * Syntactic: no alias resolution, no inference (a `const` typed with an
-       * alias reads `false`). `inert-modules` reads it unless config says
-       * `mutableModuleState`.
+       * Immutability visible at the binding, to its depth — code (a function,
+       * class, enum), a `const` whose initializer is a primitive-valued
+       * expression, a name bound to an immutable value, `as const`, a function
+       * or `Object.freeze` over a literal of immutable entries, or whose
+       * annotation is a primitive keyword, a literal type, `Readonly<…>` over
+       * proven members, or a `Readonly*` collection or `readonly` array over
+       * proven types. Syntactic: no alias resolution, no inference (a `const`
+       * typed with an alias reads `false`). `stable-root` reads it unless
+       * config says `mutableModuleState`.
        */
       readonly: boolean
+      /**
+       * The initializer reads the machine: a tech value read, not called
+       * (`process.env["X"] ?? "d"` included, where `value` says computed), the
+       * clock, the entropy source — in its own text or in a callback it runs on
+       * import. Captured machine state, which no type proves. A call's result
+       * is not a read: the call is judged where it sits.
+       */
+      capturesTech: boolean
+      /**
+       * Defined in a body read inline — a callback's, a tracked local's — so a
+       * local of each run, not a binding of the body it was read into.
+       */
+      inlined: boolean
       span: Span
     }
   | {

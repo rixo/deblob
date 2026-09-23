@@ -1,15 +1,17 @@
 /**
- * `check modules` — `inert-modules`, module discipline. A module's evaluation
+ * `check modules` — `stable-root`, module discipline. A module's evaluation
  * creates no mutable state and performs no side effect, so importing a file
  * does nothing and the file can be tested in its own right. What is red at
  * module root follows from that sentence, and canon's shapes are the known
  * ones, not a closed list.
  *
- * This detector holds one of them: a root statement that is neither a call nor
+ * This detector holds two of them. A root statement that is neither a call nor
  * a definition and still does something when the module is evaluated — an
- * assignment, a `delete`, a `throw`. Whatever sits at root runs on import, so a
- * statement that only makes sense at run time is a side effect at load time.
- * The binding and call shapes come with later clauses.
+ * assignment, a `delete`: whatever sits at root runs on import, so a statement
+ * that only makes sense at run time is a side effect at load time. And a root
+ * binding that holds state: one whose immutability the syntax does not prove,
+ * or one storing a value read from the tech, which captures the machine's state
+ * at load time whatever its type. The call shape comes with a later clause.
  *
  * Reads a file's `reading`, the first check to do so. Pure: classified graph
  * in, violation set out — no IO, no formatting, no ordering.
@@ -19,8 +21,17 @@ import type {
   ImportGraph,
   ModuleNode,
   ReadStatement,
+  Span,
 } from "../extraction/graph.model.ts"
 import type { ModulesViolation } from "./violation.model.ts"
+
+export type CheckModulesOptions = {
+  /**
+   * The codebase accepts module state: lifts the binding shape and nothing else
+   * — a statement or a call at root does something, state or not.
+   */
+  mutableModuleState?: boolean
+}
 
 /**
  * Root statements a branch or loop holds, flattened — neither is a shelter,
@@ -56,21 +67,49 @@ const runsOnImport = (
  * blob does leak to whoever imports it, but quarantine already bounds that to
  * assembly and test: containment, not a second rule reaching in.
  */
-const judgeModule = (node: ModuleNode): ModulesViolation[] => {
+const judgeModule = (
+  node: ModuleNode,
+  options: CheckModulesOptions,
+): ModulesViolation[] => {
   if (node.layer === "blob" || node.reading === null) return []
-  return flattenBranches(node.reading.root)
-    .filter(runsOnImport)
-    .map((statement) => ({
-      check: "modules" as const,
-      ruleset: "arch" as const,
-      rules: ["inert-modules" as const],
-      file: node.path,
-      serviceRoot: node.serviceRoot,
-      line: statement.span.line,
-      via: [],
-      shape: "root-statement" as const,
-    }))
+  const at = (statement: { span: Span }) => ({
+    check: "modules" as const,
+    ruleset: "arch" as const,
+    rules: ["stable-root" as const],
+    file: node.path,
+    serviceRoot: node.serviceRoot,
+    line: statement.span.line,
+    via: [],
+  })
+  return flattenBranches(node.reading.root).flatMap(
+    (statement): ModulesViolation[] => {
+      if (runsOnImport(statement)) {
+        return [{ ...at(statement), shape: "root-statement" }]
+      }
+      // a root callback's body runs on import, but its locals are each run's
+      if (
+        statement.kind !== "definition" ||
+        statement.inlined ||
+        options.mutableModuleState
+      ) {
+        return []
+      }
+      // a read of the machine first: no annotation proves what it held; a
+      // call's result is not one — the call is judged where it sits
+      const holds = statement.capturesTech
+        ? "tech"
+        : statement.readonly
+          ? null
+          : "unproven"
+      return holds === null
+        ? []
+        : [{ ...at(statement), shape: "root-binding", holds }]
+    },
+  )
 }
 
-export const checkModules = (graph: ImportGraph): ModulesViolation[] =>
-  [...graph.modules.values()].flatMap(judgeModule)
+export const checkModules = (
+  graph: ImportGraph,
+  options: CheckModulesOptions = {},
+): ModulesViolation[] =>
+  [...graph.modules.values()].flatMap((node) => judgeModule(node, options))

@@ -61,7 +61,7 @@ here as the two Ideas below.
 
 ### Ideas (from the model-abstractness landing)
 
-- **`check state` detector** — `inert-modules` is now AST-decidable: top-level
+- **`check state` detector** — `stable-root` is now AST-decidable: top-level
   `let`/`var`, module-root mutable collections (write-detection, or `const` +
   `ReadonlyMap`/`Readonly` annotation — `Object.freeze` is a no-op on Map/Set
   internals), exported live instances; ambient access (`Date.now`,

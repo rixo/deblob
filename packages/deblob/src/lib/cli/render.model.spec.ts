@@ -513,7 +513,7 @@ describe("renderCheckResults", () => {
       const output = message({
         check: "modules",
         ruleset: "arch",
-        rules: ["inert-modules"],
+        rules: ["stable-root"],
         file: "src/billing/refund.model.ts",
         serviceRoot: "src/billing",
         line: 7,
@@ -523,14 +523,14 @@ describe("renderCheckResults", () => {
       expect(output).toContain(
         "line 7 runs on import — a module's evaluation performs no side effect; move it inside a factory or a function",
       )
-      expect(output).toContain("(inert-modules)")
+      expect(output).toContain("(stable-root)")
     })
 
     test("a red triggered from elsewhere names every trigger as a full path:line, in its own file or another", () => {
       const output = message({
         check: "modules",
         ruleset: "arch",
-        rules: ["inert-modules"],
+        rules: ["stable-root"],
         file: "src/billing/refund.model.ts",
         serviceRoot: "src/billing",
         line: 7,
@@ -542,6 +542,27 @@ describe("renderCheckResults", () => {
       })
       expect(output).toContain(
         "line 7 runs on import, reached from src/billing/refund.model.ts:12, src/billing/ledger.model.ts:3 — a module's evaluation",
+      )
+    })
+
+    test("a root binding names its line and what it holds: state the syntax does not prove, or a read of the tech", () => {
+      const binding = (holds: "unproven" | "tech") =>
+        message({
+          check: "modules",
+          ruleset: "arch",
+          rules: ["stable-root"],
+          file: "src/billing/refund.model.ts",
+          serviceRoot: "src/billing",
+          line: 7,
+          via: [],
+          shape: "root-binding",
+          holds,
+        })
+      expect(binding("unproven")).toContain(
+        "line 7 binds state at module root — the syntax does not prove it immutable; use as const, a readonly type, or move it inside a factory",
+      )
+      expect(binding("tech")).toContain(
+        "line 7 stores a read of the machine at load time — no type proves what it held; read it inside a factory or a function",
       )
     })
 

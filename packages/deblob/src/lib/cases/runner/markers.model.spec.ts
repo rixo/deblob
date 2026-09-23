@@ -38,21 +38,21 @@ describe("markersOf", () => {
 
   it("counts a slug repeated in one marker as two violations", () => {
     expect(
-      markersOf("src/a.ts", "run() // red: inert-modules, inert-modules"),
-    ).toEqual([red(1, "inert-modules"), red(1, "inert-modules")])
+      markersOf("src/a.ts", "run() // red: stable-root, stable-root"),
+    ).toEqual([red(1, "stable-root"), red(1, "stable-root")])
   })
 
   it("claims the next code line for a marker alone on its line, past blanks and comments, each stacked marker with its own why", () => {
     const source = [
-      "// red: inert-modules -- the binding",
+      "// red: stable-root -- the binding",
       "",
       "// a plain comment",
-      "// red: inert-modules -- the call",
+      "// red: stable-root -- the call",
       "const x = run() // red: ambient-access",
     ].join("\n")
     expect(markersOf("src/a.ts", source)).toEqual([
-      red(5, "inert-modules", "the binding"),
-      red(5, "inert-modules", "the call"),
+      red(5, "stable-root", "the binding"),
+      red(5, "stable-root", "the call"),
       red(5, "ambient-access"),
     ])
   })
@@ -72,14 +72,14 @@ describe("markersOf", () => {
     expect(
       markersOf(
         "src/a.ts",
-        "export const N: number = helper() // via: inert-modules -- runs helper on import",
+        "export const N: number = helper() // via: stable-root -- runs helper on import",
       ),
     ).toEqual([
       {
         kind: "via",
         file: "src/a.ts",
         line: 1,
-        slug: "inert-modules",
+        slug: "stable-root",
         why: "runs helper on import",
       },
     ])
@@ -102,7 +102,7 @@ describe("markersOf", () => {
       "a second marker on the line",
       "run() // red: inward-deps // red: inward-deps",
     ],
-    ["the old trigger form", "run() // via inert-modules"],
+    ["the old trigger form", "run() // via stable-root"],
   ])("throws on a malformed marker, with the line: %s", (_, text) => {
     expect(() => markersOf("src/a.ts", `x()\n${text}`)).toThrow(
       /src\/a\.ts:2: malformed marker/,
@@ -120,7 +120,7 @@ describe("stripMarkers", () => {
   it("removes exactly the markers, other comments and code untouched, a marker's own line left blank", () => {
     expect(
       stripMarkers(
-        'import { x } from "./x.ts" // red: inward-deps -- why\nconst a = 1 // kept\n// red: private-sealed\nhelper() // via: inert-modules',
+        'import { x } from "./x.ts" // red: inward-deps -- why\nconst a = 1 // kept\n// red: private-sealed\nhelper() // via: stable-root',
       ),
     ).toBe('import { x } from "./x.ts"\nconst a = 1 // kept\n\nhelper()')
   })
@@ -141,7 +141,7 @@ describe("reportedOf", () => {
   it("carries a violation's triggers, so each matches its `via` marker", () => {
     const violation = {
       check: "modules",
-      rules: ["inert-modules"],
+      rules: ["stable-root"],
       file: "src/a.model.ts",
       line: 2,
       via: [{ file: "src/a.model.ts", line: 5 }],
@@ -150,7 +150,7 @@ describe("reportedOf", () => {
       {
         file: "src/a.model.ts",
         line: 2,
-        slugs: ["inert-modules"],
+        slugs: ["stable-root"],
         via: [{ file: "src/a.model.ts", line: 5 }],
       },
     ])
@@ -159,13 +159,13 @@ describe("reportedOf", () => {
   it("names a statement-level violation's line, so it matches its marker there and nowhere else", () => {
     const violation = {
       check: "modules",
-      rules: ["inert-modules"],
+      rules: ["stable-root"],
       file: "src/a.model.ts",
       line: 4,
       via: [],
     } as unknown as Violation
     expect(reportedOf(violation)).toEqual([
-      { file: "src/a.model.ts", line: 4, slugs: ["inert-modules"], via: [] },
+      { file: "src/a.model.ts", line: 4, slugs: ["stable-root"], via: [] },
     ])
     expect(
       matchVerdicts(
@@ -174,15 +174,15 @@ describe("reportedOf", () => {
             kind: "red",
             file: "src/a.model.ts",
             line: 3,
-            slug: "inert-modules",
+            slug: "stable-root",
             why: null,
           },
         ],
         reportedOf(violation),
       ),
     ).toEqual({
-      missing: ["src/a.model.ts:3 inert-modules"],
-      unexpected: ["src/a.model.ts:4 inert-modules"],
+      missing: ["src/a.model.ts:3 stable-root"],
+      unexpected: ["src/a.model.ts:4 stable-root"],
     })
   })
 
@@ -247,15 +247,15 @@ describe("matchVerdicts", () => {
   it("never lets a line claim stand for a report without a line, nor the reverse", () => {
     expect(
       matchVerdicts(
-        [red(3, "inward-deps"), red(null, "inert-modules")],
+        [red(3, "inward-deps"), red(null, "stable-root")],
         [
           { file: "src/a.ts", line: null, slugs: ["inward-deps"], via: [] },
-          { file: "src/a.ts", line: 5, slugs: ["inert-modules"], via: [] },
+          { file: "src/a.ts", line: 5, slugs: ["stable-root"], via: [] },
         ],
       ),
     ).toEqual({
-      missing: ["src/a.ts inert-modules", "src/a.ts:3 inward-deps"],
-      unexpected: ["src/a.ts inward-deps", "src/a.ts:5 inert-modules"],
+      missing: ["src/a.ts stable-root", "src/a.ts:3 inward-deps"],
+      unexpected: ["src/a.ts inward-deps", "src/a.ts:5 stable-root"],
     })
   })
 
@@ -263,15 +263,15 @@ describe("matchVerdicts", () => {
     const once: Reported = {
       file: "src/a.ts",
       line: 2,
-      slugs: ["inert-modules"],
+      slugs: ["stable-root"],
       via: [],
     }
     expect(
-      matchVerdicts([red(2, "inert-modules"), red(2, "inert-modules")], [once]),
-    ).toEqual({ missing: ["src/a.ts:2 inert-modules"], unexpected: [] })
-    expect(matchVerdicts([red(2, "inert-modules")], [once, once])).toEqual({
+      matchVerdicts([red(2, "stable-root"), red(2, "stable-root")], [once]),
+    ).toEqual({ missing: ["src/a.ts:2 stable-root"], unexpected: [] })
+    expect(matchVerdicts([red(2, "stable-root")], [once, once])).toEqual({
       missing: [],
-      unexpected: ["src/a.ts:2 inert-modules"],
+      unexpected: ["src/a.ts:2 stable-root"],
     })
   })
 
@@ -318,21 +318,21 @@ describe("matchVerdicts", () => {
             kind: "red",
             file: "src/a.ts",
             line: 2,
-            slug: "inert-modules",
+            slug: "stable-root",
             why: null,
           },
           {
             kind: "via",
             file: "src/a.ts",
             line: 5,
-            slug: "inert-modules",
+            slug: "stable-root",
             why: null,
           },
           {
             kind: "via",
             file: "src/a.ts",
             line: 8,
-            slug: "inert-modules",
+            slug: "stable-root",
             why: null,
           },
         ],
@@ -340,7 +340,7 @@ describe("matchVerdicts", () => {
           {
             file: "src/a.ts",
             line: 2,
-            slugs: ["inert-modules"],
+            slugs: ["stable-root"],
             via: [
               { file: "src/a.ts", line: 5 },
               { file: "src/b.ts", line: 1 },
@@ -349,8 +349,8 @@ describe("matchVerdicts", () => {
         ],
       ),
     ).toEqual({
-      missing: ["src/a.ts:8 via inert-modules"],
-      unexpected: ["src/b.ts:1 via inert-modules"],
+      missing: ["src/a.ts:8 via stable-root"],
+      unexpected: ["src/b.ts:1 via stable-root"],
     })
   })
 
@@ -362,7 +362,7 @@ describe("matchVerdicts", () => {
             kind: "red",
             file: "src/a.ts",
             line: 5,
-            slug: "inert-modules",
+            slug: "stable-root",
             why: null,
           },
         ],
@@ -370,14 +370,14 @@ describe("matchVerdicts", () => {
           {
             file: "src/a.ts",
             line: 2,
-            slugs: ["inert-modules"],
+            slugs: ["stable-root"],
             via: [{ file: "src/a.ts", line: 5 }],
           },
         ],
       ),
     ).toEqual({
-      missing: ["src/a.ts:5 inert-modules"],
-      unexpected: ["src/a.ts:2 inert-modules", "src/a.ts:5 via inert-modules"],
+      missing: ["src/a.ts:5 stable-root"],
+      unexpected: ["src/a.ts:2 stable-root", "src/a.ts:5 via stable-root"],
     })
   })
 
@@ -390,29 +390,29 @@ describe("matchVerdicts", () => {
             kind: "red",
             file: "src/a.ts",
             line: 2,
-            slug: "inert-modules",
+            slug: "stable-root",
             why: null,
           },
           {
             kind: "red",
             file: "src/a.ts",
             line: 4,
-            slug: "inert-modules",
+            slug: "stable-root",
             why: null,
           },
-          { kind: "via", ...trigger, slug: "inert-modules", why: null },
+          { kind: "via", ...trigger, slug: "stable-root", why: null },
         ],
         [
           {
             file: "src/a.ts",
             line: 2,
-            slugs: ["inert-modules"],
+            slugs: ["stable-root"],
             via: [trigger],
           },
           {
             file: "src/a.ts",
             line: 4,
-            slugs: ["inert-modules"],
+            slugs: ["stable-root"],
             via: [trigger],
           },
         ],

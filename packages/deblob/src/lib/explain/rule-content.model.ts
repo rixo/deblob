@@ -51,7 +51,7 @@ export const RULE_CARDS: Readonly<Record<RuleId, readonly string[]>> = {
   "test-is-outside": [card("testing-isolation")],
   // service discipline — no v0 detector cites it, but the mapping stays
   // total over the summary so a stray citation still resolves
-  "inert-modules": [card("layer-service")],
+  "stable-root": [card("layer-service")],
 }
 
 /**

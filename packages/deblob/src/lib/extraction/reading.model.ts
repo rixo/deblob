@@ -219,7 +219,7 @@ const unwrap = (node: AstNode): AstNode => {
 // Immutability a type checker would know and this reader reads off the
 // syntax alone: no alias resolution, no inference. A census of the forms
 // TypeScript types as readonly without a checker; what is not listed reads
-// `false`, the strict side. `inert-modules` reads it unless config says
+// `false`, the strict side. `stable-root` reads it unless config says
 // `mutableModuleState`.
 
 /** Type keywords whose values are primitives — immutable by nature. */
@@ -243,22 +243,75 @@ const READONLY_TYPE_NAMES = new Set([
   "ReadonlySet",
 ])
 
+const typeArgumentsOf = (type: AstNode): AstNode[] => {
+  const args = (type["typeArguments"] ?? type["typeParameters"]) as
+    AstNode | undefined
+  return isNode(args) ? (args["params"] as AstNode[]) : []
+}
+
 /**
- * A type written as readonly at its top: `Readonly<…>`, `readonly T[]`, a
- * primitive, a union or intersection of those.
+ * A type literal's members, each a property whose type is proven — and, when no
+ * `Readonly<…>` wraps the literal, marked `readonly` itself.
+ */
+const isReadonlyMembers = (literal: AstNode, wrapped: boolean): boolean =>
+  (literal["members"] as AstNode[]).every((member) => {
+    if (member.type !== "TSPropertySignature") return false
+    if (!wrapped && member["readonly"] !== true) return false
+    const annotation = member["typeAnnotation"]
+    return (
+      isNode(annotation) &&
+      isReadonlyType(annotation["typeAnnotation"] as AstNode)
+    )
+  })
+
+/**
+ * A type proven readonly to its depth: a primitive; a function type (code, not
+ * state); a type literal whose members are all `readonly` and proven;
+ * `Readonly<…>` over a type literal whose members are proven, over a `Record<K,
+ * V>` whose values are, or over a proven array; a `Readonly*` collection whose
+ * type arguments are proven; `readonly T[]` over a proven element; a union or
+ * intersection of those. A named type proves nothing — no alias resolution —
+ * and `Readonly<Map<…>>` keeps the Map's mutators.
  */
 const isReadonlyType = (type: AstNode): boolean => {
   if (PRIMITIVE_TYPE_KEYWORDS.has(type.type)) return true
   switch (type.type) {
+    case "TSFunctionType":
+      return true
+    case "TSTypeLiteral":
+      return isReadonlyMembers(type, false)
     case "TSTypeReference": {
       const typeName = type["typeName"] as AstNode
-      return (
-        typeName.type === "Identifier" &&
-        READONLY_TYPE_NAMES.has(typeName["name"] as string)
-      )
+      if (typeName.type !== "Identifier") return false
+      const name = typeName["name"] as string
+      if (!READONLY_TYPE_NAMES.has(name)) return false
+      const args = typeArgumentsOf(type)
+      if (args.length === 0) return false
+      if (name !== "Readonly") return args.every(isReadonlyType)
+      const inner = args[0] as AstNode
+      if (inner.type === "TSTypeLiteral") return isReadonlyMembers(inner, true)
+      if (inner.type === "TSArrayType")
+        return isReadonlyType(inner["elementType"] as AstNode)
+      if (
+        inner.type === "TSTypeReference" &&
+        (inner["typeName"] as AstNode)["name"] === "Record"
+      ) {
+        const recordArgs = typeArgumentsOf(inner)
+        return (
+          recordArgs.length === 2 && isReadonlyType(recordArgs[1] as AstNode)
+        )
+      }
+      return isReadonlyType(inner)
     }
-    case "TSTypeOperator":
-      return type["operator"] === "readonly"
+    case "TSTypeOperator": {
+      if (type["operator"] !== "readonly") return false
+      const operand = type["typeAnnotation"] as AstNode
+      if (operand.type === "TSArrayType")
+        return isReadonlyType(operand["elementType"] as AstNode)
+      if (operand.type === "TSTupleType")
+        return (operand["elementTypes"] as AstNode[]).every(isReadonlyType)
+      return false
+    }
     case "TSParenthesizedType":
       return isReadonlyType(type["typeAnnotation"] as AstNode)
     case "TSUnionType":
@@ -274,13 +327,29 @@ const isConstAssertion = (type: AstNode): boolean =>
   type.type === "TSTypeReference" &&
   (type["typeName"] as AstNode)["name"] === "const"
 
+/** What a name read in an initializer is bound to, as far as the reader knows. */
+type Names = {
+  /** Bound to an immutable value. */
+  isImmutable: (name: string) => boolean
+  /** The initializer it is bound to, when the reader can hold it for sure. */
+  initOf: (name: string) => AstNode | null
+}
+
+const NO_NAMES: Names = { isImmutable: () => false, initOf: () => null }
+
 /**
  * An initializer whose value is immutable by its form: a primitive-valued
- * expression (a literal, a template, an operator's result), `undefined`, a
- * function or class, `as const`, `Object.freeze(…)`, or an assertion to a
- * readonly type.
+ * expression (a literal, a template, an operator's result), `undefined`, a name
+ * bound to an immutable value, a function or class, `as const`, `Object.freeze`
+ * over a literal whose entries are immutable (written there, or bound to the
+ * name it freezes), or an assertion to a readonly type.
  */
-const isImmutableInitializer = (node: AstNode): boolean => {
+const isImmutableInitializer = (
+  node: AstNode,
+  names: Names = NO_NAMES,
+): boolean => {
+  const immutable = (child: unknown): boolean =>
+    isNode(child) && isImmutableInitializer(child, names)
   switch (node.type) {
     case "Literal":
     case "TemplateLiteral":
@@ -289,37 +358,52 @@ const isImmutableInitializer = (node: AstNode): boolean => {
     case "ClassExpression":
       return true
     case "Identifier":
-      return node["name"] === "undefined"
+      return (
+        node["name"] === "undefined" ||
+        names.isImmutable(node["name"] as string)
+      )
     case "LogicalExpression":
-      return (
-        isImmutableInitializer(node["left"] as AstNode) &&
-        isImmutableInitializer(node["right"] as AstNode)
-      )
+      return immutable(node["left"]) && immutable(node["right"])
     case "ConditionalExpression":
-      return (
-        isImmutableInitializer(node["consequent"] as AstNode) &&
-        isImmutableInitializer(node["alternate"] as AstNode)
-      )
+      return immutable(node["consequent"]) && immutable(node["alternate"])
     case "TSAsExpression":
     case "TSTypeAssertion": {
       const type = node["typeAnnotation"] as AstNode
       return (
         isConstAssertion(type) ||
         isReadonlyType(type) ||
-        isImmutableInitializer(node["expression"] as AstNode)
+        immutable(node["expression"])
       )
     }
     case "ParenthesizedExpression":
     case "TSSatisfiesExpression":
     case "TSNonNullExpression":
-      return isImmutableInitializer(node["expression"] as AstNode)
+      return immutable(node["expression"])
     case "CallExpression": {
       const callee = node["callee"] as AstNode
-      return (
-        callee.type === "MemberExpression" &&
-        (callee["object"] as AstNode)["name"] === "Object" &&
-        (callee["property"] as AstNode)["name"] === "freeze"
-      )
+      if (
+        callee.type !== "MemberExpression" ||
+        (callee["object"] as AstNode)["name"] !== "Object" ||
+        (callee["property"] as AstNode)["name"] !== "freeze"
+      ) {
+        return false
+      }
+      // a freeze is one level: what it freezes must hold immutable entries;
+      // a name frozen is the very object it is bound to
+      const argument = unwrap((node["arguments"] as AstNode[])[0] ?? node)
+      const bound =
+        argument.type === "Identifier"
+          ? names.initOf(argument["name"] as string)
+          : null
+      const frozen = bound === null ? argument : unwrap(bound)
+      if (frozen.type === "ArrayExpression")
+        return (frozen["elements"] as unknown[]).every(immutable)
+      if (frozen.type === "ObjectExpression")
+        return (frozen["properties"] as AstNode[]).every(
+          (property) =>
+            property.type === "Property" && immutable(property["value"]),
+        )
+      return false
     }
     default:
       return isFunctionNode(node)
@@ -338,12 +422,16 @@ const annotationOf = (pattern: AstNode): AstNode | null => {
  * pattern reads the whole declarator: `const { a } = FROZEN` is readonly iff
  * `FROZEN`'s form is.
  */
-const isReadonlyDeclarator = (form: string, declarator: AstNode): boolean => {
+const isReadonlyDeclarator = (
+  form: string,
+  declarator: AstNode,
+  names: Names,
+): boolean => {
   if (form !== "const") return false
   const annotation = annotationOf(declarator["id"] as AstNode)
   if (annotation !== null && isReadonlyType(annotation)) return true
   const init = declarator["init"]
-  return isNode(init) && isImmutableInitializer(init)
+  return isNode(init) && isImmutableInitializer(init, names)
 }
 
 const VALUE_RANK: Readonly<Record<ValueKind, number>> = {
@@ -875,6 +963,70 @@ export const readModule = ({
     body.statements.push(statement)
   }
 
+  /**
+   * Reads of the machine — a tech value read, not called; the clock; the
+   * entropy source — made while a binding's initializer is evaluated, in its
+   * own body and the callbacks read inline into it. A call's result is not a
+   * read: the call is judged where it sits.
+   */
+  let machineReads = 0
+  let readsInto: Body | null = null
+
+  const countRead = (emitting: boolean): void => {
+    if (emitting && body === readsInto) machineReads += 1
+  }
+
+  /** Whether running `evaluateInit` read the machine. */
+  const readsMachine = (evaluateInit: () => void): boolean => {
+    const outer = readsInto
+    const before = machineReads
+    readsInto = body
+    try {
+      evaluateInit()
+    } finally {
+      readsInto = outer
+    }
+    return machineReads > before
+  }
+
+  /**
+   * A binding whose tech value is a read: an import or a hook's parameter, or a
+   * definition bound to a read (`const env = process.env`), never to a call.
+   */
+  const holdsRead = (binding: Binding): boolean => {
+    if (binding.kind === "import" || binding.kind === "parameter") return true
+    if (binding.kind !== "definition" || binding.init === null) return false
+    const init = unwrap(binding.init)
+    return (
+      init.type !== "CallExpression" &&
+      init.type !== "NewExpression" &&
+      init.type !== "TaggedTemplateExpression"
+    )
+  }
+
+  /** `Date.now()`, `new Date()`, `Math.random()`: the clock and entropy. */
+  const isMachineCall = (node: AstNode): boolean => {
+    const callee = unwrap(node["callee"] as AstNode)
+    if (node.type === "NewExpression")
+      return (
+        callee.type === "Identifier" &&
+        callee["name"] === "Date" &&
+        (node["arguments"] as AstNode[]).length === 0 &&
+        lookup(scope, "Date") === null
+      )
+    if (callee.type !== "MemberExpression" || callee["computed"] === true)
+      return false
+    const object = unwrap(callee["object"] as AstNode)
+    if (object.type !== "Identifier") return false
+    const name = object["name"] as string
+    const member = (callee["property"] as AstNode)["name"]
+    return (
+      lookup(scope, name) === null &&
+      ((name === "Date" && member === "now") ||
+        (name === "Math" && member === "random"))
+    )
+  }
+
   const recordUse = (
     binding: Binding,
     ctx: Ctx,
@@ -961,11 +1113,16 @@ export const readModule = ({
       const binding = lookup(scope, name)
       if (binding === null) {
         if (LANGUAGE_GLOBALS.has(name)) return { kind: "language" }
-        // a host global: the host is the tech
-        return members.length > 0 &&
+        // a host global: the host is the tech; a language method on it
+        // (`process.env.X.trim()`) reads the tech value it is called on
+        if (
+          members.length > 0 &&
           PROTOTYPE_METHODS.has(members[members.length - 1] as string)
-          ? { kind: "language" }
-          : { kind: "tech", package: null }
+        ) {
+          countRead(emitting)
+          return { kind: "language" }
+        }
+        return { kind: "tech", package: null }
       }
       if (emitting)
         recordUse(
@@ -992,7 +1149,15 @@ export const readModule = ({
         if (resolved.kind === "unknown") return { kind: "unknown" }
         return { kind: "language" }
       }
-      return memberCallee(resolved, members)
+      const callee = memberCallee(resolved, members)
+      // a language method on a tech value held as a read (`env.X.trim()`)
+      if (
+        callee.kind === "language" &&
+        resolved.kind === "tech" &&
+        holdsRead(binding)
+      )
+        countRead(emitting)
+      return callee
     }
     if (root.type === "ImportExpression") {
       const value = evaluate(root, { kind: "computed" }, emitting)
@@ -1501,10 +1666,13 @@ export const readModule = ({
         if (binding === null) {
           if (LITERAL_GLOBALS.has(name)) return literal
           if (LANGUAGE_GLOBALS.has(name)) return computed
+          countRead(emitting)
           return { kind: "tech", origin: null, path: [] }
         }
         if (emitting) recordUse(binding, ctx, [])
-        return resolveBinding(binding)
+        const resolved = resolveBinding(binding)
+        if (resolved.kind === "tech" && holdsRead(binding)) countRead(emitting)
+        return resolved
       }
       case "MemberExpression": {
         const { root, members, computed: computedProps } = chainOf(node)
@@ -1518,9 +1686,12 @@ export const readModule = ({
             rootValue = LANGUAGE_GLOBALS.has(name)
               ? computed
               : { kind: "tech", origin: null, path: [] }
+            if (rootValue.kind === "tech") countRead(emitting)
           } else {
             if (emitting) recordUse(binding, ctx, members)
             rootValue = resolveBinding(binding)
+            if (rootValue.kind === "tech" && holdsRead(binding))
+              countRead(emitting)
           }
         } else if (
           root.type === "CallExpression" ||
@@ -1548,6 +1719,8 @@ export const readModule = ({
       }
       case "CallExpression":
       case "NewExpression":
+        if (isMachineCall(node)) countRead(emitting)
+        return evaluateCall(node, ctx, emitting)
       case "TaggedTemplateExpression":
         return evaluateCall(node, ctx, emitting)
       case "ImportExpression":
@@ -1665,23 +1838,63 @@ export const readModule = ({
     })
   }
 
+  /**
+   * A name followed to its binding in scope: code is immutable, a definition is
+   * when its own initializer is, anything else (an import, a parameter, a
+   * destructured or reassigned name) is not known to be. `seen` stops a cycle.
+   */
+  const namesIn = (seen: ReadonlySet<Binding>): Names => {
+    const definitionOf = (name: string): Binding | null => {
+      const binding = lookup(scope, name)
+      return binding === null ||
+        binding.kind !== "definition" ||
+        binding.reassigned ||
+        seen.has(binding)
+        ? null
+        : binding
+    }
+    const initOf = (name: string): AstNode | null => {
+      const binding = definitionOf(name)
+      return binding === null || binding.path.length > 0 ? null : binding.init
+    }
+    return {
+      initOf,
+      isImmutable: (name) => {
+        const binding = definitionOf(name)
+        if (binding === null) return false
+        if (binding.isFunction) return true
+        const init = initOf(name)
+        return (
+          init !== null &&
+          isImmutableInitializer(init, namesIn(new Set([...seen, binding])))
+        )
+      },
+    }
+  }
+
   const emitDefinitions = (declaration: AstNode, exported: boolean): void => {
     for (const declarator of declaration["declarations"] as AstNode[]) {
       const init = declarator["init"]
       const names = patternNames(declarator["id"] as AstNode)
       const first = names[0] ? lookup(scope, names[0].name) : null
-      if (
-        isNode(init) &&
-        first !== null &&
-        names.length === 1 &&
-        first.path.length === 0
-      ) {
-        evaluate(init, { kind: "bound", binding: first }, true)
-      } else if (isNode(init)) {
-        evaluate(init, { kind: "destructured" }, true)
-      }
+      const capturesTech = readsMachine(() => {
+        if (
+          isNode(init) &&
+          first !== null &&
+          names.length === 1 &&
+          first.path.length === 0
+        ) {
+          evaluate(init, { kind: "bound", binding: first }, true)
+        } else if (isNode(init)) {
+          evaluate(init, { kind: "destructured" }, true)
+        }
+      })
       const form = declaration["kind"] as string
-      const readonly = isReadonlyDeclarator(form, declarator)
+      const readonly = isReadonlyDeclarator(
+        form,
+        declarator,
+        namesIn(new Set()),
+      )
       for (const { name, node } of names) {
         // declared by the same pattern walk on scope entry — always found
         const binding = lookup(scope, name) as Binding
@@ -1692,6 +1905,8 @@ export const readModule = ({
           exported,
           value: resolveBinding(binding).kind,
           readonly,
+          capturesTech,
+          inlined: frame !== null,
           span: spanOf(node),
         })
       }
@@ -1721,7 +1936,10 @@ export const readModule = ({
           walkStatement(declaration, true)
           return
         }
-        const value = evaluate(declaration, { kind: "computed" }, true)
+        let value: Resolved = { kind: "computed", origin: null, path: [] }
+        const capturesTech = readsMachine(() => {
+          value = evaluate(declaration, { kind: "computed" }, true)
+        })
         emit({
           kind: "definition",
           name: null,
@@ -1730,7 +1948,9 @@ export const readModule = ({
           value: value.kind,
           // a default-exported expression is a binding nothing reassigns:
           // readonly by its initializer's form
-          readonly: isImmutableInitializer(declaration),
+          readonly: isImmutableInitializer(declaration, namesIn(new Set())),
+          capturesTech,
+          inlined: frame !== null,
           span: spanOf(statement),
         })
         return
@@ -1758,6 +1978,8 @@ export const readModule = ({
             statement.type === "TSEnumDeclaration" ? "literal" : "function",
           // code, not state
           readonly: true,
+          capturesTech: false,
+          inlined: frame !== null,
           span: spanOf(statement),
         })
         return

@@ -296,6 +296,20 @@ moment of the wiring call and its arguments, not imports alone). Canon, code,
 skills and the step queue carry the new names; this file's earlier sections, the
 step SPECs and the research keep the old ones as written.
 
+**Renamed 2026-09-23: `inert-modules` is `stable-root`** (rixo). The bindings
+ruling of 2026-09-22 gave the rule its why: what sits at a module's root must be
+the same on every load and for the whole run, or the tests importing it are not
+repeatable. "Inert" names the mutability half and the side effects, not the
+determinism half — a clock or random value stored at root neither acts nor
+changes, yet differs from one load to the next. "Stable" names the why, and
+"root" names what the rule judges. `clean-modules` and `clean-root` were
+considered and set aside: "clean" is already the word for a run with no
+violations (exit 0) and says nothing of what the rule checks; `pure-modules`
+again collides with `service-purity` and `chain-purity`. Where "stable" is hard
+to pin in a given shape, the name gives the effort its question. Code, canon,
+skills and the current plans carry the new name; this file's earlier sections
+keep the old one as written. Breaking, like the renames before it.
+
 ## Ruling 2026-09-20 — inlining is the reading principle, not a rule's clause
 
 Where the reader can conceptually inline a callee, it inlines it and the

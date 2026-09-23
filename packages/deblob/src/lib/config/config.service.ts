@@ -106,7 +106,7 @@ export type DeblobConfig = {
    */
   typeOnlyExempt?: boolean
   /**
-   * `inert-modules`, the readonly half: by default every module-level binding
+   * `stable-root`, the readonly half: by default every module-level binding
    * must be readonly-typed where the reader can see it (`as const`, a literal,
    * `Object.freeze`, a `Readonly*` or primitive annotation). `true` says module
    * state may be mutable-typed — the escape for a codebase without the types.

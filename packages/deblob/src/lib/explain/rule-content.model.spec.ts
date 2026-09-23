@@ -102,8 +102,8 @@ describe("ruleSummaryOf", () => {
   })
 
   test("throws on a missing anchor", () => {
-    expect(() => ruleSummaryOf(summary, "inert-modules")).toThrow(
-      /no anchor for inert-modules/,
+    expect(() => ruleSummaryOf(summary, "stable-root")).toThrow(
+      /no anchor for stable-root/,
     )
   })
 

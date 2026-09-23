@@ -222,8 +222,8 @@ by what it may do, and the widest import rights carry the narrowest verb lists.
 Inside the hexagon, innermost first:
 
 - **Model** (`.model.ts`) — domain knowledge. Abstract: no dependencies beyond
-  model, no ambient environment access, inert modules. The most constrained, the
-  most valuable.
+  model, no ambient environment access, a stable module root. The most
+  constrained, the most valuable.
 - **Ports** (`.port.ts`) — type-only contracts at the hexagonal boundary. No
   runtime code. Adapters implement them; service code depends on them.
 - **Service** (`.service.ts`) — decisions. Orchestration, use cases, injected
@@ -275,8 +275,8 @@ I/O, time, randomness, platform — is what makes code concrete:
 - Depends on nothing outside the model layer — no ports, no concrete imports
 - No ambient environment access (`ambient-access`) — time, randomness,
   `globalThis` are inputs passed by the caller, not discoveries
-- Inert modules (`inert-modules`) — no module-level mutable state, exported or
-  not: no top-level `let`, no unfrozen collections, nothing a closure could
+- A stable module root (`stable-root`) — no module-level mutable state, exported
+  or not: no top-level `let`, no unfrozen collections, nothing a closure could
   capture at module scope; state lives inside factories, and a module exports
   factories, never instances
 - Factories with closure state are model when they depend on nothing — domain
@@ -411,7 +411,7 @@ factory to call (anchors in the [Summary](#summary)):
   a value computed from one, is a decision the map cannot show; it belongs to
   the service or adapter that owns it. Nothing but assembly functions is
   defined, as many per file as the author wants, and nothing sits at module root
-  but imports (`inert-modules`).
+  but imports (`stable-root`).
 - **`assembly-driver-only`** — an assembly file is imported only by drivers and
   other assemblies, type imports included. An assembly has no contract of its
   own; its shape is the services it returns, and `runtime-import`'s exemption
@@ -620,8 +620,8 @@ module whose evaluation performs a call. Two rights, nothing more:
 The CLI's boot is `cli.boot.ts`. A single-page app's boot calls the driver's
 `main()` that mounts the root component. A framework that loads route files
 itself, or a test runner that loads spec files, is a boot outside the program,
-so those drivers have none in the tree. The boot is the exemption
-`inert-modules` needs to hold everywhere else.
+so those drivers have none in the tree. The boot is the exemption `stable-root`
+needs to hold everywhere else.
 
 ### Visibility: public by default, private by intention
 
@@ -913,7 +913,7 @@ needs tooling that knows service boundaries.
 - <a id="test-is-outside"></a>`test-is-outside` — **A test file is assembly and
   driver in one** — the setup builds units with fixtures (test-purpose adapters,
   same isolation rules), the test bodies are hooks, registered by calls at
-  module root that the test tech owns (`inert-modules` exempts the registration,
+  module root that the test tech owns (`stable-root` exempts the registration,
   not mutable state). Recognized by the configured test globs. It imports
   anything, blob included; it defines anything; the hook count and services-only
   do not apply; nothing imports it. Shared test code gets none of this and is
@@ -972,26 +972,32 @@ needs tooling that knows service boundaries.
 
 **Module discipline:**
 
-- <a id="inert-modules"></a>`inert-modules` — **Modules are inert** — a module's
-  evaluation creates no mutable state and performs no side effect, so that
-  importing a file does nothing and the file can be tested in its own right.
-  Inert: loading it neither acts nor leaves anything behind that could change.
-  State lives in factory closures: a factory is a function, it does nothing
-  until called, and an instance exists only where it was called, reached by
-  argument and never by import. What is red at module root follows from that
-  sentence, and the shapes below are the known ones, not a closed list — a shape
-  nobody has written down yet is judged by the rule, not waved through for being
-  absent here. A binding whose immutability the syntax does not prove — proof
-  being a primitive type, `as const`, a readonly array, record, map or set, or
-  `Object.freeze` over a literal, each proven to its depth: `as const` is deep,
-  `Readonly<…>` is one level, a named type the reader cannot resolve proves
-  nothing (`Readonly<Store>`), and `Readonly<Map<…>>` does not even remove the
-  mutators. A value read from the tech is proven by no type: stored in a root
+- <a id="stable-root"></a>`stable-root` — **The module root is stable** — what a
+  module's root holds is the same on every load and for the whole run: its
+  evaluation creates no mutable state, stores nothing read from the machine, and
+  performs no side effect. That is what lets a file be tested in its own right:
+  a test that imports it gets the module every other test got, and nothing it
+  runs changes what the next test sees. Stable: loading it neither acts, nor
+  leaves anything behind that could change, nor holds anything that differs from
+  one load to the next. State lives in factory closures: a factory is a
+  function, it does nothing until called, and an instance exists only where it
+  was called, reached by argument and never by import. What is red at module
+  root follows from that sentence, and the shapes below are the known ones, not
+  a closed list — a shape nobody has written down yet is judged by the rule, not
+  waved through for being absent here. A binding whose immutability the syntax
+  does not prove — proof being a primitive type, `as const`, a readonly array,
+  record, map or set, or `Object.freeze` over a literal, each proven to its
+  depth: `as const` is deep, `Readonly<…>` is one level, a named type the reader
+  cannot resolve proves nothing (`Readonly<Store>`), and `Readonly<Map<…>>` does
+  not even remove the mutators. A value read from the machine is proven by no
+  type: a value read from the tech, the clock, randomness. Stored in a root
   binding, it captures the machine's state at load time, and `: string` says
   nothing about where the string came from —
-  `export const PORT: string = process.env["PORT"] ?? "3000"` is red, and the
-  file cannot be tested under another environment without reloading it. A
-  readonly map or set is proof over the binding, not over the value:
+  `export const PORT: string = process.env["PORT"] ?? "3000"` is red, and so is
+  `const STARTED_AT = Date.now()`: the file cannot be tested under another
+  environment, or at another moment, without reloading it. A call's result
+  stored at root adds nothing to the call: the call is judged where it sits,
+  below. A readonly map or set is proof over the binding, not over the value:
   `Object.freeze` cannot lock a Map, so a codebase without the types has no way
   to write one — and such a codebase turns this half off in config anyway
   (`mutableModuleState: true`), which lifts the bindings and nothing else. And a

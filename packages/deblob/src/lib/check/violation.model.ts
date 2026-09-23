@@ -200,14 +200,14 @@ export type DagViolation = {
 )
 
 /**
- * `inert-modules`. The first violation to carry a line: the outside rules judge
+ * `stable-root`. The first violation to carry a line: the outside rules judge
  * statements, not edges, so the offending site is a place in a file and the
  * report says which.
  */
 export type ModulesViolation = {
   check: "modules"
   ruleset: Ruleset
-  /** Always `inert-modules` — module discipline, one rule per shape. */
+  /** Always `stable-root` — module discipline, one rule per shape. */
   rules: readonly RuleId[]
   /** The offending file. */
   file: string
@@ -222,14 +222,25 @@ export type ModulesViolation = {
    * its own trigger.
    */
   via: readonly { file: string; line: number }[]
-} & {
-  /**
-   * A root statement that is neither a call nor a definition and still does
-   * something when the module is evaluated. Canon's other shapes — the unproven
-   * binding, the call that reaches out — come with their clauses.
-   */
-  shape: "root-statement"
-}
+} & (
+  | {
+      /**
+       * A root statement that is neither a call nor a definition and still does
+       * something when the module is evaluated. Canon's last shape — the call
+       * that reaches out — comes with its clause.
+       */
+      shape: "root-statement"
+    }
+  | {
+      /**
+       * A root binding that holds state: `unproven` when the syntax does not
+       * prove it immutable, `tech` when it stores a value read from the tech,
+       * which no type proves. Lifted by `mutableModuleState`.
+       */
+      shape: "root-binding"
+      holds: "unproven" | "tech"
+    }
+)
 
 /** The union grows one member per detector step. */
 export type Violation =

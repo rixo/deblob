@@ -150,7 +150,8 @@ const DETECTORS: Record<
   private: (graph) => checkPrivate(graph),
   barrels: (graph) => checkBarrels(graph),
   ports: (graph) => checkPorts(graph),
-  modules: (graph) => checkModules(graph),
+  modules: (graph, config) =>
+    checkModules(graph, { mutableModuleState: config.mutableModuleState }),
 }
 
 /**

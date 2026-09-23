@@ -18,7 +18,7 @@ adapters over the platform; assembly owns the load → resolve sequence.
   `driverTech` (specifier patterns over packages a driver may import as its
   tech), `include`, `exclude`, `pure`, `typeOnlyExempt`, `mutableModuleState`
   (`true` lets module-level bindings be mutable-typed — the opt-out of
-  `inert-modules`' readonly half for a codebase without the types; default
+  `stable-root`' readonly half for a codebase without the types; default
   `false`, the check on), `tsconfig`, `alias`, `external`, `externalLayers`,
   `build`. `defineConfig` is the identity that types a config file. Both are the
   package's public surface.
