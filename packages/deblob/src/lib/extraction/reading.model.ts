@@ -1877,7 +1877,7 @@ export const readModule = ({
       const init = declarator["init"]
       const names = patternNames(declarator["id"] as AstNode)
       const first = names[0] ? lookup(scope, names[0].name) : null
-      const capturesTech = readsMachine(() => {
+      const storesMachineRead = readsMachine(() => {
         if (
           isNode(init) &&
           first !== null &&
@@ -1905,7 +1905,7 @@ export const readModule = ({
           exported,
           value: resolveBinding(binding).kind,
           readonly,
-          capturesTech,
+          storesMachineRead,
           inlined: frame !== null,
           span: spanOf(node),
         })
@@ -1937,7 +1937,7 @@ export const readModule = ({
           return
         }
         let value: Resolved = { kind: "computed", origin: null, path: [] }
-        const capturesTech = readsMachine(() => {
+        const storesMachineRead = readsMachine(() => {
           value = evaluate(declaration, { kind: "computed" }, true)
         })
         emit({
@@ -1949,7 +1949,7 @@ export const readModule = ({
           // a default-exported expression is a binding nothing reassigns:
           // readonly by its initializer's form
           readonly: isImmutableInitializer(declaration, namesIn(new Set())),
-          capturesTech,
+          storesMachineRead,
           inlined: frame !== null,
           span: spanOf(statement),
         })
@@ -1978,7 +1978,7 @@ export const readModule = ({
             statement.type === "TSEnumDeclaration" ? "literal" : "function",
           // code, not state
           readonly: true,
-          capturesTech: false,
+          storesMachineRead: false,
           inlined: frame !== null,
           span: spanOf(statement),
         })

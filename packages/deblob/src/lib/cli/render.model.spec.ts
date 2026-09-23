@@ -545,8 +545,8 @@ describe("renderCheckResults", () => {
       )
     })
 
-    test("a root binding names its line and what it holds: state the syntax does not prove, or a read of the tech", () => {
-      const binding = (holds: "unproven" | "tech") =>
+    test("a root binding names its line and what it holds: state the syntax does not prove, or a read of the machine", () => {
+      const binding = (holds: "unproven" | "machine") =>
         message({
           check: "modules",
           ruleset: "arch",
@@ -561,7 +561,7 @@ describe("renderCheckResults", () => {
       expect(binding("unproven")).toContain(
         "line 7 binds state at module root — the syntax does not prove it immutable; use as const, a readonly type, or move it inside a factory",
       )
-      expect(binding("tech")).toContain(
+      expect(binding("machine")).toContain(
         "line 7 stores a read of the machine at load time — no type proves what it held; read it inside a factory or a function",
       )
     })

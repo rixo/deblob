@@ -213,7 +213,7 @@ const messageOf = (violation: FileViolation, prefix: string): string => {
           ? ""
           : `, reached from ${violation.via.map((site) => `${prefix}${site.file}:${site.line}`).join(", ")}`
       if (violation.shape === "root-binding") {
-        return violation.holds === "tech"
+        return violation.holds === "machine"
           ? `line ${violation.line} stores a read of the machine at load time — no type proves what it held; read it inside a factory or a function`
           : `line ${violation.line} binds state at module root — the syntax does not prove it immutable; use as const, a readonly type, or move it inside a factory`
       }

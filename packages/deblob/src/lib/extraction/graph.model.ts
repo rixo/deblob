@@ -311,7 +311,7 @@ export type ReadStatement =
        * import. Captured machine state, which no type proves. A call's result
        * is not a read: the call is judged where it sits.
        */
-      capturesTech: boolean
+      storesMachineRead: boolean
       /**
        * Defined in a body read inline — a callback's, a tracked local's — so a
        * local of each run, not a binding of the body it was read into.

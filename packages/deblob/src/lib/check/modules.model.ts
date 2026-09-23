@@ -96,8 +96,8 @@ const judgeModule = (
       }
       // a read of the machine first: no annotation proves what it held; a
       // call's result is not one — the call is judged where it sits
-      const holds = statement.capturesTech
-        ? "tech"
+      const holds = statement.storesMachineRead
+        ? "machine"
         : statement.readonly
           ? null
           : "unproven"

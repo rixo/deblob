@@ -234,11 +234,12 @@ export type ModulesViolation = {
   | {
       /**
        * A root binding that holds state: `unproven` when the syntax does not
-       * prove it immutable, `tech` when it stores a value read from the tech,
-       * which no type proves. Lifted by `mutableModuleState`.
+       * prove it immutable, `machine` when it stores a read of the machine — a
+       * tech value, the clock, randomness — which no type proves. Lifted by
+       * `mutableModuleState`.
        */
       shape: "root-binding"
-      holds: "unproven" | "tech"
+      holds: "unproven" | "machine"
     }
 )
 
