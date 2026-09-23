@@ -269,13 +269,11 @@ const READONLY_BINDINGS: readonly Row[] = [
   },
   {
     // canon: the same clause's limits — "`as const` is deep, `Readonly<…>` is one
-    // level, a named type the reader cannot resolve proves nothing".
-    // `Readonly<Map<…>>` red and `ReadonlyMap<…>` green (the row above) are one
-    // word apart: Readonly marks properties, a Map's mutators are methods.
-    name: "every form the syntax does not prove is red at a model's root: proof is per level, and a named type proves nothing",
+    // level". `Readonly<Map<…>>` red and `ReadonlyMap<…>` green (the row above)
+    // are one word apart: Readonly marks properties, a Map's mutators are methods.
+    name: "every form the syntax does not prove is red at a model's root: proof is per level",
     files: {
       "src/forms.model.ts": `
-        type Table = Readonly<{ a: number }>
         export let counter = 0 // red: stable-root -- let
         export var legacy = 0 // red: stable-root -- var
         export const RESULT = Math.max(1, 2) // red: stable-root -- a call result, nothing proven
@@ -285,12 +283,9 @@ const READONLY_BINDINGS: readonly Row[] = [
         export const MEMBER = RECORD.a // red: stable-root -- a member read, not followed
         export const ALIASED = RESULT // red: stable-root -- another binding, not followed
         export const AWAITED = await Promise.resolve(1) // red: stable-root -- an awaited value
-        export const TABLE: Table = { a: 1 } // red: stable-root -- an alias annotation the reader cannot see through
-        export const WRAPPED: Readonly<Table> = { a: 1 } // red: stable-root -- the wrapper is readonly, its member is a named type — unproven
         export const NESTED: Readonly<{ inner: { n: number } }> = { inner: { n: 1 } } // red: stable-root -- Readonly is one level, the inner record is mutable
         export const FROZEN_SHALLOW = Object.freeze({ inner: { n: 1 } }) // red: stable-root -- a freeze is one level, the inner literal is not frozen
         export const MUTABLE_MAP: Readonly<Map<string, number>> = new Map() // red: stable-root -- Readonly over a Map keeps the mutators — set still compiles
-        export const MAP_OF_UNPROVEN: ReadonlyMap<string, Table> = new Map() // red: stable-root -- readonly at the map, a named type at its values
         export const { a: PICKED } = RECORD // red: stable-root -- destructured from a binding, not from Object.freeze
         export default { a: 1 } // red: stable-root -- a default export of a record literal
       `,
@@ -541,6 +536,184 @@ const INLINED_SCOPE: readonly Row[] = [
   },
 ]
 
+/**
+ * Type-name following (SPEC 04/01_type-names). canon: "proof being a primitive
+ * type, `as const`, a readonly array, record, map or set, or `Object.freeze`
+ * over a literal, each proven to its depth", and "a named type the reader
+ * cannot resolve proves nothing" — read the other way: a name the reader can
+ * resolve proves what it names. A name is resolved where it is written, the way
+ * TypeScript resolves it, and stands for the declaration it lands on; the
+ * verdict is the one that declaration's type would get written out in place.
+ * One row per kind of declaration a name can land on, then the step's boundary,
+ * the cycle, and a tripwire for the forms no row lists.
+ */
+const TYPE_NAMES: readonly Row[] = [
+  {
+    name: "an alias stands for its body: a readonly one proves, a mutable one does not",
+    files: {
+      "src/tables.model.ts": `
+        type Table = Readonly<{ a: number }>
+        type Loose = { a: number }
+        export const TABLE: Table = { a: 1 }
+        export const WRAPPED: Readonly<Table> = { a: 1 }
+        export const MAP_OF_PROVEN: ReadonlyMap<string, Table> = new Map()
+        export const LOOSE: Loose = { a: 1 } // red: stable-root -- the alias names a mutable record
+        export const LOOSE_IN_LIST: readonly Loose[] = [] // red: stable-root -- a readonly list of mutable records
+      `,
+    },
+  },
+  {
+    name: "a generic alias stands for its body with the arguments substituted, a missing one taking its default",
+    files: {
+      "src/boxes.model.ts": `
+        type Frozen<T> = Readonly<T>
+        type Boxed<T = number> = { readonly value: T }
+        export const FROZEN: Frozen<{ a: number }> = { a: 1 }
+        export const FROZEN_OUTER: Frozen<{ inner: { n: number } }> = { inner: { n: 1 } } // red: stable-root -- Readonly is one level, the substituted inner record is mutable
+        export const BOXED: Boxed = { value: 1 }
+        export const BOXED_RECORD: Boxed<{ n: number }> = { value: { n: 1 } } // red: stable-root -- the argument is a mutable record
+      `,
+    },
+  },
+  {
+    // An interface is every declaration of it, merged, and
+    // every interface it extends; under Readonly<…> its members are wrapped
+    // one level, as a type literal's are.
+    name: "an interface stands for its members, merged and inherited: proven when every one is readonly and proven",
+    files: {
+      "src/points.model.ts": `
+        interface Point { readonly x: number; readonly y: number }
+        interface Loose { readonly x: number; y: number }
+        interface Merged { readonly a: number }
+        interface Merged { b: number }
+        interface Base { n: number }
+        interface Derived extends Base { readonly m: number }
+        interface ReadonlyBase { readonly n: number }
+        interface Extended extends ReadonlyBase { readonly m: number }
+        export const ORIGIN: Point = { x: 0, y: 0 }
+        export const LOOSE: Loose = { x: 0, y: 0 } // red: stable-root -- y is not readonly
+        export const WRAPPED_LOOSE: Readonly<Loose> = { x: 0, y: 0 }
+        export const MERGED: Merged = { a: 1, b: 2 } // red: stable-root -- the second declaration adds a mutable member
+        export const DERIVED: Derived = { n: 1, m: 2 } // red: stable-root -- n, inherited, is mutable
+        export const EXTENDED: Extended = { n: 1, m: 2 }
+      `,
+    },
+  },
+  {
+    name: "an enum stands for its values, which are primitives",
+    files: {
+      "src/colors.model.ts": `
+        enum Color { Red, Green }
+        export const DEFAULT_COLOR: Color = Color.Red
+      `,
+    },
+  },
+  {
+    // The name resolves in the file that declares it,
+    // through a re-export and through `export *`, imported type-only or not.
+    name: "an imported name stands for what the target file exports under it, re-exports followed",
+    files: {
+      "src/shapes.model.ts": `
+        export type Table = Readonly<{ a: number }>
+        export type Loose = { a: number }
+        export interface Point { readonly x: number }
+      `,
+      "src/relay.model.ts": `
+        export type { Table } from "./shapes.model.ts"
+      `,
+      "src/everything.model.ts": `
+        export * from "./shapes.model.ts"
+      `,
+      "src/uses.model.ts": `
+        import type { Table, Loose } from "./shapes.model.ts"
+        import { type Point } from "./everything.model.ts"
+        import type { Table as Relayed } from "./relay.model.ts"
+        export const TABLE: Table = { a: 1 }
+        export const LOOSE: Loose = { a: 1 } // red: stable-root -- the imported alias names a mutable record
+        export const POINT: Point = { x: 0 }
+        export const RELAYED: Relayed = { a: 1 }
+      `,
+    },
+  },
+  {
+    // A declaration in scope wins over the standard wrapper,
+    // as it does for TypeScript.
+    name: "a local declaration named like a standard wrapper shadows it",
+    files: {
+      "src/shadow.model.ts": `
+        type Readonly<T> = T
+        export const SHADOWED: Readonly<{ a: number }> = { a: 1 } // red: stable-root -- this Readonly is the local one, which keeps the record as it is
+      `,
+    },
+  },
+  {
+    // The step's boundary, written with the right verdicts:
+    // every value here is readonly, so every line is green. KNOWN FAILING —
+    // this step does not follow these names, the reader says red on all five
+    // (the comment on each line says what it waits for). Confessed here until
+    // the `!miss` marker lands; never written as `red`.
+    name: "a readonly type reached through a class, typeof, a qualified name, a mapped type or a package proves",
+    files: {
+      "node_modules/some-made-up-package/package.json": JSON.stringify({
+        name: "some-made-up-package",
+        main: "./index.js",
+        types: "./index.d.ts",
+      }),
+      "node_modules/some-made-up-package/index.js": "module.exports = {}",
+      "node_modules/some-made-up-package/index.d.ts": `
+        export type SomeMadeUpType = { readonly a: number }
+      `,
+      "src/shapes.model.ts": `
+        export type Table = Readonly<{ a: number }>
+      `,
+      "src/boundary.model.ts": `
+        import type * as shapes from "./shapes.model.ts"
+        import type { SomeMadeUpType } from "some-made-up-package"
+        class Spot { readonly x = 1 }
+        const BASE = { a: 1 } as const
+        type Mapped = { readonly [K in "a"]: number }
+        export const SPOT: Spot = new Spot() // known failing: class types are not followed yet
+        export const COPY: typeof BASE = { a: 1 } // known failing: typeof is not followed yet
+        export const QUALIFIED: shapes.Table = { a: 1 } // known failing: qualified names are not followed yet
+        export const MAPPED: Mapped = { a: 1 } // known failing: mapped types are not read yet
+        export const PACKAGED: SomeMadeUpType = { a: 1 } // known failing: a package's types are the next step
+      `,
+    },
+  },
+  {
+    // A name already being proven counts as proven; the
+    // rest of the type still decides.
+    name: "a type that reaches itself is proven when nothing along the way is mutable",
+    files: {
+      "src/lists.model.ts": `
+        type List = { readonly head: number; readonly next: List | null }
+        type Link = { readonly next: Link | null; value: number }
+        export const EMPTY: List = { head: 0, next: null }
+        export const LONE: Link = { next: null, value: 0 } // red: stable-root -- value is not readonly
+      `,
+    },
+  },
+  {
+    // Tripwire: a name renamed on import and re-exported
+    // under a third name. Following the name passes it for free; a reader
+    // built as one branch per row above does not.
+    name: "a name renamed on import and re-exported under another name still lands on its declaration",
+    files: {
+      "src/shapes.model.ts": `
+        export type Table = Readonly<{ a: number }>
+      `,
+      "src/middle.model.ts": `
+        import type { Table as Grid } from "./shapes.model.ts"
+        export type { Grid as Sheet }
+      `,
+      "src/uses.model.ts": `
+        import type { Sheet } from "./middle.model.ts"
+        export const SHEET: Sheet = { a: 1 }
+      `,
+    },
+  },
+]
+
 describe("modules", () => {
   describe("an inlined body reads the scope it was written in", () => {
     test.each(INLINED_SCOPE)("$name", async (row) => {
@@ -558,6 +731,13 @@ describe("modules", () => {
 
   describe("a root binding is red unless the syntax proves it immutable", () => {
     test.each(READONLY_BINDINGS)("$name", async (row) => {
+      const { judge } = assembleCase(row.files)
+      expect(await judge(row)).toEqual(AS_MARKED)
+    })
+  })
+
+  describe("a type name is followed to what it names", () => {
+    test.each(TYPE_NAMES)("$name", async (row) => {
       const { judge } = assembleCase(row.files)
       expect(await judge(row)).toEqual(AS_MARKED)
     })
