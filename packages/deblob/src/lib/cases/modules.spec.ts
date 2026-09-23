@@ -320,6 +320,65 @@ const READONLY_BINDINGS: readonly Row[] = [
     },
   },
   {
+    // Coverage sweep, 2026-09-24; verdicts agreed by rixo.
+    // canon: the same clause, forms no row wrote: `Readonly<T[]>` is a
+    // readonly array, a readonly tuple is proven to its depth, a name bound
+    // to a function is code; a call result proves nothing (the RESULT line
+    // above), inside a freeze too.
+    name: "a readonly array however written, a readonly tuple to its depth, a name bound to a function; a freeze of a call proves nothing",
+    files: {
+      "src/tuples.model.ts": `
+        const double = (n: number) => n * 2
+        const createTable = () => ({ a: 1 })
+        export const LIST: Readonly<number[]> = [1]
+        export const PAIR: readonly [number, string] = [1, "a"]
+        export const NESTED_PAIR: readonly [number, number[]] = [1, []] // red: stable-root -- a readonly tuple holding a mutable array
+        export const TWICE = double
+        export const FROZEN_CALL = Object.freeze(createTable()) // red: stable-root -- what the call returns is not seen, so nothing is proven
+      `,
+    },
+  },
+  {
+    // Coverage sweep, 2026-09-24; verdicts agreed by rixo.
+    // canon: proof is what the syntax shows. deblob reads syntax, not types,
+    // so code that parses but does not compile reaches the reader, and shows
+    // nothing it could prove.
+    name: "code that does not compile proves nothing: a readonly wrapper without its type arguments, a freeze of nothing",
+    files: {
+      "src/broken.model.ts": `
+        export const BARE: ReadonlyMap = new Map() // red: stable-root -- ReadonlyMap without its type arguments
+        export const EMPTY_FREEZE = Object.freeze() // red: stable-root -- a freeze of nothing
+      `,
+    },
+  },
+  {
+    // Coverage sweep, 2026-09-24. Verdicts agreed by rixo
+    // 2026-09-24: Readonly covers methods too and a method is code; a readonly
+    // index signature over a proven value is a readonly record; a key and a
+    // unique symbol are primitives. Unwrapped, a method stays red: TS cannot
+    // mark it readonly, so it can be reassigned. The freeze of an import
+    // follows the 2026-09-22 rulings — a freeze of a name freezes the very
+    // object bound to it, a name is followed to what it is bound to — across
+    // a file boundary: derived from them, accepted at review 2026-09-24.
+    name: "readonly forms the reader does not read yet: a method under Readonly, a readonly index signature, keyof, unique symbol, a freeze of an imported object",
+    files: {
+      "src/base.model.ts": `
+        export const BASE_TABLE = { a: 1 } // red: stable-root -- the object itself, until frozen
+      `,
+      "src/unread.model.ts": `
+        import { BASE_TABLE } from "./base.model.ts"
+        const SHAPE = { a: 1 } as const
+        const firstKey = (): "a" => "a"
+        export const STOPPABLE: Readonly<{ stop(): void }> = { stop: () => {} } // false red: stable-root -- method signatures are not read yet
+        export const LOOSE_STOP: { stop(): void } = { stop: () => {} } // red: stable-root -- a method can be reassigned: TS cannot mark it readonly
+        export const COUNTS: { readonly [key: string]: number } = {} // false red: stable-root -- index signatures are not read yet
+        export const KEY: keyof typeof SHAPE = firstKey() // false red: stable-root -- keyof is not read yet
+        export const ID: unique symbol = Symbol() // false red: stable-root -- unique symbol is not read yet
+        export const FROZEN_IMPORT = Object.freeze(BASE_TABLE) // false red: stable-root -- an import is not followed to its object yet
+      `,
+    },
+  },
+  {
     // Found by the self-check when the binding clause landed:
     // `PROTOTYPE_METHODS` in the reader builds its set through a root
     // `flatMap` whose callback declares locals, and those read as root

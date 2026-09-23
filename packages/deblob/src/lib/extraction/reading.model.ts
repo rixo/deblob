@@ -244,8 +244,7 @@ const READONLY_TYPE_NAMES = new Set([
 ])
 
 const typeArgumentsOf = (type: AstNode): AstNode[] => {
-  const args = (type["typeArguments"] ?? type["typeParameters"]) as
-    AstNode | undefined
+  const args = type["typeArguments"] as AstNode | undefined
   return isNode(args) ? (args["params"] as AstNode[]) : []
 }
 
@@ -305,12 +304,11 @@ const isReadonlyType = (type: AstNode): boolean => {
     }
     case "TSTypeOperator": {
       if (type["operator"] !== "readonly") return false
+      // oxc refuses `readonly` over anything but an array or a tuple
       const operand = type["typeAnnotation"] as AstNode
-      if (operand.type === "TSArrayType")
-        return isReadonlyType(operand["elementType"] as AstNode)
-      if (operand.type === "TSTupleType")
-        return (operand["elementTypes"] as AstNode[]).every(isReadonlyType)
-      return false
+      return operand.type === "TSArrayType"
+        ? isReadonlyType(operand["elementType"] as AstNode)
+        : (operand["elementTypes"] as AstNode[]).every(isReadonlyType)
     }
     case "TSParenthesizedType":
       return isReadonlyType(type["typeAnnotation"] as AstNode)
@@ -335,8 +333,6 @@ type Names = {
   initOf: (name: string) => AstNode | null
 }
 
-const NO_NAMES: Names = { isImmutable: () => false, initOf: () => null }
-
 /**
  * An initializer whose value is immutable by its form: a primitive-valued
  * expression (a literal, a template, an operator's result), `undefined`, a name
@@ -344,10 +340,7 @@ const NO_NAMES: Names = { isImmutable: () => false, initOf: () => null }
  * over a literal whose entries are immutable (written there, or bound to the
  * name it freezes), or an assertion to a readonly type.
  */
-const isImmutableInitializer = (
-  node: AstNode,
-  names: Names = NO_NAMES,
-): boolean => {
+const isImmutableInitializer = (node: AstNode, names: Names): boolean => {
   const immutable = (child: unknown): boolean =>
     isNode(child) && isImmutableInitializer(child, names)
   switch (node.type) {
@@ -995,8 +988,10 @@ export const readModule = ({
    */
   const holdsRead = (binding: Binding): boolean => {
     if (binding.kind === "import" || binding.kind === "parameter") return true
-    if (binding.kind !== "definition" || binding.init === null) return false
-    const init = unwrap(binding.init)
+    // past those two, only a definition with an initializer resolves to tech
+    // (resolveBinding): a catch or callback binding is computed, and so is a
+    // definition without an initializer
+    const init = unwrap(binding.init as AstNode)
     return (
       init.type !== "CallExpression" &&
       init.type !== "NewExpression" &&
