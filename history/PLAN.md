@@ -79,6 +79,31 @@
 
 ### Ideas
 
+- **Readonly laundered away after the root** (rixo, 2026-09-23, to discuss
+  calmly and decide) — `stable-root`'s readonly half proves what a root
+  binding's syntax allows, and TypeScript refuses direct writes through it
+  (reassign a member, add a property, `delete`: TS2540, TS2339, TS2704). It does
+  not refuse three ways around it, checked under `strict` on TypeScript 7.0.2:
+  `Object.assign(BOXED, { value: 3 })`; assigning the value to a mutable type,
+  `const alias: { value: number } = BOXED`, then writing through the alias; the
+  same over an `as const` object. So a green root binding can still change at
+  run time, through code elsewhere. Catching it would be a rule on how values
+  are used, not on how bindings are declared: a readonly value handed to a
+  mutable type or to a mutating call. To weigh: what it buys (the guarantee
+  `stable-root` implies but does not give) against how much it needs (types
+  across calls — the TypeScript engine's ground, see
+  `20260913_driver-layer/04_outside-rules/01_type-names/SPEC.md`), and whether
+  it is deblob's concern at all or a lint's. `Object.freeze` is the only runtime
+  proof, one level deep. **Discussed 2026-09-24, stashed, low priority:**
+  catching the write itself is tsc's or a linter's ground. deblob's stake is not
+  the laundering but its own guarantee: green on `stable-root` should mean the
+  root is stable, full stop. The way there is an opt-in strict rule under which
+  that holds — banning outright what would break it (a readonly value handed to
+  a mutable type or to `Object.assign`) — and it needs types to detect those.
+  Owed meanwhile, on its own: one sentence where `stable-root` is documented
+  (canon, `rule-content.model.ts`) saying what it proves (the binding as
+  declared) and what it does not (`readonly` can be assigned away; only a freeze
+  holds at run time).
 - **Global kernels are born day 0, not at the second consumer** (rixo,
   2026-09-18) — canon's kernel sentences read as "extract when two consumers
   collide": § Kernel ("typically extracted to prevent dependency cycles between
