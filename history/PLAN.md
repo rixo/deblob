@@ -82,6 +82,16 @@
   output (the flavor's `serviceRoot`, the graph vocabulary, the CLI's "N
   services" line and its goldens, the READMEs); the skills' placement cards and
   the memory notes. Prose lands everywhere in the same step as the slug.
+- **`asExtractionError` hides its rethrow** (2026-09-22) — the name reads as a
+  cast, and the function throws whatever is not an `ExtractionError`. rixo
+  rejected the same name on the config side 2026-09-17
+  (`asConfigError(e).message` was "anti-obvious": the rethrow is the point and
+  the name does not say it), and `asConfigError` became `asConfigErrorOrRethrow`
+  on the `viewer` branch. The twin in `lib/extraction/graph.model.ts` was born
+  on `driver-layer` with the old pattern. Rename to
+  `asExtractionErrorOrRethrow`, its call sites in the CLI's `main.ts`, its spec;
+  one mechanical commit. Found at the rebase of `viewer` onto `driver-layer`,
+  left alone there on purpose.
 
 ### Ideas
 
