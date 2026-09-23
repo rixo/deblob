@@ -121,6 +121,38 @@ through Vitest browser mode enters there).
 - ~~**Optional peer or regular dependency** of `deblob` on the viewer~~ — closed
   2026-09-16 at step 05, see § Decisions.
 
+## Design track
+
+The map is this chapter's work, built in a claude.ai/design project: same
+chapter, another room. That project has no SDD, so its plan is this one. Since
+2026-09-23 the viewer runs its pages verbatim (rixo: blackbox the prototype
+while it moves fast), and its files will be committed into the viewer as they
+are. The project keeps its own session log (`DECISIONS.md`, `docs/HANDOFF.md`);
+a row here closes when that log records it.
+
+### Sent
+
+- **Call stacks** (2026-09-23) — `data/CALL-STACKS.md` with the rev. 2 sequence
+  snapshot: selection behavior, a "calls" arrow type, stopping at a port with an
+  opt-in to follow into the adapter. **Taken**: their Session 36 draws stacks as
+  arcs; not judged by rixo yet. Open on their side: the port opt-in control, the
+  port drawn as a pass-through, step → map link.
+- **Host pass** (2026-09-23) — `data/FROM-DEBLOB.md`: every file ≤ 200 KiB, one
+  `globalThis` module pattern, no React in page code, data paths as a contract
+  with the sequence panel on `.2`, `gen-graph` gains `buildGraph`, nothing
+  design-host-only, a "Host contract (deblob)" section in their `CLAUDE.md`.
+  Behavior unchanged. **Sent**, awaiting their pass.
+
+### Queue
+
+Map work for the design room, not sent yet. One goes out at a time, as its own
+ask.
+
+- **Search bar to filter nodes by name** (2026-09-23, rixo) — hard to find a
+  module or member by name on a big map. Filtering, not only jumping to a match:
+  how it composes with folds, zoom on selection and the highlight model is
+  theirs to rule.
+
 ## Future
 
 ### Ideas
