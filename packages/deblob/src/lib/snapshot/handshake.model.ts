@@ -28,7 +28,11 @@ export type Handshake = {
 }
 
 /** As the URL parser writes them — IPv6 keeps its brackets. */
-const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"])
+const LOOPBACK: ReadonlySet<string> = new Set([
+  "127.0.0.1",
+  "localhost",
+  "[::1]",
+])
 
 /** The network's input, not ours: what does not parse is not an authority. */
 const parsed = (url: string): URL | null => {

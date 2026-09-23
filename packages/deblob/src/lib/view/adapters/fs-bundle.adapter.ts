@@ -11,7 +11,7 @@ import { resolve, sep } from "node:path"
 import type { BundleFiles } from "../ports/bundle.port.ts"
 
 /** What a filesystem says for "there is nothing of that name here". */
-const MISSING = new Set(["ENOENT", "EISDIR"])
+const MISSING: ReadonlySet<string> = new Set(["ENOENT", "EISDIR"])
 
 const isMissing = (error: unknown): boolean =>
   MISSING.has(String((error as NodeJS.ErrnoException).code))

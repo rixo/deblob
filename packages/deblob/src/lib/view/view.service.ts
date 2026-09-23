@@ -20,11 +20,12 @@ export type ViewResponse = {
   body: Uint8Array
 }
 
-const NOT_FOUND: ViewResponse = {
+/** A fresh 404 per answer: its body is bytes, and bytes can be written to. */
+const notFound = (): ViewResponse => ({
   status: 404,
   contentType: "text/plain; charset=utf-8",
   body: new TextEncoder().encode("not found\n"),
-}
+})
 
 export const createViewService = ({
   files,
@@ -44,11 +45,11 @@ export const createViewService = ({
     if (request.method !== "GET") return null
     const asset = assetFor(request.path)
     // a target no bundle may answer — nothing is read, 404 is the whole reply
-    if (asset === null) return NOT_FOUND
+    if (asset === null) return notFound()
     if (reserved.includes(asset.path)) return null
     const body = await files.read(asset.file)
     // a miss is a stale hashed asset: extensionless targets became the index
-    if (body === null) return NOT_FOUND
+    if (body === null) return notFound()
     return { status: 200, contentType: asset.contentType, body }
   }
   return { respondTo }

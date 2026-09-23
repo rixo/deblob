@@ -27,13 +27,6 @@ const configAt = (root: string, raw: unknown = {}): ResolvedConfig =>
     readers: {},
   })
 
-const FAKE_CONFIG = configAt("/FAKE_ROOT")
-
-/** A monorepo root whose viewer lists two projects, one of them nameless. */
-const FAKE_MONO_CONFIG = configAt("/FAKE_MONO", {
-  view: { projects: ["/FAKE_ROOT", "/FAKE_B"] },
-})
-
 const node = (path: string): ModuleNode => ({
   path,
   layer: "blob",
@@ -45,27 +38,6 @@ const node = (path: string): ModuleNode => ({
   readings: [],
 })
 
-/** One project at `/FAKE_ROOT`, files in filesystem order; nothing at `/FAKE_B`. */
-const memorySource = createMemoryProjectSource({
-  projects: {
-    "/FAKE_ROOT": {
-      config: FAKE_CONFIG,
-      files: ["src/z.ts", "src/a.ts"],
-      dirs: ["src"],
-      sizes: { "src/z.ts": 10, "src/a.ts": 10 },
-      name: "FAKE_PKG",
-    },
-    "/FAKE_MONO": {
-      config: FAKE_MONO_CONFIG,
-      files: [],
-      dirs: [],
-      sizes: {},
-      name: "FAKE_MONO",
-    },
-  },
-  now: "1999-12-31T23:59:59.000Z",
-})
-
 const graphOf = async (files: readonly string[]): Promise<ImportGraph> => ({
   root: "/FAKE_ROOT",
   modules: new Map(files.map((path) => [path, node(path)])),
@@ -75,6 +47,37 @@ const graphOf = async (files: readonly string[]): Promise<ImportGraph> => ({
 })
 
 describe("createSnapshotService", () => {
+  const FAKE_CONFIG = configAt("/FAKE_ROOT")
+
+  /** A monorepo root whose viewer lists two projects, one of them nameless. */
+  const FAKE_MONO_CONFIG = configAt("/FAKE_MONO", {
+    view: { projects: ["/FAKE_ROOT", "/FAKE_B"] },
+  })
+
+  /**
+   * One project at `/FAKE_ROOT`, files in filesystem order; nothing at
+   * `/FAKE_B`.
+   */
+  const memorySource = createMemoryProjectSource({
+    projects: {
+      "/FAKE_ROOT": {
+        config: FAKE_CONFIG,
+        files: ["src/z.ts", "src/a.ts"],
+        dirs: ["src"],
+        sizes: { "src/z.ts": 10, "src/a.ts": 10 },
+        name: "FAKE_PKG",
+      },
+      "/FAKE_MONO": {
+        config: FAKE_MONO_CONFIG,
+        files: [],
+        dirs: [],
+        sizes: {},
+        name: "FAKE_MONO",
+      },
+    },
+    now: "1999-12-31T23:59:59.000Z",
+  })
+
   test("snapshotOf: load, scan, extract over the sorted files, fold", async () => {
     const seen: { config: ResolvedConfig; files: readonly string[] }[] = []
     const { snapshotOf } = createSnapshotService({
@@ -145,107 +148,108 @@ describe("createSnapshotService", () => {
   })
 })
 
-// every root a test selects: `serveSnapshots` runs nothing outside its list
-const FAKE_PROJECTS = [
-  { root: "/FAKE_A", name: "FAKE_A" },
-  { root: "/FAKE_B", name: null },
-  { root: "/FAKE_BROKEN", name: null },
-  { root: "/FAKE_SLOW", name: null },
-]
+describe("serveSnapshots", () => {
+  // every root a test selects: `serveSnapshots` runs nothing outside its list
+  const FAKE_PROJECTS = [
+    { root: "/FAKE_A", name: "FAKE_A" },
+    { root: "/FAKE_B", name: null },
+    { root: "/FAKE_BROKEN", name: null },
+    { root: "/FAKE_SLOW", name: null },
+  ]
 
-const FAKE_BUG = new Error("FAKE_BUG")
+  const FAKE_BUG = new Error("FAKE_BUG")
 
-/** A deferred run: the test resolves it. */
-const deferred = <T>() => {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((r) => (resolve = r))
-  return { promise, resolve }
-}
-
-/** Runs counted, so a re-run shows in `generatedAt`; a slow project on demand. */
-const fakeRuns = () => {
-  let runs = 0
-  const slow: { resolve: (run: ProjectRun) => void }[] = []
-  const failing = new Set<string>()
-  const runAt = (root: string): ProjectRun => ({
-    snapshot: {
-      generatedAt: `FAKE_RUN_${runs}`,
-      project: { root, name: null, provenance: "FAKE_PROV" },
-      stats: { files: 0, bytes: 0, blobPercent: 0, services: 0 },
-      modules: [],
-      edges: [],
-      unresolved: [],
-    },
-    watchSet: [root, `${root}/src`],
-  })
-  const runOf = async (root: string): Promise<ProjectRun> => {
-    runs += 1
-    if (root === "/FAKE_B" || failing.has(root)) {
-      throw new ConfigError("FAKE_CONFIG_FAILURE")
-    }
-    if (root === "/FAKE_BROKEN") throw FAKE_BUG
-    if (root === "/FAKE_SLOW") {
-      const { promise, resolve } = deferred<ProjectRun>()
-      slow.push({ resolve })
-      return promise
-    }
-    return runAt(root)
+  /** A deferred run: the test resolves it. */
+  const deferred = <T>() => {
+    let resolve!: (value: T) => void
+    const promise = new Promise<T>((r) => (resolve = r))
+    return { promise, resolve }
   }
-  return {
-    runOf,
-    /** The set a run of `root` would end with, read ahead of it. */
-    watchSetFor: async (root: string): Promise<readonly string[]> => {
+
+  /** Runs counted, so a re-run shows in `generatedAt`; a slow project on demand. */
+  const fakeRuns = () => {
+    let runs = 0
+    const slow: { resolve: (run: ProjectRun) => void }[] = []
+    const failing = new Set<string>()
+    const runAt = (root: string): ProjectRun => ({
+      snapshot: {
+        generatedAt: `FAKE_RUN_${runs}`,
+        project: { root, name: null, provenance: "FAKE_PROV" },
+        stats: { files: 0, bytes: 0, blobPercent: 0, services: 0 },
+        modules: [],
+        edges: [],
+        unresolved: [],
+      },
+      watchSet: [root, `${root}/src`],
+    })
+    const runOf = async (root: string): Promise<ProjectRun> => {
+      runs += 1
       if (root === "/FAKE_B" || failing.has(root)) {
         throw new ConfigError("FAKE_CONFIG_FAILURE")
       }
-      return [root, `${root}/src`]
-    },
-    /** Let the oldest pending slow run answer. */
-    release: () => {
-      const pending = slow.shift()
-      if (pending === undefined) throw new Error("no slow run pending")
-      pending.resolve(runAt("/FAKE_SLOW"))
-    },
-    /** Every later run of `root` fails on its config. */
-    fail: (root: string) => {
-      failing.add(root)
-    },
+      if (root === "/FAKE_BROKEN") throw FAKE_BUG
+      if (root === "/FAKE_SLOW") {
+        const { promise, resolve } = deferred<ProjectRun>()
+        slow.push({ resolve })
+        return promise
+      }
+      return runAt(root)
+    }
+    return {
+      runOf,
+      /** The set a run of `root` would end with, read ahead of it. */
+      watchSetFor: async (root: string): Promise<readonly string[]> => {
+        if (root === "/FAKE_B" || failing.has(root)) {
+          throw new ConfigError("FAKE_CONFIG_FAILURE")
+        }
+        return [root, `${root}/src`]
+      },
+      /** Let the oldest pending slow run answer. */
+      release: () => {
+        const pending = slow.shift()
+        if (pending === undefined) throw new Error("no slow run pending")
+        pending.resolve(runAt("/FAKE_SLOW"))
+      },
+      /** Every later run of `root` fails on its config. */
+      fail: (root: string) => {
+        failing.add(root)
+      },
+    }
   }
-}
 
-/** A client connected to a server over the fake projects. */
-const connectServed = async () => {
-  const { channel, connect } = createMemoryChannel()
-  const { report, reported } = createMemoryReport()
-  const { watcher, change, watching, hold } = createMemoryWatcher()
-  const runs = fakeRuns()
-  serveSnapshots({
-    channel,
-    projects: FAKE_PROJECTS,
-    runOf: runs.runOf,
-    watchSetFor: runs.watchSetFor,
-    watcher,
-    report,
-  })
-  const connection = await connect()
-  const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
-  return {
-    ...connection,
-    reported,
-    change,
-    watching,
-    hold,
-    release: runs.release,
-    fail: runs.fail,
-    settle,
-    generatedAtOf: (index: number) =>
-      (connection.sent[index] as { snapshot: Snapshot }).snapshot.generatedAt,
-    rootOf: (index: number) =>
-      (connection.sent[index] as { snapshot: Snapshot }).snapshot.project.root,
+  /** A client connected to a server over the fake projects. */
+  const connectServed = async () => {
+    const { channel, connect } = createMemoryChannel()
+    const { report, reported } = createMemoryReport()
+    const { watcher, change, watching, hold } = createMemoryWatcher()
+    const runs = fakeRuns()
+    serveSnapshots({
+      channel,
+      projects: FAKE_PROJECTS,
+      runOf: runs.runOf,
+      watchSetFor: runs.watchSetFor,
+      watcher,
+      report,
+    })
+    const connection = await connect()
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+    return {
+      ...connection,
+      reported,
+      change,
+      watching,
+      hold,
+      release: runs.release,
+      fail: runs.fail,
+      settle,
+      generatedAtOf: (index: number) =>
+        (connection.sent[index] as { snapshot: Snapshot }).snapshot.generatedAt,
+      rootOf: (index: number) =>
+        (connection.sent[index] as { snapshot: Snapshot }).snapshot.project
+          .root,
+    }
   }
-}
 
-describe("serveSnapshots", () => {
   test("on connect: projects, then the first project's snapshot, its set watched", async () => {
     const { sent, watching, rootOf } = await connectServed()
     expect(sent.map((message) => message.type)).toEqual([
@@ -466,10 +470,10 @@ describe("serveSnapshots", () => {
   })
 })
 
-/** The driver's own wiring over this very package. */
-const deblobRoot = fileURLToPath(new URL("../../../", import.meta.url))
-
 describe("self-extract", () => {
+  /** The driver's own wiring over this very package. */
+  const deblobRoot = fileURLToPath(new URL("../../../", import.meta.url))
+
   test("snapshots this package with the numbers `deblob check` reports", async () => {
     const source = createProjectSource()
     const { snapshotOf } = createSnapshotService({ source, extractionFor })
