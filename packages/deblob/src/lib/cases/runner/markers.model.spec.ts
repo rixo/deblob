@@ -22,6 +22,24 @@ const red = (
   why,
 })
 
+/**
+ * The match of one file, `src/a.ts`, against the reader's reports, each `[line,
+ * slug]`.
+ */
+const matchSource = (
+  source: string,
+  reports: readonly (readonly [number | null, RuleId])[],
+) =>
+  matchVerdicts(
+    markersOf("src/a.ts", source),
+    reports.map(([line, slug]) => ({
+      file: "src/a.ts",
+      line,
+      slugs: [slug],
+      via: [],
+    })),
+  )
+
 describe("markersOf", () => {
   it("reads `// red: <slug>` at a line's end as a claim on that line, several slugs, an optional why; other comments are not markers", () => {
     const source = [
@@ -114,6 +132,81 @@ describe("markersOf", () => {
       markersOf("src/a.ts", "run() // a note // red: inward-deps"),
     ).toThrow(/src\/a\.ts:1: a marker after a comment/)
   })
+
+  describe("confessions", () => {
+    it("reads `// false red:` and `// missed red:` as a confession of each slug, with its why", () => {
+      const source = [
+        "export const SPOT: Spot = new Spot() // false red: stable-root -- class types are not followed yet",
+        "export const X = f() // missed red: stable-root, ambient-access -- the call clause is not built",
+      ].join("\n")
+      expect(markersOf("src/a.ts", source)).toEqual([
+        {
+          kind: "red",
+          confession: "false",
+          file: "src/a.ts",
+          line: 1,
+          slug: "stable-root",
+          why: "class types are not followed yet",
+        },
+        {
+          kind: "red",
+          confession: "missed",
+          file: "src/a.ts",
+          line: 2,
+          slug: "stable-root",
+          why: "the call clause is not built",
+        },
+        {
+          kind: "red",
+          confession: "missed",
+          file: "src/a.ts",
+          line: 2,
+          slug: "ambient-access",
+          why: "the call clause is not built",
+        },
+      ])
+    })
+
+    it("reads `// false via:` and `// missed via:` the same, on trigger lines", () => {
+      const source = [
+        "export const A = helper() // false via: stable-root -- the helper is not followed yet",
+        "export const B = other() // missed via: stable-root -- the call clause is not built",
+      ].join("\n")
+      expect(markersOf("src/a.ts", source)).toMatchObject([
+        { kind: "via", confession: "false", line: 1 },
+        { kind: "via", confession: "missed", line: 2 },
+      ])
+    })
+
+    it("places a confession as any marker: stacked above a line with a plain claim, alone at the end of the file for the file", () => {
+      const source = [
+        "// missed red: stable-root -- the call clause is not built",
+        "export const X = f() // red: ambient-access",
+        'import { y } from "./y.ts"',
+        "// false red: inward-deps -- the import is type-only",
+      ].join("\n")
+      expect(markersOf("src/a.ts", source)).toMatchObject([
+        { confession: "missed", line: 2, slug: "stable-root" },
+        { confession: undefined, line: 2, slug: "ambient-access" },
+        { confession: "false", line: null, slug: "inward-deps" },
+      ])
+    })
+
+    test.each([
+      [
+        "a confession word with no marker",
+        "run() // missed: stable-root -- why",
+      ],
+      ["a confession of green", "run() // false green: stable-root -- why"],
+      ["both words", "run() // false missed red: stable-root -- why"],
+      ["a confession without a why", "run() // false red: stable-root"],
+      ["another case", "run() // False red: stable-root -- why"],
+    ])("throws on a malformed confession, with the line: %s", (_, text) => {
+      expect(() => markersOf("src/a.ts", `x()\n${text}`)).toThrow(
+        /src\/a\.ts:2: malformed marker/,
+      )
+    })
+  })
 })
 
 describe("stripMarkers", () => {
@@ -123,6 +216,14 @@ describe("stripMarkers", () => {
         'import { x } from "./x.ts" // red: inward-deps -- why\nconst a = 1 // kept\n// red: private-sealed\nhelper() // via: stable-root',
       ),
     ).toBe('import { x } from "./x.ts"\nconst a = 1 // kept\n\nhelper()')
+  })
+
+  it("removes confessions the same way", () => {
+    expect(
+      stripMarkers(
+        "run() // false red: stable-root -- why\n// missed via: stable-root -- why\nhelper()",
+      ),
+    ).toBe("run()\n\nhelper()")
   })
 })
 
@@ -418,5 +519,159 @@ describe("matchVerdicts", () => {
         ],
       ),
     ).toEqual({ missing: [], unexpected: [] })
+  })
+
+  describe("confessions", () => {
+    it("lists a false red the reader still reports as confessed, and the row stays as marked", () => {
+      expect(
+        matchSource(
+          "export const SPOT: Spot = new Spot() // false red: stable-root -- class types are not followed yet",
+          [[1, "stable-root"]],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        settled: [],
+        confessed: [
+          "src/a.ts:1 false red stable-root -- class types are not followed yet",
+        ],
+      })
+    })
+
+    it("settles a false red the reader no longer reports: the row fails until the marker goes", () => {
+      expect(
+        matchSource(
+          "export const SPOT: Spot = new Spot() // false red: stable-root -- class types are not followed yet",
+          [],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        settled: ["src/a.ts:1 false red stable-root — remove the marker"],
+        confessed: [],
+      })
+    })
+
+    it("lists a missed red the reader still misses as confessed", () => {
+      expect(
+        matchSource(
+          "export const X = f() // missed red: stable-root -- the call clause is not built",
+          [],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        settled: [],
+        confessed: [
+          "src/a.ts:1 missed red stable-root -- the call clause is not built",
+        ],
+      })
+    })
+
+    it("settles a missed red the reader now reports", () => {
+      expect(
+        matchSource(
+          "export const X = f() // missed red: stable-root -- the call clause is not built",
+          [[1, "stable-root"]],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        settled: ["src/a.ts:1 missed red stable-root — remove the marker"],
+        confessed: [],
+      })
+    })
+
+    it("counts: two false reds of one slug on one line need two wrong reports", () => {
+      expect(
+        matchSource(
+          "export const X = f() // false red: stable-root, stable-root -- why",
+          [[1, "stable-root"]],
+        ),
+      ).toMatchObject({
+        settled: ["src/a.ts:1 false red stable-root — remove the marker"],
+        confessed: ["src/a.ts:1 false red stable-root -- why"],
+      })
+    })
+
+    it("still catches a new error on a confessed line: another slug reported there is unexpected", () => {
+      expect(
+        matchSource(
+          "export const SPOT: Spot = new Spot() // false red: stable-root -- class types are not followed yet",
+          [
+            [1, "stable-root"],
+            [1, "ambient-access"],
+          ],
+        ),
+      ).toMatchObject({
+        unexpected: ["src/a.ts:1 ambient-access"],
+        settled: [],
+      })
+    })
+
+    it("gives a report to the plain claim first: a missed red of the same slug settles only on a second report", () => {
+      const source = [
+        "// missed red: stable-root -- the second one is not built",
+        "export const X = f() // red: stable-root -- the first one",
+      ].join("\n")
+      expect(matchSource(source, [[2, "stable-root"]])).toMatchObject({
+        missing: [],
+        settled: [],
+        confessed: [
+          "src/a.ts:2 missed red stable-root -- the second one is not built",
+        ],
+      })
+      expect(
+        matchSource(source, [
+          [2, "stable-root"],
+          [2, "stable-root"],
+        ]),
+      ).toMatchObject({
+        settled: ["src/a.ts:2 missed red stable-root — remove the marker"],
+        confessed: [],
+      })
+    })
+
+    it("confesses a report without a line with a confession alone at the end of the file", () => {
+      expect(
+        matchSource(
+          'import { y } from "./y.ts"\n// false red: inward-deps -- the import is type-only',
+          [[null, "inward-deps"]],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        settled: [],
+        confessed: [
+          "src/a.ts false red inward-deps -- the import is type-only",
+        ],
+      })
+    })
+
+    it("confesses a wrong trigger with a false via", () => {
+      expect(
+        matchVerdicts(
+          markersOf(
+            "src/a.ts",
+            "export const N = 1 // red: stable-root\nhelper() // false via: stable-root -- the helper is not followed yet",
+          ),
+          [
+            {
+              file: "src/a.ts",
+              line: 1,
+              slugs: ["stable-root"],
+              via: [{ file: "src/a.ts", line: 2 }],
+            },
+          ],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        settled: [],
+        confessed: [
+          "src/a.ts:2 false via stable-root -- the helper is not followed yet",
+        ],
+      })
+    })
   })
 })
