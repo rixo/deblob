@@ -524,7 +524,13 @@ may reopen the service example and the config pattern section.
   first (placement-debt's `03_fs-kernel`, pulled forward from 09; the run
   service stays there). SPEC 03's rule sections are the contract, amended in
   `04_outside-rules/SPEC.md`; the reading spec is cut against coverage once the
-  cases are green. Drafted 2026-09-17, to ratify before the build.
+  cases are green. Drafted 2026-09-17, to ratify before the build. Order inside
+  it re-decided risk-first 2026-09-24 (rixo handed it over): `05_known-failures`
+  and `06_unknown-verdict` (siblings, both closed) made verdicts honest; next
+  `04/02_rows-first` — rows, no detector, for `stable-root`'s call half and the
+  ten outside rules; then call reading and the detectors against those rows;
+  type names (`04/01`, checkpoints 2–3), `node_modules` types and the engine
+  last, their rows already stamped `false unknown`.
 - `05_alignment-review` — the checks are implemented; one pass over every rule
   canon states for the outside kinds against what `deblob check` enforces, with
   the tests as the proof: per canon statement (each Summary bullet and the

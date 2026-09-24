@@ -238,6 +238,317 @@ const ROOT_CALLS: readonly Row[] = [
       `,
     },
   },
+  {
+    // canon: "a call that reaches the tech". A `new` is a call; `Worker` is the
+    // host's. The binding stores the call's result and adds no red.
+    name: "a new of a host class at root is a call reaching the tech",
+    files: {
+      "src/jobs/adapters/worker-pool.adapter.ts": `
+        // false unknown: stable-root -- a call's result is not followed yet
+        export const WORKER = new Worker("./w.js") // red: stable-root -- a new is a call, and Worker is the host's: the tech reached on import
+      `,
+    },
+  },
+  {
+    // canon: "a call that reaches the tech". Awaiting it adds nothing: the call
+    // runs on import either way.
+    name: "an awaited tech call at root is a tech call at root",
+    files: {
+      "src/http/adapters/fetch-status.adapter.ts": `
+        const STATUS_URL = "https://example.test/status"
+        // false unknown: stable-root -- a call's result is not followed yet
+        export const RES: Response = await fetch(STATUS_URL) // red: stable-root -- fetch reaches the tech on import; await adds nothing
+      `,
+    },
+  },
+  {
+    // canon: "a call that reaches the tech", and the inlining principle (ruled
+    // 2026-09-20): a function called where it is written runs its body there.
+    name: "an immediately invoked function runs its body at root: a tech call inside it is red where it sits",
+    files: {
+      "src/log/adapters/console-log.adapter.ts": `
+        export const X: number = (() => { // missed via: stable-root -- the call that runs the body on import; the call shape is not built yet
+          console.log("x") // missed red: stable-root -- the body runs on load, so its tech call is a root call; the call shape is not built yet
+          return 1
+        })()
+      `,
+    },
+  },
+  {
+    // canon: "its evaluation creates no mutable state, stores nothing read from
+    // the machine". A static field initializer runs when the class is
+    // evaluated — on load, for a class at root. An adapter, so that
+    // `ambient-access` stays out.
+    name: "a static field initializer runs on load: a read of the clock stored there is red",
+    files: {
+      "src/clock/adapters/system-clock.adapter.ts": `
+        export class Clock {
+          static started = Date.now() // missed red: stable-root -- a read of the clock stored on load, in a writable static; a static field is not read yet
+        }
+      `,
+    },
+  },
+  {
+    // canon: "performs no side effect". A static block runs when the class is
+    // evaluated.
+    name: "a static block runs on load: a tech call inside it is red",
+    files: {
+      "src/log/adapters/console-log.adapter.ts": `
+        export class Logger {
+          static {
+            console.log("loaded") // missed red: stable-root -- a static block runs on load, its tech call with it; a static block is not read yet
+          }
+        }
+      `,
+    },
+  },
+  {
+    // canon: "Root calls are the lane … not the crime". A decorator is a call on
+    // class evaluation; a model's own function called at root is legal, its
+    // body judged where it sits (ruled 2026-09-24).
+    name: "a model's own decorator on a root class is a model call at root: legal",
+    files: {
+      "src/seal.model.ts": `
+        export const sealed = <T>(target: T, _context: ClassDecoratorContext): T => target
+      `,
+      "src/point.model.ts": `
+        import { sealed } from "./seal.model.ts"
+        @sealed
+        export class Point {}
+      `,
+    },
+  },
+  {
+    // canon: "a call that reaches the tech". A tech decorator on a root class
+    // runs on import: registration into a global registry, the container
+    // pattern (ruled 2026-09-24).
+    name: "a tech package's decorator on a root class is a call reaching the tech",
+    files: {
+      "node_modules/@nestjs/common/package.json": JSON.stringify({
+        name: "@nestjs/common",
+        main: "./index.js",
+      }),
+      "node_modules/@nestjs/common/index.js": "module.exports = {}",
+      "src/repo/adapters/nest-repo.adapter.ts": `
+        import { Injectable } from "@nestjs/common"
+        @Injectable() // missed red: stable-root -- the tech's decorator runs on import and registers the class; a decorator is not read yet
+        export class Repo {}
+      `,
+    },
+  },
+  {
+    // canon: "whatever sits at root runs on import" — a default parameter does
+    // not sit at root: it runs at call time. An adapter, since in a model
+    // `ambient-access` is red in a function too.
+    name: "a tech call in a default parameter runs at call time, not on load",
+    files: {
+      "src/clock/adapters/system-clock.adapter.ts": `
+        export const stampOf = (at: number = Date.now()) => at
+      `,
+    },
+  },
+  {
+    // canon: "a host global is the tech's, a language global is not" (row "a
+    // service calling into tech at root").
+    name: "a language global called at a model's root is not the tech",
+    files: {
+      "src/defaults.model.ts": `
+        const DEFAULTS = { a: 1, b: 2 } as const
+        export const KEYS: readonly string[] = Object.keys(DEFAULTS)
+      `,
+    },
+  },
+  {
+    // canon: "holds anything that differs from one load to the next" names
+    // machine reads. A symbol's identity is fresh per load, like any literal's,
+    // and literals are legal; red would be an ultra-orthodox read (ruled
+    // 2026-09-24).
+    name: "a symbol created at a model's root is legal: a fresh identity, like any literal",
+    files: {
+      "src/token.model.ts": `
+        export const TOKEN: unique symbol = Symbol("token") // false unknown: stable-root -- unique symbol is not read yet
+      `,
+    },
+  },
+  {
+    // canon: "a call that … goes into a local function of a file whose layer may
+    // touch the tech". Across files through the one legal route, a private
+    // file of its own service (`public-unit`): an adapter importing a public
+    // adapter is `adapter-assembly-only` already.
+    name: "a function of the service's private adapter file, called at an adapter's root, is red: its layer may touch the tech",
+    files: {
+      "src/clock/private/naming.adapter.ts": `
+        export const nameOf = (name: string) => "clock:" + name
+      `,
+      "src/clock/adapters/system-clock.adapter.ts": `
+        import { nameOf } from "../private/naming.adapter.ts"
+        export const NAME: string = nameOf("x") // missed red: stable-root -- a function of an adapter file, whose layer may touch the tech; the call shape is not built yet
+      `,
+    },
+  },
+  {
+    // canon: "a local function of a file whose layer may touch the tech — an
+    // adapter's, a blob's", and the exemption list is closed: a spec file's
+    // registration calls, nothing else.
+    name: "a spec file calling a blob's function at root is red: only its registrations are exempt",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/legacy/fixtures.ts": `
+        export const loadFixture = () => ({ a: 1 })
+      `,
+      "src/fixtures.spec.ts": `
+        import { expect, it } from "vitest"
+        import { loadFixture } from "./legacy/fixtures.ts"
+        // false unknown: stable-root -- a call's result is not followed yet
+        const DATA = loadFixture() // red: stable-root -- a blob's function run on import; not a registration
+        it("reads", () => {
+          expect(DATA.a).toBe(1)
+        })
+      `,
+    },
+  },
+  {
+    // canon: "a call that reaches the tech". A tagged template is a call.
+    name: "a tech package's tagged template at root is a call reaching the tech",
+    files: {
+      "node_modules/sql-template-tag/package.json": JSON.stringify({
+        name: "sql-template-tag",
+        main: "./index.js",
+      }),
+      "node_modules/sql-template-tag/index.js": "module.exports = {}",
+      "src/users/adapters/sql-users.adapter.ts": `
+        import sql from "sql-template-tag"
+        // false unknown: stable-root -- a call's result is not followed yet
+        export const ALL_USERS = sql\`select * from users\` // red: stable-root -- a tagged template calls the tag on import
+      `,
+    },
+  },
+  {
+    // canon: "A property read is presumed free of side effects and a call is
+    // not". A getter is a function, and the presumption holds.
+    name: "a property read at a model's root is presumed free, a getter included",
+    files: {
+      "src/holder.model.ts": `
+        const holder = Object.freeze({ get value() { return 1 } })
+        export const V: number = holder.value
+      `,
+    },
+  },
+  {
+    // canon: "a call that reaches the tech". An optional call is a call.
+    name: "an optional tech call at root is a tech call",
+    files: {
+      "src/log/adapters/warn-log.adapter.ts": `
+        process.emitWarning?.("x") // missed red: stable-root -- an optional call is a call, the tech reached on import; the call shape is not built yet
+      `,
+    },
+  },
+  {
+    // canon: "Two shapes are exempt by kind: the boot's one call". `.catch` is
+    // a second call; the exemption covers the one. Also `boot-one-call`
+    // ("nothing else … called"), marked when that slug is registered.
+    name: "a boot chaining a call on its one call is red: the exemption is the one call",
+    files: {
+      "src/app.service.ts": `
+        export const createApp = () => ({ run: () => 1 })
+      `,
+      "src/cli.assembly.ts": `
+        import { createApp } from "./app.service.ts"
+        export const createCliAssembly = () => ({ app: createApp() })
+      `,
+      "src/cli.driver.ts": `
+        import { createCliAssembly } from "./cli.assembly.ts"
+        export const main = async () => {
+          const services = createCliAssembly()
+          process.on("ready", () => services.app.run())
+        }
+      `,
+      "src/cli.boot.ts": `
+        import { main } from "./cli.driver.ts"
+        main().catch(console.error) // missed red: stable-root -- a second call on import, the tech's; the exemption is the one call; the call shape is not built yet
+      `,
+    },
+  },
+  {
+    // canon: "the boot's one call" — awaited or voided, still the one call.
+    name: "a boot awaiting or voiding its one call makes the one call",
+    files: {
+      "src/app.service.ts": `
+        export const createApp = () => ({ run: () => 1 })
+      `,
+      "src/cli.assembly.ts": `
+        import { createApp } from "./app.service.ts"
+        export const createCliAssembly = () => ({ app: createApp() })
+      `,
+      "src/cli.driver.ts": `
+        import { createCliAssembly } from "./cli.assembly.ts"
+        export const main = async () => {
+          const services = createCliAssembly()
+          process.on("ready", () => services.app.run())
+        }
+      `,
+      "src/cli.boot.ts": `
+        import { main } from "./cli.driver.ts"
+        await main()
+      `,
+      "src/worker.boot.ts": `
+        import { main } from "./cli.driver.ts"
+        void main()
+      `,
+    },
+  },
+  {
+    // canon: "a spec file's registration calls into the runner" — a mock, a
+    // matcher, a table of rows are registrations, the call on a call's result
+    // included.
+    name: "a spec file's registrations into the runner are exempt: a mock, a matcher, a table",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/clock/adapters/system-clock.adapter.ts": `
+        export const createSystemClock = () => ({ now: () => Date.now() })
+      `,
+      "src/clock.spec.ts": `
+        import { describe, expect, it, vi } from "vitest"
+        import { createSystemClock } from "./clock/adapters/system-clock.adapter.ts"
+        const ROWS = [{ name: "a" }] as const
+        vi.mock("./clock/adapters/system-clock.adapter.ts")
+        expect.extend({
+          toBeRed: (received: unknown) => ({ pass: received === "red", message: () => "not red" }),
+        })
+        describe.each(ROWS)("$name", () => {
+          it("builds", () => {
+            expect(createSystemClock()).toBeDefined()
+          })
+        })
+      `,
+    },
+  },
+  {
+    // canon: "a call is presumed to have side effects … until the tech's reading
+    // declares that call effect-free". `import()` is a call into the host's
+    // module loader: a presumption, not a proven instability — the loaded
+    // module is cached, a static import loads the same (ruled 2026-09-24).
+    // Inside a function it is the lazy load, and green.
+    name: "a dynamic import at root is a call into the loader, awaited or not; inside a function it is the lazy load",
+    files: {
+      "src/heavy.model.ts": `
+        export const HEAVY = 1
+      `,
+      "src/loader.model.ts": `
+        import("./heavy.model.ts") // missed red: stable-root -- a call into the module loader on import; a static import says the same; the call shape is not built yet
+        await import("./heavy.model.ts") // missed red: stable-root -- awaited, the same call; the call shape is not built yet
+        export const loadHeavy = () => import("./heavy.model.ts")
+      `,
+    },
+  },
 ]
 
 const READONLY_BINDINGS: readonly Row[] = [
