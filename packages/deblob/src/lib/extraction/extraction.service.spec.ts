@@ -778,10 +778,18 @@ describe("extractGraph — declared external specifiers", () => {
 })
 
 describe("extractGraph failure modes", () => {
-  test("throws loudly on a parse failure of a supported file kind", async () => {
-    await expect(
-      extractFixture({ fixture: "broken", files: ["src/broken.ts"] }),
-    ).rejects.toThrow()
+  test("lists a file that does not parse as broken, with no line, and keeps it a node with nothing read", async () => {
+    const graph = await extractFixture({
+      fixture: "broken",
+      files: ["src/broken.ts"],
+    })
+    expect(graph.broken).toEqual([
+      { file: "src/broken.ts", line: null, reason: expect.any(String) },
+    ])
+    expect(graph.modules.get("src/broken.ts")).toMatchObject({
+      parsed: false,
+      reading: null,
+    })
   })
 
   test("throws when a covered file is not there — the scan listed it, nothing else may answer for it", async () => {

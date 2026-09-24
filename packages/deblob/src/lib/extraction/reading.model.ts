@@ -253,6 +253,7 @@ const unknownFor = (condition: UnknownCondition): Immutability => ({
  * unknown.
  */
 const allOf = (parts: readonly Immutability[]): Immutability =>
+  parts.find((part) => part.proof === "broken") ??
   parts.find((part) => part.proof === "mutable") ??
   parts.find((part) => part.proof === "unknown") ??
   READONLY
@@ -260,10 +261,13 @@ const allOf = (parts: readonly Immutability[]): Immutability =>
 /**
  * A declared type over a value: the type decides what the binding lets you do,
  * except that a value readonly by its own form (frozen, a primitive) stays
- * readonly whatever the type says.
+ * readonly whatever the type says — and either side broken is the answer.
  */
-const typedAs = (type: Immutability, value: Immutability): Immutability =>
-  value.proof === "readonly" ? value : type
+const typedAs = (type: Immutability, value: Immutability): Immutability => {
+  if (value.proof === "broken") return value
+  if (type.proof === "broken") return type
+  return value.proof === "readonly" ? value : type
+}
 
 /** Type keywords whose values are primitives — immutable by nature. */
 const PRIMITIVE_TYPE_KEYWORDS = new Set([
@@ -373,7 +377,8 @@ const typeImmutability = (type: AstNode): Immutability => {
       if (!READONLY_TYPE_NAMES.has(name))
         return unknownFor({ kind: "type-name", name })
       const args = typeArgumentsOf(type)
-      if (args.length === 0) return MUTABLE
+      if (args.length === 0)
+        return { proof: "broken", reason: `${name} without its type arguments` }
       if (name !== "Readonly") return allOf(args.map(typeImmutability))
       const inner = args[0] as AstNode
       if (inner.type === "TSTypeLiteral")
@@ -387,7 +392,7 @@ const typeImmutability = (type: AstNode): Immutability => {
         const recordArgs = typeArgumentsOf(inner)
         return recordArgs.length === 2
           ? typeImmutability(recordArgs[1] as AstNode)
-          : MUTABLE
+          : { proof: "broken", reason: "Record without its value type" }
       }
       return typeImmutability(inner)
     }
@@ -535,7 +540,11 @@ const initializerImmutability = (node: AstNode, names: Names): Immutability => {
       // a freeze is one level: what it freezes must hold immutable entries;
       // a name frozen is the very object it is bound to
       const argument = unwrap((node["arguments"] as AstNode[])[0] ?? node)
-      if (argument === node) return MUTABLE
+      if (argument === node)
+        return {
+          proof: "broken",
+          reason: "Object.freeze with nothing to freeze",
+        }
       const bound =
         argument.type === "Identifier"
           ? names.initOf(argument["name"] as string)
@@ -2512,3 +2521,19 @@ export const readModule = ({
     open,
   }
 }
+
+/**
+ * The root definitions the reader could not read, with what it could not read —
+ * through branches and loops, whose arms are root code.
+ */
+export const brokenLinesOf = (
+  root: readonly ReadStatement[],
+): { line: number; reason: string }[] =>
+  root.flatMap((statement) => {
+    if (statement.kind === "control")
+      return statement.arms.flatMap(brokenLinesOf)
+    return statement.kind === "definition" &&
+      statement.immutability.proof === "broken"
+      ? [{ line: statement.span.line, reason: statement.immutability.reason }]
+      : []
+  })

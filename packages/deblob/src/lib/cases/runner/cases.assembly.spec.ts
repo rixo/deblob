@@ -64,7 +64,7 @@ describe("assembleCase", () => {
 
     it("reports through layers, barrels and surface when every check runs", async () => {
       const { check } = assembleCase(files)
-      const violations = await check.run({ config: {} })
+      const { violations } = await check.run({ config: {} })
       expect(new Set(violations.map((violation) => violation.check))).toEqual(
         new Set(["layers", "barrels", "surface"]),
       )
@@ -72,7 +72,10 @@ describe("assembleCase", () => {
 
     it("reports through the checks named, alone", async () => {
       const { check } = assembleCase(files)
-      const violations = await check.run({ config: {}, checks: ["barrels"] })
+      const { violations } = await check.run({
+        config: {},
+        checks: ["barrels"],
+      })
       expect(violations.map((violation) => violation.check)).toEqual([
         "barrels",
       ])

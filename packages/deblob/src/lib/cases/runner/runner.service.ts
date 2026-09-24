@@ -2,7 +2,8 @@
  * The runner: judges a case — collects its markers, runs the chain through the
  * check port, matches. The verdict of a row is the match; whether the code is
  * red is what the markers say; where the reader is known wrong, the failure is
- * expected.
+ * expected. Where deblob cannot read the case is claimed like the rest: a
+ * broken run still reports every verdict it reaches.
  */
 
 import type { Case, Verdict } from "./markers.model.ts"
@@ -14,11 +15,11 @@ export const createRunner = ({ check }: { check: Check }) => {
     const markers = Object.entries(row.files).flatMap(([path, source]) =>
       markersOf(path, source),
     )
-    const violations = await check.run({
+    const { violations, broken } = await check.run({
       config: row.config ?? {},
       ...(row.checks ? { checks: row.checks } : {}),
     })
-    return matchVerdicts(markers, violations.flatMap(reportedOf))
+    return matchVerdicts(markers, violations.flatMap(reportedOf), broken)
   }
 
   return { judge }

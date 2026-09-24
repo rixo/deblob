@@ -116,7 +116,9 @@ const judgeModule = (
         ]
       }
       const { immutability } = statement
-      return immutability.proof === "readonly"
+      // a broken line gets no verdict: the run lists it and cannot certify
+      return immutability.proof === "readonly" ||
+        immutability.proof === "broken"
         ? []
         : [
             {

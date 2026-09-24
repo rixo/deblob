@@ -50,6 +50,7 @@ const graph = (
     reExport: reExport ?? false,
   })),
   unresolved: [],
+  broken: [],
 })
 
 const mod = (path: string): EdgeTarget => ({ type: "module", path })

@@ -284,6 +284,43 @@ describe("markersOf", () => {
       )
     })
   })
+  describe("broken", () => {
+    it("reads `// broken -- <why>` as a claim that deblob cannot read the line, with no slug", () => {
+      expect(
+        markersOf(
+          "src/a.ts",
+          "export const BARE: ReadonlyMap = new Map() // broken -- ReadonlyMap without its type arguments",
+        ),
+      ).toEqual([
+        {
+          kind: "broken",
+          file: "src/a.ts",
+          line: 1,
+          why: "ReadonlyMap without its type arguments",
+        },
+      ])
+    })
+
+    it("claims the file for a broken marker alone at the end of the file: a file that does not parse", () => {
+      expect(
+        markersOf(
+          "src/a.ts",
+          "export const X = \n// broken -- the file does not parse",
+        ),
+      ).toMatchObject([{ kind: "broken", line: null }])
+    })
+
+    test.each([
+      ["a broken without a why", "run() // broken"],
+      ["a broken with an empty why", "run() // broken --"],
+      ["a broken naming a rule", "run() // broken: stable-root -- why"],
+      ["another case", "run() // Broken -- why"],
+    ])("throws on a malformed broken marker, with the line: %s", (_, text) => {
+      expect(() => markersOf("src/a.ts", `x()\n${text}`)).toThrow(
+        /src\/a\.ts:2: malformed marker/,
+      )
+    })
+  })
 })
 
 describe("stripMarkers", () => {
@@ -309,6 +346,12 @@ describe("stripMarkers", () => {
         "run() // stubborn unknown: stable-root -- why\n// false unknown: stable-root -- why\nhelper() // red: stable-root",
       ),
     ).toBe("run()\n\nhelper()")
+  })
+
+  it("removes broken markers the same way", () => {
+    expect(stripMarkers("run() // broken -- why\n// broken -- why")).toBe(
+      "run()\n",
+    )
   })
 })
 
@@ -976,6 +1019,83 @@ describe("matchVerdicts", () => {
         unexpected: [],
         unexpectedPasses: [],
         expectedFailures: [],
+      })
+    })
+  })
+
+  describe("broken", () => {
+    const brokenAt = (line: number | null) => ({
+      file: "src/a.ts",
+      line,
+      reason: "a reason",
+    })
+
+    it("matches a broken marker to the place deblob could not read", () => {
+      expect(
+        matchVerdicts(
+          markersOf(
+            "src/a.ts",
+            "export const B: ReadonlyMap = new Map() // broken -- why",
+          ),
+          [],
+          [brokenAt(1)],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        unexpectedPasses: [],
+        expectedFailures: [],
+      })
+    })
+
+    it("fails a row broken somewhere else, or not broken at all: where it breaks is the claim", () => {
+      const markers = markersOf(
+        "src/a.ts",
+        "x()\nexport const B: ReadonlyMap = new Map() // broken -- why",
+      )
+      expect(matchVerdicts(markers, [], [brokenAt(1)])).toMatchObject({
+        missing: ["src/a.ts:2 broken"],
+        unexpected: ["src/a.ts:1 broken"],
+      })
+      expect(matchVerdicts(markers, [], [])).toMatchObject({
+        missing: ["src/a.ts:2 broken"],
+      })
+    })
+
+    it("matches a file that does not parse to a broken marker alone at the end of the file", () => {
+      expect(
+        matchVerdicts(
+          markersOf(
+            "src/a.ts",
+            "export const X = \n// broken -- the file does not parse",
+          ),
+          [],
+          [brokenAt(null)],
+        ),
+      ).toMatchObject({ missing: [], unexpected: [] })
+    })
+
+    it("matches a broken place and the verdicts beside it, each its own claim: a broken run still reports what it reaches", () => {
+      const markers = [
+        ...markersOf(
+          "src/a.ts",
+          "x() // broken -- why\nexport let n = 0 // red: stable-root",
+        ),
+      ]
+      const red = {
+        file: "src/a.ts",
+        line: 2,
+        slugs: ["stable-root"] as const,
+        via: [],
+      }
+      expect(matchVerdicts(markers, [red], [brokenAt(1)])).toEqual({
+        missing: [],
+        unexpected: [],
+        unexpectedPasses: [],
+        expectedFailures: [],
+      })
+      expect(matchVerdicts(markers, [], [brokenAt(1)])).toMatchObject({
+        missing: ["src/a.ts:2 stable-root"],
       })
     })
   })

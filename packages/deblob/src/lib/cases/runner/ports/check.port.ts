@@ -7,15 +7,16 @@
 
 import type { Violation } from "../../../check/violation.model.ts"
 import type { CheckName } from "../../../cli/cli.model.ts"
+import type { BrokenSite } from "../../../extraction/graph.model.ts"
 
 export interface Check {
   /**
-   * Runs the checks named (every check when absent) under the raw config.
-   * Throws when a literal import of the tree does not resolve: a broken case,
-   * never a green line.
+   * Runs the checks named (every check when absent) under the raw config, and
+   * lists every place deblob cannot read. Throws when a literal import of the
+   * tree does not resolve: a case that does not resolve, never a green line.
    */
   run(input: {
     config: unknown
     checks?: readonly CheckName[]
-  }): Promise<Violation[]>
+  }): Promise<{ violations: Violation[]; broken: readonly BrokenSite[] }>
 }

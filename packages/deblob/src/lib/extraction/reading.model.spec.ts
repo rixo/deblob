@@ -84,7 +84,8 @@ const read = (
   overrides: Partial<Omit<ReadInput, "program" | "source">> = {},
 ): FileReading => {
   const extraction = extractions.get(name) ?? null
-  if (extraction === null) throw new Error(`no extraction for ${name}`)
+  if (extraction === null || "unparsed" in extraction)
+    throw new Error(`no extraction for ${name}`)
   return readModule({
     program: extraction.program,
     source: extraction.source,
@@ -424,7 +425,8 @@ describe("readModule", () => {
   describe("total over the tree", () => {
     test("tripwire: a node type the reader has never seen is walked for its calls, never a throw", async () => {
       const extraction = await engine.extract(fixture("root-forms.ts"))
-      if (extraction === null) throw new Error("no extraction")
+      if (extraction === null || "unparsed" in extraction)
+        throw new Error("no extraction")
       // wrap the first root call in a synthetic statement carrying a synthetic
       // expression — in a list, as a node's children can be
       const body = extraction.program.body as unknown as Record<

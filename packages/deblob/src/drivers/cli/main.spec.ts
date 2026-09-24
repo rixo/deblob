@@ -387,10 +387,15 @@ describe("deblob check", () => {
     )
   })
 
-  test("a parse failure is a bug, not a config error: it keeps flying", async () => {
-    await expect(
-      run(["check"], { cwd: here("__fixtures__/unparsable") }),
-    ).rejects.toThrow(/parse failed/)
+  test("a file that does not parse is broken: named on stderr, exit 2 — deblob cannot read it, so it cannot certify", async () => {
+    const result = await run(["check"], {
+      cwd: here("__fixtures__/unparsable"),
+    })
+    expect(result.code).toBe(2)
+    expect(result.err).toContain(
+      "deblob cannot read 1 place — results cannot be certified",
+    )
+    expect(result.err).toContain("src/")
   })
 
   test("check surface named by hand on a package with no field: one stderr note, no exports segment, exit 0 — a pass it never ran does not read as a pass", async () => {

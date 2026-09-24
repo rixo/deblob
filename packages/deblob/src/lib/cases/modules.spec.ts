@@ -351,16 +351,46 @@ const READONLY_BINDINGS: readonly Row[] = [
     },
   },
   {
-    // Coverage sweep, 2026-09-24; verdicts agreed by rixo.
-    // canon: proof is what the syntax shows. deblob reads syntax, not types,
-    // so code that parses but does not compile reaches the reader, and shows
-    // nothing it could prove.
-    name: "code that does not compile proves nothing: a readonly wrapper without its type arguments, a freeze of nothing",
+    // Coverage sweep, 2026-09-24; verdicts agreed by rixo. Re-stamped
+    // broken the same day (step 06, rixo: "can't do our job because of a
+    // tech problem", the situation of a syntax error): deblob reads syntax,
+    // not types, so code that parses but does not compile reaches the
+    // reader, and some of it the reader cannot interpret at all. Not a type
+    // check — tsc owns type errors; this is deblob unable to read the line.
+    name: "a line deblob cannot read is broken: a readonly wrapper without its type arguments, a freeze of nothing (typed or not), a Record without its value type",
     files: {
       "src/broken.model.ts": `
-        export const BARE: ReadonlyMap = new Map() // red: stable-root -- ReadonlyMap without its type arguments
-        export const EMPTY_FREEZE = Object.freeze() // red: stable-root -- a freeze of nothing
-        export const HALF_RECORD: Readonly<Record<string>> = {} // red: stable-root -- Record without its value type
+        export const BARE: ReadonlyMap = new Map() // broken -- ReadonlyMap without its type arguments
+        export const EMPTY_FREEZE = Object.freeze() // broken -- a freeze of nothing
+        export const HALF_RECORD: Readonly<Record<string>> = {} // broken -- Record without its value type
+        export const TYPED_EMPTY: Readonly<{ a: number }> = Object.freeze() // broken -- a freeze of nothing, whatever the type says
+      `,
+    },
+  },
+  {
+    // 2026-09-24 (step 06); ruled by rixo: a file that does not parse is the
+    // same situation, broken, exit 2 — it was a crash before. No line to
+    // claim: the marker sits alone at the end of the file.
+    name: "a file that does not parse is broken",
+    files: {
+      "src/unparsed.model.ts": `
+        export const RATE: number =
+        // broken -- the file does not parse
+      `,
+    },
+  },
+  {
+    // 2026-09-24 (step 06); ruled by rixo: a broken run declines to certify
+    // (exit 2) but still reports every verdict it reaches — in other files,
+    // and on the other lines of a file broken on one.
+    name: "a broken run still reports every verdict it reaches, beside the broken line and in other files",
+    files: {
+      "src/a.model.ts": `
+        export let counter = 0 // red: stable-root -- let
+      `,
+      "src/b.model.ts": `
+        export const BARE: ReadonlyMap = new Map() // broken -- ReadonlyMap without its type arguments
+        export let other = 1 // red: stable-root -- let
       `,
     },
   },

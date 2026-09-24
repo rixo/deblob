@@ -18,6 +18,7 @@ import {
   renderBareStatus,
   renderCheckResults,
   renderExplain,
+  renderBroken,
   renderUnresolved,
   renderUnverified,
   sizeStatsOf,
@@ -926,6 +927,30 @@ describe("bare status", () => {
       ]),
     ).toEqual({ totalBytes: 1000, blobPercent: 90 })
     expect(sizeStatsOf([])).toEqual({ totalBytes: 0, blobPercent: 0 })
+  })
+})
+
+describe("renderBroken", () => {
+  test("names each place deblob cannot read, the line when there is one, what it could not read, and declines to certify", () => {
+    const output = renderBroken(
+      [
+        { file: "src/a.model.ts", line: null, reason: "Unexpected token" },
+        {
+          file: "src/b.model.ts",
+          line: 3,
+          reason: "ReadonlyMap without its type arguments",
+        },
+      ],
+      NO_COLORS,
+      "pkg/",
+    )
+    expect(output).toContain(
+      "deblob cannot read 2 places — results cannot be certified",
+    )
+    expect(output).toContain("  pkg/src/a.model.ts\n    Unexpected token")
+    expect(output).toContain(
+      "  pkg/src/b.model.ts:3\n    ReadonlyMap without its type arguments",
+    )
   })
 })
 

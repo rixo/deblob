@@ -51,12 +51,15 @@ export type FileExtraction = {
   source: string
 }
 
+/** A supported file that does not parse: what the parser said. */
+export type Unparsed = { unparsed: string }
+
 export interface ExtractionEngine {
   /**
    * Read and parse one file, yielding its import occurrences. Returns `null`
    * when the engine has no extractor for this file kind (capability absent —
-   * the file stays a graph node without outgoing edges). Parse failures on a
-   * supported kind throw.
+   * the file stays a graph node without outgoing edges), and `unparsed` when a
+   * supported kind does not parse: a place deblob cannot read, never a throw.
    */
-  extract(absolutePath: string): Promise<FileExtraction | null>
+  extract(absolutePath: string): Promise<FileExtraction | Unparsed | null>
 }

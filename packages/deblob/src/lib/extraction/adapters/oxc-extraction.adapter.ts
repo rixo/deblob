@@ -8,6 +8,7 @@ import type {
   ExtractionEngine,
   FileExtraction,
   ImportRecord,
+  Unparsed,
 } from "../ports/extraction.port.ts"
 
 const PARSEABLE = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
@@ -153,7 +154,7 @@ export const createOxcEngine = ({
 }): ExtractionEngine => {
   const extract = async (
     absolutePath: string,
-  ): Promise<FileExtraction | null> => {
+  ): Promise<FileExtraction | Unparsed | null> => {
     if (!PARSEABLE.test(absolutePath)) return null
 
     const source = await fs.readFile(absolutePath)
@@ -163,9 +164,9 @@ export const createOxcEngine = ({
     const result = parseSync(absolutePath, source)
 
     if (result.errors.length > 0) {
-      throw new Error(
-        `parse failed: ${absolutePath}: ${result.errors.map((error) => error.message).join("; ")}`,
-      )
+      return {
+        unparsed: result.errors.map((error) => error.message).join("; "),
+      }
     }
 
     const imports: ImportRecord[] = []

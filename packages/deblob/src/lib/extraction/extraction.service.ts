@@ -1,6 +1,7 @@
 import { relative, resolve, sep } from "node:path"
 
 import type {
+  BrokenSite,
   ArgValue,
   FileReading,
   ImportEdge,
@@ -30,7 +31,7 @@ import type {
 import type { Reader } from "./ports/reader.port.ts"
 import type { Resolver } from "./ports/resolver.port.ts"
 import type { ImportTargetKind } from "./reading.model.ts"
-import { readModule } from "./reading.model.ts"
+import { brokenLinesOf, readModule } from "./reading.model.ts"
 import type { Designations } from "./recognition.model.ts"
 import { createRecognition } from "./recognition.model.ts"
 
@@ -214,6 +215,7 @@ export const createExtraction = ({
     const modules = new Map<string, ModuleNode>()
     const edges = new Map<string, ImportEdge>()
     const unresolved: UnresolvedImport[] = []
+    const broken: BrokenSite[] = []
 
     const recognition = createRecognition({
       readers,
@@ -360,7 +362,13 @@ export const createExtraction = ({
       }
 
       const absolutePath = resolve(root, file)
-      const extraction = await engine.extract(absolutePath)
+      const extracted = await engine.extract(absolutePath)
+      // a file that does not parse is a place deblob cannot read: listed,
+      // then a node with nothing read, as one no engine supports
+      if (extracted !== null && "unparsed" in extracted)
+        broken.push({ file, line: null, reason: extracted.unparsed })
+      const extraction =
+        extracted !== null && "unparsed" in extracted ? null : extracted
       const layer = layerOf(file, classification.layer)
       /** Where each of this file's specifiers landed — the reader asks again. */
       const landed = new Map<string, EdgeTarget | null>()
@@ -417,6 +425,11 @@ export const createExtraction = ({
 
       if (layer === "assembly" || layer === "driver")
         landedByFile.set(file, landed)
+      const reading = extraction
+        ? readingOf(file, layer, extraction, landed)
+        : null
+      for (const { line, reason } of brokenLinesOf(reading?.root ?? []))
+        broken.push({ file, line, reason })
       modules.set(file, {
         path: file,
         layer,
@@ -424,7 +437,7 @@ export const createExtraction = ({
         isPrivate: classification.isPrivate,
         parsed: extraction !== null,
         runtimeContent: extraction ? extraction.runtimeContent : [],
-        reading: extraction ? readingOf(file, layer, extraction, landed) : null,
+        reading,
         readings: [],
       })
     }
@@ -470,7 +483,7 @@ export const createExtraction = ({
       }
     }
 
-    return { root, modules, edges: [...edges.values()], unresolved }
+    return { root, modules, edges: [...edges.values()], unresolved, broken }
   }
 
   return { extractGraph }

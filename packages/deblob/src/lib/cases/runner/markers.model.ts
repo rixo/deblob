@@ -47,6 +47,7 @@
 import type { RuleId } from "../../check/rule.model.ts"
 import { RULE_IDS } from "../../check/rule.model.ts"
 import type { Violation } from "../../check/violation.model.ts"
+import type { BrokenSite } from "../../extraction/graph.model.ts"
 import type { CheckName } from "../../cli/cli.model.ts"
 
 /** A tree of strings under a config, the checks to run over it. */
@@ -62,7 +63,13 @@ export type Case = {
 /** A row of the corpus: a case with the sentence the reviewer reads. */
 export type Row = Case & { name: string }
 
-export type Marker = {
+/**
+ * A marker: a verdict claimed on a line or a file, or a place deblob cannot
+ * read.
+ */
+export type Marker = VerdictMarker | BrokenMarker
+
+export type VerdictMarker = {
   /**
    * `red`: this line is the violation, proven; `unknown`: the reader answers
    * unknown here (plain: `stubborn unknown`); `via`: this line triggers one.
@@ -80,6 +87,19 @@ export type Marker = {
   slug: RuleId
   /** Prose for the reviewer, kept for the listing, never matched. */
   why: string | null
+}
+
+/**
+ * `// broken -- <why>`: deblob cannot read this line (the file, alone at its
+ * end, for a file that does not parse). No slug: broken is no rule's. The rest
+ * of the row is judged as ever — a broken run still reports every verdict it
+ * reaches; it only declines to certify.
+ */
+export type BrokenMarker = {
+  kind: "broken"
+  file: string
+  line: number | null
+  why: string
 }
 
 /** A place in the tree: a trigger of a red, in any file. */
@@ -133,13 +153,16 @@ export const AS_MARKED: VerdictMatch = {
 }
 
 /** Anything a reader would take for a marker, well-formed or not. */
-const LOOKS_LIKE_MARKER = /\/\/\s*(?:red|via|false|missed|stubborn|unknown)\b/i
+const LOOKS_LIKE_MARKER =
+  /\/\/\s*(?:red|via|false|missed|stubborn|unknown|broken)\b/i
 
 const MARKER =
   /^\/\/ (?:(false|missed|stubborn) )?(red|via|unknown): ([a-z]+(?:-[a-z]+)*(?:, [a-z]+(?:-[a-z]+)*)*)(?: -- (\S.*))?$/
 
+const BROKEN = /^\/\/ broken -- (\S.*)$/
+
 const GRAMMAR =
-  "`// red: <slug>[, <slug>]* [-- <why>]`, `// via:` the same, either as an expected failure (`// false red: <slug> -- <why>`, `// missed red:`), or an unknown: `// stubborn unknown: <slug> -- <why>`, `// false unknown:`"
+  "`// red: <slug>[, <slug>]* [-- <why>]`, `// via:` the same, either as an expected failure (`// false red: <slug> -- <why>`, `// missed red:`), an unknown (`// stubborn unknown: <slug> -- <why>`, `// false unknown:`), or `// broken -- <why>`"
 
 const isRuleId = (value: string): value is RuleId =>
   (RULE_IDS as readonly string[]).includes(value)
@@ -168,7 +191,24 @@ const lineMarkersOf = (
   if (before.includes("//")) {
     throw new Error(`${where}: a marker after a comment: ${text.trim()}`)
   }
-  const match = MARKER.exec(text.slice(found.index).trimEnd())
+  const marker = text.slice(found.index).trimEnd()
+  const malformed = () =>
+    new Error(
+      `${where}: malformed marker: ${text.trim()} (expected ${GRAMMAR})`,
+    )
+  if (/^\/\/\s*broken\b/i.test(marker)) {
+    const broken = BROKEN.exec(marker)
+    if (broken === null) throw malformed()
+    return {
+      at: found.index,
+      alone: before.trim() === "",
+      kind: "broken",
+      expectedFailure: null,
+      slugs: [],
+      why: broken[1] as string,
+    }
+  }
+  const match = MARKER.exec(marker)
   const prefix = match?.[1]
   const kind = match?.[2]
   // an expected failure says what it waits for, a stubborn unknown what it
@@ -180,9 +220,7 @@ const lineMarkersOf = (
     (prefix === "stubborn") !== (kind === "unknown" && prefix !== "false") ||
     (kind === "unknown" && prefix === "missed")
   ) {
-    throw new Error(
-      `${where}: malformed marker: ${text.trim()} (expected ${GRAMMAR})`,
-    )
+    throw malformed()
   }
   const slugs = (match[3] as string).split(", ")
   for (const slug of slugs) {
@@ -217,7 +255,7 @@ const isCodeLine = (text: string): boolean => {
  */
 export const markersOf = (file: string, source: string): Marker[] => {
   const lines = source.split("\n")
-  return lines.flatMap((text, index) => {
+  return lines.flatMap((text, index): Marker[] => {
     const found = lineMarkersOf(file, text, index + 1)
     if (found === null) return []
     let line: number | null = index + 1
@@ -227,8 +265,10 @@ export const markersOf = (file: string, source: string): Marker[] => {
       )
       line = next === -1 ? null : next + 1
     }
+    if (found.kind === "broken")
+      return [{ kind: "broken" as const, file, line, why: found.why as string }]
     return found.slugs.map((slug) => ({
-      kind: found.kind,
+      kind: found.kind as VerdictMarker["kind"],
       ...(found.expectedFailure === null
         ? {}
         : { expectedFailure: found.expectedFailure }),
@@ -287,7 +327,7 @@ const key = (file: string, line: number | null, slug: string): string =>
 const viaKey = (site: Site, slug: string): string =>
   key(site.file, site.line, `via ${slug}`)
 
-const markerKey = (marker: Marker): string =>
+const markerKey = (marker: VerdictMarker): string =>
   key(
     marker.file,
     marker.line,
@@ -295,7 +335,7 @@ const markerKey = (marker: Marker): string =>
   )
 
 /** An expected failure as its marker reads: `file:line false red slug`. */
-const expectedFailureOf = (marker: Marker): string =>
+const expectedFailureOf = (marker: VerdictMarker): string =>
   key(
     marker.file,
     marker.line,
@@ -314,14 +354,23 @@ const expectedFailureOf = (marker: Marker): string =>
 export const matchVerdicts = (
   markers: readonly Marker[],
   reported: readonly Reported[],
+  broken: readonly BrokenSite[] = [],
 ): Verdict => {
   const open = new Map<string, number>()
   // the expected failures the markers declare, by kind, then by key
   const declared = {
-    false: new Map<string, Marker[]>(),
-    missed: new Map<string, Marker[]>(),
+    false: new Map<string, VerdictMarker[]>(),
+    missed: new Map<string, VerdictMarker[]>(),
   }
+  const verdicts = markers.filter(
+    (marker): marker is VerdictMarker => marker.kind !== "broken",
+  )
   for (const marker of markers) {
+    if (marker.kind !== "broken") continue
+    const at = key(marker.file, marker.line, "broken")
+    open.set(at, (open.get(at) ?? 0) + 1)
+  }
+  for (const marker of verdicts) {
     const at = markerKey(marker)
     if (marker.expectedFailure === undefined) {
       open.set(at, (open.get(at) ?? 0) + 1)
@@ -333,12 +382,12 @@ export const matchVerdicts = (
   const unexpected: string[] = []
   const unexpectedPasses: string[] = []
   const expectedFailures: string[] = []
-  const passUnexpectedly = (marker: Marker): void => {
+  const passUnexpectedly = (marker: VerdictMarker): void => {
     unexpectedPasses.push(`${expectedFailureOf(marker)} — remove the marker`)
   }
   // the plain reds a `false unknown` still failing holds back, by their key
   const held = new Map<string, number>()
-  const failAsExpected = (marker: Marker): void => {
+  const failAsExpected = (marker: VerdictMarker): void => {
     expectedFailures.push(`${expectedFailureOf(marker)} -- ${marker.why}`)
     if (marker.kind === "unknown") {
       const red = key(marker.file, marker.line, marker.slug)
@@ -377,6 +426,7 @@ export const matchVerdicts = (
       )
     }
   }
+  for (const site of broken) claim(key(site.file, site.line, "broken"))
   for (const left of declared.false.values()) left.forEach(passUnexpectedly)
   for (const left of declared.missed.values()) left.forEach(failAsExpected)
   const missing = [...open].flatMap(([at, left]) =>

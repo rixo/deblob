@@ -172,6 +172,30 @@ const\`, or move it inside a
 factory`. Which ways out each condition names in `check`is per condition, decided in the table;`explain`
 lists all of them.
 
+**Broken, through the chain** (checkpoint 3), the unresolved import's lane:
+
+- `ImportGraph.broken: readonly BrokenSite[]`,
+  `BrokenSite = { file; line: number | null; reason }` — every place deblob
+  cannot read, `line: null` for a file that does not parse.
+- The extraction engine's `extract` returns `{ unparsed: reason }` instead of
+  throwing on a parse failure; the service lists it, the node stays
+  `parsed: false`.
+- The reader: `Immutability` gains `{ proof: "broken"; reason }`, which wins
+  over every other part when combined; a root definition that reads broken is
+  listed in the reading's `broken`, and the extraction service lifts those into
+  the graph. `stable-root` says nothing on a broken line: the run gives no
+  verdict there.
+- The check port returns `{ violations, broken }`; the runner matches both
+  against the row's markers. A broken run declines to certify, and still reports
+  every verdict it reaches — in other files, and on the other lines of a file
+  broken on one (rixo 2026-09-24).
+- The CLI: broken sites print on stderr like unresolved imports ("deblob cannot
+  read …; results cannot be certified", the file, the line, what it could not
+  read), exit 2.
+- The marker: `// broken -- <why>`, no slug, why required; at a line's end or
+  alone above a line, that line; alone at the end of the file, the file. A
+  broken site keys as `file:line broken`, counted with the verdict markers.
+
 **The stamps.** `red` means a known red, fully specified; the reader's unknown
 never satisfies it.
 
@@ -222,11 +246,12 @@ Red first, rows stamped before the build.
   for an unresolved import). How a row asserts broken, ruled 2026-09-24 (rixo,
   for consistency with the other markers): `// broken -- <why>` on the line
   deblob cannot read, alone at the end of the file for a file that does not
-  parse. Broken is the whole row's outcome — a broken run gives no verdicts — so
-  a broken marker makes the row expect broken, and the row passes only if deblob
-  breaks on that line; a broken marker beside any verdict marker in the row is
-  loud. No slug: broken is no rule's. Red first, in checkpoint 2's opening
-  tests.
+  parse; the row passes only if deblob breaks on that line. No slug: broken is
+  no rule's. First drafted as the whole row's outcome ("a broken run gives no
+  verdicts", a broken marker beside a verdict marker loud) — reversed at
+  checkpoint 3's review (rixo 2026-09-24): the CLI prints every violation it
+  finds, then exits 2, and the corpus pins that report too. Red first, in
+  checkpoint 3's opening tests.
 - **Other checks**: a sweep of every check for a "cannot tell → red" path;
   anything found becomes a row, or a line in this SPEC saying why it is not an
   unknown.
@@ -293,6 +318,28 @@ Then type-names checkpoints 2 and 3 resume, on the three-way answer.
   `Readonly<Record<string>>` joins the does-not-compile row, broken in 3.
 - Gates: suite green (830), coverage 100, self-check 83 (four new root constants
   of this step typed readonly rather than added to the count).
+
+**Checkpoint 3, landed** as the API above says (§ Broken, through the chain).
+What differs, or was found:
+
+- The reading carries no `broken` field: the extraction service lifts broken
+  definitions out of the root statements (`brokenLinesOf`, through branch arms),
+  so `FileReading` keeps its shape.
+- A parse failure used to throw, pinned by a CLI test titled "a parse failure is
+  a bug, not a config error: it keeps flying" — a naming of the reader step
+  (2026-09-17), with no ruling behind it in the history. Today's ruling replaces
+  it: the test now asserts broken and exit 2. The "keeps flying" guard for real
+  bugs stays, through `asExtractionError`, the helper made for that catch and
+  tested with it, instead of its inline copy in `main.ts`.
+- The CLI prints the verdicts, then the broken places on stderr, like an
+  unresolved import: "deblob cannot read N places — results cannot be
+  certified", each as `path:line` (the path alone for a file), with what could
+  not be read.
+- Corpus: the does-not-compile row is re-stamped `// broken` on its three lines,
+  plus a typed freeze of nothing (a broken value wins over its annotation); two
+  new rows: a file that does not parse, its marker alone at the end; a broken
+  run reporting its verdicts, beside the broken line and in another file.
+- Gates: suite green (845), coverage 100, self-check 83.
 
 ## Docs
 

@@ -142,11 +142,14 @@ export const assembleCase = (files: Case["files"]) => {
             .join("; ")}`,
         )
       }
-      return checks.flatMap((name) =>
-        name === "surface"
-          ? runSurface(graph, resolved, surface)
-          : DETECTORS[name](graph, resolved),
-      )
+      return {
+        violations: checks.flatMap((name) =>
+          name === "surface"
+            ? runSurface(graph, resolved, surface)
+            : DETECTORS[name](graph, resolved),
+        ),
+        broken: graph.broken,
+      }
     },
   }
 

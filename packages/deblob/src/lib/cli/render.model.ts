@@ -9,7 +9,11 @@ import type {
   UnverifiedEntry,
   UnverifiedTarget,
 } from "../check/surface.model.ts"
-import type { EdgeTarget, UnresolvedImport } from "../extraction/graph.model.ts"
+import type {
+  BrokenSite,
+  EdgeTarget,
+  UnresolvedImport,
+} from "../extraction/graph.model.ts"
 import type { RuleId } from "../check/rule.model.ts"
 import { isRuleId, ruleOrder } from "../check/rule.model.ts"
 import type {
@@ -493,6 +497,29 @@ export const renderCheckResults = (
     )
   }
 
+  return `${lines.join("\n")}\n`
+}
+
+/**
+ * The places deblob cannot read — a file that does not parse, a line the reader
+ * cannot interpret. Stderr channel, exit 2, as an unresolved import: deblob
+ * declines to certify, whatever the verdicts printed above.
+ */
+export const renderBroken = (
+  broken: readonly BrokenSite[],
+  colors: Colors,
+  pathPrefix: string,
+): string => {
+  const lines: string[] = [
+    colors.strong(
+      `deblob cannot read ${plural(broken.length, "place")} — results cannot be certified`,
+    ),
+  ]
+  for (const entry of broken) {
+    const line = entry.line === null ? "" : `:${entry.line}`
+    lines.push(`  ${pathPrefix}${entry.file}${line}`)
+    lines.push(...wrap("    ", entry.reason, "    "))
+  }
   return `${lines.join("\n")}\n`
 }
 

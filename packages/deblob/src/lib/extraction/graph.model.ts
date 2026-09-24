@@ -317,6 +317,12 @@ export type Immutability =
   | { proof: "readonly" }
   | { proof: "mutable" }
   | { proof: "unknown"; condition: UnknownCondition }
+  /**
+   * The syntax is not something the reader can read at all — a readonly wrapper
+   * without its type arguments, a freeze of nothing: deblob cannot do its job
+   * on the line, whatever the rule. Wins over every other part.
+   */
+  | { proof: "broken"; reason: string }
 
 /**
  * A body as a flat list of what happened in it, evaluation order: every call
@@ -532,9 +538,22 @@ export type UnresolvedImport = {
   literal: boolean
 }
 
+/**
+ * A place deblob cannot read: a file that does not parse (`line: null`), or a
+ * line the reader cannot interpret. The run gives no verdict it can certify
+ * (exit 2) — not a type check: tsc owns type errors.
+ */
+export type BrokenSite = {
+  file: string
+  line: number | null
+  /** What could not be read, for the message. */
+  reason: string
+}
+
 export type ImportGraph = {
   root: string
   modules: ReadonlyMap<string, ModuleNode>
   edges: readonly ImportEdge[]
   unresolved: readonly UnresolvedImport[]
+  broken: readonly BrokenSite[]
 }

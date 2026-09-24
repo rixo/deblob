@@ -43,6 +43,7 @@ import {
   renderBareStatus,
   renderCheckResults,
   renderExplain,
+  renderBroken,
   renderUnresolved,
   renderUnverified,
   sizeStatsOf,
@@ -75,7 +76,6 @@ import {
 import { createExtraction } from "../../lib/extraction/extraction.service.ts"
 import {
   asExtractionError,
-  isExtractionError,
   specifierMatcher,
 } from "../../lib/extraction/graph.model.ts"
 import type {
@@ -389,8 +389,7 @@ const runCheck = async (
   } catch (error) {
     // extraction's own failures are the user's to fix: message, exit 2;
     // anything else is a bug and keeps flying
-    if (!isExtractionError(error)) throw error
-    io.stderr.write(`${error.message}\n`)
+    io.stderr.write(`${asExtractionError(error).message}\n`)
     return 2
   }
   const surfaceRan = action.checks.includes("surface")
@@ -455,16 +454,23 @@ const runCheck = async (
   if (action.explicit && surfaceRan && surface === null) {
     io.stderr.write(SURFACE_NOT_CLAIMED)
   }
-  // the uncertifiable lanes — both print when both apply, exit 2
+  // the uncertifiable lanes — each prints when it applies, exit 2
   const prefix = pathPrefixOf(io.cwd, config.root)
   const fatalUnresolved = graph.unresolved.filter((entry) => entry.literal)
   if (fatalUnresolved.length > 0) {
     io.stderr.write(renderUnresolved(fatalUnresolved, colors, prefix))
   }
+  if (graph.broken.length > 0) {
+    io.stderr.write(renderBroken(graph.broken, colors, prefix))
+  }
   if (surfaceReport.unverified.length > 0) {
     io.stderr.write(renderUnverified(surfaceReport.unverified, colors, prefix))
   }
-  if (fatalUnresolved.length > 0 || surfaceReport.unverified.length > 0) {
+  if (
+    fatalUnresolved.length > 0 ||
+    graph.broken.length > 0 ||
+    surfaceReport.unverified.length > 0
+  ) {
     return 2
   }
   return violations.length > 0 ? 1 : 0
