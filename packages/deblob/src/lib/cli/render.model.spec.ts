@@ -1,10 +1,11 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import type { RuleId } from "../check/rule.model.ts"
 import type {
   BarrelsViolation,
   DagViolation,
   LayersViolation,
+  ModulesViolation,
   PortsViolation,
   PrivateViolation,
 } from "../check/violation.model.ts"
@@ -87,6 +88,26 @@ const portsViolation = (
     ...overrides,
   }) as PortsViolation
 
+type RootBinding = Extract<ModulesViolation, { shape: "root-binding" }>
+
+const rootBinding = (
+  fields: Partial<Pick<RootBinding, "line" | "holds" | "by" | "unknown">>,
+  file = "src/billing/refund.model.ts",
+): RootBinding => ({
+  check: "modules",
+  ruleset: "arch",
+  rules: ["stable-root"],
+  file,
+  serviceRoot: "src/billing",
+  line: 7,
+  via: [],
+  shape: "root-binding",
+  holds: "state",
+  by: null,
+  unknown: null,
+  ...fields,
+})
+
 const STATS: GraphStats = {
   files: 214,
   totalBytes: 218 * 1024,
@@ -97,7 +118,21 @@ const STATS: GraphStats = {
 }
 
 describe("renderCheckResults", () => {
-  test("renders the fiction's grouped listing: service → file → tagged lines", () => {
+  it("counts the unknowns apart in the summary: a red the reader could not prove is still a violation, and says so", () => {
+    const output = renderCheckResults(
+      [
+        rootBinding({ line: 1, by: { form: "let", name: null } }),
+        rootBinding({ line: 2, unknown: { kind: "type-name", name: "Table" } }),
+      ],
+      STATS,
+      NO_COLORS,
+    )
+    expect(output).toContain(
+      "2 violations (2 modules) · 1 unknown · 214 files · 218kb · 25% blob",
+    )
+  })
+
+  it("renders the fiction's grouped listing: service → file → tagged lines", () => {
     const output = renderCheckResults(
       [layersViolation(), privateViolation()],
       STATS,
@@ -221,7 +256,7 @@ describe("renderCheckResults", () => {
     expect(output).not.toContain("1 violations")
   })
 
-  test("groups deterministically: services ascending, blob bucket last, files ascending", () => {
+  it("groups deterministically: services ascending, blob bucket last, files ascending", () => {
     const output = renderCheckResults(
       [
         layersViolation({
@@ -248,7 +283,7 @@ describe("renderCheckResults", () => {
     expect(output).toContain("  src/lib/helpers.ts")
   })
 
-  test("orders violations inside a file by check name", () => {
+  it("orders violations inside a file by check name", () => {
     const output = renderCheckResults(
       [
         portsViolation({
@@ -409,7 +444,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain('config key "pure"')
     })
 
-    test("marks a declared external leaf so the cell reads as declared, not a resolver accident", () => {
+    it("marks a declared external leaf so the cell reads as declared, not a resolver accident", () => {
       const output = message(
         layersViolation({
           rules: ["service-purity", "runtime-import"],
@@ -425,7 +460,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("imports $made-up:tokens.scss (declared)")
     })
 
-    test("renders the surface claim-mismatch with subpath, claim, and fact", () => {
+    it("renders the surface claim-mismatch with subpath, claim, and fact", () => {
       const output = message({
         check: "surface",
         ruleset: "arch",
@@ -444,7 +479,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("(chain-purity)")
     })
 
-    test("names the built target a source wears when reached through the mirror", () => {
+    it("names the built target a source wears when reached through the mirror", () => {
       const output = message(
         {
           check: "surface",
@@ -464,7 +499,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain('is exported as "." (as ../dist/index.js) —')
     })
 
-    test("renders the unlabeled front — direct, and through a fronted file", () => {
+    it("renders the unlabeled front — direct, and through a fronted file", () => {
       const direct = message({
         check: "surface",
         ruleset: "arch",
@@ -548,8 +583,190 @@ describe("renderCheckResults", () => {
       )
     })
 
-    test("a root binding names its line and what it holds: state the syntax does not prove, or a read of the machine", () => {
-      const binding = (holds: "state" | "machine") =>
+    describe("a root binding", () => {
+      const binding = (
+        fields: Parameters<typeof rootBinding>[0],
+        file?: string,
+      ) => message(rootBinding(fields, file))
+
+      test("a proven red names what proves it, then the ways out", () => {
+        expect(binding({ by: { form: "let", name: null } })).toContain(
+          "line 7 binds mutable state at module root — a let can be reassigned; use as const, a readonly type, or move it inside a factory",
+        )
+        expect(
+          binding({ by: { form: "ObjectExpression", name: null } }),
+        ).toContain("— a record literal without as const;")
+        expect(
+          binding({ by: { form: "NewExpression", name: "Map" } }),
+        ).toContain("— a new Map, which keeps its mutators;")
+        expect(
+          binding({ by: { form: "TSTypeReference", name: "Record" } }),
+        ).toContain("— a Record without Readonly;")
+        expect(
+          binding({ by: { form: "Identifier", name: "CACHE" } }),
+        ).toContain("— the same object as CACHE, which is mutable;")
+        expect(
+          binding({ by: { form: "TSPropertySignature", name: null } }),
+        ).toContain("— a member without readonly;")
+      })
+
+      test("in a JavaScript file, the ways out are JavaScript's: no readonly type to write, and the setting named", () => {
+        const output = binding(
+          { by: { form: "ObjectExpression", name: null } },
+          "src/billing/refund.model.js",
+        )
+        expect(output).toContain(
+          "— a record literal, not frozen; use Object.freeze, move it inside a factory, or set mutableModuleState: true",
+        )
+        expect(output).not.toContain("readonly type")
+      })
+
+      test("an unknown names what the reader could not see, then the ways out", () => {
+        expect(
+          binding({ unknown: { kind: "type-name", name: "Table" } }),
+        ).toContain(
+          "line 7 may bind state at module root — unknown: the reader does not follow the type name Table yet; write the type out in place, or move it inside a factory",
+        )
+        expect(
+          binding({ unknown: { kind: "type-form", form: "TSTypeQuery" } }),
+        ).toContain("— unknown: the reader does not read typeof yet;")
+        expect(
+          binding({ unknown: { kind: "type-form", form: "TSAnyKeyword" } }),
+        ).toContain("— unknown: any declares nothing a reader could prove;")
+        expect(
+          binding({
+            unknown: {
+              kind: "call-result",
+              callee: "createTable",
+              construct: false,
+            },
+          }),
+        ).toContain(
+          "— unknown: what createTable() returns is not known; annotate it with a readonly type, or move it inside a factory",
+        )
+        expect(
+          binding({
+            unknown: { kind: "call-result", callee: "Spot", construct: true },
+          }),
+        ).toContain("— unknown: what new Spot builds is not known;")
+        expect(
+          binding({
+            unknown: { kind: "value", form: "Identifier", name: "RESULT" },
+          }),
+        ).toContain(
+          "— unknown: the reader does not follow RESULT to its value;",
+        )
+        expect(
+          binding({
+            unknown: { kind: "value", form: "MemberExpression", name: null },
+          }),
+        ).toContain("— unknown: the reader does not follow a member read;")
+      })
+
+      test("an unknown in a JavaScript file names the setting as a way out", () => {
+        expect(
+          binding(
+            {
+              unknown: {
+                kind: "call-result",
+                callee: "createTable",
+                construct: false,
+              },
+            },
+            "src/billing/refund.model.js",
+          ),
+        ).toContain(
+          "— unknown: what createTable() returns is not known; move it inside a factory, or set mutableModuleState: true",
+        )
+      })
+
+      test.each([
+        ["var", null, "ts", "a var can be reassigned"],
+        ["ArrayExpression", null, "ts", "an array literal without as const"],
+        ["ArrayExpression", null, "js", "an array literal, not frozen"],
+        ["TSTypeReference", "Map", "ts", "a Map, which keeps its mutators"],
+        ["TSArrayType", null, "ts", "an array type without readonly"],
+        ["TSTupleType", null, "ts", "a tuple type without readonly"],
+        ["TSMethodSignature", null, "ts", "a method, which can be reassigned"],
+        [
+          "TSIndexSignature",
+          null,
+          "ts",
+          "an index signature without readonly, which takes new entries",
+        ],
+        // tripwire: a form no case lists still names itself
+        ["SomeMadeUpForm", null, "ts", "SomeMadeUpForm"],
+      ] as const)(
+        "a proven red by %s (%s, %s) says: %s",
+        (form, name, language, words) => {
+          expect(
+            binding(
+              { by: { form, name } },
+              `src/billing/refund.model.${language}`,
+            ),
+          ).toContain(`— ${words};`)
+        },
+      )
+
+      test.each([
+        ["keyof", "keyof"],
+        ["unique", "unique symbol"],
+        ["TSMappedType", "a mapped type"],
+        ["TSConditionalType", "a conditional type"],
+        ["TSIndexedAccessType", "an indexed access type"],
+        ["TSImportType", "an import() type"],
+        ["TSMethodSignature", "a method signature"],
+        ["TSIndexSignature", "an index signature"],
+        ["TSUnknownKeyword", "unknown"],
+        ["TSObjectKeyword", "object"],
+        // tripwire: a form no case lists still names itself
+        ["SomeMadeUpType", "SomeMadeUpType"],
+      ])("an unread type form %s is named %s", (form, words) => {
+        expect(binding({ unknown: { kind: "type-form", form } })).toContain(
+          `— unknown: the reader does not read ${words} yet;`,
+        )
+      })
+
+      test("a member of no type is any: it declares nothing", () => {
+        expect(
+          binding({
+            unknown: { kind: "type-form", form: "TSPropertySignature" },
+          }),
+        ).toContain(
+          "— unknown: a member without a type is any, which declares nothing a reader could prove;",
+        )
+      })
+
+      test.each([
+        ["AwaitExpression", "an awaited value"],
+        ["SpreadElement", "a spread"],
+        ["ObjectPattern", "a destructured part"],
+        ["ArrayPattern", "a destructured part"],
+        // tripwire: a form no case lists still names itself
+        ["SomeMadeUpExpression", "SomeMadeUpExpression"],
+      ])("an unfollowed value %s is named %s", (form, words) => {
+        expect(
+          binding({ unknown: { kind: "value", form, name: null } }),
+        ).toContain(`— unknown: the reader does not follow ${words};`)
+      })
+
+      test("a call whose callee is not a name is a call's result", () => {
+        expect(
+          binding({
+            unknown: { kind: "call-result", callee: null, construct: false },
+          }),
+        ).toContain("— unknown: a call's result is not known;")
+      })
+
+      test("a read of the machine names what it captured", () => {
+        expect(binding({ holds: "machine" })).toContain(
+          "line 7 stores a read of the machine at load time — no type proves what it held; read it inside a factory or a function",
+        )
+      })
+    })
+
+    test("a root statement the reader does not recognise is an unknown, named", () => {
+      expect(
         message({
           check: "modules",
           ruleset: "arch",
@@ -558,15 +775,11 @@ describe("renderCheckResults", () => {
           serviceRoot: "src/billing",
           line: 7,
           via: [],
-          shape: "root-binding",
-          holds,
-          unknown: null,
-        })
-      expect(binding("state")).toContain(
-        "line 7 binds state at module root — the syntax does not prove it immutable; use as const, a readonly type, or move it inside a factory",
-      )
-      expect(binding("machine")).toContain(
-        "line 7 stores a read of the machine at load time — no type proves what it held; read it inside a factory or a function",
+          shape: "root-statement",
+          unknown: { kind: "statement", form: "DebuggerStatement" },
+        }),
+      ).toContain(
+        "line 7 may run on import — unknown: the reader does not recognise this statement (DebuggerStatement); move it inside a function",
       )
     })
 
@@ -661,7 +874,7 @@ describe("renderCheckResults", () => {
         ...overrides,
       }) as DagViolation
 
-    test("renders the fiction's cross-service block with quoted carrying edges", () => {
+    it("renders the fiction's cross-service block with quoted carrying edges", () => {
       const output = renderCheckResults([serviceCycle()], STATS, NO_COLORS)
       expect(output).toBe(
         [
@@ -682,7 +895,7 @@ describe("renderCheckResults", () => {
       )
     })
 
-    test("orders blocks in a bucket by rule (the summary's order), then membership", () => {
+    it("orders blocks in a bucket by rule (the summary's order), then membership", () => {
       const output = renderCheckResults(
         [
           moduleCycle({
@@ -726,7 +939,7 @@ describe("renderCheckResults", () => {
       expect(renderCheckResults([early, late], STATS, NO_COLORS)).toBe(output)
     })
 
-    test("renders the module cycle in the blob bucket, last", () => {
+    it("renders the module cycle in the blob bucket, last", () => {
       const output = renderCheckResults(
         [moduleCycle(), serviceCycle()],
         STATS,
@@ -742,7 +955,7 @@ describe("renderCheckResults", () => {
       )
     })
 
-    test("marks type-only and wiring hops, and extends the remedy for wiring", () => {
+    it("marks type-only and wiring hops, and extends the remedy for wiring", () => {
       const output = renderCheckResults(
         [
           serviceCycle({
@@ -779,7 +992,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("wiring outside the service tree")
     })
 
-    test("renders a longer witness as an arrow chain and notes entanglement", () => {
+    it("renders a longer witness as an arrow chain and notes entanglement", () => {
       const output = renderCheckResults(
         [
           serviceCycle({
@@ -828,7 +1041,7 @@ describe("renderCheckResults", () => {
 })
 
 describe("bare status", () => {
-  test("renders the fiction's block with the full check-list hint", () => {
+  it("renders the fiction's block with the full check-list hint", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
@@ -931,7 +1144,7 @@ describe("bare status", () => {
 })
 
 describe("renderBroken", () => {
-  test("names each place deblob cannot read, the line when there is one, what it could not read, and declines to certify", () => {
+  it("names each place deblob cannot read, the line when there is one, what it could not read, and declines to certify", () => {
     const output = renderBroken(
       [
         { file: "src/a.model.ts", line: null, reason: "Unexpected token" },
@@ -955,7 +1168,7 @@ describe("renderBroken", () => {
 })
 
 describe("renderUnresolved", () => {
-  test("names each import, cites the incompleteness, teaches the remedies", () => {
+  it("names each import, cites the incompleteness, teaches the remedies", () => {
     const output = renderUnresolved(
       [
         {
@@ -976,7 +1189,7 @@ describe("renderUnresolved", () => {
     expect(output).toContain('config key "external"')
   })
 
-  test("prints importer paths under the runner's prefix, ctrl+clickable", () => {
+  it("prints importer paths under the runner's prefix, ctrl+clickable", () => {
     const output = renderUnresolved(
       [{ from: "src/a.model.ts", specifier: "x", reason: "r", literal: true }],
       NO_COLORS,
@@ -987,7 +1200,7 @@ describe("renderUnresolved", () => {
 })
 
 describe("renderUnverified", () => {
-  test("names each entry with its subpath and reason, teaches the three remedies", () => {
+  it("names each entry with its subpath and reason, teaches the three remedies", () => {
     const output = renderUnverified(
       [
         {
@@ -1156,10 +1369,26 @@ describe("renderExplain", () => {
     title: "Some made-up rule title",
     body: "Body of the made-up rule, short enough to stay one line.",
     cards,
+    verdicts: null,
     url: `https://github.com/rixo/deblob/blob/v9.9.9-made-up/docs/architecture.md#${rule}`,
   })
 
-  test("prints heading (slug — lowercased title), body, card, the url as given", () => {
+  it("prints how to read a rule's verdicts, when the rule has them, after its body, a blank line between paragraphs", () => {
+    const output = renderExplain(
+      [
+        {
+          ...entry("stable-root", []),
+          verdicts: ["Proven: made-up.", "Unknown: made-up."],
+        },
+      ],
+      NO_COLORS,
+    )
+    expect(output).toContain(
+      "Body of the made-up rule, short enough to stay one line.\n\nreading a verdict\n\nProven: made-up.\n\nUnknown: made-up.\n",
+    )
+  })
+
+  it("prints heading (slug — lowercased title), body, card, the url as given", () => {
     const output = renderExplain(
       [
         entry("service-purity", [
@@ -1216,7 +1445,7 @@ describe("renderExplain", () => {
     expect(firstLineOf("(service-purity, 42)")).toBe(`${lead} (service-purity,`)
   })
 
-  test("wraps a long body at the output width", () => {
+  it("wraps a long body at the output width", () => {
     const long = entry("inward-deps", [])
     long.body = Array.from({ length: 30 }, () => "word").join(" ")
     const output = renderExplain([long], NO_COLORS)

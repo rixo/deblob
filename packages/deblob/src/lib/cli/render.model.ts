@@ -12,6 +12,7 @@ import type {
 import type {
   BrokenSite,
   EdgeTarget,
+  UnknownCondition,
   UnresolvedImport,
 } from "../extraction/graph.model.ts"
 import type { RuleId } from "../check/rule.model.ts"
@@ -217,13 +218,136 @@ const messageOf = (violation: FileViolation, prefix: string): string => {
           ? ""
           : `, reached from ${violation.via.map((site) => `${prefix}${site.file}:${site.line}`).join(", ")}`
       if (violation.shape === "root-binding") {
-        return violation.holds === "machine"
-          ? `line ${violation.line} stores a read of the machine at load time — no type proves what it held; read it inside a factory or a function`
-          : `line ${violation.line} binds state at module root — the syntax does not prove it immutable; use as const, a readonly type, or move it inside a factory`
+        if (violation.holds === "machine")
+          return `line ${violation.line} stores a read of the machine at load time — no type proves what it held; read it inside a factory or a function`
+        const js = isJavaScript(violation.file)
+        if (violation.unknown !== null)
+          return `line ${violation.line} may bind state at module root — unknown: ${unknownWords(violation.unknown)}; ${unknownWaysOut(violation.unknown, js)}`
+        const by = violation.by as { form: string; name: string | null }
+        return `line ${violation.line} binds mutable state at module root — ${mutableWords(by, js)}; ${js ? JS_WAYS_OUT : "use as const, a readonly type, or move it inside a factory"}`
       }
+      if (violation.unknown !== null)
+        return `line ${violation.line} may run on import${via} — unknown: ${unknownWords(violation.unknown)}; move it inside a function`
       return `line ${violation.line} runs on import${via} — a module's evaluation performs no side effect; move it inside a factory or a function`
     }
   }
+}
+
+// --- stable-root's words ---------------------------------------------------
+// The reader names forms by their ESTree type; the words are the message's.
+
+/** A JavaScript file has no types to write: its ways out differ. */
+const isJavaScript = (file: string): boolean =>
+  /\.(?:js|jsx|mjs|cjs)$/.test(file)
+
+/**
+ * JavaScript's ways out of a mutable root binding. The setting is named: a
+ * codebase without types can prove little else (rixo 2026-09-24).
+ */
+const JS_WAYS_OUT =
+  "use Object.freeze, move it inside a factory, or set mutableModuleState: true"
+
+/** What proves a root binding mutable, by the form the reader named. */
+const mutableWords = (
+  by: { form: string; name: string | null },
+  js: boolean,
+): string => {
+  switch (by.form) {
+    case "let":
+    case "var":
+      return `a ${by.form} can be reassigned`
+    case "ObjectExpression":
+      return js
+        ? "a record literal, not frozen"
+        : "a record literal without as const"
+    case "ArrayExpression":
+      return js
+        ? "an array literal, not frozen"
+        : "an array literal without as const"
+    case "NewExpression":
+      return `a new ${by.name}, which keeps its mutators`
+    case "Identifier":
+      return `the same object as ${by.name}, which is mutable`
+    case "TSTypeReference":
+      return by.name === "Record"
+        ? "a Record without Readonly"
+        : `a ${by.name}, which keeps its mutators`
+    case "TSArrayType":
+      return "an array type without readonly"
+    case "TSTupleType":
+      return "a tuple type without readonly"
+    case "TSPropertySignature":
+      return "a member without readonly"
+    case "TSMethodSignature":
+      return "a method, which can be reassigned"
+    case "TSIndexSignature":
+      return "an index signature without readonly, which takes new entries"
+    default:
+      return by.form
+  }
+}
+
+/** The type forms the reader does not read, as a message names them. */
+const TYPE_FORM_WORDS: Readonly<Record<string, string>> = {
+  TSTypeQuery: "typeof",
+  keyof: "keyof",
+  unique: "unique symbol",
+  TSMappedType: "a mapped type",
+  TSConditionalType: "a conditional type",
+  TSIndexedAccessType: "an indexed access type",
+  TSImportType: "an import() type",
+  TSMethodSignature: "a method signature",
+  TSIndexSignature: "an index signature",
+  TSUnknownKeyword: "unknown",
+  TSObjectKeyword: "object",
+}
+
+/** The values the reader does not follow, as a message names them. */
+const VALUE_WORDS: Readonly<Record<string, string>> = {
+  MemberExpression: "a member read",
+  AwaitExpression: "an awaited value",
+  SpreadElement: "a spread",
+  ObjectPattern: "a destructured part",
+  ArrayPattern: "a destructured part",
+}
+
+/** What the reader could not see, in words. */
+const unknownWords = (condition: UnknownCondition): string => {
+  switch (condition.kind) {
+    case "type-name":
+      return `the reader does not follow the type name ${condition.name} yet`
+    case "type-form":
+      // `any` declares nothing: no reader could prove it, now or later
+      if (condition.form === "TSAnyKeyword")
+        return "any declares nothing a reader could prove"
+      if (condition.form === "TSPropertySignature")
+        return "a member without a type is any, which declares nothing a reader could prove"
+      return `the reader does not read ${TYPE_FORM_WORDS[condition.form] ?? condition.form} yet`
+    case "call-result":
+      if (condition.callee === null) return "a call's result is not known"
+      return condition.construct
+        ? `what new ${condition.callee} builds is not known`
+        : `what ${condition.callee}() returns is not known`
+    case "value":
+      return condition.name !== null
+        ? `the reader does not follow ${condition.name} to its value`
+        : `the reader does not follow ${VALUE_WORDS[condition.form] ?? condition.form}`
+    case "statement":
+      return `the reader does not recognise this statement (${condition.form})`
+  }
+}
+
+/**
+ * Some ways out of an unknown, by what the reader could not see — `explain`
+ * lists them all. A type the reader does not follow is written out in place; a
+ * value it does not follow is annotated, where there are types to write.
+ */
+const unknownWaysOut = (condition: UnknownCondition, js: boolean): string => {
+  if (condition.kind === "type-name" || condition.kind === "type-form")
+    return "write the type out in place, or move it inside a factory"
+  return js
+    ? "move it inside a factory, or set mutableModuleState: true"
+    : "annotate it with a readonly type, or move it inside a factory"
 }
 
 /** Dag blocks: 2-space indent + tag; continuation under the head. */
@@ -343,7 +467,12 @@ const summaryLine = (
     ).length
     return count > 0 ? [`${count} ${check}`] : []
   })
-  return `${plural(violations.length, "violation")} (${counts.join(", ")}) · ${trailer}`
+  // a red the reader could not prove: still a violation, counted apart
+  const unknowns = violations.filter(
+    (violation) => "unknown" in violation && violation.unknown !== null,
+  ).length
+  const unknown = unknowns > 0 ? ` · ${unknowns} unknown` : ""
+  return `${plural(violations.length, "violation")} (${counts.join(", ")})${unknown} · ${trailer}`
 }
 
 /**
@@ -746,6 +875,11 @@ export const renderExplain = (
       "",
       ...wrapPlain(entry.body),
     )
+    if (entry.verdicts !== null) {
+      lines.push("", colors.accent("reading a verdict"))
+      for (const paragraph of entry.verdicts)
+        lines.push("", ...wrapPlain(paragraph))
+    }
     for (const card of entry.cards) {
       lines.push("")
       if (shown.has(card.slug)) {

@@ -341,6 +341,27 @@ What differs, or was found:
   run reporting its verdicts, beside the broken line and in another file.
 - Gates: suite green (845), coverage 100, self-check 83.
 
+**Checkpoint 4, built** (awaiting review). What differs, or was found:
+
+- The message names what triggered a proven red too (canon ruling: the
+  condition, always), so the reader's `mutable` answer carries its form (`let`,
+  a record literal, a `new Map`, a member without readonly) and the violation a
+  `by`. The words live in `render.model.ts`, table by table, each with a
+  tripwire: a form no table lists prints its own name.
+- Ways out by language: a `.js`/`.jsx`/`.mjs`/`.cjs` file never gets "a readonly
+  type", and gets `mutableModuleState: true` named.
+- `explain`'s full list of ways out is the tool's own content (`RULE_VERDICTS`
+  in `rule-content.model.ts`, printed as "reading a verdict" after the rule's
+  text), not a knowledge card: the chapter PLAN holds skill edits until the
+  slugs step, and the list is about how deblob reads code. Confirmed by rixo.
+  One paragraph per verdict kind, a blank line between: one block read as a
+  wall.
+- The summary line counts unknowns apart: deblob's self-check reads "84
+  violations (84 modules) · 61 unknown" — 23 proven, 61 reader limits. The 61st
+  is this checkpoint's own: `RULE_VERDICTS` is typed with `Partial`, a type name
+  the reader does not follow yet; left red, rules are not tuned to the code.
+- Gates: suite green (880), coverage 100, self-check 84.
+
 ## Docs
 
 - `runner/README.md`: `stubborn unknown`, `false unknown`, the stack, the

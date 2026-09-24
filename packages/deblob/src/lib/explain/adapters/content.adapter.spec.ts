@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { createMemoryFs } from "../../fs/adapters/memory-fs.adapter.ts"
 import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
@@ -12,7 +12,7 @@ const contentRoot = fileURLToPath(
 )
 
 describe("readExplainEntries", () => {
-  test("assembles rule entries from the shipped summary and cards, URLs pinned to the given version", async () => {
+  it("assembles rule entries from the shipped summary and cards, URLs pinned to the given version", async () => {
     const entries = await readExplainEntries({
       contentRoot,
       rules: ["service-purity", "private-sealed"],
@@ -29,6 +29,7 @@ describe("readExplainEntries", () => {
             text: expect.stringContaining("SOME_MADE_UP_CARD_BODY") as string,
           },
         ],
+        verdicts: null,
         url: "https://github.com/rixo/deblob/blob/v9.9.9-made-up/docs/architecture.md#service-purity",
       },
       {
@@ -43,12 +44,13 @@ describe("readExplainEntries", () => {
             ) as string,
           },
         ],
+        verdicts: null,
         url: "https://github.com/rixo/deblob/blob/v9.9.9-made-up/docs/architecture.md#private-sealed",
       },
     ])
   })
 
-  test("throws loudly when the summary lacks the rule", async () => {
+  it("throws loudly when the summary lacks the rule", async () => {
     await expect(
       readExplainEntries({
         contentRoot,
@@ -58,7 +60,7 @@ describe("readExplainEntries", () => {
     ).rejects.toThrow(/no anchor for blob-quarantine/)
   })
 
-  test("throws loudly when the shipped content is not there — a broken package, never an empty explanation", async () => {
+  it("throws loudly when the shipped content is not there — a broken package, never an empty explanation", async () => {
     const reader = createContentReader({ fs: createMemoryFs({}) })
     await expect(
       reader.readExplainEntries({

@@ -111,6 +111,7 @@ const judgeModule = (
             ...at(statement),
             shape: "root-binding",
             holds: "machine",
+            by: null,
             unknown: null,
           },
         ]
@@ -125,6 +126,10 @@ const judgeModule = (
               ...at(statement),
               shape: "root-binding",
               holds: "state",
+              by:
+                immutability.proof === "mutable"
+                  ? { form: immutability.form, name: immutability.name }
+                  : null,
               unknown:
                 immutability.proof === "unknown"
                   ? immutability.condition

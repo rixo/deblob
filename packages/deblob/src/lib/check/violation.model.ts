@@ -251,6 +251,12 @@ export type ModulesViolation = {
        */
       shape: "root-binding"
       holds: "state" | "machine"
+      /**
+       * The form that proves the state mutable (`let`, a record literal, a `new
+       * Map`), for the message; `null` for a machine read, and when `unknown`
+       * says the reader could not tell.
+       */
+      by: { form: string; name: string | null } | null
     }
 )
 

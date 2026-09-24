@@ -14,6 +14,7 @@ import type { Fs } from "../../fs/fs.port.ts"
 import type { ExplainEntry } from "../rule-content.model.ts"
 import {
   RULE_CARDS,
+  RULE_VERDICTS,
   canonicalRuleUrl,
   ruleSummaryOf,
 } from "../rule-content.model.ts"
@@ -51,6 +52,7 @@ export const createContentReader = ({ fs }: { fs: Pick<Fs, "readFile"> }) => {
               text: await shipped(join(contentRoot, cardPath)),
             })),
           ),
+          verdicts: RULE_VERDICTS[rule] ?? null,
           url: canonicalRuleUrl(rule, version),
         }
       }),

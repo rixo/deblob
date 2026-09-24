@@ -241,7 +241,12 @@ const unwrap = (node: AstNode): AstNode => {
 // unless config says `mutableModuleState`.
 
 const READONLY = { proof: "readonly" } as const satisfies Immutability
-const MUTABLE = { proof: "mutable" } as const satisfies Immutability
+/** Mutable, by the form that proves it: what the message names. */
+const mutableBy = (form: string, name: string | null = null): Immutability => ({
+  proof: "mutable",
+  form,
+  name,
+})
 const unknownFor = (condition: UnknownCondition): Immutability => ({
   proof: "unknown",
   condition,
@@ -326,7 +331,8 @@ const membersImmutability = (
     (literal["members"] as AstNode[]).map((member) => {
       switch (member.type) {
         case "TSPropertySignature": {
-          if (!wrapped && member["readonly"] !== true) return MUTABLE
+          if (!wrapped && member["readonly"] !== true)
+            return mutableBy(member.type)
           const annotation = member["typeAnnotation"]
           return isNode(annotation)
             ? typeImmutability(annotation["typeAnnotation"] as AstNode)
@@ -335,11 +341,11 @@ const membersImmutability = (
         case "TSMethodSignature":
           return wrapped
             ? unknownFor({ kind: "type-form", form: "TSMethodSignature" })
-            : MUTABLE
+            : mutableBy(member.type)
         case "TSIndexSignature":
           return wrapped || member["readonly"] === true
             ? unknownFor({ kind: "type-form", form: "TSIndexSignature" })
-            : MUTABLE
+            : mutableBy(member.type)
         // the rest of ESTree's closed set: a call or construct signature, code
         default:
           return READONLY
@@ -367,13 +373,14 @@ const typeImmutability = (type: AstNode): Immutability => {
       return membersImmutability(type, false)
     case "TSArrayType":
     case "TSTupleType":
-      return MUTABLE
+      return mutableBy(type.type)
     case "TSTypeReference": {
       const typeName = type["typeName"] as AstNode
       if (typeName.type !== "Identifier")
         return unknownFor({ kind: "type-name", name: typeNameText(typeName) })
       const name = typeName["name"] as string
-      if (MUTABLE_TYPE_NAMES.has(name)) return MUTABLE
+      if (MUTABLE_TYPE_NAMES.has(name))
+        return mutableBy("TSTypeReference", name)
       if (!READONLY_TYPE_NAMES.has(name))
         return unknownFor({ kind: "type-name", name })
       const args = typeArgumentsOf(type)
@@ -484,7 +491,7 @@ const initializerImmutability = (node: AstNode, names: Names): Immutability => {
       return READONLY
     case "ObjectExpression":
     case "ArrayExpression":
-      return MUTABLE
+      return mutableBy(node.type)
     case "Identifier": {
       const name = node["name"] as string
       if (name === "undefined" || names.isImmutable(name)) return READONLY
@@ -501,7 +508,7 @@ const initializerImmutability = (node: AstNode, names: Names): Immutability => {
               (inner["callee"] as AstNode)["name"] as string,
             ))
         )
-          return MUTABLE
+          return mutableBy("Identifier", name)
       }
       return unknownFor({ kind: "value", form: "Identifier", name })
     }
@@ -526,7 +533,7 @@ const initializerImmutability = (node: AstNode, names: Names): Immutability => {
     case "NewExpression": {
       const callee = calleeText(node["callee"] as AstNode)
       return callee !== null && MUTABLE_CONSTRUCTORS.has(callee)
-        ? MUTABLE
+        ? mutableBy("NewExpression", callee)
         : unknownFor({ kind: "call-result", callee, construct: true })
     }
     case "CallExpression": {
@@ -600,7 +607,7 @@ const declaratorImmutability = (
   declarator: AstNode,
   names: Names,
 ): Immutability => {
-  if (form !== "const") return MUTABLE
+  if (form !== "const") return mutableBy(form)
   const id = declarator["id"] as AstNode
   // a `const` not declared always has its initializer
   const value = initializerImmutability(declarator["init"] as AstNode, names)

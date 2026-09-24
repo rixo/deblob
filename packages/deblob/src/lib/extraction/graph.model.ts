@@ -315,7 +315,12 @@ export type UnknownCondition =
  */
 export type Immutability =
   | { proof: "readonly" }
-  | { proof: "mutable" }
+  /**
+   * The form that proves it, for the message: `let`/`var`, an ESTree type (a
+   * record literal, a `new`, an array type, a member not readonly), with the
+   * name when there is one (`Map`, the binding named).
+   */
+  | { proof: "mutable"; form: string; name: string | null }
   | { proof: "unknown"; condition: UnknownCondition }
   /**
    * The syntax is not something the reader can read at all — a readonly wrapper

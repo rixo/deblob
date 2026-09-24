@@ -19,6 +19,11 @@ export type ExplainEntry = {
   title: string
   body: string
   cards: readonly ExplainCard[]
+  /**
+   * How to read the rule's verdicts and every way out, one paragraph per kind;
+   * `null` when none.
+   */
+  verdicts: readonly string[] | null
   url: string
 }
 
@@ -52,6 +57,28 @@ export const RULE_CARDS: Readonly<Record<RuleId, readonly string[]>> = {
   // service discipline — no v0 detector cites it, but the mapping stays
   // total over the summary so a stray citation still resolves
   "stable-root": [card("layer-service")],
+}
+
+/**
+ * How to read a rule's verdicts, where the reader can fall short: what each
+ * kind means, what triggers it, and every way out — the check's message names
+ * some, this names all, and says so. The tool's own content, not a card: it is
+ * about how deblob reads code, not about the architecture.
+ */
+export const RULE_VERDICTS: Readonly<
+  Partial<Record<RuleId, readonly string[]>>
+> = {
+  "stable-root": [
+    "A stable-root verdict is proven, unknown or broken, and its message says which and what triggered it. " +
+      "Every way out is listed here: none is left unnamed.",
+    "Proven: the reader shows the root binding can be mutated (a let, a literal without as const, a new Map, a member without readonly), or that it stores a read of the machine, or that a root statement writes. " +
+      "Ways out: change the code — as const, a readonly type, Object.freeze over a literal, or move it inside a factory; go blob — drop the file's layer suffix, and it claims nothing; for a binding, set mutableModuleState: true, which accepts module state across the codebase.",
+    "Unknown: the reader can prove the line neither right nor wrong — a type name it does not follow, a type form it does not read, a call's result, a value it does not follow, a statement it does not recognise. It fails like a red. " +
+      "Ways out: change the code — write the type out in place, annotate a call's result with a readonly type, or move it inside a factory; fix the tool — the setup (TypeScript over JavaScript, strict types) or the reader itself, whose message names the limit it hit; go blob; for a binding, set mutableModuleState: true.",
+    "In a JavaScript file there are no types to write: Object.freeze, a factory, blob and the setting are the ways out.",
+    "Broken: deblob cannot read the line or the file — a readonly wrapper without its type arguments, a freeze of nothing, a file that does not parse. The run prints every verdict it reaches, then declines to certify: exit 2. " +
+      "Way out: fix the code so it reads; tsc rejects these forms too.",
+  ],
 }
 
 /**

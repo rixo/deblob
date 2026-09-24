@@ -51,6 +51,12 @@ One function per check, all over `ImportGraph` from `extraction`:
   count. `tallySurface(...)` folds that into `{ claimed, disclosed }` for the
   bare status — claimed counts reached and unverified alike, since bare never
   diagnoses.
+- `checkModules(graph, { mutableModuleState? })` — `stable-root`: a root
+  statement that writes, a root binding that holds state or stores a read of the
+  machine. Each violation carries `unknown`: `null` when the red is proven (a
+  binding's `by` naming the form that proves it), else the reader's
+  `UnknownCondition` — an unknown fails like a red and says what the reader
+  could not see. A broken line gets no verdict; the graph's `broken` carries it.
 - `violation.model.ts` — the violation shapes, one structured value per finding
   carrying every fact rendering needs.
 

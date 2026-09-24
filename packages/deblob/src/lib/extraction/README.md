@@ -19,24 +19,32 @@ is never parsed through. An external leaf may carry a layer when the other side
 declared one; absent, it is unlabeled.
 
 Every parsed module also carries its **reading** (`FileReading`, JSON data): its
-root statements — calls classified, definitions with their value kind and
-whether they are readonly where the syntax shows it (code, a primitive-valued
-initializer, `as const`, `Object.freeze`, a `Readonly*`, `readonly T[]`,
-primitive or literal annotation; no alias resolution, no inference — an alias
-reads `false`), branches with what their test reads off, assignments with their
-target root's kind — and, for the outside kinds, its top-level functions with
-their hooks cut (a non-exported function only ever called directly in its file
-is a tracked local: not a function of the file but read at each site as the
-site's own text, the site's arguments its parameters, its hooks the site's, its
-return the call's — its body's own names still resolve where it was written, so
-a local or a parameter at the site never takes one over) and the open part: what
-the reader genuinely could not place (a callee of kind unknown — an import the
-resolver could not land, `this`, a binding through itself — and a parameter no
-production site binds), never a fence over a tree it has. A callback handed to
-anything but a tech callee is read inline where it sits, its calls the enclosing
-body's, its returns the callee's; a call's result called inline is classified by
-its value. An outside-kind file no tech covers, or an unparsed one, has none:
-recognized and open.
+root statements — calls classified, definitions with their value kind and their
+`immutability`: readonly where the syntax proves it (code, a primitive-valued
+initializer, `as const`, `Object.freeze` over a literal, a `Readonly*`,
+`readonly T[]`, a primitive or literal annotation), mutable where it proves the
+opposite (`let`/`var`, a record or array literal, a mutable collection, a member
+not readonly) with the form that proves it, unknown otherwise with the
+`UnknownCondition` naming what the reader could not see (a type name — no alias
+resolution yet — a type form, a call's result, a value it does not follow), or
+broken where it cannot read the line at all (a readonly wrapper without its type
+arguments, a freeze of nothing) — never mutable by default; a module's own
+location (`import.meta.url`, `__dirname`) is not a read of the machine, the rest
+of `import.meta` is; a statement it does not recognise is `unread`), branches
+with what their test reads off, assignments with their target root's kind — and,
+for the outside kinds, its top-level functions with their hooks cut (a
+non-exported function only ever called directly in its file is a tracked local:
+not a function of the file but read at each site as the site's own text, the
+site's arguments its parameters, its hooks the site's, its return the call's —
+its body's own names still resolve where it was written, so a local or a
+parameter at the site never takes one over) and the open part: what the reader
+genuinely could not place (a callee of kind unknown — an import the resolver
+could not land, `this`, a binding through itself — and a parameter no production
+site binds), never a fence over a tree it has. A callback handed to anything but
+a tech callee is read inline where it sits, its calls the enclosing body's, its
+returns the callee's; a call's result called inline is classified by its value.
+An outside-kind file no tech covers, or an unparsed one, has none: recognized
+and open.
 
 ## API
 
@@ -78,8 +86,10 @@ recognized and open.
   `specifierMatcher`) shared by `external`, `externalLayers`, and `blob`
   disclosures, and the failure vocabulary: `ExtractionError` with a `code`
   (`designation-conflict`, `load-file-not-covered`) and the duck-typed
-  `isExtractionError` guard the driver presents on. A parse failure still throws
-  bare — a bug until it gets its own code.
+  `isExtractionError` guard the driver presents on. A file that does not parse
+  is not an error: the graph lists it in `broken` (`BrokenSite`, `line: null`),
+  with every root definition the reader reads broken — places deblob cannot
+  read, which the run reports and declines to certify.
 - `exports-map.model.ts` — Node's exports map as pure knowledge:
   `exportsSubpathsOf` flattens a map to subpath → targets, `exportsKeyFor`
   routes a concrete subpath to the key Node would pick (literal wins, longest
