@@ -23,6 +23,7 @@ import type {
   CalleeKind,
   Exemption,
   FileReading,
+  Immutability,
   InstanceOrigin,
   Layer,
   OpenPart,
@@ -32,6 +33,7 @@ import type {
   ReadStatement,
   ResultUse,
   Span,
+  UnknownCondition,
   ValueKind,
 } from "./graph.model.ts"
 
@@ -146,6 +148,21 @@ const LANGUAGE_GLOBALS: ReadonlySet<string> = new Set([
   "arguments",
 ])
 
+/**
+ * A module's own location — CommonJS's names for it, and the members of
+ * `import.meta` that hold it. Canon: presumed not a read of the machine, the
+ * module's identity fixed at load; what else `import.meta` carries (`env`) is.
+ */
+const LOCATION_GLOBALS: ReadonlySet<string> = new Set([
+  "__dirname",
+  "__filename",
+])
+const LOCATION_META: ReadonlySet<string> = new Set([
+  "url",
+  "dirname",
+  "filename",
+])
+
 /** The intrinsics whose value is a literal, not a computation. */
 const LITERAL_GLOBALS: ReadonlySet<string> = new Set([
   "undefined",
@@ -215,12 +232,38 @@ const unwrap = (node: AstNode): AstNode => {
   return current
 }
 
-// --- readonly, the syntactic fact -----------------------------------------
+// --- immutability, the syntactic fact -------------------------------------
 // Immutability a type checker would know and this reader reads off the
-// syntax alone: no alias resolution, no inference. A census of the forms
-// TypeScript types as readonly without a checker; what is not listed reads
-// `false`, the strict side. `stable-root` reads it unless config says
-// `mutableModuleState`.
+// syntax alone: no alias resolution, no inference. A census both ways — the
+// forms TypeScript types as readonly without a checker, and the forms that
+// are mutable by construction; every other form is unknown, with what the
+// reader could not see, never mutable by default. `stable-root` reads it
+// unless config says `mutableModuleState`.
+
+const READONLY = { proof: "readonly" } as const satisfies Immutability
+const MUTABLE = { proof: "mutable" } as const satisfies Immutability
+const unknownFor = (condition: UnknownCondition): Immutability => ({
+  proof: "unknown",
+  condition,
+})
+
+/**
+ * Parts that all hold the value — members, union arms, frozen entries: one
+ * proven mutable makes the whole mutable, then the first unknown makes it
+ * unknown.
+ */
+const allOf = (parts: readonly Immutability[]): Immutability =>
+  parts.find((part) => part.proof === "mutable") ??
+  parts.find((part) => part.proof === "unknown") ??
+  READONLY
+
+/**
+ * A declared type over a value: the type decides what the binding lets you do,
+ * except that a value readonly by its own form (frozen, a primitive) stays
+ * readonly whatever the type says.
+ */
+const typedAs = (type: Immutability, value: Immutability): Immutability =>
+  value.proof === "readonly" ? value : type
 
 /** Type keywords whose values are primitives — immutable by nature. */
 const PRIMITIVE_TYPE_KEYWORDS = new Set([
@@ -243,80 +286,134 @@ const READONLY_TYPE_NAMES = new Set([
   "ReadonlySet",
 ])
 
+/** The standard types whose values carry mutators, by name. */
+const MUTABLE_TYPE_NAMES: ReadonlySet<string> = new Set([
+  "Array",
+  "Map",
+  "Set",
+  "WeakMap",
+  "WeakSet",
+  "Date",
+  "Record",
+])
+
 const typeArgumentsOf = (type: AstNode): AstNode[] => {
   const args = type["typeArguments"] as AstNode | undefined
   return isNode(args) ? (args["params"] as AstNode[]) : []
 }
 
-/**
- * A type literal's members, each a property whose type is proven — and, when no
- * `Readonly<…>` wraps the literal, marked `readonly` itself.
- */
-const isReadonlyMembers = (literal: AstNode, wrapped: boolean): boolean =>
-  (literal["members"] as AstNode[]).every((member) => {
-    if (member.type !== "TSPropertySignature") return false
-    if (!wrapped && member["readonly"] !== true) return false
-    const annotation = member["typeAnnotation"]
-    return (
-      isNode(annotation) &&
-      isReadonlyType(annotation["typeAnnotation"] as AstNode)
-    )
-  })
+/** A type name as written: `Table`, `shapes.Table`. */
+const typeNameText = (name: AstNode): string =>
+  name.type === "TSQualifiedName"
+    ? `${typeNameText(name["left"] as AstNode)}.${(name["right"] as AstNode)["name"] as string}`
+    : (name["name"] as string)
 
 /**
- * A type proven readonly to its depth: a primitive; a function type (code, not
- * state); a type literal whose members are all `readonly` and proven;
- * `Readonly<…>` over a type literal whose members are proven, over a `Record<K,
- * V>` whose values are, or over a proven array; a `Readonly*` collection whose
- * type arguments are proven; `readonly T[]` over a proven element; a union or
- * intersection of those. A named type proves nothing — no alias resolution —
- * and `Readonly<Map<…>>` keeps the Map's mutators.
+ * A type literal's members, each readonly — marked so, or under a `Readonly<…>`
+ * that wraps the literal — and of a proven type. A property or method not
+ * marked, outside `Readonly`, is mutable: TypeScript lets it be reassigned. A
+ * call or construct signature is code.
  */
-const isReadonlyType = (type: AstNode): boolean => {
-  if (PRIMITIVE_TYPE_KEYWORDS.has(type.type)) return true
+const membersImmutability = (
+  literal: AstNode,
+  wrapped: boolean,
+): Immutability =>
+  allOf(
+    (literal["members"] as AstNode[]).map((member) => {
+      switch (member.type) {
+        case "TSPropertySignature": {
+          if (!wrapped && member["readonly"] !== true) return MUTABLE
+          const annotation = member["typeAnnotation"]
+          return isNode(annotation)
+            ? typeImmutability(annotation["typeAnnotation"] as AstNode)
+            : unknownFor({ kind: "type-form", form: "TSPropertySignature" })
+        }
+        case "TSMethodSignature":
+          return wrapped
+            ? unknownFor({ kind: "type-form", form: "TSMethodSignature" })
+            : MUTABLE
+        case "TSIndexSignature":
+          return wrapped || member["readonly"] === true
+            ? unknownFor({ kind: "type-form", form: "TSIndexSignature" })
+            : MUTABLE
+        // the rest of ESTree's closed set: a call or construct signature, code
+        default:
+          return READONLY
+      }
+    }),
+  )
+
+/**
+ * A type's immutability to its depth. Readonly: a primitive; a function type
+ * (code, not state); a type literal whose members are all `readonly` and
+ * proven; `Readonly<…>` over a type literal whose members are proven, over a
+ * `Record<K, V>` whose values are, or over a proven array; a `Readonly*`
+ * collection whose type arguments are proven; `readonly T[]` over a proven
+ * element; a union or intersection of those. Mutable: `T[]`, a tuple, a
+ * standard mutable collection or `Record` — `Readonly<Map<…>>` keeps the Map's
+ * mutators — and a type literal with a member not readonly. Unknown: a named
+ * type (no alias resolution) and every form not read.
+ */
+const typeImmutability = (type: AstNode): Immutability => {
+  if (PRIMITIVE_TYPE_KEYWORDS.has(type.type)) return READONLY
   switch (type.type) {
     case "TSFunctionType":
-      return true
+      return READONLY
     case "TSTypeLiteral":
-      return isReadonlyMembers(type, false)
+      return membersImmutability(type, false)
+    case "TSArrayType":
+    case "TSTupleType":
+      return MUTABLE
     case "TSTypeReference": {
       const typeName = type["typeName"] as AstNode
-      if (typeName.type !== "Identifier") return false
+      if (typeName.type !== "Identifier")
+        return unknownFor({ kind: "type-name", name: typeNameText(typeName) })
       const name = typeName["name"] as string
-      if (!READONLY_TYPE_NAMES.has(name)) return false
+      if (MUTABLE_TYPE_NAMES.has(name)) return MUTABLE
+      if (!READONLY_TYPE_NAMES.has(name))
+        return unknownFor({ kind: "type-name", name })
       const args = typeArgumentsOf(type)
-      if (args.length === 0) return false
-      if (name !== "Readonly") return args.every(isReadonlyType)
+      if (args.length === 0) return MUTABLE
+      if (name !== "Readonly") return allOf(args.map(typeImmutability))
       const inner = args[0] as AstNode
-      if (inner.type === "TSTypeLiteral") return isReadonlyMembers(inner, true)
+      if (inner.type === "TSTypeLiteral")
+        return membersImmutability(inner, true)
       if (inner.type === "TSArrayType")
-        return isReadonlyType(inner["elementType"] as AstNode)
+        return typeImmutability(inner["elementType"] as AstNode)
       if (
         inner.type === "TSTypeReference" &&
         (inner["typeName"] as AstNode)["name"] === "Record"
       ) {
         const recordArgs = typeArgumentsOf(inner)
-        return (
-          recordArgs.length === 2 && isReadonlyType(recordArgs[1] as AstNode)
-        )
+        return recordArgs.length === 2
+          ? typeImmutability(recordArgs[1] as AstNode)
+          : MUTABLE
       }
-      return isReadonlyType(inner)
+      return typeImmutability(inner)
     }
     case "TSTypeOperator": {
-      if (type["operator"] !== "readonly") return false
+      const operator = type["operator"] as string
+      if (operator !== "readonly")
+        return unknownFor({
+          kind: "type-form",
+          form: operator,
+        })
       // oxc refuses `readonly` over anything but an array or a tuple
       const operand = type["typeAnnotation"] as AstNode
       return operand.type === "TSArrayType"
-        ? isReadonlyType(operand["elementType"] as AstNode)
-        : (operand["elementTypes"] as AstNode[]).every(isReadonlyType)
+        ? typeImmutability(operand["elementType"] as AstNode)
+        : allOf((operand["elementTypes"] as AstNode[]).map(typeImmutability))
     }
     case "TSParenthesizedType":
-      return isReadonlyType(type["typeAnnotation"] as AstNode)
+      return typeImmutability(type["typeAnnotation"] as AstNode)
     case "TSUnionType":
     case "TSIntersectionType":
-      return (type["types"] as AstNode[]).every(isReadonlyType)
+      return allOf((type["types"] as AstNode[]).map(typeImmutability))
     default:
-      return false
+      return unknownFor({
+        kind: "type-form",
+        form: type.type,
+      })
   }
 }
 
@@ -333,73 +430,146 @@ type Names = {
   initOf: (name: string) => AstNode | null
 }
 
+/** The standard constructors whose instances carry mutators. */
+const MUTABLE_CONSTRUCTORS: ReadonlySet<string> = new Set([
+  "Array",
+  "Map",
+  "Set",
+  "WeakMap",
+  "WeakSet",
+  "Date",
+])
+
+/** A callee as written, for a message: `createTable`, `Math.max`. */
+const calleeText = (callee: AstNode): string | null => {
+  const node = unwrap(callee)
+  if (node.type === "Identifier") return node["name"] as string
+  if (node.type === "MemberExpression" && node["computed"] !== true) {
+    const object = calleeText(node["object"] as AstNode)
+    const property = (node["property"] as AstNode)["name"] as string
+    return object === null ? null : `${object}.${property}`
+  }
+  return null
+}
+
+const isObjectFreeze = (callee: AstNode): boolean =>
+  callee.type === "MemberExpression" &&
+  (callee["object"] as AstNode)["name"] === "Object" &&
+  (callee["property"] as AstNode)["name"] === "freeze"
+
 /**
- * An initializer whose value is immutable by its form: a primitive-valued
+ * An initializer's immutability by its form. Readonly: a primitive-valued
  * expression (a literal, a template, an operator's result), `undefined`, a name
  * bound to an immutable value, a function or class, `as const`, `Object.freeze`
  * over a literal whose entries are immutable (written there, or bound to the
- * name it freezes), or an assertion to a readonly type.
+ * name it freezes), an assertion to a readonly type. Mutable: a record or array
+ * literal, a mutable collection constructed, a name bound in the file to one of
+ * those, a freeze over a literal with a mutable entry. Unknown: a call's
+ * result, a member read, an awaited value, a name the reader does not follow.
  */
-const isImmutableInitializer = (node: AstNode, names: Names): boolean => {
-  const immutable = (child: unknown): boolean =>
-    isNode(child) && isImmutableInitializer(child, names)
+const initializerImmutability = (node: AstNode, names: Names): Immutability => {
+  const of = (child: unknown): Immutability =>
+    initializerImmutability(child as AstNode, names)
   switch (node.type) {
     case "Literal":
     case "TemplateLiteral":
     case "UnaryExpression":
     case "BinaryExpression":
     case "ClassExpression":
-      return true
-    case "Identifier":
-      return (
-        node["name"] === "undefined" ||
-        names.isImmutable(node["name"] as string)
-      )
+      return READONLY
+    case "ObjectExpression":
+    case "ArrayExpression":
+      return MUTABLE
+    case "Identifier": {
+      const name = node["name"] as string
+      if (name === "undefined" || names.isImmutable(name)) return READONLY
+      // the same object as the one it is bound to: a mutable one is mutable
+      // here; anything else is not followed
+      const bound = names.initOf(name)
+      if (bound !== null) {
+        const inner = unwrap(bound)
+        if (
+          inner.type === "ObjectExpression" ||
+          inner.type === "ArrayExpression" ||
+          (inner.type === "NewExpression" &&
+            MUTABLE_CONSTRUCTORS.has(
+              (inner["callee"] as AstNode)["name"] as string,
+            ))
+        )
+          return MUTABLE
+      }
+      return unknownFor({ kind: "value", form: "Identifier", name })
+    }
     case "LogicalExpression":
-      return immutable(node["left"]) && immutable(node["right"])
+      return allOf([of(node["left"]), of(node["right"])])
     case "ConditionalExpression":
-      return immutable(node["consequent"]) && immutable(node["alternate"])
+      return allOf([of(node["consequent"]), of(node["alternate"])])
     case "TSAsExpression":
     case "TSTypeAssertion": {
       const type = node["typeAnnotation"] as AstNode
-      return (
-        isConstAssertion(type) ||
-        isReadonlyType(type) ||
-        immutable(node["expression"])
-      )
+      if (isConstAssertion(type)) return READONLY
+      return typedAs(typeImmutability(type), of(node["expression"]))
     }
     case "ParenthesizedExpression":
     case "TSSatisfiesExpression":
     case "TSNonNullExpression":
-      return immutable(node["expression"])
+      return of(node["expression"])
+    case "AwaitExpression":
+      return unknownFor({ kind: "value", form: "AwaitExpression", name: null })
+    case "MemberExpression":
+      return unknownFor({ kind: "value", form: "MemberExpression", name: null })
+    case "NewExpression": {
+      const callee = calleeText(node["callee"] as AstNode)
+      return callee !== null && MUTABLE_CONSTRUCTORS.has(callee)
+        ? MUTABLE
+        : unknownFor({ kind: "call-result", callee, construct: true })
+    }
     case "CallExpression": {
       const callee = node["callee"] as AstNode
-      if (
-        callee.type !== "MemberExpression" ||
-        (callee["object"] as AstNode)["name"] !== "Object" ||
-        (callee["property"] as AstNode)["name"] !== "freeze"
-      ) {
-        return false
-      }
+      if (!isObjectFreeze(callee))
+        return unknownFor({
+          kind: "call-result",
+          callee: calleeText(callee),
+          construct: false,
+        })
       // a freeze is one level: what it freezes must hold immutable entries;
       // a name frozen is the very object it is bound to
       const argument = unwrap((node["arguments"] as AstNode[])[0] ?? node)
+      if (argument === node) return MUTABLE
       const bound =
         argument.type === "Identifier"
           ? names.initOf(argument["name"] as string)
           : null
+      if (argument.type === "Identifier" && bound === null)
+        return unknownFor({
+          kind: "value",
+          form: "Identifier",
+          name: argument["name"] as string,
+        })
       const frozen = bound === null ? argument : unwrap(bound)
+      // a hole reads `undefined`: nothing to prove
       if (frozen.type === "ArrayExpression")
-        return (frozen["elements"] as unknown[]).every(immutable)
+        return allOf((frozen["elements"] as unknown[]).filter(isNode).map(of))
       if (frozen.type === "ObjectExpression")
-        return (frozen["properties"] as AstNode[]).every(
-          (property) =>
-            property.type === "Property" && immutable(property["value"]),
+        return allOf(
+          (frozen["properties"] as AstNode[]).map((property) =>
+            property.type === "Property"
+              ? of(property["value"])
+              : unknownFor({
+                  kind: "value",
+                  form: "SpreadElement",
+                  name: null,
+                }),
+          ),
         )
-      return false
+      return of(frozen)
     }
-    default:
+    default: {
+      const form = node.type
       return isFunctionNode(node)
+        ? READONLY
+        : unknownFor({ kind: "value", form, name: null })
+    }
   }
 }
 
@@ -410,21 +580,26 @@ const annotationOf = (pattern: AstNode): AstNode | null => {
 }
 
 /**
- * A declarator is readonly-typed when it is a `const` and either its annotation
- * or its initializer says so; a `let` or `var` never is. A destructuring
- * pattern reads the whole declarator: `const { a } = FROZEN` is readonly iff
- * `FROZEN`'s form is.
+ * A declarator's immutability: a `let` or `var` is mutable; a `const` is what
+ * its annotation lets it be, or its initializer when it has none — readonly
+ * either way when its initializer is. A destructuring pattern binds parts, not
+ * the object: readonly when what it destructures is (`const { a } = FROZEN`),
+ * its parts unknown otherwise.
  */
-const isReadonlyDeclarator = (
+const declaratorImmutability = (
   form: string,
   declarator: AstNode,
   names: Names,
-): boolean => {
-  if (form !== "const") return false
-  const annotation = annotationOf(declarator["id"] as AstNode)
-  if (annotation !== null && isReadonlyType(annotation)) return true
-  const init = declarator["init"]
-  return isNode(init) && isImmutableInitializer(init, names)
+): Immutability => {
+  if (form !== "const") return MUTABLE
+  const id = declarator["id"] as AstNode
+  // a `const` not declared always has its initializer
+  const value = initializerImmutability(declarator["init"] as AstNode, names)
+  const annotation = annotationOf(id)
+  const typed =
+    annotation === null ? value : typedAs(typeImmutability(annotation), value)
+  if (id.type === "Identifier" || typed.proof === "readonly") return typed
+  return unknownFor({ kind: "value", form: id.type, name: null })
 }
 
 const VALUE_RANK: Readonly<Record<ValueKind, number>> = {
@@ -1660,7 +1835,8 @@ export const readModule = ({
         const binding = lookup(scope, name)
         if (binding === null) {
           if (LITERAL_GLOBALS.has(name)) return literal
-          if (LANGUAGE_GLOBALS.has(name)) return computed
+          if (LANGUAGE_GLOBALS.has(name) || LOCATION_GLOBALS.has(name))
+            return computed
           countRead(emitting)
           return { kind: "tech", origin: null, path: [] }
         }
@@ -1694,6 +1870,12 @@ export const readModule = ({
           root.type === "TaggedTemplateExpression"
         ) {
           rootValue = evaluateCall(root, { kind: "computed" }, emitting)
+        } else if (
+          root.type === "MetaProperty" &&
+          LOCATION_META.has(members[0] as string)
+        ) {
+          // the module's own location, not a read of the machine
+          rootValue = computed
         } else {
           rootValue = evaluate(root, { kind: "computed" }, emitting)
         }
@@ -1718,6 +1900,11 @@ export const readModule = ({
         return evaluateCall(node, ctx, emitting)
       case "TaggedTemplateExpression":
         return evaluateCall(node, ctx, emitting)
+      // `import.meta` whole, or a member past the location: the host's
+      // object, `env` among it — a read of the machine
+      case "MetaProperty":
+        countRead(emitting)
+        return { kind: "tech", origin: null, path: [] }
       case "ImportExpression":
         evaluate(node["source"] as AstNode, { kind: "computed" }, emitting)
         return computed
@@ -1861,7 +2048,8 @@ export const readModule = ({
         const init = initOf(name)
         return (
           init !== null &&
-          isImmutableInitializer(init, namesIn(new Set([...seen, binding])))
+          initializerImmutability(init, namesIn(new Set([...seen, binding])))
+            .proof === "readonly"
         )
       },
     }
@@ -1885,7 +2073,7 @@ export const readModule = ({
         }
       })
       const form = declaration["kind"] as string
-      const readonly = isReadonlyDeclarator(
+      const immutability = declaratorImmutability(
         form,
         declarator,
         namesIn(new Set()),
@@ -1899,7 +2087,7 @@ export const readModule = ({
           form,
           exported,
           value: resolveBinding(binding).kind,
-          readonly,
+          immutability,
           storesMachineRead,
           inlined: frame !== null,
           span: spanOf(node),
@@ -1943,7 +2131,10 @@ export const readModule = ({
           value: value.kind,
           // a default-exported expression is a binding nothing reassigns:
           // readonly by its initializer's form
-          readonly: isImmutableInitializer(declaration, namesIn(new Set())),
+          immutability: initializerImmutability(
+            declaration,
+            namesIn(new Set()),
+          ),
           storesMachineRead,
           inlined: frame !== null,
           span: spanOf(statement),
@@ -1972,7 +2163,7 @@ export const readModule = ({
           value:
             statement.type === "TSEnumDeclaration" ? "literal" : "function",
           // code, not state
-          readonly: true,
+          immutability: READONLY,
           storesMachineRead: false,
           inlined: frame !== null,
           span: spanOf(statement),
@@ -2105,7 +2296,7 @@ export const readModule = ({
         return
       default:
         // a statement the reader does not know: its calls still count
-        emit({ kind: "other", span: spanOf(statement) })
+        emit({ kind: "unread", form: statement.type, span: spanOf(statement) })
         evaluateChildren(statement, true)
         return
     }

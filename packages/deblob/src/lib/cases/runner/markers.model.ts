@@ -28,10 +28,20 @@
  * nothing; one that passes is an unexpected pass, and the row fails until the
  * marker goes — `unittest`'s and pytest's terms (`xfail`, strict `XPASS`).
  *
+ * A red is proven or unknown — the reader could prove the line neither right
+ * nor wrong — and a plain `red` claims a proven one only. `// stubborn unknown:
+ * <slug> -- <why>` claims an unknown: a limit we tried to lift and kept, the
+ * why naming it. `// false unknown: <slug> -- <why>` is the expected failure:
+ * the reader answers unknown, wrongly. Alone, the truth is green; stacked with
+ * a plain `red` on the same line and slug, the truth is red, and that `red` is
+ * not counted while the unknown holds. There is no bare `unknown`: every
+ * unknown marker says which it is. `via` markers match a report's triggers
+ * whether the report is proven or unknown.
+ *
  * A comment that looks like a marker (`// red`, `// via`, `// false`, `//
- * missed`, any case) and fails the grammar is loud, and so is a marker after
- * another comment on its line: a malformed marker read as nothing would pass
- * its row green.
+ * missed`, `// stubborn`, `// unknown`, any case) and fails the grammar is
+ * loud, and so is a marker after another comment on its line: a malformed
+ * marker read as nothing would pass its row green.
  */
 
 import type { RuleId } from "../../check/rule.model.ts"
@@ -53,8 +63,11 @@ export type Case = {
 export type Row = Case & { name: string }
 
 export type Marker = {
-  /** `red`: this line is the violation; `via`: this line triggers one. */
-  kind: "red" | "via"
+  /**
+   * `red`: this line is the violation, proven; `unknown`: the reader answers
+   * unknown here (plain: `stubborn unknown`); `via`: this line triggers one.
+   */
+  kind: "red" | "unknown" | "via"
   /**
    * How this claim is expected to fail: `false` — the reader reports it,
    * wrongly; `missed` — the reader does not report it. Absent on a plain
@@ -79,6 +92,8 @@ export type Reported = {
   slugs: readonly RuleId[]
   /** The lines that trigger this red from elsewhere; empty when none. */
   via: readonly Site[]
+  /** Present on a red the reader could not prove: an unknown. */
+  unknown?: true
 }
 
 export type ExpectedFailure = "false" | "missed"
@@ -118,13 +133,13 @@ export const AS_MARKED: VerdictMatch = {
 }
 
 /** Anything a reader would take for a marker, well-formed or not. */
-const LOOKS_LIKE_MARKER = /\/\/\s*(?:red|via|false|missed)\b/i
+const LOOKS_LIKE_MARKER = /\/\/\s*(?:red|via|false|missed|stubborn|unknown)\b/i
 
 const MARKER =
-  /^\/\/ (?:(false|missed) )?(red|via): ([a-z]+(?:-[a-z]+)*(?:, [a-z]+(?:-[a-z]+)*)*)(?: -- (\S.*))?$/
+  /^\/\/ (?:(false|missed|stubborn) )?(red|via|unknown): ([a-z]+(?:-[a-z]+)*(?:, [a-z]+(?:-[a-z]+)*)*)(?: -- (\S.*))?$/
 
 const GRAMMAR =
-  "`// red: <slug>[, <slug>]* [-- <why>]`, `// via:` the same, or either as an expected failure: `// false red: <slug> -- <why>`, `// missed red:`"
+  "`// red: <slug>[, <slug>]* [-- <why>]`, `// via:` the same, either as an expected failure (`// false red: <slug> -- <why>`, `// missed red:`), or an unknown: `// stubborn unknown: <slug> -- <why>`, `// false unknown:`"
 
 const isRuleId = (value: string): value is RuleId =>
   (RULE_IDS as readonly string[]).includes(value)
@@ -154,8 +169,17 @@ const lineMarkersOf = (
     throw new Error(`${where}: a marker after a comment: ${text.trim()}`)
   }
   const match = MARKER.exec(text.slice(found.index).trimEnd())
-  // an expected failure says what it waits for: without its why, malformed
-  if (match === null || (match[1] !== undefined && match[4] === undefined)) {
+  const prefix = match?.[1]
+  const kind = match?.[2]
+  // an expected failure says what it waits for, a stubborn unknown what it
+  // kept: without its why, malformed; `stubborn` is for an unknown only, and
+  // an unknown is always `stubborn` or `false`
+  if (
+    match === null ||
+    (prefix !== undefined && match[4] === undefined) ||
+    (prefix === "stubborn") !== (kind === "unknown" && prefix !== "false") ||
+    (kind === "unknown" && prefix === "missed")
+  ) {
     throw new Error(
       `${where}: malformed marker: ${text.trim()} (expected ${GRAMMAR})`,
     )
@@ -171,8 +195,11 @@ const lineMarkersOf = (
   return {
     at: found.index,
     alone: before.trim() === "",
-    kind: match[2] as Marker["kind"],
-    expectedFailure: (match[1] as ExpectedFailure | undefined) ?? null,
+    kind: kind as Marker["kind"],
+    expectedFailure:
+      prefix === undefined || prefix === "stubborn"
+        ? null
+        : (prefix as ExpectedFailure),
     slugs: slugs as RuleId[],
     why: match[4] ?? null,
   }
@@ -241,7 +268,17 @@ export const reportedOf = (violation: Violation): Reported[] => {
   // the edge-level checks have none and match a file claim
   const line = "line" in violation ? violation.line : null
   const via = "via" in violation ? violation.via : []
-  return files.map((file) => ({ file, line, slugs: violation.rules, via }))
+  const unknown =
+    "unknown" in violation && violation.unknown !== null
+      ? { unknown: true as const }
+      : {}
+  return files.map((file) => ({
+    file,
+    line,
+    slugs: violation.rules,
+    via,
+    ...unknown,
+  }))
 }
 
 const key = (file: string, line: number | null, slug: string): string =>
@@ -254,7 +291,7 @@ const markerKey = (marker: Marker): string =>
   key(
     marker.file,
     marker.line,
-    marker.kind === "via" ? `via ${marker.slug}` : marker.slug,
+    marker.kind === "red" ? marker.slug : `${marker.kind} ${marker.slug}`,
   )
 
 /** An expected failure as its marker reads: `file:line false red slug`. */
@@ -270,7 +307,9 @@ const expectedFailureOf = (marker: Marker): string =>
  * twice needs two reports — and sorted for the diff. A report goes to a plain
  * claim first, then to a `false` expected failure (still failing), then to a
  * `missed` one (an unexpected pass); a `false` left over is an unexpected pass,
- * a `missed` left over still failing.
+ * a `missed` left over still failing. An unknown report keys apart from a
+ * proven one, so each matches its own markers; a `false unknown` still failing
+ * holds back one plain `red` of its slug on its line, the verdict to come.
  */
 export const matchVerdicts = (
   markers: readonly Marker[],
@@ -297,8 +336,14 @@ export const matchVerdicts = (
   const passUnexpectedly = (marker: Marker): void => {
     unexpectedPasses.push(`${expectedFailureOf(marker)} — remove the marker`)
   }
+  // the plain reds a `false unknown` still failing holds back, by their key
+  const held = new Map<string, number>()
   const failAsExpected = (marker: Marker): void => {
     expectedFailures.push(`${expectedFailureOf(marker)} -- ${marker.why}`)
+    if (marker.kind === "unknown") {
+      const red = key(marker.file, marker.line, marker.slug)
+      held.set(red, (held.get(red) ?? 0) + 1)
+    }
   }
   const claim = (at: string): void => {
     const left = open.get(at) ?? 0
@@ -323,14 +368,20 @@ export const matchVerdicts = (
         triggers.add(trigger)
         claim(trigger)
       }
-      claim(key(report.file, report.line, slug))
+      claim(
+        key(
+          report.file,
+          report.line,
+          report.unknown === true ? `unknown ${slug}` : slug,
+        ),
+      )
     }
   }
-  const missing = [...open].flatMap(([at, left]) =>
-    Array.from({ length: left }, () => at),
-  )
   for (const left of declared.false.values()) left.forEach(passUnexpectedly)
   for (const left of declared.missed.values()) left.forEach(failAsExpected)
+  const missing = [...open].flatMap(([at, left]) =>
+    Array.from({ length: Math.max(0, left - (held.get(at) ?? 0)) }, () => at),
+  )
   return {
     missing: missing.sort(),
     unexpected: unexpected.sort(),

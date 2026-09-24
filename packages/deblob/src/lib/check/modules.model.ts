@@ -50,9 +50,8 @@ const flattenBranches = (
  * The statement kinds that do something on evaluation. `call` and `definition`
  * are judged by the clauses that own them; `return` cannot appear at a module's
  * root; a `throw` changes nothing and is the author's crash to write. `other`
- * is a `delete`, an increment, and every statement the reader does not
- * recognise — which is why it counts here: at root, a statement the reader
- * cannot name is one it cannot clear either.
+ * is a `delete` or an increment. A statement the reader does not recognise
+ * (`unread`) is judged apart: an unknown, not a proven red.
  */
 const runsOnImport = (
   statement: ReadStatement,
@@ -84,7 +83,17 @@ const judgeModule = (
   return flattenBranches(node.reading.root).flatMap(
     (statement): ModulesViolation[] => {
       if (runsOnImport(statement)) {
-        return [{ ...at(statement), shape: "root-statement" }]
+        return [{ ...at(statement), shape: "root-statement", unknown: null }]
+      }
+      // a statement the reader cannot name is one it cannot clear either
+      if (statement.kind === "unread") {
+        return [
+          {
+            ...at(statement),
+            shape: "root-statement",
+            unknown: { kind: "statement", form: statement.form },
+          },
+        ]
       }
       // a root callback's body runs on import, but its locals are each run's
       if (
@@ -96,14 +105,30 @@ const judgeModule = (
       }
       // a read of the machine first: no annotation proves what it held; a
       // call's result is not one — the call is judged where it sits
-      const holds = statement.storesMachineRead
-        ? "machine"
-        : statement.readonly
-          ? null
-          : "unproven"
-      return holds === null
+      if (statement.storesMachineRead) {
+        return [
+          {
+            ...at(statement),
+            shape: "root-binding",
+            holds: "machine",
+            unknown: null,
+          },
+        ]
+      }
+      const { immutability } = statement
+      return immutability.proof === "readonly"
         ? []
-        : [{ ...at(statement), shape: "root-binding", holds }]
+        : [
+            {
+              ...at(statement),
+              shape: "root-binding",
+              holds: "state",
+              unknown:
+                immutability.proof === "unknown"
+                  ? immutability.condition
+                  : null,
+            },
+          ]
     },
   )
 }

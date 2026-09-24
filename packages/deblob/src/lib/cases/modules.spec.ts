@@ -34,6 +34,13 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * an expected failure with `false red` or `missed red`; a reader limit is never
  * written as its wrong verdict.
  *
+ * A red is proven or unknown, and the stamp says which. `red` claims a proven
+ * one. Where the reader answers unknown — it can prove the line neither right
+ * nor wrong — the line marks `false unknown`, alone when the truth is green,
+ * stacked above a `red` when the truth is red: the limit is to be lifted.
+ * `stubborn unknown` is for a limit we tried to lift and kept; it is the one
+ * stamp of the reader's answer rather than the truth, and its why says why.
+ *
  * An unmarked row is stamped: its verdict has been read and accepted.
  */
 
@@ -49,6 +56,7 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/table.model.ts": `
         import { createRates } from "./rates.model.ts"
+        // false unknown: stable-root -- a call's result is not followed yet
         const RATES = createRates() // red: stable-root -- a call result is not provably immutable — the binding, not the call
         export const BASE: number = createRates().base
         export const scale = (n: number) => n * 2
@@ -151,6 +159,7 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/cli.driver.ts": `
         import { createCliAssembly } from "./cli.assembly.ts"
+        // false unknown: stable-root -- a call's result is not followed yet
         const services = createCliAssembly() // red: stable-root -- a call result is not provably immutable
         services.app.run() // missed red: stable-root -- a use case runs at import time; the call shape is not built yet
         export const main = () => {
@@ -188,6 +197,7 @@ const ROOT_CALLS: readonly Row[] = [
         import { describe, expect, it } from "vitest"
         import { createApp } from "./app.service.ts"
         import { main } from "./cli.driver.ts"
+        // false unknown: stable-root -- a call's result is not followed yet
         const app = createApp() // red: stable-root -- a call result is not provably immutable, and every test shares it
         let calls = 0 // red: stable-root -- mutable state at spec root
         const twice = (n: number) => n * 2
@@ -211,6 +221,7 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/cli.assembly.ts": `
         import { createApp } from "./app.service.ts"
+        // false unknown: stable-root -- a call's result is not followed yet
         const app = createApp() // red: stable-root -- built at import time, and a call result is not provably immutable
         export const createCliAssembly = () => ({ app })
       `,
@@ -278,17 +289,17 @@ const READONLY_BINDINGS: readonly Row[] = [
       "src/forms.model.ts": `
         export let counter = 0 // red: stable-root -- let
         export var legacy = 0 // red: stable-root -- var
-        export const RESULT = Math.max(1, 2) // red: stable-root -- a call result, nothing proven
+        export const RESULT = Math.max(1, 2) // false unknown: stable-root -- a number, but the result of Math.max is not known yet: built-in knowledge
         export const RECORD = { a: 1 } // red: stable-root -- a record literal without as const
         export const LIST = [1] // red: stable-root -- an array literal without as const
         export const CACHE = new Map<string, number>() // red: stable-root -- a mutable collection
-        export const MEMBER = RECORD.a // red: stable-root -- a member read, not followed
-        export const ALIASED = RESULT // red: stable-root -- another binding, not followed
-        export const AWAITED = await Promise.resolve(1) // red: stable-root -- an awaited value
+        export const MEMBER = RECORD.a // false unknown: stable-root -- a number, but a member read is not followed yet
+        export const ALIASED = RESULT // false unknown: stable-root -- a number, but RESULT's call result is not known yet
+        export const AWAITED = await Promise.resolve(1) // false unknown: stable-root -- a number, but an awaited value is not followed yet
         export const NESTED: Readonly<{ inner: { n: number } }> = { inner: { n: 1 } } // red: stable-root -- Readonly is one level, the inner record is mutable
         export const FROZEN_SHALLOW = Object.freeze({ inner: { n: 1 } }) // red: stable-root -- a freeze is one level, the inner literal is not frozen
         export const MUTABLE_MAP: Readonly<Map<string, number>> = new Map() // red: stable-root -- Readonly over a Map keeps the mutators — set still compiles
-        export const { a: PICKED } = RECORD // red: stable-root -- destructured from a binding, not from Object.freeze
+        export const { a: PICKED } = RECORD // false unknown: stable-root -- a number, but a destructured part is not followed yet
         export default { a: 1 } // red: stable-root -- a default export of a record literal
       `,
     },
@@ -323,9 +334,10 @@ const READONLY_BINDINGS: readonly Row[] = [
     // Coverage sweep, 2026-09-24; verdicts agreed by rixo.
     // canon: the same clause, forms no row wrote: `Readonly<T[]>` is a
     // readonly array, a readonly tuple is proven to its depth, a name bound
-    // to a function is code; a call result proves nothing (the RESULT line
-    // above), inside a freeze too.
-    name: "a readonly array however written, a readonly tuple to its depth, a name bound to a function; a freeze of a call proves nothing",
+    // to a function is code; a freeze of a call's result is readonly when
+    // what the call returns is a literal of immutable entries (re-stamped
+    // 2026-09-24: the old red pinned the reader's limit as the verdict).
+    name: "a readonly array however written, a readonly tuple to its depth, a name bound to a function, a freeze of a call returning a record of numbers",
     files: {
       "src/tuples.model.ts": `
         const double = (n: number) => n * 2
@@ -334,7 +346,7 @@ const READONLY_BINDINGS: readonly Row[] = [
         export const PAIR: readonly [number, string] = [1, "a"]
         export const NESTED_PAIR: readonly [number, number[]] = [1, []] // red: stable-root -- a readonly tuple holding a mutable array
         export const TWICE = double
-        export const FROZEN_CALL = Object.freeze(createTable()) // red: stable-root -- what the call returns is not seen, so nothing is proven
+        export const FROZEN_CALL = Object.freeze(createTable()) // false unknown: stable-root -- the call returns a record of numbers, frozen: readonly; a call's result is not followed yet
       `,
     },
   },
@@ -348,6 +360,30 @@ const READONLY_BINDINGS: readonly Row[] = [
       "src/broken.model.ts": `
         export const BARE: ReadonlyMap = new Map() // red: stable-root -- ReadonlyMap without its type arguments
         export const EMPTY_FREEZE = Object.freeze() // red: stable-root -- a freeze of nothing
+        export const HALF_RECORD: Readonly<Record<string>> = {} // red: stable-root -- Record without its value type
+      `,
+    },
+  },
+  {
+    // Coverage of the census both ways, 2026-09-24 (step 06); verdicts
+    // agreed by rixo. canon: "proof being a primitive type, `as const`, a readonly
+    // array, record, map or set, or `Object.freeze` over a literal, each
+    // proven to its depth" — and what is mutable by construction is proven
+    // red, not left unknown: a name bound to a mutable collection is that
+    // collection, an index signature not readonly takes new entries. A call
+    // signature is code. A member of no type compiles only with `noImplicitAny`
+    // off (TS7008 under strict) and is `any`, which declares nothing:
+    // `stubborn unknown`, no reader can prove it (agreed with rixo).
+    name: "the census both ways: a name bound to a mutable collection, a writable index signature, a call signature, a spread inside a freeze, a member of no type",
+    files: {
+      "src/census.model.ts": `
+        const CACHE = new Map<string, number>() // red: stable-root -- a mutable collection
+        export const SAME_CACHE = CACHE // red: stable-root -- the same Map, by its name
+        export const CALLABLE: { (): number } = () => 1
+        export const COUNTS: { [key: string]: number } = {} // red: stable-root -- an index signature not readonly takes new entries
+        const LIMITS = { a: 1 } as const
+        export const SPREAD = Object.freeze({ ...LIMITS }) // false unknown: stable-root -- entries of numbers, frozen: readonly; a spread inside a freeze is not followed yet
+        export const UNTYPED: { readonly a } = { a: 1 } // stubborn unknown: stable-root -- a member of no type is any, which declares nothing: no reader can prove it
       `,
     },
   },
@@ -369,12 +405,12 @@ const READONLY_BINDINGS: readonly Row[] = [
         import { BASE_TABLE } from "./base.model.ts"
         const SHAPE = { a: 1 } as const
         const firstKey = (): "a" => "a"
-        export const STOPPABLE: Readonly<{ stop(): void }> = { stop: () => {} } // false red: stable-root -- method signatures are not read yet
+        export const STOPPABLE: Readonly<{ stop(): void }> = { stop: () => {} } // false unknown: stable-root -- method signatures are not read yet
         export const LOOSE_STOP: { stop(): void } = { stop: () => {} } // red: stable-root -- a method can be reassigned: TS cannot mark it readonly
-        export const COUNTS: { readonly [key: string]: number } = {} // false red: stable-root -- index signatures are not read yet
-        export const KEY: keyof typeof SHAPE = firstKey() // false red: stable-root -- keyof is not read yet
-        export const ID: unique symbol = Symbol() // false red: stable-root -- unique symbol is not read yet
-        export const FROZEN_IMPORT = Object.freeze(BASE_TABLE) // false red: stable-root -- an import is not followed to its object yet
+        export const COUNTS: { readonly [key: string]: number } = {} // false unknown: stable-root -- index signatures are not read yet
+        export const KEY: keyof typeof SHAPE = firstKey() // false unknown: stable-root -- keyof is not read yet
+        export const ID: unique symbol = Symbol() // false unknown: stable-root -- unique symbol is not read yet
+        export const FROZEN_IMPORT = Object.freeze(BASE_TABLE) // false unknown: stable-root -- an import is not followed to its object yet
       `,
     },
   },
@@ -409,6 +445,26 @@ const READONLY_BINDINGS: readonly Row[] = [
         const env = process.env // red: stable-root -- the tech's own object, captured
         export const SOME_MADE_UP_HOST: string = env["SOME_MADE_UP_HOST"] ?? "localhost" // red: stable-root -- still a read of the tech, through the alias
         export const createEnvServer = () => ({ port: SOME_MADE_UP_PORT })
+      `,
+    },
+  },
+  {
+    // 2026-09-24 (step 06); verdicts agreed by rixo. canon, amended the same
+    // day: "A
+    // module's own location (`import.meta.url`, `__dirname`) is presumed not
+    // to be one: it is the module's identity, fixed at load, and no test is
+    // expected to vary it — unlike what else `import.meta` may carry
+    // (`import.meta.env` is the environment)." An adapter, so that
+    // `ambient-access` stays out.
+    name: "a module's own location is not a read of the machine; the rest of import.meta is",
+    files: {
+      "src/paths/adapters/paths.adapter.ts": `
+        export const HERE: string = import.meta.url
+        export const FOLDER: string = import.meta.dirname
+        export const OLD_FOLDER: string = __dirname
+        export const MODE: string = import.meta.env.MODE // red: stable-root -- the environment, captured at load time
+        export const META = import.meta // red: stable-root -- the host's object, env among it
+        export const createPaths = () => ({ here: HERE })
       `,
     },
   },
@@ -502,6 +558,20 @@ const ROOT_STATEMENTS: readonly Row[] = [
         export const STATE: Readonly<{ n: number; extra?: number }> = { n: 0, extra: 1 }
         STATE.n = 1 // red: stable-root -- a module's evaluation mutates nothing
         delete STATE.extra // red: stable-root
+      `,
+    },
+  },
+  {
+    // 2026-09-24 (step 06); verdicts agreed by rixo. canon: "a root statement
+    // that … still does something when the module is evaluated". A statement
+    // the reader does not recognise can be neither cleared nor convicted: an
+    // unknown, not a proven red. `debugger` changes nothing a module holds, so
+    // the truth is green.
+    name: "a root statement the reader does not recognise is unknown, not a proven red",
+    files: {
+      "src/pause.model.ts": `
+        export const RATE: number = 1
+        debugger // false unknown: stable-root -- it changes nothing, but the reader does not recognise a debugger statement yet
       `,
     },
   },
@@ -615,10 +685,12 @@ const TYPE_NAMES: readonly Row[] = [
       "src/tables.model.ts": `
         type Table = Readonly<{ a: number }>
         type Loose = { a: number }
-        export const TABLE: Table = { a: 1 } // false red: stable-root -- type names are not followed yet
-        export const WRAPPED: Readonly<Table> = { a: 1 } // false red: stable-root -- type names are not followed yet
-        export const MAP_OF_PROVEN: ReadonlyMap<string, Table> = new Map() // false red: stable-root -- type names are not followed yet
+        export const TABLE: Table = { a: 1 } // false unknown: stable-root -- type names are not followed yet
+        export const WRAPPED: Readonly<Table> = { a: 1 } // false unknown: stable-root -- type names are not followed yet
+        export const MAP_OF_PROVEN: ReadonlyMap<string, Table> = new Map() // false unknown: stable-root -- type names are not followed yet
+        // false unknown: stable-root -- type names are not followed yet
         export const LOOSE: Loose = { a: 1 } // red: stable-root -- the alias names a mutable record
+        // false unknown: stable-root -- type names are not followed yet
         export const LOOSE_IN_LIST: readonly Loose[] = [] // red: stable-root -- a readonly list of mutable records
       `,
     },
@@ -629,9 +701,11 @@ const TYPE_NAMES: readonly Row[] = [
       "src/boxes.model.ts": `
         type Frozen<T> = Readonly<T>
         type Boxed<T = number> = { readonly value: T }
-        export const FROZEN: Frozen<{ a: number }> = { a: 1 } // false red: stable-root -- type names are not followed yet
+        export const FROZEN: Frozen<{ a: number }> = { a: 1 } // false unknown: stable-root -- type names are not followed yet
+        // false unknown: stable-root -- type names are not followed yet
         export const FROZEN_OUTER: Frozen<{ inner: { n: number } }> = { inner: { n: 1 } } // red: stable-root -- Readonly is one level, the substituted inner record is mutable
-        export const BOXED: Boxed = { value: 1 } // false red: stable-root -- type names are not followed yet
+        export const BOXED: Boxed = { value: 1 } // false unknown: stable-root -- type names are not followed yet
+        // false unknown: stable-root -- type names are not followed yet
         export const BOXED_RECORD: Boxed<{ n: number }> = { value: { n: 1 } } // red: stable-root -- the argument is a mutable record
       `,
     },
@@ -651,12 +725,15 @@ const TYPE_NAMES: readonly Row[] = [
         interface Derived extends Base { readonly m: number }
         interface ReadonlyBase { readonly n: number }
         interface Extended extends ReadonlyBase { readonly m: number }
-        export const ORIGIN: Point = { x: 0, y: 0 } // false red: stable-root -- type names are not followed yet
+        export const ORIGIN: Point = { x: 0, y: 0 } // false unknown: stable-root -- type names are not followed yet
+        // false unknown: stable-root -- type names are not followed yet
         export const LOOSE: Loose = { x: 0, y: 0 } // red: stable-root -- y is not readonly
-        export const WRAPPED_LOOSE: Readonly<Loose> = { x: 0, y: 0 } // false red: stable-root -- type names are not followed yet
+        export const WRAPPED_LOOSE: Readonly<Loose> = { x: 0, y: 0 } // false unknown: stable-root -- type names are not followed yet
+        // false unknown: stable-root -- type names are not followed yet
         export const MERGED: Merged = { a: 1, b: 2 } // red: stable-root -- the second declaration adds a mutable member
+        // false unknown: stable-root -- type names are not followed yet
         export const DERIVED: Derived = { n: 1, m: 2 } // red: stable-root -- n, inherited, is mutable
-        export const EXTENDED: Extended = { n: 1, m: 2 } // false red: stable-root -- type names are not followed yet
+        export const EXTENDED: Extended = { n: 1, m: 2 } // false unknown: stable-root -- type names are not followed yet
       `,
     },
   },
@@ -665,7 +742,7 @@ const TYPE_NAMES: readonly Row[] = [
     files: {
       "src/colors.model.ts": `
         enum Color { Red, Green }
-        export const DEFAULT_COLOR: Color = Color.Red // false red: stable-root -- type names are not followed yet
+        export const DEFAULT_COLOR: Color = Color.Red // false unknown: stable-root -- type names are not followed yet
       `,
     },
   },
@@ -689,10 +766,11 @@ const TYPE_NAMES: readonly Row[] = [
         import type { Table, Loose } from "./shapes.model.ts"
         import { type Point } from "./everything.model.ts"
         import type { Table as Relayed } from "./relay.model.ts"
-        export const TABLE: Table = { a: 1 } // false red: stable-root -- type names are not followed yet
+        export const TABLE: Table = { a: 1 } // false unknown: stable-root -- type names are not followed yet
+        // false unknown: stable-root -- type names are not followed yet
         export const LOOSE: Loose = { a: 1 } // red: stable-root -- the imported alias names a mutable record
-        export const POINT: Point = { x: 0 } // false red: stable-root -- type names are not followed yet
-        export const RELAYED: Relayed = { a: 1 } // false red: stable-root -- type names are not followed yet
+        export const POINT: Point = { x: 0 } // false unknown: stable-root -- type names are not followed yet
+        export const RELAYED: Relayed = { a: 1 } // false unknown: stable-root -- type names are not followed yet
       `,
     },
   },
@@ -710,8 +788,8 @@ const TYPE_NAMES: readonly Row[] = [
   {
     // The step's boundary, written with the right verdicts: every value here
     // is readonly, so every line is green. This step does not follow these
-    // names and the reader says red on all five: each is an expected failure,
-    // saying what it waits for.
+    // names and the reader answers unknown on all five: each is an expected
+    // failure, saying what it waits for.
     name: "a readonly type reached through a class, typeof, a qualified name, a mapped type or a package proves",
     files: {
       "node_modules/some-made-up-package/package.json": JSON.stringify({
@@ -732,11 +810,11 @@ const TYPE_NAMES: readonly Row[] = [
         class Spot { readonly x = 1 }
         const BASE = { a: 1 } as const
         type Mapped = { readonly [K in "a"]: number }
-        export const SPOT: Spot = new Spot() // false red: stable-root -- class types are not followed yet
-        export const COPY: typeof BASE = { a: 1 } // false red: stable-root -- typeof is not followed yet
-        export const QUALIFIED: shapes.Table = { a: 1 } // false red: stable-root -- qualified names are not followed yet
-        export const MAPPED: Mapped = { a: 1 } // false red: stable-root -- mapped types are not read yet
-        export const PACKAGED: SomeMadeUpType = { a: 1 } // false red: stable-root -- a package's types are the next step
+        export const SPOT: Spot = new Spot() // false unknown: stable-root -- class types are not followed yet
+        export const COPY: typeof BASE = { a: 1 } // false unknown: stable-root -- typeof is not followed yet
+        export const QUALIFIED: shapes.Table = { a: 1 } // false unknown: stable-root -- qualified names are not followed yet
+        export const MAPPED: Mapped = { a: 1 } // false unknown: stable-root -- mapped types are not read yet
+        export const PACKAGED: SomeMadeUpType = { a: 1 } // false unknown: stable-root -- a package's types are the next step
       `,
     },
   },
@@ -748,7 +826,8 @@ const TYPE_NAMES: readonly Row[] = [
       "src/lists.model.ts": `
         type List = { readonly head: number; readonly next: List | null }
         type Link = { readonly next: Link | null; value: number }
-        export const EMPTY: List = { head: 0, next: null } // false red: stable-root -- type names are not followed yet
+        export const EMPTY: List = { head: 0, next: null } // false unknown: stable-root -- type names are not followed yet
+        // false unknown: stable-root -- type names are not followed yet
         export const LONE: Link = { next: null, value: 0 } // red: stable-root -- value is not readonly
       `,
     },
@@ -768,7 +847,7 @@ const TYPE_NAMES: readonly Row[] = [
       `,
       "src/uses.model.ts": `
         import type { Sheet } from "./middle.model.ts"
-        export const SHEET: Sheet = { a: 1 } // false red: stable-root -- type names are not followed yet
+        export const SHEET: Sheet = { a: 1 } // false unknown: stable-root -- type names are not followed yet
       `,
     },
   },

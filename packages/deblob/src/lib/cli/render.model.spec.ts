@@ -519,6 +519,7 @@ describe("renderCheckResults", () => {
         line: 7,
         via: [],
         shape: "root-statement",
+        unknown: null,
       })
       expect(output).toContain(
         "line 7 runs on import — a module's evaluation performs no side effect; move it inside a factory or a function",
@@ -539,6 +540,7 @@ describe("renderCheckResults", () => {
           { file: "src/billing/ledger.model.ts", line: 3 },
         ],
         shape: "root-statement",
+        unknown: null,
       })
       expect(output).toContain(
         "line 7 runs on import, reached from src/billing/refund.model.ts:12, src/billing/ledger.model.ts:3 — a module's evaluation",
@@ -546,7 +548,7 @@ describe("renderCheckResults", () => {
     })
 
     test("a root binding names its line and what it holds: state the syntax does not prove, or a read of the machine", () => {
-      const binding = (holds: "unproven" | "machine") =>
+      const binding = (holds: "state" | "machine") =>
         message({
           check: "modules",
           ruleset: "arch",
@@ -557,8 +559,9 @@ describe("renderCheckResults", () => {
           via: [],
           shape: "root-binding",
           holds,
+          unknown: null,
         })
-      expect(binding("unproven")).toContain(
+      expect(binding("state")).toContain(
         "line 7 binds state at module root — the syntax does not prove it immutable; use as const, a readonly type, or move it inside a factory",
       )
       expect(binding("machine")).toContain(

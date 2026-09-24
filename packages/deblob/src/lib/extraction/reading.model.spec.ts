@@ -463,11 +463,13 @@ describe("readModule", () => {
       })
       const index = reading.root.findIndex(
         (statement) =>
-          statement.kind === "other" && statement.span.start === call["start"],
+          statement.kind === "unread" &&
+          statement.form === "SomeMadeUpStatement" &&
+          statement.span.start === call["start"],
       )
       expect(index).toBeGreaterThan(-1)
-      // the synthetic statement is listed as other, the expression inside it is
-      // walked for its call, and the statement inside it is walked as one
+      // the synthetic statement is listed as unread, the expression inside it
+      // is walked for its call, and the statement inside it is walked as one
       const atCall = { kind: "call", call: { span: { start: call["start"] } } }
       expect(reading.root[index + 1]).toMatchObject(atCall)
       expect(reading.root[index + 2]).toMatchObject(atCall)
@@ -1137,7 +1139,12 @@ describe("readModule", () => {
     const byName = new Map(
       reading.root.flatMap((statement) =>
         statement.kind === "definition"
-          ? [[statement.name ?? "default", statement.readonly] as const]
+          ? [
+              [
+                statement.name ?? "default",
+                statement.immutability.proof === "readonly",
+              ] as const,
+            ]
           : [],
       ),
     )

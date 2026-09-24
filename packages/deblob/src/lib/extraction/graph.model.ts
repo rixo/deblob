@@ -280,6 +280,45 @@ export type ReadCall = {
 }
 
 /**
+ * What the reader could not see, where it can prove a line neither right nor
+ * wrong — a limit of the reader, never a verdict on the code. One member per
+ * kind of limit, carrying what a message needs to name it.
+ */
+export type UnknownCondition =
+  /** A named type the reader does not follow: `Table`, `shapes.Table`. */
+  | { kind: "type-name"; name: string }
+  /**
+   * A type form the reader does not read: `typeof`, `keyof`, a mapped or
+   * conditional type, an index or method signature, `unique symbol`, `any` — by
+   * its ESTree type, or the operator's word. The message names it.
+   */
+  | { kind: "type-form"; form: string }
+  /**
+   * A call's result, or a `new`'s: what the callee returns is not seen;
+   * `callee` as written, `null` when it is not a name.
+   */
+  | { kind: "call-result"; callee: string | null; construct: boolean }
+  /**
+   * A value the reader does not follow to what it holds: a name bound
+   * elsewhere, a member read, an awaited value, a destructured part. `form` is
+   * the ESTree node type, `name` the name when it is one.
+   */
+  | { kind: "value"; form: string; name: string | null }
+  /** A root statement the reader does not recognise, by its ESTree type. */
+  | { kind: "statement"; form: string }
+
+/**
+ * Whether a root binding can be mutated, as the reader proves it: readonly to
+ * its depth, mutable, or unknown with what the reader could not see. Combined
+ * over parts (members, union arms, frozen entries), a proven mutable part makes
+ * the whole mutable, then any unknown part makes it unknown.
+ */
+export type Immutability =
+  | { proof: "readonly" }
+  | { proof: "mutable" }
+  | { proof: "unknown"; condition: UnknownCondition }
+
+/**
  * A body as a flat list of what happened in it, evaluation order: every call
  * (nested ones included, each once), every definition, every branch or loop
  * with its arms, every return. Not a syntax tree — what the rules read.
@@ -293,17 +332,19 @@ export type ReadStatement =
       exported: boolean
       value: ValueKind
       /**
-       * Immutability visible at the binding, to its depth — code (a function,
-       * class, enum), a `const` whose initializer is a primitive-valued
-       * expression, a name bound to an immutable value, `as const`, a function
-       * or `Object.freeze` over a literal of immutable entries, or whose
+       * Immutability as the syntax shows it, to its depth. Readonly: code (a
+       * function, class, enum), a `const` whose initializer is a
+       * primitive-valued expression, a name bound to an immutable value, `as
+       * const`, `Object.freeze` over a literal of immutable entries, or whose
        * annotation is a primitive keyword, a literal type, `Readonly<…>` over
        * proven members, or a `Readonly*` collection or `readonly` array over
-       * proven types. Syntactic: no alias resolution, no inference (a `const`
-       * typed with an alias reads `false`). `stable-root` reads it unless
-       * config says `mutableModuleState`.
+       * proven types. Mutable: a `let` or `var`, a record or array literal, a
+       * mutable collection, a type with a mutable member. Unknown: every other
+       * form, with what the reader could not see — no alias resolution, no
+       * inference. `stable-root` reads it unless config says
+       * `mutableModuleState`.
        */
-      readonly: boolean
+      immutability: Immutability
       /**
        * The initializer reads the machine: a tech value read, not called
        * (`process.env["X"] ?? "d"` included, where `value` says computed), the
@@ -344,12 +385,19 @@ export type ReadStatement =
    */
   | { kind: "assignment"; target: ValueKind; span: Span }
   /**
-   * A `throw`, apart from `other`: at a module's root it is the author's crash
-   * to write and changes nothing, where an unrecognised statement cannot be
-   * cleared. Its argument's calls are read like any other.
+   * A `throw`, apart from the rest: at a module's root it is the author's crash
+   * to write and changes nothing. Its argument's calls are read like any
+   * other.
    */
   | { kind: "throw"; span: Span }
+  /** A write with no target kind to carry: an increment, a `delete`. */
   | { kind: "other"; span: Span }
+  /**
+   * A statement the reader does not recognise (`export =`, `import x =
+   * require(…)`, `debugger`): it cannot be cleared, nor proven to do anything.
+   * Its calls are read like any other.
+   */
+  | { kind: "unread"; form: string; span: Span }
 
 export type ReadHook = {
   span: Span

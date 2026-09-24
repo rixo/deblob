@@ -3,7 +3,11 @@
  * carrying every fact rendering needs — no prose inside.
  */
 
-import type { EdgeTarget, Layer } from "../extraction/graph.model.ts"
+import type {
+  EdgeTarget,
+  Layer,
+  UnknownCondition,
+} from "../extraction/graph.model.ts"
 import type { RuleId } from "./rule.model.ts"
 
 /**
@@ -222,24 +226,31 @@ export type ModulesViolation = {
    * its own trigger.
    */
   via: readonly { file: string; line: number }[]
+  /**
+   * `null`: the red is proven. Otherwise the reader could prove the line
+   * neither right nor wrong, and this is what it could not see — an unknown,
+   * which fails like a red.
+   */
+  unknown: UnknownCondition | null
 } & (
   | {
       /**
        * A root statement that is neither a call nor a definition and still does
-       * something when the module is evaluated. Canon's last shape — the call
-       * that reaches out — comes with its clause.
+       * something when the module is evaluated — or one the reader does not
+       * recognise, an unknown. Canon's last shape — the call that reaches out —
+       * comes with its clause.
        */
       shape: "root-statement"
     }
   | {
       /**
-       * A root binding that holds state: `unproven` when the syntax does not
-       * prove it immutable, `machine` when it stores a read of the machine — a
-       * tech value, the clock, randomness — which no type proves. Lifted by
-       * `mutableModuleState`.
+       * A root binding that holds state: `state` when its value can be mutated
+       * (or, with `unknown` set, when the reader cannot tell), `machine` when
+       * it stores a read of the machine — a tech value, the clock, randomness —
+       * which no type proves. Lifted by `mutableModuleState`.
        */
       shape: "root-binding"
-      holds: "unproven" | "machine"
+      holds: "state" | "machine"
     }
 )
 

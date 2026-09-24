@@ -219,8 +219,14 @@ Red first, rows stamped before the build.
 - **Broken**: the two uninterpretable rows (`BARE`, `EMPTY_FREEZE`) leave the
   red row for rows of their own asserting broken; a file that does not parse
   asserts broken instead of a throw; the CLI exits 2 on either (a CLI test, as
-  for an unresolved import). How a row asserts broken is decided at the grammar
-  (a marker or the row's expected outcome), red first.
+  for an unresolved import). How a row asserts broken, ruled 2026-09-24 (rixo,
+  for consistency with the other markers): `// broken -- <why>` on the line
+  deblob cannot read, alone at the end of the file for a file that does not
+  parse. Broken is the whole row's outcome — a broken run gives no verdicts — so
+  a broken marker makes the row expect broken, and the row passes only if deblob
+  breaks on that line; a broken marker beside any verdict marker in the row is
+  loud. No slug: broken is no rule's. Red first, in checkpoint 2's opening
+  tests.
 - **Other checks**: a sweep of every check for a "cannot tell → red" path;
   anything found becomes a row, or a line in this SPEC saying why it is not an
   unknown.
@@ -240,11 +246,53 @@ the new markers):
 
 1. Red first: the grammar and the counting, in `markers.model.spec.ts`.
 2. The runner reads the markers; the violation field; the reader's three-way
-   answer (the `import.meta.url` form included); broken; the corpus re-stamped
-   per the table; suite green.
-3. Messages (`render.model.ts`, `explain`), docs, self-check split.
+   answer (the `import.meta.url` form included); the corpus re-stamped per the
+   table; suite green.
+3. Broken: its marker tests red first, then the reader, the graph and the CLI's
+   exit 2 (cut from 2, too much for one review).
+4. Messages (`render.model.ts`, `explain`), docs, self-check split. The ways out
+   depend on the file's language: in a `.js` file an unknown never suggests a
+   readonly type, and `mutableModuleState: true` is named as a real way out
+   (rixo 2026-09-24: a pure JavaScript codebase is unlikely to escape it). A
+   `.js` row pins it.
 
 Then type-names checkpoints 2 and 3 resume, on the three-way answer.
+
+**Checkpoint 2, landed.** What differs from the plan above:
+
+- The condition lives with the reading, not the violation: `UnknownCondition`
+  and `Immutability` in `graph.model.ts` (the reader produces them, and
+  extraction does not import the check); `ModulesViolation.unknown` reuses it. A
+  condition names a form by its ESTree type (`TSTypeQuery`, `TSMethodSignature`,
+  `MemberExpression`), the operator's word, or the name: the words are the
+  message's (checkpoint 4).
+- The definition's `readonly: boolean` became `immutability`; `holds` is
+  `"state" | "machine"`, `unknown` saying whether the state is proven.
+- `other` was two things: a proven write (increment, `delete`) and the reader's
+  catch-all for a statement it does not know. The catch-all is now `unread`, an
+  unknown; `other` stays a proven red.
+- The census default flipped: a form not listed reads unknown, not mutable. So
+  the mutable side is listed too: a record or array literal, `T[]`, a bare
+  tuple, `Array`/`Map`/`Set`/`WeakMap`/`WeakSet`/`Date`/`Record`, a member not
+  readonly outside `Readonly`, a writable index signature, a name bound in the
+  file to one of those.
+- `import.meta` had no case: its words `import` and `meta` read as host globals,
+  a machine read. Now the location (`url`, `dirname`, `filename`, CommonJS's
+  `__dirname`/`__filename`) is not a read, the rest of `import.meta` is.
+  deblob's own 20 path lines move from machine read to unknown (a call's
+  result). Found on the way: those lines call `fileURLToPath` and `new URL`, the
+  tech's, so the call shape will make them red when it lands, until built-in
+  knowledge (Node's) declares both effect-free.
+- Corpus: 24 `false red` → `false unknown`; 13 `false unknown` stacked above a
+  `red` (four calls returning literals, nine type names naming mutable types);
+  six `red` → `false unknown` alone, truth green — the five of the forms row and
+  `FROZEN_CALL`, whose `red` pinned the reader's limit (a freeze of `{ a: 1 }`
+  is readonly). Three new rows, stamped by rixo at review: a root `debugger`
+  (unread, truth green); the census both ways (a member of no type
+  `stubborn unknown`: `any` declares nothing); the module's location.
+  `Readonly<Record<string>>` joins the does-not-compile row, broken in 3.
+- Gates: suite green (830), coverage 100, self-check 83 (four new root constants
+  of this step typed readonly rather than added to the count).
 
 ## Docs
 
