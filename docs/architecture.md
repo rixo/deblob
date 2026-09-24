@@ -995,31 +995,34 @@ needs tooling that knows service boundaries.
   nothing about where the string came from —
   `export const PORT: string = process.env["PORT"] ?? "3000"` is red, and so is
   `const STARTED_AT = Date.now()`: the file cannot be tested under another
-  environment, or at another moment, without reloading it. A call's result
-  stored at root adds nothing to the call: the call is judged where it sits,
-  below. A readonly map or set is proof over the binding, not over the value:
-  `Object.freeze` cannot lock a Map, so a codebase without the types has no way
-  to write one — and such a codebase turns this half off in config anyway
-  (`mutableModuleState: true`), which lifts the bindings and nothing else. And a
-  call that reaches the tech, runs a use case, or goes into a local function of
-  a file whose layer may touch the tech — an adapter's, a blob's — where the
-  reader cannot rule the side effect out. A property read is presumed free of
-  side effects and a call is not: `if (process.env["X"])` at root is green,
-  `process.cwd()` at root is red, stored or not, until the tech's reading
-  declares that call effect-free — and the config setting, being about state,
-  does not lift it. And a root statement that is neither of those and still does
-  something when the module is evaluated: an assignment, a `delete`, and their
-  like — whatever sits at root runs on import, so a statement that only makes
-  sense at run time is a side effect at load time. A `throw` is not one: it
-  creates no state and touches nothing outside, and a crash on import is the
-  author's call to make. What decides it — an environment read, say — is judged
-  where it sits, by its layer. Root calls are the lane the first two targets use
-  to get around the rule, not the crime: a factory call at root is not itself
-  the violation, what it binds is, when that binding is not provably immutable.
-  Exemptions, by contrast, are a closed list, since an open set of escapes is a
-  hole: two shapes are exempt by kind, the boot's one call and a spec file's
-  registration calls into the runner. Assembly and driver need no exception —
-  each builds inside its function.
+  environment, or at another moment, without reloading it. A module's own
+  location (`import.meta.url`, `__dirname`) is presumed not to be one: it is the
+  module's identity, fixed at load, and no test is expected to vary it — unlike
+  what else `import.meta` may carry (`import.meta.env` is the environment). A
+  call's result stored at root adds nothing to the call: the call is judged
+  where it sits, below. A readonly map or set is proof over the binding, not
+  over the value: `Object.freeze` cannot lock a Map, so a codebase without the
+  types has no way to write one — and such a codebase turns this half off in
+  config anyway (`mutableModuleState: true`), which lifts the bindings and
+  nothing else. And a call that reaches the tech, runs a use case, or goes into
+  a local function of a file whose layer may touch the tech — an adapter's, a
+  blob's — where the reader cannot rule the side effect out. A property read is
+  presumed free of side effects and a call is not: `if (process.env["X"])` at
+  root is green, `process.cwd()` at root is red, stored or not, until the tech's
+  reading declares that call effect-free — and the config setting, being about
+  state, does not lift it. And a root statement that is neither of those and
+  still does something when the module is evaluated: an assignment, a `delete`,
+  and their like — whatever sits at root runs on import, so a statement that
+  only makes sense at run time is a side effect at load time. A `throw` is not
+  one: it creates no state and touches nothing outside, and a crash on import is
+  the author's call to make. What decides it — an environment read, say — is
+  judged where it sits, by its layer. Root calls are the lane the first two
+  targets use to get around the rule, not the crime: a factory call at root is
+  not itself the violation, what it binds is, when that binding is not provably
+  immutable. Exemptions, by contrast, are a closed list, since an open set of
+  escapes is a hole: two shapes are exempt by kind, the boot's one call and a
+  spec file's registration calls into the runner. Assembly and driver need no
+  exception — each builds inside its function.
 
 ---
 

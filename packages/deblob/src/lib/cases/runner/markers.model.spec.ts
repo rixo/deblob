@@ -24,19 +24,23 @@ const red = (
 
 /**
  * The match of one file, `src/a.ts`, against the reader's reports, each `[line,
- * slug]`.
+ * slug]`, or `[line, slug, "unknown"]` for a red the reader cannot prove.
  */
 const matchSource = (
   source: string,
-  reports: readonly (readonly [number | null, RuleId])[],
+  reports: readonly (
+    | readonly [number | null, RuleId]
+    | readonly [number | null, RuleId, "unknown"]
+  )[],
 ) =>
   matchVerdicts(
     markersOf("src/a.ts", source),
-    reports.map(([line, slug]) => ({
+    reports.map(([line, slug, unknown]) => ({
       file: "src/a.ts",
       line,
       slugs: [slug],
       via: [],
+      ...(unknown === undefined ? {} : { unknown: true as const }),
     })),
   )
 
@@ -215,6 +219,71 @@ describe("markersOf", () => {
       },
     )
   })
+
+  describe("unknown", () => {
+    it("reads `// stubborn unknown:` as a claim that the reader answers unknown there, a limit kept, with its why", () => {
+      expect(
+        markersOf(
+          "src/a.ts",
+          "export const CONFIG: SomeMadeUpConfig = {} // stubborn unknown: stable-root -- a package's type, and no engine in this setup",
+        ),
+      ).toEqual([
+        {
+          kind: "unknown",
+          file: "src/a.ts",
+          line: 1,
+          slug: "stable-root",
+          why: "a package's type, and no engine in this setup",
+        },
+      ])
+    })
+
+    it("reads `// false unknown:` as an expected failure: the reader answers unknown there, wrongly", () => {
+      expect(
+        markersOf(
+          "src/a.ts",
+          "export const TABLE: Table = { a: 1 } // false unknown: stable-root -- type names are not followed yet",
+        ),
+      ).toEqual([
+        {
+          kind: "unknown",
+          expectedFailure: "false",
+          file: "src/a.ts",
+          line: 1,
+          slug: "stable-root",
+          why: "type names are not followed yet",
+        },
+      ])
+    })
+
+    it("stacks a `false unknown` above a line with a plain `red`: the truth is red, the reader answers unknown", () => {
+      const source = [
+        "// false unknown: stable-root -- type names are not followed yet",
+        "export const LOOSE: Loose = { a: 1 } // red: stable-root -- the alias names a mutable record",
+      ].join("\n")
+      expect(markersOf("src/a.ts", source)).toMatchObject([
+        { kind: "unknown", expectedFailure: "false", line: 2 },
+        { kind: "red", line: 2 },
+      ])
+    })
+
+    test.each([
+      ["a bare unknown", "run() // unknown: stable-root -- why"],
+      ["a stubborn red", "run() // stubborn red: stable-root -- why"],
+      ["a missed unknown", "run() // missed unknown: stable-root -- why"],
+      ["a stubborn via", "run() // stubborn via: stable-root -- why"],
+      [
+        "a stubborn unknown without a why",
+        "run() // stubborn unknown: stable-root",
+      ],
+      ["a false unknown without a why", "run() // false unknown: stable-root"],
+      ["another case", "run() // Stubborn unknown: stable-root -- why"],
+    ])("throws on a malformed unknown marker, with the line: %s", (_, text) => {
+      expect(() => markersOf("src/a.ts", `x()\n${text}`)).toThrow(
+        /src\/a\.ts:2: malformed marker/,
+      )
+    })
+  })
 })
 
 describe("stripMarkers", () => {
@@ -230,6 +299,14 @@ describe("stripMarkers", () => {
     expect(
       stripMarkers(
         "run() // false red: stable-root -- why\n// missed via: stable-root -- why\nhelper()",
+      ),
+    ).toBe("run()\n\nhelper()")
+  })
+
+  it("removes unknown markers the same way", () => {
+    expect(
+      stripMarkers(
+        "run() // stubborn unknown: stable-root -- why\n// false unknown: stable-root -- why\nhelper() // red: stable-root",
       ),
     ).toBe("run()\n\nhelper()")
   })
@@ -295,6 +372,31 @@ describe("reportedOf", () => {
       unexpectedPasses: [],
       expectedFailures: [],
     })
+  })
+
+  it("carries a red the reader cannot prove as unknown, and a proven one without the mark", () => {
+    const at = {
+      check: "modules",
+      rules: ["stable-root"],
+      file: "src/a.model.ts",
+      line: 4,
+      via: [],
+    }
+    const unknown = {
+      ...at,
+      unknown: { kind: "type-name", name: "Table" },
+    } as unknown as Violation
+    const proven = { ...at, unknown: null } as unknown as Violation
+    expect(reportedOf(unknown)).toEqual([
+      {
+        file: "src/a.model.ts",
+        line: 4,
+        slugs: ["stable-root"],
+        via: [],
+        unknown: true,
+      },
+    ])
+    expect(reportedOf(proven)[0]).not.toHaveProperty("unknown")
   })
 
   it("names every file closing a cycle: a service cycle's hops by importer, a module cycle's files", () => {
@@ -719,6 +821,161 @@ describe("matchVerdicts", () => {
         expectedFailures: [
           "src/a.ts:2 false via stable-root -- the helper is not followed yet",
         ],
+      })
+    })
+  })
+
+  describe("unknown", () => {
+    it("never lets a plain red stand for an unknown report, nor the reverse", () => {
+      expect(
+        matchSource("export const T: Table = { a: 1 } // red: stable-root", [
+          [1, "stable-root", "unknown"],
+        ]),
+      ).toEqual({
+        missing: ["src/a.ts:1 stable-root"],
+        unexpected: ["src/a.ts:1 unknown stable-root"],
+        unexpectedPasses: [],
+        expectedFailures: [],
+      })
+      expect(
+        matchSource(
+          "export let counter = 0 // stubborn unknown: stable-root -- why",
+          [[1, "stable-root"]],
+        ),
+      ).toEqual({
+        missing: ["src/a.ts:1 unknown stable-root"],
+        unexpected: ["src/a.ts:1 stable-root"],
+        unexpectedPasses: [],
+        expectedFailures: [],
+      })
+    })
+
+    it("matches a stubborn unknown to an unknown report, as a plain claim", () => {
+      expect(
+        matchSource(
+          "export const CONFIG: SomeMadeUpConfig = {} // stubborn unknown: stable-root -- a package's type, and no engine",
+          [[1, "stable-root", "unknown"]],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        unexpectedPasses: [],
+        expectedFailures: [],
+      })
+    })
+
+    it("fails a stubborn unknown the reader now answers, either way: the stamp is out of date", () => {
+      const source =
+        "export const CONFIG: SomeMadeUpConfig = {} // stubborn unknown: stable-root -- a package's type, and no engine"
+      expect(matchSource(source, [])).toMatchObject({
+        missing: ["src/a.ts:1 unknown stable-root"],
+      })
+      expect(matchSource(source, [[1, "stable-root"]])).toMatchObject({
+        missing: ["src/a.ts:1 unknown stable-root"],
+        unexpected: ["src/a.ts:1 stable-root"],
+      })
+    })
+
+    it("lists a false unknown the reader still answers as an expected failure: alone, the truth is green", () => {
+      expect(
+        matchSource(
+          "export const TABLE: Table = { a: 1 } // false unknown: stable-root -- type names are not followed yet",
+          [[1, "stable-root", "unknown"]],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        unexpectedPasses: [],
+        expectedFailures: [
+          "src/a.ts:1 false unknown stable-root -- type names are not followed yet",
+        ],
+      })
+    })
+
+    it("turns a false unknown the reader no longer answers into an unexpected pass", () => {
+      expect(
+        matchSource(
+          "export const TABLE: Table = { a: 1 } // false unknown: stable-root -- type names are not followed yet",
+          [],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        unexpectedPasses: [
+          "src/a.ts:1 false unknown stable-root — remove the marker",
+        ],
+        expectedFailures: [],
+      })
+    })
+
+    it("does not count the red stacked under a false unknown while the unknown holds", () => {
+      const source = [
+        "// false unknown: stable-root -- type names are not followed yet",
+        "export const LOOSE: Loose = { a: 1 } // red: stable-root -- the alias names a mutable record",
+      ].join("\n")
+      expect(matchSource(source, [[2, "stable-root", "unknown"]])).toEqual({
+        missing: [],
+        unexpected: [],
+        unexpectedPasses: [],
+        expectedFailures: [
+          "src/a.ts:2 false unknown stable-root -- type names are not followed yet",
+        ],
+      })
+    })
+
+    it("counts the red stacked under a false unknown once the reader proves it, and the false unknown passes unexpectedly", () => {
+      const source = [
+        "// false unknown: stable-root -- type names are not followed yet",
+        "export const LOOSE: Loose = { a: 1 } // red: stable-root -- the alias names a mutable record",
+      ].join("\n")
+      expect(matchSource(source, [[2, "stable-root"]])).toEqual({
+        missing: [],
+        unexpected: [],
+        unexpectedPasses: [
+          "src/a.ts:2 false unknown stable-root — remove the marker",
+        ],
+        expectedFailures: [],
+      })
+    })
+
+    it("catches a truth-green false unknown the reader now calls a proven red: the pass is unexpected, and so is the red", () => {
+      expect(
+        matchSource(
+          "export const TABLE: Table = { a: 1 } // false unknown: stable-root -- type names are not followed yet",
+          [[1, "stable-root"]],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: ["src/a.ts:1 stable-root"],
+        unexpectedPasses: [
+          "src/a.ts:1 false unknown stable-root — remove the marker",
+        ],
+        expectedFailures: [],
+      })
+    })
+
+    it("matches an unknown report's triggers to `via` markers, as a proven red's", () => {
+      expect(
+        matchVerdicts(
+          markersOf(
+            "src/a.ts",
+            "export const N: Table = f() // stubborn unknown: stable-root -- why\nhelper() // via: stable-root",
+          ),
+          [
+            {
+              file: "src/a.ts",
+              line: 1,
+              slugs: ["stable-root"],
+              via: [{ file: "src/a.ts", line: 2 }],
+              unknown: true,
+            } as Reported,
+          ],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        unexpectedPasses: [],
+        expectedFailures: [],
       })
     })
   })

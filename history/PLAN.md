@@ -79,6 +79,24 @@
 
 ### Ideas
 
+- **Built-in knowledge** (rixo, 2026-09-24) — what deblob knows without reading
+  it: facts a language or a tech guarantees, shipped with deblob, as a source of
+  knowledge beside its reader and the TypeScript engine. JavaScript first,
+  others possible (TypeScript's standard types, Svelte's runes, a test runner's
+  registration calls, who knows), stackable: a codebase gets the ones that apply
+  to it. First case: `export const RESULT = Math.max(1, 2)` holds a number and
+  the reader does not know it — an unknown whose truth is green; with JavaScript
+  knowledge it is green. (The call is not red either: canon's red calls reach
+  the tech, run a use case, or go into a tech-capable layer's local function,
+  and `Math` is the language.) Embryos already in the code, each hard-wired in
+  its own place: the reader's language globals and their prototype methods
+  (`reading.model.ts`, `LANGUAGE_GLOBALS`, `PROTOTYPE_METHODS`), the config's
+  `pure` key (the user's knowledge of a library), and canon's "until the tech's
+  reading declares that call effect-free" (a tech's knowledge). Open: the shape
+  of one unit of knowledge, how a codebase gets the units that apply (detected,
+  declared, or both), what happens when two sources disagree (the reader, the
+  engine, a unit), and whether the user's `pure` is the same concept or its
+  neighbour. See `20260913_driver-layer/06_unknown-verdict/SPEC.md`.
 - **Readonly laundered away after the root** (rixo, 2026-09-23, to discuss
   calmly and decide) — `stable-root`'s readonly half proves what a root
   binding's syntax allows, and TypeScript refuses direct writes through it
