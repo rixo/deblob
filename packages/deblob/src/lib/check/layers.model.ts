@@ -44,8 +44,8 @@ const TYPE_EXEMPT_TARGETS: ReadonlySet<Layer> = new Set(["service", "adapters"])
 /**
  * The outside kinds, outermost last: `assembly < driver < boot`. The test kind
  * is outside too — assembly and driver in one — but sits in no chain: it is
- * imported by nothing, and that rule has no slug in `RULE_IDS` until the
- * outside rules land (driver-layer chapter, steps 03 and 06).
+ * imported by nothing, `test-is-outside`, whose import cell no detector judges
+ * yet (driver-layer chapter, step 04).
  */
 const OUTSIDE_RANK = { assembly: 0, driver: 1, boot: 2 } as const
 type ChainedOutsideKind = keyof typeof OUTSIDE_RANK
@@ -56,9 +56,9 @@ const outsideRankOf = (layer: Layer): number | null =>
 /**
  * An import from an outside kind that points outward — assembly to driver,
  * driver to boot: `inward-deps`. Toward the test kind the chain says nothing,
- * and the "imported by nothing" rule waits for its slug. (The inside rows cite
- * `inward-deps` for every outside target themselves, test included: from the
- * inside, every outside kind is outward.)
+ * and the "imported by nothing" rule waits for its detector. (The inside rows
+ * cite `inward-deps` for every outside target themselves, test included: from
+ * the inside, every outside kind is outward.)
  */
 const outwardRules = (
   importer: ChainedOutsideKind,
@@ -72,11 +72,12 @@ const outwardRules = (
  * Rules cited for a forbidden module cell, `null` for a legal one — base
  * citations; the `runtime-import` hint ("only import type is allowed") is
  * appended by the caller wherever the cell's type variant is exempt. Total over
- * `Layer` by the compiler. The driver and boot rows cite what `RULE_IDS` names
+ * `Layer` by the compiler. The driver and boot rows cite what a detector judges
  * today: the composition seals and `blob-quarantine`. A driver importing model,
- * or a boot importing anything but its driver, is canon's letter with no slug
- * yet (`driver-calls-services`, `boot-one-call` — steps 03 and 06 of the
- * driver-layer chapter), so those cells read legal here until then.
+ * or a boot importing anything but its driver, is canon's letter whose slug is
+ * registered and whose cell is not built yet (`driver-calls-services`,
+ * `boot-one-call` — step 04 of the driver-layer chapter), so those cells read
+ * legal here until then.
  */
 const moduleCellRules = (
   importer: Layer,

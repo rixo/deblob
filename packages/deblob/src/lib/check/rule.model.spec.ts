@@ -1,10 +1,10 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import { RULE_IDS, isRuleId, ruleOrder } from "./rule.model.ts"
 
 describe("RULE_IDS", () => {
-  test("lists the eighteen rules of the summary, each once", () => {
-    expect(RULE_IDS).toHaveLength(18)
+  it("lists the twenty-seven rules of the summary, each once", () => {
+    expect(RULE_IDS).toHaveLength(27)
     expect(new Set(RULE_IDS).size).toBe(RULE_IDS.length)
   })
 
@@ -16,7 +16,7 @@ describe("RULE_IDS", () => {
 })
 
 describe("isRuleId", () => {
-  test("accepts a listed slug, rejects anything else", () => {
+  it("accepts a listed slug, rejects anything else", () => {
     expect(isRuleId("service-purity")).toBe(true)
     expect(isRuleId("SOME_MADE_UP_RULE")).toBe(false)
     expect(isRuleId("rule-4")).toBe(false)
@@ -25,7 +25,7 @@ describe("isRuleId", () => {
 })
 
 describe("ruleOrder", () => {
-  test("is the summary's display order — layer rules first, module discipline last", () => {
+  it("is the summary's display order — layer rules first, module discipline last", () => {
     expect(ruleOrder("inward-deps")).toBe(0)
     expect(ruleOrder("stable-root")).toBe(RULE_IDS.length - 1)
     expect(ruleOrder("no-service-cycle")).toBeLessThan(

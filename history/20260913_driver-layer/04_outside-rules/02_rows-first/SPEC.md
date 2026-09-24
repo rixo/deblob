@@ -185,6 +185,19 @@ says today:
 `boot-one-call` on row 15 is not marked: the slug is registered in checkpoint 2.
 Gates: 899 green, coverage 100, tsc, prettier; self-check 84 unchanged.
 
+### Checkpoint 2, built 2026-09-24
+
+The nine slugs in `RULE_IDS`, canon's order, a family comment each (assembly
+rules, driver rules, boot rule) as the Summary heads them; `RULE_CARDS` maps
+them to `[]` with the reason. `explain <slug>` prints the canon entry and the
+pinned URL (`deblob explain boot-one-call`); `explain` has no rule listing, so
+nothing else shows them. `CHECK_RULES` unchanged: it mirrors what detectors
+cite, and none cites the nine. Tests: the card mapping names the cardless nine
+exactly (a tenth cardless rule fails it); the rule count is 27. Row 15 now marks
+`boot-one-call` too. Prose that said the slugs did not exist — `layers.model.ts`
+comments, `check/README.md`, a `layers.model.spec.ts` title — now says the cells
+are not built. The spec files touched use `it` for verb-first titles.
+
 ## Docs
 
 `cases/README.md`: the new spec files in the "one spec per check" list, and a

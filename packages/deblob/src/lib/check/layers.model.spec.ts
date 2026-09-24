@@ -1097,7 +1097,7 @@ describe("checkLayers", () => {
       ).toEqual([])
     })
 
-    test("what has no slug yet reads legal — a driver importing model, a boot importing model, a driver importing a test (steps 03 and 06)", () => {
+    test("what no cell judges yet reads legal — a driver importing model, a boot importing model, a driver importing a test (step 04)", () => {
       expect(
         outside([
           { from: "src/cli.driver.ts", to: mod("src/a/a.model.ts") },

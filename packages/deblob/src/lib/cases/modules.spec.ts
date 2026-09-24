@@ -450,7 +450,7 @@ const ROOT_CALLS: readonly Row[] = [
   {
     // canon: "Two shapes are exempt by kind: the boot's one call". `.catch` is
     // a second call; the exemption covers the one. Also `boot-one-call`
-    // ("nothing else … called"), marked when that slug is registered.
+    // ("nothing else … called").
     name: "a boot chaining a call on its one call is red: the exemption is the one call",
     files: {
       "src/app.service.ts": `
@@ -469,7 +469,9 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/cli.boot.ts": `
         import { main } from "./cli.driver.ts"
-        main().catch(console.error) // missed red: stable-root -- a second call on import, the tech's; the exemption is the one call; the call shape is not built yet
+        // missed red: boot-one-call -- "nothing else … called": a second call beside the one; the boot check is not built yet
+        // missed red: stable-root -- a second call on import, the tech's; the exemption is the one call; the call shape is not built yet
+        main().catch(console.error)
       `,
     },
   },

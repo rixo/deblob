@@ -54,6 +54,18 @@ export const RULE_CARDS: Readonly<Record<RuleId, readonly string[]>> = {
   "no-runtime-cycle": [card("acyclic")],
   "test-through-contract": [card("testing-contract")],
   "test-is-outside": [card("testing-isolation")],
+  // the outside rules: no card yet — the cards come with the skill realignment
+  // (driver-layer chapter, step 07_slugs); explain prints the canon entry and
+  // its pinned URL
+  "assembly-builds-only": [],
+  "assembly-driver-only": [],
+  "wiring-outside-hooks": [],
+  "hook-one-call": [],
+  "driver-calls-services": [],
+  "driver-hooks-only": [],
+  "sub-driver-wiring": [],
+  "driver-not-imported": [],
+  "boot-one-call": [],
   // service discipline — no v0 detector cites it, but the mapping stays
   // total over the summary so a stray citation still resolves
   "stable-root": [card("layer-service")],

@@ -42,6 +42,18 @@ export const RULE_IDS = [
   // testing rules
   "test-through-contract",
   "test-is-outside",
+  // assembly rules
+  "assembly-builds-only",
+  "assembly-driver-only",
+  // driver rules
+  "wiring-outside-hooks",
+  "hook-one-call",
+  "driver-calls-services",
+  "driver-hooks-only",
+  "sub-driver-wiring",
+  "driver-not-imported",
+  // boot rule
+  "boot-one-call",
   // module discipline
   "stable-root",
 ] as const
