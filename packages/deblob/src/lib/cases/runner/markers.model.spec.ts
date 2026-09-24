@@ -267,10 +267,31 @@ describe("markersOf", () => {
       ])
     })
 
+    it("reads `// missed unknown:` as an expected failure: the truth is an unknown the reader does not report", () => {
+      expect(
+        markersOf(
+          "src/a.ts",
+          "const stores = names.map((name) => createStore(name)) // missed unknown: assembly-builds-only -- the assembly check is not built yet",
+        ),
+      ).toEqual([
+        {
+          kind: "unknown",
+          expectedFailure: "missed",
+          file: "src/a.ts",
+          line: 1,
+          slug: "assembly-builds-only",
+          why: "the assembly check is not built yet",
+        },
+      ])
+    })
+
     test.each([
       ["a bare unknown", "run() // unknown: stable-root -- why"],
       ["a stubborn red", "run() // stubborn red: stable-root -- why"],
-      ["a missed unknown", "run() // missed unknown: stable-root -- why"],
+      [
+        "a missed unknown without a why",
+        "run() // missed unknown: stable-root",
+      ],
       ["a stubborn via", "run() // stubborn via: stable-root -- why"],
       [
         "a stubborn unknown without a why",
@@ -948,6 +969,59 @@ describe("matchVerdicts", () => {
           "src/a.ts:1 false unknown stable-root — remove the marker",
         ],
         expectedFailures: [],
+      })
+    })
+
+    it("lists a missed unknown the reader does not report as an expected failure", () => {
+      expect(
+        matchSource(
+          "const stores = names.map(make) // missed unknown: assembly-builds-only -- not built yet",
+          [],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        unexpectedPasses: [],
+        expectedFailures: [
+          "src/a.ts:1 missed unknown assembly-builds-only -- not built yet",
+        ],
+      })
+    })
+
+    it("turns a missed unknown the reader now reports into an unexpected pass", () => {
+      expect(
+        matchSource(
+          "const stores = names.map(make) // missed unknown: assembly-builds-only -- not built yet",
+          [[1, "assembly-builds-only", "unknown"]],
+        ),
+      ).toEqual({
+        missing: [],
+        unexpected: [],
+        unexpectedPasses: [
+          "src/a.ts:1 missed unknown assembly-builds-only — remove the marker",
+        ],
+        expectedFailures: [],
+      })
+    })
+
+    it("does not let a missed unknown stand for a proven red, nor hold one back", () => {
+      expect(
+        matchSource(
+          "const stores = names.map(make) // missed unknown: assembly-builds-only -- not built yet",
+          [[1, "assembly-builds-only"]],
+        ),
+      ).toMatchObject({
+        unexpected: ["src/a.ts:1 assembly-builds-only"],
+        expectedFailures: [
+          "src/a.ts:1 missed unknown assembly-builds-only -- not built yet",
+        ],
+      })
+      const stacked = [
+        "// missed unknown: stable-root -- why",
+        "export const T: Table = { a: 1 } // red: stable-root",
+      ].join("\n")
+      expect(matchSource(stacked, [])).toMatchObject({
+        missing: ["src/a.ts:2 stable-root"],
       })
     })
 

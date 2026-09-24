@@ -31,15 +31,17 @@ both builds and fires.
   is green; stacked above a `red`, the truth is red, and that `red` is not
   counted while the unknown holds — and `// stubborn unknown: <slug> -- <why>` a
   limit kept, the one stamp of the reader's answer rather than the truth.
+  `// missed unknown: <slug> -- <why>` is an unknown the reader does not report
+  (a rule written red first, its check not built), and holds back no `red`.
   `// broken -- <why>` claims a place deblob cannot read, no slug, alone at the
   end of the file for a file that does not parse; it is counted beside the
   verdicts, which a broken run still reports. Loud: an unknown slug, anything
   that looks like a marker (`// red`, `// via`, `// false`, `// missed`,
   `// stubborn`, `// unknown`, `// broken`, any case) and fails the grammar (a
-  bare `unknown`, `stubborn red`, `missed unknown`, a broken naming a rule), a
-  marker after another comment. `matchVerdicts` runs both directions, counted
-  per slug, a report going to a plain claim first, then to an expected failure;
-  it lists `missing` and `unexpected`, `file:line slug`, `file slug` or
+  bare `unknown`, `stubborn red`, a broken naming a rule), a marker after
+  another comment. `matchVerdicts` runs both directions, counted per slug, a
+  report going to a plain claim first, then to an expected failure; it lists
+  `missing` and `unexpected`, `file:line slug`, `file slug` or
   `file:line via slug`, sorted; `unexpectedPasses` for an expected failure that
   passes (`file:line false red slug — remove the marker`), which fails the row
   like the other two; and `expectedFailures` for one still failing, as its

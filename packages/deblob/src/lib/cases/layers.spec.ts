@@ -4,6 +4,23 @@ import { assembleCase } from "./runner/cases.assembly.ts"
 import type { Row } from "./runner/markers.model.ts"
 import { AS_MARKED } from "./runner/markers.model.ts"
 
+/** The assembly the import rows point at, and what it wires. */
+const ASSEMBLY = {
+  "src/notes/notes.service.ts": `
+    export const createNotes = (deps: { store: unknown }) => ({ list: () => [] as readonly unknown[] })
+  `,
+  "src/notes/adapters/fs-store.adapter.ts": `
+    export const createFsStore = (root: string) => ({ root })
+  `,
+  "src/notes.assembly.ts": `
+    import { createNotes } from "./notes/notes.service.ts"
+    import { createFsStore } from "./notes/adapters/fs-store.adapter.ts"
+    export const createNotesAssembly = ({ cwd }: { cwd: string }) => ({
+      notes: createNotes({ store: createFsStore(cwd) }),
+    })
+  `,
+} as const
+
 const ROWS: readonly Row[] = [
   {
     name: "a model importing a service is inward-deps, and runtime-import: as a type it would pass",
@@ -82,6 +99,106 @@ const ROWS: readonly Row[] = [
         export const createEnvServer = () => ({
           host: () => process.env["SOME_MADE_UP_HOST"],
         })
+      `,
+    },
+  },
+  {
+    // canon: `assembly-driver-only`, "An assembly is imported only by drivers
+    // and assemblies".
+    name: "a driver and another assembly import an assembly: green",
+    files: {
+      ...ASSEMBLY,
+      "src/cli.driver.ts": `
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        export const main = () => {
+          const services = createNotesAssembly({ cwd: process.cwd() })
+          process.on("ready", () => services.notes.list())
+        }
+      `,
+      "src/app.assembly.ts": `
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        export const createAppAssembly = ({ cwd }: { cwd: string }) => createNotesAssembly({ cwd })
+      `,
+    },
+  },
+  {
+    // canon: `assembly-driver-only`, "an assembly has no contract to depend
+    // on"; the service also points outward, `inward-deps`.
+    name: "a service importing an assembly is red twice: outward, and an assembly has no contract",
+    files: {
+      ...ASSEMBLY,
+      "src/search/search.service.ts": `
+        import { createNotesAssembly } from "../notes.assembly.ts"
+        export const createSearch = ({ cwd }: { cwd: string }) => ({ find: () => createNotesAssembly({ cwd }) })
+        // red: inward-deps -- the import of notes.assembly: a service reaching outward
+        // missed red: assembly-driver-only -- the import of notes.assembly: only drivers and assemblies; the matrix cell is not built yet
+      `,
+    },
+  },
+  {
+    // canon: `assembly-driver-only`, "type imports included; an assembly has
+    // no contract to depend on".
+    name: "a service importing an assembly as a type is red: runtime-import's exemption does not reach it",
+    files: {
+      ...ASSEMBLY,
+      "src/search/search.service.ts": `
+        import type { createNotesAssembly } from "../notes.assembly.ts"
+        export const createSearch = (deps: { notes: ReturnType<typeof createNotesAssembly>["notes"] }) => ({ find: () => deps.notes.list() })
+        // red: inward-deps -- the type import of notes.assembly: outward, and the type exemption covers service and adapter targets only
+        // missed red: assembly-driver-only -- the type import of notes.assembly: type imports included; the matrix cell is not built yet
+      `,
+    },
+  },
+  {
+    // canon: `assembly-driver-only` — blob is neither a driver nor an
+    // assembly.
+    name: "a blob file importing an assembly is red",
+    files: {
+      ...ASSEMBLY,
+      "src/legacy/start-notes.ts": `
+        import { createNotesAssembly } from "../notes.assembly.ts"
+        export const startNotes = () => createNotesAssembly({ cwd: "/" }).notes.list()
+        // missed red: assembly-driver-only -- the import of notes.assembly from blob; the matrix cell is not built yet
+      `,
+    },
+  },
+  {
+    // canon: `test-is-outside`, "A test file is assembly and driver in one …
+    // It imports anything"; a test factory is an assembly function.
+    name: "a spec file importing an assembly is green",
+    files: {
+      ...ASSEMBLY,
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/notes.spec.ts": `
+        import { expect, it } from "vitest"
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        it("lists", () => {
+          expect(createNotesAssembly({ cwd: "/" }).notes.list()).toEqual([])
+        })
+      `,
+    },
+  },
+  {
+    // canon: "Never a driver" (assembly), outward along the chain
+    // (`inward-deps`), and `driver-not-imported`, "Nothing but a boot or
+    // another driver imports a driver".
+    name: "an assembly importing a driver is red twice: outward, and a driver is imported by a boot or a driver only",
+    files: {
+      ...ASSEMBLY,
+      "src/other.driver.ts": `
+        export const main = () => {
+          process.on("ready", () => undefined)
+        }
+      `,
+      "src/wired.assembly.ts": `
+        import { main } from "./other.driver.ts"
+        export const createWiredAssembly = () => ({ start: main })
+        // red: inward-deps -- the import of other.driver: an assembly reaching outward
+        // missed red: driver-not-imported -- the import of other.driver from an assembly; the matrix cell is not built yet
       `,
     },
   },

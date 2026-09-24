@@ -379,11 +379,15 @@ it becomes the place where logic hides. So the layer with the widest import
 right carries the narrowest rule. Three terms the assembly and driver rules use
 in a fixed sense. A **tech value** is what the tech hands the program — argv,
 env, a request, an event, a parsed option — or holds for it — a component's
-state, props, context — plus what a declared load returned. A **literal** is a
-constant written in place. A **definition** is any declaration — function,
-class, variable, type — other than the hooks, wiring functions and assembly
-functions the rules name. Assembly holds no tech and decides nothing but which
-factory to call (anchors in the [Summary](#summary)):
+state, props, context — plus what a declared load returned. A tech value may be
+read — a field, a destructured part — and is still a tech value; a call on one
+is not. A **literal** is a constant written in place. A **definition** is any
+declaration — function, class, variable, type — other than the hooks, wiring
+functions and assembly functions the rules name. And wherever a rule counts or
+judges calls — the assembly and driver rules, `stable-root` too — awaiting a
+call is the call: `await` changes when its result arrives, not what it is.
+Assembly holds no tech and decides nothing but which factory to call (anchors in
+the [Summary](#summary)):
 
 - **`assembly-builds-only`** — every call in an assembly is there to build: a
   composition unit's factory, another assembly's, or a blob file's when a
@@ -441,12 +445,13 @@ asserts on what its fakes recorded, so a test factory hands them back (see
 assembly that returns adapters can only be called by tests.
 
 How the checker reads it: by callee file kind and by result flow. A callee from
-a service, adapter, assembly or blob file is a factory by construction; a call
+a service, adapter, assembly or blob file is a factory by construction; its
 result may only be passed on or returned, never branched on, computed with, or
-member-accessed. A model call is read on the same terms — its result is passed
-on or returned, and the assembly does nothing else with it — so whether that
-model export builds an instance or computes a value is a question the checker
-never has to ask, and never asks.
+member-accessed — a declared load's result, a tech value, is the one that may be
+read. A model call is read on the same terms — its result is passed on or
+returned, and the assembly does nothing else with it — so whether that model
+export builds an instance or computes a value is a question the checker never
+has to ask, and never asks.
 
 What the rules do not guarantee: that a stateful service is built once. Two
 drivers calling the same assembly get two instances — valid, visible on the map
@@ -929,13 +934,13 @@ needs tooling that knows service boundaries.
 
 - <a id="assembly-builds-only"></a>`assembly-builds-only` — **Every call in an
   assembly builds, and nothing there touches what was built** — arguments are
-  literals, tech values received as parameters, or instances; a call result is
-  passed on or returned, never computed with or member-accessed, whatever layer
-  it came from; it returns services and shared model instances, and adapters
-  only when called by a test; no use-case call but the loads the project
-  declares, whose results count as tech values; a branch or loop on parameters
-  or loaded values with factory arms is wiring, none on an instance's output;
-  nothing at module root but imports.
+  literals, tech values received as parameters, or instances; what the assembly
+  builds — a call's result, whatever layer it came from, a declared load's aside
+  — is passed on or returned, never computed with or member-accessed; it returns
+  services and shared model instances, and adapters only when called by a test;
+  no use-case call but the loads the project declares, whose results count as
+  tech values; a branch or loop on parameters or loaded values with factory arms
+  is wiring, none on an instance's output; nothing at module root but imports.
 - <a id="assembly-driver-only"></a>`assembly-driver-only` — **An assembly is
   imported only by drivers and assemblies** — type imports included; an assembly
   has no contract to depend on.

@@ -34,9 +34,11 @@
  * why naming it. `// false unknown: <slug> -- <why>` is the expected failure:
  * the reader answers unknown, wrongly. Alone, the truth is green; stacked with
  * a plain `red` on the same line and slug, the truth is red, and that `red` is
- * not counted while the unknown holds. There is no bare `unknown`: every
- * unknown marker says which it is. `via` markers match a report's triggers
- * whether the report is proven or unknown.
+ * not counted while the unknown holds. `// missed unknown: <slug> -- <why>` is
+ * the other expected failure: the truth is an unknown the reader does not
+ * report — a rule written red first, its check not built. There is no bare
+ * `unknown`: every unknown marker says which it is. `via` markers match a
+ * report's triggers whether the report is proven or unknown.
  *
  * A comment that looks like a marker (`// red`, `// via`, `// false`, `//
  * missed`, `// stubborn`, `// unknown`, any case) and fails the grammar is
@@ -162,7 +164,7 @@ const MARKER =
 const BROKEN = /^\/\/ broken -- (\S.*)$/
 
 const GRAMMAR =
-  "`// red: <slug>[, <slug>]* [-- <why>]`, `// via:` the same, either as an expected failure (`// false red: <slug> -- <why>`, `// missed red:`), an unknown (`// stubborn unknown: <slug> -- <why>`, `// false unknown:`), or `// broken -- <why>`"
+  "`// red: <slug>[, <slug>]* [-- <why>]`, `// via:` the same, either as an expected failure (`// false red: <slug> -- <why>`, `// missed red:`), an unknown (`// stubborn unknown: <slug> -- <why>`, `// false unknown:`, `// missed unknown:`), or `// broken -- <why>`"
 
 const isRuleId = (value: string): value is RuleId =>
   (RULE_IDS as readonly string[]).includes(value)
@@ -213,12 +215,12 @@ const lineMarkersOf = (
   const kind = match?.[2]
   // an expected failure says what it waits for, a stubborn unknown what it
   // kept: without its why, malformed; `stubborn` is for an unknown only, and
-  // an unknown is always `stubborn` or `false`
+  // an unknown is always `stubborn`, `false` or `missed`
   if (
     match === null ||
     (prefix !== undefined && match[4] === undefined) ||
-    (prefix === "stubborn") !== (kind === "unknown" && prefix !== "false") ||
-    (kind === "unknown" && prefix === "missed")
+    (prefix === "stubborn" && kind !== "unknown") ||
+    (kind === "unknown" && prefix === undefined)
   ) {
     throw malformed()
   }
@@ -389,7 +391,7 @@ export const matchVerdicts = (
   const held = new Map<string, number>()
   const failAsExpected = (marker: VerdictMarker): void => {
     expectedFailures.push(`${expectedFailureOf(marker)} -- ${marker.why}`)
-    if (marker.kind === "unknown") {
+    if (marker.kind === "unknown" && marker.expectedFailure === "false") {
       const red = key(marker.file, marker.line, marker.slug)
       held.set(red, (held.get(red) ?? 0) + 1)
     }
