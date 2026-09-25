@@ -69,6 +69,22 @@ One function per check, all over `ImportGraph` from `extraction`:
   `by` naming the form that proves it), else the reader's `UnknownCondition` —
   an unknown fails like a red and says what the reader could not see. A broken
   line gets no verdict; the graph's `broken` carries it.
+- `checkAssembly(graph)` — `assembly-builds-only`, over every assembly file's
+  functions and root: a call that builds nothing (the tech's, the language's, a
+  local function's, a use case but a declared load, a wiring function, a package
+  nothing claims — `unknown` for one the reader cannot place); an argument, or a
+  record argument's entry, that is computed, a function, unknown, or the host
+  read in place (tech values arrive as parameters) — a received one is green
+  whatever its kind, and one that came out of a call is that call's to answer
+  for (a model call's result passed on is green); what the assembly built used
+  as a member, computed with or reassigned — a load's or the tech's result is a
+  tech value, and may be read; a branch or loop on an instance or a computed
+  value (the branch owns its test: a `condition` use is never reported apart); a
+  definition at root or a function that builds nothing; any other statement at
+  root; an adapter, whole, in the returned record of a function a non-test file
+  calls. An argument that came out of a red or unknown call written in the same
+  expression — or a function handed to one — names it as its `cause`; through a
+  binding, on another statement, it stands alone.
 - `groupByFix(violations)` (`grouping.model.ts`) — one group per fix: a
   violation rides with the violation whose subject its `cause` names, the
   chain's root leading; one without a cause, or whose cause no violation

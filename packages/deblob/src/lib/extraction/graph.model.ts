@@ -236,8 +236,9 @@ export type ArgValue = {
   entries: readonly { key: string; value: ArgValue }[] | null
   /**
    * The call whose result this is — handed directly, past `await`, or through a
-   * `const` bound to it — so a rule reads what was called; `null` otherwise. A
-   * span of the file read.
+   * `const` bound to it — so a rule reads what was called; for a callback's
+   * parameter, the call the callback was handed to, which hands it back; `null`
+   * otherwise. A span of the file read.
    */
   from: Span | null
   /**
@@ -245,6 +246,14 @@ export type ArgValue = {
    * who is judged where it calls.
    */
   received: boolean
+  /**
+   * It reads the host: its root is a free name the language does not define
+   * (`process.env`, `window`), directly or through a `const` bound to one —
+   * found, not received.
+   */
+  host: boolean
+  /** Where it is written, in the file read. */
+  span: Span
 }
 
 /**

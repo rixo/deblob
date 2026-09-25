@@ -4,10 +4,13 @@
  */
 
 import type {
+  CalleeKind,
   EdgeTarget,
+  InstanceOrigin,
   Layer,
   Span,
   UnknownCondition,
+  ValueKind,
 } from "../extraction/graph.model.ts"
 import type { RuleId } from "./rule.model.ts"
 
@@ -279,6 +282,90 @@ export type ModulesViolation = {
     }
 )
 
+/**
+ * `assembly-builds-only`: an assembly doing something with what it may import
+ * beyond building. One shape per clause; every one names a line, and groups by
+ * fix like `stable-root`'s.
+ */
+export type AssemblyViolation = {
+  check: "assembly"
+  ruleset: Ruleset
+  /** Always `assembly-builds-only`. */
+  rules: readonly RuleId[]
+  /** The offending assembly file. */
+  file: string
+  /** Grouping key; `null` = the `blob` bucket. */
+  serviceRoot: string | null
+  /** 1-indexed line of the offending statement. */
+  line: number
+  /**
+   * `null`: the red is proven. Otherwise what the reader could not see — an
+   * unknown, which fails like a red.
+   */
+  unknown: UnknownCondition | null
+  /** What the violation is about, in its file: what a `cause` names. */
+  subject: Span
+  /**
+   * For an argument: the red or unknown call it came out of, or was handed to,
+   * written in the same expression — that call's fix clears this violation too.
+   * `null` otherwise, and on every other shape but a root binding storing a
+   * root call's result.
+   */
+  cause: Span | null
+} & (
+  | {
+      /**
+       * A call that builds nothing: the tech's, the language's, a local
+       * function's, a use case but a declared load, a wiring function, a
+       * package nothing claims; or one the reader cannot place, an unknown.
+       */
+      shape: "call"
+      callee: CalleeKind
+    }
+  | {
+      /**
+       * An argument that is not a literal, a tech value received, or an
+       * instance: computed, a function, or unknown. `key` names a record
+       * argument's entry, `null` for the argument whole.
+       */
+      shape: "argument"
+      callee: CalleeKind
+      key: string | null
+      value: ValueKind
+    }
+  | {
+      /** What the assembly built, used past passing it on or returning it. */
+      shape: "result-use"
+      use: "member" | "computed" | "reassigned"
+      /** What built it. */
+      callee: CalleeKind
+    }
+  | {
+      /** A branch or loop on an instance, or on a computed value. */
+      shape: "branch"
+      testOrigin: "instance" | "other"
+    }
+  | {
+      /**
+       * A definition that is not an assembly function: at the file's root, or a
+       * function that builds nothing.
+       */
+      shape: "definition"
+      name: string | null
+      at: "root" | "function"
+    }
+  | {
+      /** A statement at the file's root other than an import or a definition. */
+      shape: "root-statement"
+    }
+  | {
+      /** An adapter in the returned record of a function a non-test file calls. */
+      shape: "adapter-returned"
+      key: string
+      origin: InstanceOrigin
+    }
+)
+
 /** The union grows one member per detector step. */
 export type Violation =
   | LayersViolation
@@ -288,3 +375,4 @@ export type Violation =
   | DagViolation
   | SurfaceViolation
   | ModulesViolation
+  | AssemblyViolation

@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { checkAssembly } from "../../lib/check/assembly.model.ts"
 import { checkBarrels } from "../../lib/check/barrels.model.ts"
 import { checkDag } from "../../lib/check/dag.model.ts"
 import { checkLayers } from "../../lib/check/layers.model.ts"
@@ -153,6 +154,7 @@ const DETECTORS: Record<
   ports: (graph) => checkPorts(graph),
   modules: (graph, config) =>
     checkModules(graph, { mutableModuleState: config.mutableModuleState }),
+  assembly: (graph) => checkAssembly(graph),
 }
 
 /**

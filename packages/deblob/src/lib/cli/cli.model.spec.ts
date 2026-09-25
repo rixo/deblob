@@ -197,6 +197,7 @@ describe("CHECK_RULES", () => {
       ports: ["ports-types-only"],
       surface: ["layer-in-path", "chain-purity"],
       modules: ["stable-root"],
+      assembly: ["assembly-builds-only"],
     })
   })
 

@@ -49,6 +49,11 @@ export type ImportTargetKind =
        * model: pure.
        */
       claim: "reader" | "tech" | "model" | "unclaimed"
+      /**
+       * The layer the package claims for this entry, when it does — a sibling's
+       * `deblob` field, or the consumer's `externalLayers` patch.
+       */
+      layer: Layer | null
     }
   | { kind: "unresolved" }
 
@@ -718,6 +723,11 @@ type Binding = {
   isFunction: boolean
   /** A hook's parameter: what the tech hands the hook. */
   isHookParam: boolean
+  /**
+   * A callback's parameter: the call the callback was handed to, what hands the
+   * value back — `null` for any other binding.
+   */
+  handedBy: Span | null
   /** The type its annotation writes, when one does. */
   type: AstNode | null
   reassigned: boolean
@@ -863,6 +873,7 @@ export const readModule = ({
     path: [],
     isFunction: false,
     isHookParam: false,
+    handedBy: null,
     type: annotationOf(node),
     reassigned: false,
     results: null,
@@ -1019,6 +1030,26 @@ export const readModule = ({
         : { kind: "model", path, name }
     if (target.kind === "external") {
       const pkg = target.package ?? binding.specifier
+      // a crossed claim to a factory kind reads as that kind — trust is the
+      // dependency model; a tech's or the project's claim comes first
+      const crossed = target.layer
+      if (
+        target.claim !== "tech" &&
+        target.claim !== "reader" &&
+        (crossed === "service" ||
+          crossed === "adapters" ||
+          crossed === "assembly" ||
+          crossed === "blob")
+      )
+        return {
+          rest,
+          callee: {
+            kind: "factory",
+            layer: crossed,
+            path: binding.specifier,
+            name,
+          },
+        }
       return {
         rest,
         callee:
@@ -1534,13 +1565,18 @@ export const readModule = ({
    * A callback read inline — handed to a callee that is not the tech's, or in
    * an inside kind: its statements are the enclosing body's, its parameters
    * computed values (what the language or the inside hands back — a tech's hook
-   * parameter is the one tech-held case, and that is the cut), and what it
-   * returns goes to the callee it was handed to.
+   * parameter is the one tech-held case, and that is the cut) handed back by
+   * the call it was handed to, which answers for them; what it returns goes to
+   * the callee it was handed to.
    */
-  const readInline = (fn: AstNode, callee: CalleeKind): void => {
+  const readInline = (
+    fn: AstNode,
+    callee: CalleeKind,
+    handedBy: Span | null,
+  ): void => {
     const params = (fn["params"] as AstNode[]).flatMap((param) =>
       patternNames(param).map(({ name, node }) =>
-        newBinding(name, "callback", node),
+        newBinding(name, "callback", node, { handedBy }),
       ),
     )
     const returned: Ctx = { kind: "argument", to: callee }
@@ -1640,7 +1676,7 @@ export const readModule = ({
       const first = targets[0]?.target
       let value: Resolved
       if (isFunctionNode(inner)) {
-        readInline(inner, callee)
+        readInline(inner, callee, null)
         value = { kind: "function", origin: null, path: [] }
       } else {
         // an argument no parameter receives is evaluated and dropped
@@ -1725,13 +1761,23 @@ export const readModule = ({
 
   /**
    * A record literal's entries, each as an argument would be passed — read
-   * without emitting: the record's own evaluation emits its calls. A spread or
-   * a computed key names no entry.
+   * without emitting: the record's own evaluation emits its calls. A spread is
+   * one entry, keyed `...`; a computed key names none.
    */
   const entriesOf = (record: AstNode): { key: string; value: ArgValue }[] =>
     (record["properties"] as AstNode[]).flatMap((property) => {
-      if (property.type === "SpreadElement" || property["computed"] === true)
-        return []
+      if (property.type === "SpreadElement")
+        return [
+          {
+            key: "...",
+            value: argValueOf(
+              property["argument"] as AstNode,
+              { kind: "entry" },
+              false,
+            ),
+          },
+        ]
+      if (property["computed"] === true) return []
       const key = property["key"] as AstNode
       return [
         {
@@ -1762,27 +1808,33 @@ export const readModule = ({
       entries: inner.type === "ObjectExpression" ? entriesOf(inner) : null,
       from: fromOf(inner),
       received: receivedOf(inner),
+      host: value.kind === "tech" && hostOf(inner),
+      span: spanOf(node),
     }
   }
 
   /** A value with nothing to say past its kind: a function, a spread. */
-  const plainArg = (kind: ValueKind): ArgValue => ({
+  const plainArg = (kind: ValueKind, node: AstNode): ArgValue => ({
     kind,
     origin: null,
     path: [],
     entries: null,
     from: null,
     received: false,
+    host: false,
+    span: spanOf(node),
   })
 
   /**
-   * The call a value is the result of: the value itself, past the wrappers, or
-   * a `const` bound whole to one — never a part of one, destructured.
+   * The call a value is the result of: the value itself, past the wrappers, a
+   * `const` bound whole to one — never a part of one, destructured — or a
+   * callback's parameter, handed back by the call the callback was handed to.
    */
   const fromOf = (inner: AstNode): Span | null => {
     if (CALL_FORMS.has(inner.type)) return spanOf(inner)
     if (inner.type !== "Identifier") return null
     const binding = lookup(scope, inner["name"] as string)
+    if (binding?.kind === "callback") return binding.handedBy
     if (
       binding === null ||
       binding.kind !== "definition" ||
@@ -1796,6 +1848,25 @@ export const readModule = ({
   }
 
   /** The function's own parameter, or a member of one. */
+  /**
+   * A tech value that reads the host: the root of its chain is a free name —
+   * one the language defines never reads as tech — directly or through a
+   * `const` bound to such a read, never to a call, judged where it sits.
+   */
+  const hostOf = (inner: AstNode): boolean => {
+    const { root } = chainOf(inner)
+    if (root.type !== "Identifier") return false
+    const binding = lookup(scope, root["name"] as string)
+    if (binding === null) return true
+    if (
+      binding.kind !== "definition" ||
+      binding.reassigned ||
+      binding.init === null
+    )
+      return false
+    return hostOf(unwrap(binding.init))
+  }
+
   const receivedOf = (inner: AstNode): boolean => {
     const { root } = chainOf(inner)
     if (root.type !== "Identifier") return false
@@ -1819,16 +1890,16 @@ export const readModule = ({
     for (const arg of argNodes) {
       const inner = unwrap(arg)
       if (isFunctionNode(inner)) {
-        args.push(plainArg("function"))
+        args.push(plainArg("function", arg))
         if (!emitting) continue
         if (callee.kind === "tech" && tech !== null)
           body.hooks.push(readHook(inner, registeredBy))
-        else readInline(inner, callee)
+        else readInline(inner, callee, registeredBy.span)
         continue
       }
       if (arg.type === "SpreadElement") {
         evaluate(arg["argument"] as AstNode, { kind: "computed" }, emitting)
-        args.push(plainArg("computed"))
+        args.push(plainArg("computed", arg))
         continue
       }
       args.push(argValueOf(arg, { kind: "argument", to: callee }, emitting))

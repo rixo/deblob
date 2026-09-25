@@ -3,6 +3,7 @@ import { describe, expect, it, test } from "vitest"
 import { groupByFix } from "../check/grouping.model.ts"
 import type { RuleId } from "../check/rule.model.ts"
 import type {
+  AssemblyViolation,
   BarrelsViolation,
   DagViolation,
   LayersViolation,
@@ -103,6 +104,11 @@ const portsViolation = (
   }) as PortsViolation
 
 type RootBinding = Extract<ModulesViolation, { shape: "root-binding" }>
+
+/** `Omit` over each member of a union, its discriminant kept. */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never
 
 type RootCall = Extract<ModulesViolation, { shape: "root-call" }>
 
@@ -927,6 +933,249 @@ describe("renderCheckResults", () => {
       })
     })
 
+    describe("an assembly violation", () => {
+      type Shape = DistributiveOmit<
+        AssemblyViolation,
+        | "check"
+        | "ruleset"
+        | "rules"
+        | "file"
+        | "serviceRoot"
+        | "line"
+        | "unknown"
+        | "subject"
+        | "cause"
+      >
+      const assembly = (
+        shape: Shape,
+        unknown: AssemblyViolation["unknown"] = null,
+      ): AssemblyViolation => ({
+        check: "assembly",
+        ruleset: "arch",
+        rules: ["assembly-builds-only"],
+        file: "src/notes.assembly.ts",
+        serviceRoot: null,
+        line: 7,
+        unknown,
+        subject: SUBJECT,
+        cause: null,
+        ...shape,
+      })
+      const FS_STORE = {
+        kind: "factory",
+        layer: "adapters",
+        path: "src/notes/adapters/fs-store.adapter.ts",
+        name: "createFsStore",
+      } as const
+
+      test.each([
+        [
+          { kind: "tech", package: "node:fs" },
+          "calls node:fs, the tech — an assembly only builds; hand the tech value to the adapter that uses it",
+        ],
+        [
+          { kind: "tech", package: null },
+          "calls the host, the tech — an assembly only builds; hand the tech value to the adapter that uses it",
+        ],
+        [
+          { kind: "use-case", member: "load", origin: null },
+          "runs the use case load — an assembly only builds; run it in a hook, or declare it in configLoads if the graph depends on it",
+        ],
+        [
+          { kind: "local", name: "rootOf", factory: false },
+          "calls rootOf, which builds nothing — every call in an assembly builds; a model function passed on, or inline",
+        ],
+        [
+          { kind: "wiring", path: "src/cli.driver.ts", name: "main" },
+          "runs the wiring function main — a driver's, never an assembly's; the driver calls the assembly",
+        ],
+        [
+          { kind: "unclaimed", package: "left-pad" },
+          'calls left-pad, a package nothing claims — an assembly only builds; an adapter wraps it, or list it under config key "pure"',
+        ],
+        [
+          { kind: "language" },
+          "calls the language, which builds nothing — computing is not building; a model function passed on, or the adapter derives it",
+        ],
+      ] as const)("a call into %o says: %s", (callee, words) => {
+        expect(message(assembly({ shape: "call", callee }))).toContain(
+          `line 7 ${words} (assembly-builds-only)`,
+        )
+      })
+
+      it("says what the reader could not see in a call, and the ways out", () => {
+        expect(
+          message(
+            assembly(
+              { shape: "call", callee: { kind: "unknown" } },
+              {
+                kind: "callee",
+              },
+            ),
+          ),
+        ).toContain(
+          "line 7 may not build — unknown: the reader cannot tell what this call reaches; a factory call, or type what it is called on",
+        )
+      })
+
+      it("names the argument, what it is, and where it goes", () => {
+        expect(
+          message(
+            assembly({
+              shape: "argument",
+              callee: FS_STORE,
+              key: null,
+              value: "computed",
+            }),
+          ),
+        ).toContain(
+          "line 7 hands createFsStore a computed value as an argument — arguments are literals, tech values received, or instances; a model function passed on, or the adapter derives it",
+        )
+        expect(
+          message(
+            assembly({
+              shape: "argument",
+              callee: FS_STORE,
+              key: "index",
+              value: "function",
+            }),
+          ),
+        ).toContain(
+          "line 7 hands createFsStore a function as the entry index — an assembly defines nothing; the driver registers it, or the adapter owns it",
+        )
+        expect(
+          message(
+            assembly({
+              shape: "argument",
+              callee: FS_STORE,
+              key: null,
+              value: "tech",
+            }),
+          ),
+        ).toContain(
+          "line 7 hands createFsStore the host as an argument, read here — tech values arrive as parameters; the driver hands it in",
+        )
+        expect(
+          message(
+            assembly(
+              {
+                shape: "argument",
+                callee: { kind: "unknown" },
+                key: null,
+                value: "unknown",
+              },
+              { kind: "call-result", callee: null, construct: false },
+            ),
+          ),
+        ).toContain(
+          "line 7 may hand a call the reader cannot place what the reader cannot tell — unknown: a call's result is not known; pass a literal, a tech value received, or an instance",
+        )
+      })
+
+      test.each([
+        [{ kind: "use-case", member: "list", origin: null }, "list"],
+        [{ kind: "unclaimed", package: "left-pad" }, "left-pad"],
+        [
+          {
+            kind: "forbidden-import",
+            layer: "ports",
+            path: "src/notes/ports/store.ts",
+          },
+          "src/notes/ports/store.ts",
+        ],
+        [{ kind: "language" }, "the language"],
+      ] as const)(
+        "names what an argument is handed to: %o is %s",
+        (callee, name) => {
+          expect(
+            message(
+              assembly({
+                shape: "argument",
+                callee,
+                key: null,
+                value: "computed",
+              }),
+            ),
+          ).toContain(`line 7 hands ${name} a computed value`)
+        },
+      )
+
+      test.each([
+        ["member", "reads a field of"],
+        ["computed", "computes with"],
+        ["reassigned", "reassigns"],
+      ] as const)(
+        "a result used as %s says it %s what was built",
+        (use, verb) => {
+          expect(
+            message(assembly({ shape: "result-use", use, callee: FS_STORE })),
+          ).toContain(
+            `line 7 ${verb} what createFsStore built — what the assembly builds is passed on or returned; pass it whole, its consumer reads the field`,
+          )
+        },
+      )
+
+      it("sends a field of another assembly's record down, never sideways", () => {
+        expect(
+          message(
+            assembly({
+              shape: "result-use",
+              use: "member",
+              callee: {
+                kind: "factory",
+                layer: "assembly",
+                path: "src/shared.assembly.ts",
+                name: "createSharedAssembly",
+              },
+            }),
+          ),
+        ).toContain(
+          "line 7 reads a field of what createSharedAssembly built — shared instances flow down, never sideways; the parent builds it and passes it down to both",
+        )
+      })
+
+      test.each([
+        [
+          { shape: "branch", testOrigin: "instance" },
+          "branches on an instance — a decision the map cannot show; it moves into the service or adapter that owns it",
+        ],
+        [
+          { shape: "branch", testOrigin: "other" },
+          "branches on a computed value — a branch is wiring on a parameter or a loaded value; the decision moves into the service or adapter that owns it",
+        ],
+        [
+          { shape: "definition", name: "LIMIT", at: "root" },
+          "defines LIMIT at the assembly's root — nothing sits there but imports; the literal in place, or a model export",
+        ],
+        [
+          { shape: "definition", name: null, at: "root" },
+          "defines a value at the assembly's root — nothing sits there but imports; the literal in place, or a model export",
+        ],
+        [
+          { shape: "definition", name: "rootOf", at: "function" },
+          "defines rootOf, which builds nothing — nothing but assembly functions is defined; a model function, or inline",
+        ],
+        [
+          { shape: "root-statement" },
+          "runs at the assembly's root — nothing sits there but imports; move it inside the assembly function",
+        ],
+        [
+          {
+            shape: "adapter-returned",
+            key: "fs",
+            origin: {
+              path: "src/notes/adapters/fs-store.adapter.ts",
+              name: "createFsStore",
+              layer: "adapters",
+            },
+          },
+          "returns the adapter fs to a caller that is not a test — an assembly returns services; return services only, a test factory returns the adapters",
+        ],
+      ] as const)("%o says: %s", (shape, words) => {
+        expect(message(assembly(shape))).toContain(`line 7 ${words}`)
+      })
+    })
+
     test("ports shapes: export, contains, runtime edges both directions", () => {
       expect(message(portsViolation())).toContain(
         "exports const SOME_MADE_UP_CONST — ports are types only",
@@ -1209,7 +1458,7 @@ describe("bare status", () => {
         "",
         "Commands",
         "  deblob check [what...]      run architecture checks",
-        "                              (dag · layers · private · barrels · ports · surface · modules)",
+        "                              (dag · layers · private · barrels · ports · surface · modules · assembly)",
         "  deblob explain <topic...>   explain rules or checks",
         "  deblob --help               full help",
         "",

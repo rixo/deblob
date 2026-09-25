@@ -534,7 +534,17 @@ may reopen the service example and the config pattern section.
   2026-09-25 in five checkpoints: every rule has its rows, every red its way
   out, and three canon edits came of writing them (a tech value may be read,
   "what the assembly builds", awaiting a call is the call). Next: call reading
-  and the detectors.
+  and the detectors. Then, before type-name depth, `04/04_sweep` (added
+  2026-09-25: the detectors went fast, one commit a checkpoint for days): loose
+  ends caught and bolts tightened before building on them. A review by another
+  model, cold, of everything since `02_rows-first` closed — code, units, rows,
+  READMEs, SPEC notes against what landed; the confessed known failures and
+  every "to be measured" re-read; the two owed cleanups (`it` where the title is
+  a behavior sentence, `test` elsewhere — never a blind rename; the typed
+  builders replacing `render.model.spec.ts`'s `as …Violation` casts); and
+  grouping's worth measured on the self-check (how many groups carry riders)
+  before anything else is built on it. Findings as a table, rixo rules each,
+  fixes one commit per batch.
 - `05_alignment-review` — the checks are implemented; one pass over every rule
   canon states for the outside kinds against what `deblob check` enforces, with
   the tests as the proof: per canon statement (each Summary bullet and the

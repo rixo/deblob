@@ -1218,6 +1218,8 @@ describe("the reading on the graph — the reading fixture", () => {
         entries: null,
         from: expect.objectContaining({ line: 9 }),
         received: false,
+        host: false,
+        span: expect.objectContaining({ line: 23, column: 43 }),
       },
       {
         kind: "tech",
@@ -1233,11 +1235,15 @@ describe("the reading on the graph — the reading fixture", () => {
               entries: null,
               from: null,
               received: true,
+              host: false,
+              span: expect.objectContaining({ line: 23, column: 50 }),
             },
           },
         ],
         from: null,
         received: false,
+        host: false,
+        span: expect.objectContaining({ line: 23, column: 48 }),
       },
     ])
     // the returned record joins its entries: two instances, two computed values

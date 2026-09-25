@@ -50,15 +50,31 @@ const TARGETS: Readonly<Record<string, ImportTargetKind>> = {
     layer: "service",
   },
   "./side.ts": { kind: "module", path: "src/side.ts", layer: "blob" },
-  "some-tech": { kind: "external", package: "some-tech", claim: "tech" },
-  "pure-lib": { kind: "external", package: "pure-lib", claim: "model" },
+  "some-tech": {
+    kind: "external",
+    package: "some-tech",
+    claim: "tech",
+    layer: null,
+  },
+  "pure-lib": {
+    kind: "external",
+    package: "pure-lib",
+    claim: "model",
+    layer: null,
+  },
   "unclaimed-lib": {
     kind: "external",
     package: "unclaimed-lib",
     claim: "unclaimed",
+    layer: null,
   },
   // a resolved file outside coverage: no package name, concrete, the tech's
-  "./outside.ts": { kind: "external", package: null, claim: "tech" },
+  "./outside.ts": {
+    kind: "external",
+    package: null,
+    claim: "tech",
+    layer: null,
+  },
 }
 
 const fs = createNodeFs()
@@ -248,8 +264,8 @@ describe("readModule", () => {
       expect(kinds(23)).toEqual(["literal"])
       expect(kinds(44)).toEqual(["tech", "instance"])
       expect(kinds(56)).toEqual(["literal", "function"])
-      // an instance argument carries where it came from, and the call it is
-      // the result of, through the `const` bound to it
+      // an instance argument carries where it came from, the call it is the
+      // result of, through the `const` bound to it, and where it is written
       expect(callAt(calls, 44).args[1]).toEqual({
         kind: "instance",
         origin: {
@@ -261,6 +277,8 @@ describe("readModule", () => {
         entries: null,
         from: expect.objectContaining({ line: 20 }),
         received: false,
+        host: false,
+        span: expect.objectContaining({ line: 44, column: 14 }),
       })
     })
 

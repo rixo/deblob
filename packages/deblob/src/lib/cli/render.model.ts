@@ -11,6 +11,7 @@ import type {
 } from "../check/surface.model.ts"
 import type {
   BrokenSite,
+  CalleeKind,
   EdgeTarget,
   UnknownCondition,
   UnresolvedImport,
@@ -18,6 +19,7 @@ import type {
 import type { RuleId } from "../check/rule.model.ts"
 import { isRuleId, ruleOrder } from "../check/rule.model.ts"
 import type {
+  AssemblyViolation,
   DagViolation,
   LayersViolation,
   ModulesViolation,
@@ -242,6 +244,101 @@ const messageOf = (violation: FileViolation, prefix: string): string => {
         return `line ${violation.line} may run on import${via} — unknown: ${unknownWords(violation.unknown)}; move it inside a function`
       return `line ${violation.line} runs on import${via} — a module's evaluation performs no side effect; move it inside a factory or a function`
     }
+    case "assembly":
+      return assemblyMessage(violation)
+  }
+}
+
+// --- assembly-builds-only's words -------------------------------------------
+// Each red names its way out: the assembly table of the rows-first step.
+
+/** What a callee is, named for a message. */
+const calleeName = (callee: CalleeKind): string => {
+  switch (callee.kind) {
+    case "factory":
+    case "wiring":
+    case "model":
+    case "local":
+      return callee.name
+    case "use-case":
+      return callee.member
+    case "tech":
+      return callee.package ?? "the host"
+    case "unclaimed":
+      return callee.package
+    case "forbidden-import":
+      return callee.path
+    case "language":
+      return "the language"
+    case "unknown":
+      return "a call the reader cannot place"
+  }
+}
+
+/** A call that builds nothing, in words, with its way out. */
+const assemblyCallWords = (callee: CalleeKind): string => {
+  switch (callee.kind) {
+    case "tech":
+      return `calls ${calleeName(callee)}, the tech — an assembly only builds; hand the tech value to the adapter that uses it`
+    case "use-case":
+      return `runs the use case ${callee.member} — an assembly only builds; run it in a hook, or declare it in configLoads if the graph depends on it`
+    case "local":
+      return `calls ${callee.name}, which builds nothing — every call in an assembly builds; a model function passed on, or inline`
+    case "wiring":
+      return `runs the wiring function ${callee.name} — a driver's, never an assembly's; the driver calls the assembly`
+    case "unclaimed":
+      return `calls ${callee.package}, a package nothing claims — an assembly only builds; an adapter wraps it, or list it under config key "pure"`
+    default:
+      return `calls ${calleeName(callee)}, which builds nothing — computing is not building; a model function passed on, or the adapter derives it`
+  }
+}
+
+const assemblyMessage = (violation: AssemblyViolation): string => {
+  const line = `line ${violation.line}`
+  switch (violation.shape) {
+    case "call":
+      return violation.unknown !== null
+        ? `${line} may not build — unknown: ${unknownWords(violation.unknown)}; a factory call, or type what it is called on`
+        : `${line} ${assemblyCallWords(violation.callee)}`
+    case "argument": {
+      const what =
+        violation.key === null ? "an argument" : `the entry ${violation.key}`
+      const to = calleeName(violation.callee)
+      if (violation.unknown !== null)
+        return `${line} may hand ${to} what the reader cannot tell — unknown: ${unknownWords(violation.unknown)}; pass a literal, a tech value received, or an instance`
+      if (violation.value === "tech")
+        return `${line} hands ${to} the host as ${what}, read here — tech values arrive as parameters; the driver hands it in`
+      return violation.value === "function"
+        ? `${line} hands ${to} a function as ${what} — an assembly defines nothing; the driver registers it, or the adapter owns it`
+        : `${line} hands ${to} a computed value as ${what} — arguments are literals, tech values received, or instances; a model function passed on, or the adapter derives it`
+    }
+    case "result-use": {
+      const built = calleeName(violation.callee)
+      const verb =
+        violation.use === "member"
+          ? "reads a field of"
+          : violation.use === "computed"
+            ? "computes with"
+            : "reassigns"
+      return violation.callee.kind === "factory" &&
+        violation.callee.layer === "assembly"
+        ? `${line} ${verb} what ${built} built — shared instances flow down, never sideways; the parent builds it and passes it down to both`
+        : `${line} ${verb} what ${built} built — what the assembly builds is passed on or returned; pass it whole, its consumer reads the field`
+    }
+    case "branch":
+      return violation.testOrigin === "instance"
+        ? `${line} branches on an instance — a decision the map cannot show; it moves into the service or adapter that owns it`
+        : `${line} branches on a computed value — a branch is wiring on a parameter or a loaded value; the decision moves into the service or adapter that owns it`
+    case "definition": {
+      const name = violation.name ?? "a value"
+      return violation.at === "root"
+        ? `${line} defines ${name} at the assembly's root — nothing sits there but imports; the literal in place, or a model export`
+        : `${line} defines ${name}, which builds nothing — nothing but assembly functions is defined; a model function, or inline`
+    }
+    case "root-statement":
+      return `${line} runs at the assembly's root — nothing sits there but imports; move it inside the assembly function`
+    case "adapter-returned":
+      return `${line} returns the adapter ${violation.key} to a caller that is not a test — an assembly returns services; return services only, a test factory returns the adapters`
   }
 }
 
@@ -325,6 +422,7 @@ const VALUE_WORDS: Readonly<Record<string, string>> = {
   MemberExpression: "a member read",
   AwaitExpression: "an awaited value",
   SpreadElement: "a spread",
+  argument: "this argument",
   ObjectPattern: "a destructured part",
   ArrayPattern: "a destructured part",
 }

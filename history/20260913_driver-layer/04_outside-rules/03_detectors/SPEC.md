@@ -102,7 +102,9 @@ Over every function of an assembly file and its root:
 - an argument of kind `computed` or `function` — red; `literal`, `tech`,
   `instance` green;
 - a result used as `member`, `computed`, `condition`, or `reassigned` — red,
-  unless it is a load's (a tech value);
+  unless it is a load's (a tech value); never `condition`: a condition sits in a
+  `control`'s test, and the control owns it (checkpoint 5: one fact, one
+  clause);
 - a `control` whose `testOrigin` is `instance` or `other` — red; `parameter`,
   `load` green;
 - a definition at root, or a function that is not an assembly function (it
@@ -454,6 +456,125 @@ green.
   an unclaimed package's (1 row).
 - **Self-check:** 140, one new: `bin.ts`'s `process.argv.slice(2)` at root, a
   line already red.
+
+### Checkpoint 5, built 2026-09-25
+
+The `assembly` check, as § API drew it, over checkpoint 4's reading. New
+`AssemblyViolation`, one `shape` per clause, each with the `subject` and `cause`
+checkpoint 3 gave `stable-root`'s, so the grouping model groups it unchanged.
+
+**How its violations group — ruled 2026-09-25:**
+
+- **Grouping gains nothing.** A red call leads what its result carries, on its
+  line, as checkpoint 3 built it; this check adds no grouping rule and no marker
+  grammar. Grouping is for the same thing reported many times, not for two facts
+  sharing a line: each is reported, each with its way out, and whoever wrote the
+  line picks the fix. When one fix clears both, they both go.
+- **A computed argument whose value came out of a red call rides with the call**
+  — checkpoint 3's rule as is. The helper row's call line,
+  `createFsStore(rootOf(cwd))`, becomes
+  `red: assembly-builds-only + assembly-builds-only`: `rootOf(…)` leads, the
+  argument it computed rides.
+- **One fact, one clause.** A branch is the `control`'s: its `testOrigin`
+  decides. A result used as a `condition` is red only where no control reports
+  the branch; if building shows every condition use sits under a control, the
+  clause is dropped and says so here.
+- **Two facts on one line are two groups.**
+  `fs.ready ? fs : createMemoryStore()` reads a field of what the assembly built
+  and branches on an instance:
+  `red: assembly-builds-only, assembly-builds-only`.
+- **Across lines, no grammar.** The undeclared load's result handed on
+  (`createNotes({ …, settings })`) is a computed argument, its own red on its
+  own line, beside the load's red; declaring the load clears both (a declared
+  load's result is a tech value). The load row gains that second marker.
+
+**Rows.** Every `missed` marker of `assembly.spec.ts` flips but the `node:fs`
+import (checkpoint 7's matrix cell); the helper row's call line and the load
+row's second line change as above; the two map rows stay `unknown` (F7). Greens
+that must stay green, the gate as much as the reds: the branch on a parameter,
+the declared load (whole, by field, destructured), the blob factory, the test
+factory, the pure builtin, the proven-array map, a tech call's result handed on
+(only the call is red).
+
+**Self-check:** deblob's own assemblies turn red (`main.ts`, `cases.assembly.ts`
+— § Goal, not gated); the count and a breakdown by clause recorded at handback.
+
+**Built as drafted**, the grouping as ruled, with what building it taught:
+
+- **The `condition` clause is dropped.** The reader makes a `condition` use in a
+  branch's test only, so a control always reports it.
+- **Reader additions.** An argument carries where it is written
+  (`ArgValue.span`): an argument's red sits on its own line, and a rider needs a
+  subject. A callback's parameter is handed back by the call the callback was
+  handed to (`from`), which answers for it. A record's spread is one entry,
+  keyed `...`, so it is judged as passed. And one found building: a call into a
+  sibling package's entry that claims service, adapter, assembly or blob read as
+  a package nothing claims — the `aware` fixture's `main.ts`, a false red. It
+  reads as a factory of the layer it claims now ("trust is the dependency
+  model", as the import rules already read it), and binds no world: nothing here
+  reads the package's function. Ruled at review (2026-09-25): a package the
+  project installs is trusted — a deblob claim is the same act of faith as any
+  behavior it claims, verified at home by its own `surface` check; a consumer's
+  `externalLayers` patch is the user's own word, and deblob does not
+  second-guess it.
+- **What rides, exactly.** An argument that came out of a red or unknown call
+  written in the same expression — the spans nest — and a function handed to a
+  red or unknown call. Through a binding, on another statement, it stands alone
+  (the load row). An unknown call leads like a red one here, where checkpoint 3
+  said "a call the reader could not place is not a cause": `stable-root`'s fix
+  is removing the call, this rule's fix for an unknown one is making it
+  readable, and that clears what it handed back. Each unproven-map row is one
+  unknown group of four: the map's call, the callback, the element, the value
+  passed on. **Ruled 2026-09-25**: one limit reported four times is what
+  grouping is for; making a long group a pleasant read is the formatter's
+  business, not detection's.
+- **A result use rides nothing.** Built with a cause, cut at falsification: no
+  row reached it, and its realistic case
+  (`createFsStore(resolveRoot(cwd).path)`) groups only partway — a field read
+  off a call carries no `from`, so the argument would stand alone beside a group
+  of two.
+- **The host, found, is red** (stamped red first at review, 2026-09-25). The
+  argument clause took any tech value; canon's is "tech values received as
+  parameters". `createFsStore(process.env)` read green: the assembly discovering
+  the platform itself, the driver's job. The reader marks a tech value whose
+  root is a free name, directly or through a `const` (`ArgValue.host`); a
+  declared load's result and a loop's element over a received array stay green.
+  An assembly builds blind; a driver touches the platform and never builds — the
+  partition is the rule.
+- **An adapter returned is the adapter whole**: a field of one returned is the
+  field read, one red.
+- **Other specs' trees.** Two stamped rows of other checks had assemblies that
+  build nothing, and gained this rule's markers: `layers.spec.ts`'s assembly
+  handing a driver's function on; `modules.spec.ts`'s assembly built at root
+  (the call and its binding, one group; the function returning it, one).
+- **Rows.** The ten `missed` markers flipped; the branch, helper and load rows
+  changed as ruled; the map rows' marker is the group of four. New, written
+  after the check and stamped after it (2026-09-25), which the corpus says rows
+  should not be: a function handed to a factory; a function handed to a tech
+  call, riding it; a computed record spread in; an assignment at root (and
+  `stable-root`'s); a field of an adapter returned. And, red first: the host
+  read in place, whole, by field and through a `const`.
+- **Units** only where no row reaches: an assembly with no reading, a root
+  callback's local, an unknown argument no call handed back; every message shape
+  in `render.model.spec.ts`. The CLI golden gains an assembly block: the
+  `violating` fixture's `billing.assembly.ts` reads a method off an adapter.
+- **Falsification:** each clause switched off in turn — a call building nothing
+  (4 rows fail), an undeclared use case (2), a declared load green (1), an
+  unknown callee (2), a received argument green (13, across four specs), entries
+  judged one by one (7), a function argument (4), a function riding its call
+  (3), a green call's result passed on (1), a computed argument (2), an argument
+  riding its call (3), riding only within an expression (1), a result used (4),
+  a tech value read (1), a branch (1), a root definition (2), a root statement
+  (2), a function building nothing (3), an adapter returned (1), the adapter
+  whole (1), a test caller exempting (1), the host found (1); in the reader, the
+  host through a `const` (1), a callback's parameter handed back (2), the spread
+  entry (1), a crossed claim (1), a crossed factory binding no world (3).
+- **Self-check:** 140 → 429 groups (142 `modules`, 287 `assembly`), unknowns 51
+  → 94. The two new `modules` are the new unit file's root constants. The
+  assembly ones: `main.ts` 269, `cases.assembly.ts` 14, `bin.ts` 4; by clause,
+  arguments 93 (10 unknown), calls 78 (31 unknown), results used 68 (38 computed
+  with, 30 field reads), branches 26, definitions 13, root statements 9; 42
+  riders.
 
 ## Docs
 

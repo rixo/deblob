@@ -196,7 +196,7 @@ const ROWS: readonly Row[] = [
       `,
       "src/wired.assembly.ts": `
         import { main } from "./other.driver.ts"
-        export const createWiredAssembly = () => ({ start: main })
+        export const createWiredAssembly = () => ({ start: main }) // red: assembly-builds-only -- builds nothing: it hands a driver's function on
         // red: inward-deps -- the import of other.driver: an assembly reaching outward
         // missed red: driver-not-imported -- the import of other.driver from an assembly; the matrix cell is not built yet
       `,

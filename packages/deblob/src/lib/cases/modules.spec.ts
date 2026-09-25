@@ -223,8 +223,9 @@ const ROOT_CALLS: readonly Row[] = [
       "src/cli.assembly.ts": `
         import { createApp } from "./app.service.ts"
         // false unknown: stable-root -- a call's result is not followed yet
+        // red: assembly-builds-only + assembly-builds-only -- the call at the assembly's root, and the binding holding its result
         const app = createApp() // red: stable-root -- built at import time, and a call result is not provably immutable
-        export const createCliAssembly = () => ({ app })
+        export const createCliAssembly = () => ({ app }) // red: assembly-builds-only -- builds nothing: what it returns was built at root
       `,
       "src/cli.driver.ts": `
         import { createCliAssembly } from "./cli.assembly.ts"
