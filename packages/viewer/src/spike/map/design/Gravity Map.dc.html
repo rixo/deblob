@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>html,body{margin:0;height:100%;background:#121316;color:#e6e4df;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}*{box-sizing:border-box}button{font-family:inherit;background:none;border:0;padding:0;color:inherit;cursor:pointer}a{color:#cfcdc7}a:hover{color:#f4f2ec}</style>
+<script src="map-consts.js"></script>
+<script src="map-theme.js"></script>
+<script src="box-spec.js"></script>
+<script src="place-sandbox.js"></script>
+<script src="gravity-layout.js"></script>
+</helmet>
+<div ref="{{ canvasRef }}" onPointerDown="{{ onDown }}" onPointerMove="{{ onMove }}" onPointerUp="{{ onUp }}" onDoubleClick="{{ onDbl }}" style="position:fixed;inset:0;overflow:hidden;user-select:none;-webkit-user-select:none;background-color:#121316;background-image:radial-gradient(#24262b 1px,transparent 1px);background-size:20px 20px;cursor:{{ cursor }}">
+  <div ref="{{ worldRef }}" style="position:absolute;left:0;top:0;transform-origin:0 0;visibility:{{ worldVis }}">
+    <sc-for list="{{ dirBoxes }}" as="b" hint-placeholder-count="0">
+      <div data-slot="{{ b.id }}" style="position:absolute;z-index:{{ b.z }};left:{{ b.x }}px;top:{{ b.y }}px;width:{{ b.w }}px;height:{{ b.h }}px;opacity:{{ b.op }};pointer-events:{{ b.pe }};transform:scale({{ b.sc }});transform-origin:50% 50%">
+        <dc-import name="Map - Box" id="{{ b.id }}" tier="{{ b.tier }}" kind="{{ b.kind }}" title="{{ b.title }}" pre="{{ b.pre }}" icon="{{ b.icon }}" open="{{ b.open }}" rows="{{ b.rows }}" actions="{{ b.actions }}" state="{{ b.state }}" sel="{{ b.sel }}" sel-rows="{{ b.selRows }}" on-select-row="{{ b.onRow }}" on-select="{{ b.onSelect }}" on-action="{{ b.onAction }}" on-hover="{{ b.onHover }}" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+      </div>
+    </sc-for>
+    <svg width="1" height="1" style="position:absolute;z-index:1;left:0;top:0;overflow:visible;pointer-events:none;opacity:{{ linkOp }};transition:opacity 140ms">
+      <sc-for list="{{ hitsUnder }}" as="l" hint-placeholder-count="0">
+        <path d="{{ l.d }}" fill="none" stroke="transparent" stroke-width="8" pointer-events="{{ l.pe }}" onMouseEnter="{{ l.onEnter }}" onMouseLeave="{{ l.onLeave }}" style="cursor:pointer"></path>
+      </sc-for>
+      <sc-for list="{{ tethers }}" as="l" hint-placeholder-count="0">
+        <path d="{{ l.d }}" fill="{{ l.c }}" stroke="none" opacity="{{ l.op }}"></path>
+      </sc-for>
+      <sc-for list="{{ linksUnder }}" as="l" hint-placeholder-count="0">
+        <path d="{{ l.d }}" fill="none" stroke="{{ l.c }}" stroke-width="{{ l.sw }}" opacity="{{ l.op }}"></path>
+      </sc-for>
+    </svg>
+    <sc-for list="{{ boxes }}" as="b" hint-placeholder-count="0">
+      <div data-slot="{{ b.id }}" style="position:absolute;z-index:{{ b.z }};left:{{ b.x }}px;top:{{ b.y }}px;width:{{ b.w }}px;height:{{ b.h }}px;opacity:{{ b.op }};pointer-events:{{ b.pe }};transform:scale({{ b.sc }});transform-origin:50% 50%">
+        <dc-import name="Map - Box" id="{{ b.id }}" tier="{{ b.tier }}" kind="{{ b.kind }}" title="{{ b.title }}" pre="{{ b.pre }}" icon="{{ b.icon }}" open="{{ b.open }}" rows="{{ b.rows }}" actions="{{ b.actions }}" state="{{ b.state }}" sel="{{ b.sel }}" sel-rows="{{ b.selRows }}" on-select-row="{{ b.onRow }}" on-select="{{ b.onSelect }}" on-action="{{ b.onAction }}" on-hover="{{ b.onHover }}" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+      </div>
+    </sc-for>
+    <svg width="1" height="1" style="position:absolute;z-index:3;left:0;top:0;overflow:visible;pointer-events:none;opacity:{{ linkOp }};transition:opacity 140ms">
+      <sc-for list="{{ linksOver }}" as="l" hint-placeholder-count="0">
+        <path d="{{ l.d }}" fill="none" stroke="{{ l.c }}" stroke-width="{{ l.sw }}" opacity="{{ l.op }}"></path>
+      </sc-for>
+      <sc-for list="{{ hitsOver }}" as="l" hint-placeholder-count="0">
+        <path d="{{ l.d }}" fill="none" stroke="transparent" stroke-width="8" pointer-events="{{ l.pe }}" onMouseEnter="{{ l.onEnter }}" onMouseLeave="{{ l.onLeave }}" style="cursor:pointer"></path>
+      </sc-for>
+    </svg>
+  </div>
+
+  <div data-ui="info" style="position:absolute;left:14px;top:12px;display:flex;align-items:baseline;gap:10px;padding:8px 12px;border-radius:9px;background:#16171a;border:1px solid #26282d">
+    <span style="font-size:13px;font-weight:600;color:#e6e4df;white-space:nowrap">Gravity map</span>
+    <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#8d8b85;white-space:nowrap">{{ graphName }}</span>
+  </div>
+
+  <div data-ui="bar" style="position:absolute;left:12px;right:12px;bottom:14px;width:fit-content;margin:0 auto;display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:11px;white-space:nowrap;background:#16171a;border:1px solid #26282d">
+    <button onClick="{{ toggleFocus }}" title="Show only the selection and its neighbours (space)" style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:{{ focusBg }};color:{{ focusFg }}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="4.5"></circle><path d="M8 1v2.5M8 12.5V15M1 8h2.5M12.5 8H15"></path><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"></circle></svg></button>
+    <button onClick="{{ toggleCentre }}" title="Centre the focus" style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:{{ centreBg }};color:{{ centreFg }}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5.5v-2.5a1.5 1.5 0 0 1 1.5-1.5h2.5M10.5 1.5h2.5a1.5 1.5 0 0 1 1.5 1.5v2.5M14.5 10.5v2.5a1.5 1.5 0 0 1-1.5 1.5h-2.5M5.5 14.5h-2.5a1.5 1.5 0 0 1-1.5-1.5v-2.5"></path><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"></circle></svg></button>
+    <button onClick="{{ toggleChain }}" title="Chain select: clicks add to the selection (or shift + click)" style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:{{ chainBg }};color:{{ chainFg }}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="8" height="8" rx="1.5"></rect><rect x="6.5" y="6.5" width="8" height="8" rx="1.5"></rect></svg></button>
+    <span style="width:1px;height:20px;background:#24262b;margin:0 4px"></span>
+    <button onClick="{{ toggleFlow }}" title="Flow constraint: importers left of what they import (between units)" style="height:26px;padding:0 10px;border-radius:7px;font-size:12px;display:flex;align-items:center;gap:6px;background:{{ flowBg }};color:{{ flowFg }}"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h11M9.5 4.5L13 8l-3.5 3.5"></path></svg>flow</button>
+    <button onClick="{{ toggleDirs }}" title="Directories as boxes; off: each directory is a star its units are pulled toward" style="height:26px;padding:0 10px;border-radius:7px;font-size:12px;background:{{ dirsBg }};color:{{ dirsFg }}">dir boxes</button>
+    <span style="width:1px;height:20px;background:#24262b;margin:0 4px"></span>
+    <sc-for list="{{ stops }}" as="s" hint-placeholder-count="4">
+      <button onClick="{{ s.onClick }}" title="+ / − keys: one level more or less (selection, else shown, else all). / : back to layers, selection exempt" style="height:26px;padding:0 10px;border-radius:7px;font-size:12px;background:{{ s.bg }};color:{{ s.fg }}">{{ s.label }}</button>
+    </sc-for>
+    <span style="width:1px;height:20px;background:#24262b;margin:0 4px"></span>
+    <sc-for list="{{ arrowStops }}" as="s" hint-placeholder-count="4">
+      <button onClick="{{ s.onClick }}" title="{{ s.title }}" style="height:26px;padding:0 9px;border-radius:7px;font-size:12px;background:{{ s.bg }};color:{{ s.fg }}">{{ s.label }}</button>
+    </sc-for>
+    <span style="width:1px;height:20px;background:#24262b;margin:0 4px"></span>
+    <button onClick="{{ fit }}" style="height:26px;padding:0 10px;border-radius:7px;font-size:12px;color:#c4c2bc">Fit</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;graph&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;deblob-seq&quot;,&quot;deblob-fine&quot;,&quot;ai-tools&quot;],&quot;default&quot;:&quot;deblob-seq&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;spread&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:40,&quot;max&quot;:260,&quot;step&quot;:5,&quot;default&quot;:110,&quot;tsType&quot;:&quot;number&quot;,&quot;unit&quot;:&quot;px&quot;},&quot;fusion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dirLabels&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;fusion&quot;,&quot;galaxy&quot;,&quot;none&quot;],&quot;default&quot;:&quot;galaxy&quot;,&quot;tsType&quot;:&quot;'fusion' | 'galaxy' | 'none'&quot;},&quot;dirRoots&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;lib&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;gap&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:10,&quot;max&quot;:80,&quot;step&quot;:2,&quot;default&quot;:28,&quot;tsType&quot;:&quot;number&quot;,&quot;unit&quot;:&quot;px&quot;},&quot;stability&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;min&quot;:0,&quot;max&quot;:3,&quot;step&quot;:0.05,&quot;default&quot;:0,&quot;tsType&quot;:&quot;number&quot;},&quot;orbit&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;min&quot;:0,&quot;max&quot;:3,&quot;step&quot;:0.05,&quot;default&quot;:0.5,&quot;tsType&quot;:&quot;number&quot;},&quot;cohesion&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;min&quot;:0.1,&quot;max&quot;:2,&quot;step&quot;:0.05,&quot;default&quot;:0.6,&quot;tsType&quot;:&quot;number&quot;},&quot;galaxy&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;min&quot;:0.1,&quot;max&quot;:5,&quot;step&quot;:0.1,&quot;default&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;energy&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;stress&quot;,&quot;metric&quot;,&quot;linlog&quot;],&quot;default&quot;:&quot;linlog&quot;,&quot;tsType&quot;:&quot;'stress' | 'metric' | 'linlog'&quot;,&quot;section&quot;:&quot;Energy&quot;},&quot;groupGap&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;min&quot;:0,&quot;max&quot;:4,&quot;step&quot;:0.1,&quot;default&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;mass&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;min&quot;:0,&quot;max&quot;:2,&quot;step&quot;:0.1,&quot;default&quot;:0.6,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Energy&quot;}}">
+// Gravity map (trial, docs/box-components.md): placement by gravity-layout.js
+// (one energy over the drawn nodes, docs/gravity-model.md; base targets and
+// the model from place-sandbox.js), every node a `Map - Box` part,
+// sizes from box-spec.js. Straight links, the arrow scale decides their
+// layer. Host untouched.
+// Rendering: one slot per model node in a fixed paint order (parents first),
+// kept mounted; a fold tweens slot geometry from JS (frameAt / tick).
+// sc-for keys by index, so the order must never change.
+const SRC = { 'deblob-seq': './data/deblob-seq-graph.js', 'deblob-fine': './data/deblob-fine-graph.js', 'ai-tools': './data/ai-tools-graph.js' };
+const STOPS = [['directories', 0], ['units', 1], ['layers', 2], ['modules', 3], ['members', 4]];
+const ARROWS = [['none', 'no arrows', 'No arrows'], ['under', 'under', 'Boxes above all arrows'], ['auto', 'auto', 'Hovered arrows (highest) above boxes, the rest under'], ['lit', 'lit above', 'Selected (high) and hovered arrows above boxes, the rest under'], ['over', 'above', 'All arrows above boxes']];
+// Arrow tiers, embryo of docs/selection-model.md § 2–3: rest (idle) · low
+// (outside the selection) · high (touches a selected leaf) · highest (the
+// hovered arrow, or arrows touching the hovered box; hover follows the tier,
+// so a low arrow or box gets none). Rest and low share one look.
+const LOOK = { rest: [REST_C(), 1, 0.3], low: [REST_C(), 1, 0.3], high: ['#e6e4df', 1.5, 0.85], highest: ['#f4f2ec', 2.2, 1] };
+function REST_C() { return '#6a6d75'; }
+const TW = 420, CTRL_KEY = 'deblob-gravity.controls.v1';
+const ON = '#e6e4df', REST = '#5d6068';
+const syms = n => (n.syms || []).filter(s => !s.typeOnly);
+const members = n => syms(n).map(s => s.name + (s.form === 'function' ? '()' : ''));
+const isU = n => n.type === 'unit' || n.type === 'driver';
+
+class Component extends DCLogic {
+  state = { ready: false, revealed: false, flow: false, dirs: true, focus: false, centre: false, chain: false, sel: [], depth: 2, folded: [], cards: [], arrows: 'auto', hover: null, hoverArrow: null, linksOn: true, dragging: false };
+  cam = { k: 0.8, x: 60, y: 90 };
+  last = new Map(); cbs = new Map(); acts = new Map(); sz = new Map(); lcbs = new Map();
+  lcb(k) { let c = this.lcbs.get(k); if (!c) { c = { onEnter: () => this.state.hoverArrow !== k && this.setState({ hoverArrow: k }), onLeave: () => this.state.hoverArrow === k && this.setState({ hoverArrow: null }) }; this.lcbs.set(k, c); } return c; }
+
+  componentDidMount() {
+    window.__gmap = this;   // console hook (as Host's __map); window.__energy overrides the energy tweak
+    this.load();
+    window.addEventListener('keydown', this.onKey);
+    window.addEventListener('pagehide', this.flush);
+    document.addEventListener('visibilitychange', this.onVis);
+  }
+  componentWillUnmount() { this.flush(); window.removeEventListener('keydown', this.onKey); window.removeEventListener('pagehide', this.flush); document.removeEventListener('visibilitychange', this.onVis); }
+
+  // ---- State restore (docs/state-restore.md, Session 47b) ----
+  // Controls are global; box state and viewport are per graph file. Captured
+  // through one path: save() from go(), set() and applyCam(), debounced
+  // 300 ms, flushed on pagehide / hidden. Nothing is written before restore.
+  keyV() { return 'deblob-gravity.view.v1:' + (SRC[this.props.graph] || SRC['deblob-seq']); }
+  readJSON(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+  set(patch) { this.setState(patch); this.save(); }
+  save() { if (!this._restored) return; clearTimeout(this._sv); this._sv = setTimeout(this.flush, 300); }
+  onVis = () => { if (document.visibilityState === 'hidden') this.flush(); };
+  flush = () => {
+    clearTimeout(this._sv); if (!this._restored || !this.M || !this._el) return;
+    // On pagehide / unmount the pane may already measure 0 × 0: use the last
+    // real size (a 0 width turned the saved centre into −x / k, 47b fix).
+    const { W, H } = this.size(), s = this.state, c = this.cam;
+    if (!W || !H) return;
+    try {
+      localStorage.setItem(CTRL_KEY, JSON.stringify({ flow: s.flow, dirs: s.dirs, arrows: s.arrows, chain: s.chain, focus: s.focus, centre: s.centre, depth: s.depth }));
+      localStorage.setItem(this.keyV(), JSON.stringify({ folded: s.folded, cards: s.cards, sel: s.sel, k: c.k, cx: (W / 2 - c.x) / c.k, cy: (H / 2 - c.y) / c.k, anchor: this.anchor(W, H), fp: this.fp(s) }));
+    } catch (e) {}
+  };
+  size() { const W = this._el ? this._el.clientWidth : 0, H = this._el ? this._el.clientHeight : 0; if (W > 0 && H > 0) this._sz = { W, H }; return this._sz || { W: 0, H: 0 }; }
+  // Fingerprint of everything the layout is a function of.
+  fp(s) {
+    const P = this.props, m = this.gmeta || {};
+    const t = JSON.stringify([SRC[P.graph] || SRC['deblob-seq'], m.generated || m.files || '', this.order.length, s.flow, s.dirs, s.focus, [...s.folded].sort(), [...s.cards].sort(),
+      s.focus ? [...s.sel].sort() : 0, P.spread ?? 110, P.cohesion ?? 0.6, P.stability ?? 0, P.gap ?? 28, P.fusion !== false, this.dirLabels(), P.dirRoots ?? 'lib', P.galaxy ?? 1, P.groupGap ?? 1, this.energy(), P.mass ?? 1, 'u1', s.focus ? P.orbit ?? 0.5 : 0, 'g1']);
+    let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36);
+  }
+  // The drawn closed box (card or folded box) nearest the screen centre, and
+  // its centre's screen offset from the screen centre.
+  anchor(W, H) {
+    const c = this.cam, cx = (W / 2 - c.x) / c.k, cy = (H / 2 - c.y) / c.k; let best = null, bd = Infinity;
+    for (const [id, r] of this.cur.L) { if (r.open) continue; const d = Math.hypot(r.x + r.w / 2 - cx, r.y + r.h / 2 - cy); if (d < bd) { bd = d; best = { id, dx: (r.x + r.w / 2 - cx) * c.k, dy: (r.y + r.h / 2 - cy) * c.k }; } }
+    return best;
+  }
+  restoreState() {
+    const M = this.M, C = this.readJSON(CTRL_KEY) || {}, V = this.readJSON(this.keyV());
+    const has = id => typeof id === 'string' && M.nodes.has(this.base(id));
+    const st = {
+      flow: typeof C.flow === 'boolean' ? C.flow : this.state.flow, dirs: typeof C.dirs === 'boolean' ? C.dirs : this.state.dirs,
+      arrows: ARROWS.some(a => a[0] === C.arrows) ? C.arrows : this.state.arrows, chain: !!C.chain, focus: !!C.focus, centre: !!C.centre,
+      depth: C.depth === null || (Number.isInteger(C.depth) && C.depth >= 0 && C.depth <= 4) ? C.depth : 2,
+    };
+    if (!st.dirs && st.depth === 0) st.depth = 1;
+    if (V && Array.isArray(V.folded)) { st.folded = V.folded.filter(id => M.nodes.has(id)); st.cards = (V.cards || []).filter(id => M.nodes.has(id)); st.sel = (V.sel || []).filter(has); }
+    else { const d = st.depth ?? 2; st.folded = [...this.PS.foldAt(M, Math.min(d, 3))]; st.cards = d >= 4 ? this.withRows : []; st.sel = []; }
+    return { st, V };
+  }
+  placeCamera(V, s) {
+    const W = this._el.clientWidth, H = this._el.clientHeight, L = this.cur.L;
+    const ok = v => typeof v === 'number' && isFinite(v);
+    if (V && ok(V.k) && ok(V.cx) && ok(V.cy) && V.fp === this.fp(s)) { const k = V.k; this.cam = { k, x: W / 2 - V.cx * k, y: H / 2 - V.cy * k }; }
+    else if (V && ok(V.k) && V.anchor && L.has(V.anchor.id)) { const r = L.get(V.anchor.id), k = V.k; this.cam = { k, x: W / 2 + V.anchor.dx - (r.x + r.w / 2) * k, y: H / 2 + V.anchor.dy - (r.y + r.h / 2) * k }; }
+    else { this.fit(); return; }
+    const c = this.cam, onScreen = [...L.values()].some(r => { const x = r.x * c.k + c.x, y = r.y * c.k + c.y; return x < W && y < H && x + r.w * c.k > 0 && y + r.h * c.k > 0; });
+    if (!onScreen) this.fit(); else this.applyCam();
+  }
+  // + / − (Session 46p): open or fold one level, on the selection and what
+  // it holds; else, under focus, on the shown boxes; else on everything.
+  // + opens the coarsest level still folded in scope, − folds the finest
+  // level still open. Levels: directory (dir boxes on) · unit · layer ·
+  // members (cards with rows).
+  onKey = ev => {
+    if (ev.ctrlKey || ev.metaKey || ev.altKey || !this.M) return;
+    const t = ev.target; if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (ev.key === '+' || ev.key === '=') { ev.preventDefault(); this.step(1); }
+    else if (ev.key === '-' || ev.key === '_') { ev.preventDefault(); this.step(-1); }
+    else if (ev.key === '/') { ev.preventDefault(); this.reset(); }
+    else if (ev.key === '0') { ev.preventDefault(); this.fit(); }
+    else if (ev.key === ' ') { ev.preventDefault(); this.go({ focus: !this.state.focus }, this.state.sel[0], !this.state.focus); }
+  };
+  // / (Session 46r): back to the layers stop (units open, layers folded, no
+  // members). The selection is exempt: selected boxes and what they hold keep
+  // their state, and their holders stay open so they stay drawn.
+  reset() {
+    const s = this.state, M = this.M, F = this.PS.foldAt(M, 2), C = new Set();
+    if (s.sel.length) {
+      const keep = new Set(), add = id => { if (keep.has(id)) return; keep.add(id); M.nodes.get(id).kids.forEach(add); };
+      s.sel.forEach(id => M.nodes.has(this.base(id)) && add(this.base(id)));
+      const oF = new Set(s.folded), oC = new Set(s.cards);
+      for (const id of keep) { oF.has(id) ? F.add(id) : F.delete(id); if (oC.has(id)) C.add(id); }
+      for (const id of s.sel) for (let p = M.nodes.get(this.base(id)) && M.nodes.get(this.base(id)).parent; p && M.nodes.has(p); p = M.nodes.get(p).parent) F.delete(p);
+    }
+    this.timeIt('reset');
+    this.go({ folded: [...F], cards: [...C], depth: s.sel.length ? null : 2 });
+  }
+  levelOf(n) {
+    if (n.type === 'dir') return n.depth > 0 && this.state.dirs ? 0 : -1;
+    if (isU(n)) return 1; if (n.type === 'layer') return 2;
+    return n.type === 'item' && members(n).length ? 3 : -1;
+  }
+  scope() {
+    const s = this.state, M = this.M;
+    if (s.sel.length) { const out = new Set(), add = id => { if (out.has(id)) return; out.add(id); M.nodes.get(id).kids.forEach(add); }; s.sel.forEach(id => M.nodes.has(this.base(id)) && add(this.base(id))); return { ids: out, all: false }; }
+    const sh = this.cur && this.cur.shown;
+    if (sh) return { ids: new Set(this.order.filter(id => { const n = M.nodes.get(id); return n.type === 'item' ? sh.has(n.li) : (M.leafIdx.get(id) || []).some(i => sh.has(i)); })), all: false };
+    return { ids: new Set(this.order), all: true };
+  }
+  step(dir) {
+    const s = this.state, F = new Set(s.folded), C = new Set(s.cards), { ids, all } = this.scope();
+    const isOpen = n => n.type === 'item' ? C.has(n.id) : !F.has(n.id), by = [[], [], [], []];
+    for (const id of ids) { const n = this.M.nodes.get(id), l = this.levelOf(n); if (l >= 0) by[l].push(n); }
+    let lv = -1;
+    if (dir > 0) { for (let l = 0; l < 4; l++) if (by[l].some(n => !isOpen(n))) { lv = l; break; } }
+    else for (let l = 3; l >= 0; l--) if (by[l].some(isOpen)) { lv = l; break; }
+    if (lv < 0) return;
+    for (const n of by[lv]) { if (n.type === 'item') dir > 0 ? C.add(n.id) : C.delete(n.id); else dir > 0 ? F.delete(n.id) : F.add(n.id); }
+    this.timeIt(dir > 0 ? 'expand' : 'collapse');
+    this.go({ folded: [...F], cards: [...C], depth: all ? (dir > 0 ? lv + 1 : lv) : null });
+  }
+  componentDidUpdate(pp) { if (this._tm) { const m = this._tm; this._tm = null; console.log(`[gravity] ${m.label}: ${Math.round(performance.now() - m.t0)} ms commit`); } if (pp.graph !== this.props.graph) this.load();
+    else if (pp.fusion !== this.props.fusion || pp.fusionDirs !== this.props.fusionDirs || pp.dirLabels !== this.props.dirLabels || pp.dirRoots !== this.props.dirRoots || pp.galaxy !== this.props.galaxy || pp.groupGap !== this.props.groupGap || pp.energy !== this.props.energy || pp.mass !== this.props.mass) { this.sz.clear(); this.acts.clear(); this.go({}); }
+    else if (pp.stability !== this.props.stability || pp.orbit !== this.props.orbit) this.go({});
+    else if (pp.spread !== this.props.spread || pp.gap !== this.props.gap || pp.cohesion !== this.props.cohesion) { this._T = {}; this.go({}); } }
+  // Cluster readout (docs/gravity-model.md "Energies"): per directory,
+  // members' mean distance to their own star ÷ to the nearest other star.
+  report(r) { if (!r.rows.length) return; console.log(`[gravity] energy=${r.energy} cluster ratio mean ${r.mean.toFixed(2)}, proj move ${Math.round(r.proj)} px · ` + r.rows.map(x => `${x.id.split('/').pop()} ${isNaN(x.ratio) ? '–' : x.ratio.toFixed(2)} (${x.n})`).join(' · ')); }
+  energy() { return window.__energy || this.props.energy || 'stress'; }
+  opts() { return { spread: this.props.spread ?? 110, cohesion: this.props.cohesion ?? 0.6, gap: this.props.gap ?? 28, stability: this.props.stability ?? 0, orbit: this.props.orbit ?? 0.5 }; }
+
+  async load() {
+    while (!(window.PlaceSandbox && window.GravityLayout && window.BoxSpec && window.MapConsts && window.MapTheme)) await new Promise(r => setTimeout(r, 30));
+    const g = await import(SRC[this.props.graph] || SRC['deblob-seq']);
+    // Widths are measured on a canvas: measure only once the webfonts are in.
+    if (document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]);
+    window.BoxSpec.clearCache();
+    this._restored = false; this.gmeta = g.meta;
+    this.PS = window.PlaceSandbox; this.M = this.PS.prepare(g); this._T = {};
+    this._slots = null; this.tw = null; this.last.clear(); this.cbs.clear(); this.acts.clear(); this.sz.clear();
+    const M = this.M, order = [];
+    const walk = id => { order.push(id); M.nodes.get(id).kids.forEach(walk); };
+    M.roots.forEach(walk);
+    this.order = order;
+    this.withRows = order.filter(id => { const n = M.nodes.get(id); return n.type === 'item' && members(n).length; });
+    const { st, V } = this.restoreState();
+    this.cur = this.compute({ ...this.state, ...st });
+    for (const [id, r] of this.cur.L) this.last.set(id, r);
+    this._t0 = performance.now();
+    this.setState({ ready: true, revealed: false, ...st }, () => { this.placeCamera(V, { ...this.state, ...st }); this.reveal(); });
+  }
+  // Show the world once every part is mounted (or after 1.5 s), in one step.
+  reveal() {
+    const n = this.order.length, t0 = this._t0;
+    const poll = () => {
+      const k = this._w ? this._w.querySelectorAll(':scope > [data-slot] [data-node]').length : 0;
+      if (k >= n || performance.now() - t0 > 1500) { console.log(`[gravity] revealed: ${k}/${n} parts, ${Math.round(performance.now() - t0)} ms`); this._restored = true; this.setState({ revealed: true }); }
+      else requestAnimationFrame(poll);
+    };
+    requestAnimationFrame(poll);
+  }
+  timeMount() {
+    const n = this.order.length, t0 = this._t0;
+    const poll = () => { const k = document.querySelectorAll('[data-slot] [data-node]').length; if (k >= n || performance.now() - t0 > 20000) console.log(`[gravity] ${k}/${n} parts mounted in ${Math.round(performance.now() - t0)} ms`); else requestAnimationFrame(poll); };
+    requestAnimationFrame(poll);
+  }
+  // Commit time (render + React commit of every part), measured to the page's
+  // componentDidUpdate, so rAF throttling of a hidden preview does not count.
+  timeIt(label) { this._tm = { label, t0: performance.now() }; }
+
+  // Box sizes come from the part's own spec: layout and paint read one source.
+  // Labels prepended: directory path (fusion dirs) then fused holders.
+  propsOf(n, open) {
+    const b = this.propsOf0(n, open);
+    if (this.fz && this.fz.has(n.id)) return b;
+    const ch = this.up && this.up.has(n.id) ? this.chainOf(n.id) : [], top = ch.length ? ch[ch.length - 1] : n.id;
+    const lab = p => { const q = this.M.nodes.get(p); return { t: q.label, tier: q.type === 'dir' ? 'dir' : 'unit' }; };
+    const pre = [...this.dirPre(top).map(lab), ...ch.slice().reverse().map(lab)];
+    return pre.length ? { ...b, pre } : b;
+  }
+  // Fusion dirs (tweak, default on, Session 46z'): with directory boxes off,
+  // a box placed straight in a directory carries its directory path. Skipped:
+  // directories every node shares, and a root directory (`dirRoots`, default
+  // "lib") with everything above it.
+  // Directory labels with dir boxes off (radio): fusion (path prefixed to
+  // each planet) · galaxy (each directory a star node) · none.
+  // `fusionDirs: false` (older tweak) reads as none.
+  dirLabels() { const v = this.props.dirLabels; return v === 'galaxy' || v === 'none' || v === 'fusion' ? v : this.props.fusionDirs === false ? 'none' : 'fusion'; }
+  skipDir(p) {
+    const M = this.M, q = M.nodes.get(p), roots = String(this.props.dirRoots ?? 'lib').split(',').map(x => x.trim()).filter(Boolean);
+    if (roots.includes(q.label) || (M.leafIdx.get(p) || []).length === M.leaves.length) return true;
+    for (const n of M.nodes.values()) if (n.type === 'dir' && roots.includes(n.label)) for (let a = n.parent; a && M.nodes.has(a); a = M.nodes.get(a).parent) if (a === p) return true;
+    return false;
+  }
+  // Layout clusters (every mode with dir boxes off); drawn as stars in galaxy.
+  clustersOf(st) { return st.dirs ? null : this.starsOf({ ...st }, true); }
+  starsOf(st, any) {
+    if (st.dirs || (!any && this.dirLabels() !== 'galaxy')) return null;
+    // Every directory is a star except those holding the whole graph
+    // (`dirRoots` is a fusion-label rule; in galaxy lib is a star too).
+    const M = this.M, out = new Set(); for (const n of M.nodes.values()) if (n.type === 'dir' && (M.leafIdx.get(n.id) || []).length < M.leaves.length) out.add(n.id);
+    return out;
+  }
+  dirPre(id) {
+    if (this._dirs || this.dirLabels() !== 'fusion') return [];
+    const M = this.M, n = M.nodes.get(id), roots = String(this.props.dirRoots ?? 'lib').split(',').map(x => x.trim()).filter(Boolean), out = [];
+    for (let p = n.parent; p && M.nodes.has(p); p = M.nodes.get(p).parent) {
+      const q = M.nodes.get(p); if (q.type !== 'dir') return [];
+      if (roots.includes(q.label) || (M.leafIdx.get(p) || []).length === M.leaves.length) break;
+      out.push(p);
+    }
+    return out.reverse();
+  }
+  // Star label (Session 48d): the directory's path relative to the nearest
+  // `dirRoots` directory (`lib` → `lib`, `lib/cases` → `cases`, `drivers` →
+  // `../drivers`), shortest over several roots. No root in the graph: the
+  // plain label. The root itself keeps its name (an empty path reads as
+  // nothing).
+  starLabel(n) {
+    const M = this.M, roots = String(this.props.dirRoots ?? 'lib').split(',').map(x => x.trim()).filter(Boolean);
+    const R = [...M.nodes.values()].filter(q => q.type === 'dir' && roots.includes(q.label));
+    if (!R.length) return n.label;
+    const line = id => { const a = []; for (let p = id; p && M.nodes.has(p); p = M.nodes.get(p).parent) a.unshift(p); return a; };
+    const A = line(n.id); let best = null;
+    for (const r of R) {
+      if (r.id === n.id) return n.label;
+      const B = line(r.id); let c = 0; while (c < A.length && c < B.length && A[c] === B[c]) c++;
+      const ups = B.length - c, down = A.slice(c).map(id => M.nodes.get(id).label);
+      const parts = [...Array(ups).fill('..'), ...down];
+      if (!best || parts.length < best.length) best = parts;
+    }
+    return best.join('/');
+  }
+  propsOf0(n, open) {
+    if (n.type === 'item') { const rows = members(n); return { tier: 'card', kind: n.kind, title: n.label, rows, actions: rows.length ? [{ id: 'fold', glyph: 'chev', on: open }] : [] }; }
+    if (n.type === 'dir' && !this._dirs && this.dirLabels() === 'galaxy') return { tier: 'star', kind: null, icon: null, title: this.starLabel(n), actions: [] };
+    const tier = n.type === 'layer' ? 'group' : n.type === 'dir' ? 'dir' : 'unit';
+    return { tier, kind: n.type === 'layer' ? n.kind : null, icon: n.type === 'layer' ? n.kind : null, title: n.label, actions: [{ id: 'fold', glyph: 'chev', on: open }] };
+  }
+  get metrics() {
+    const BS = window.BoxSpec, memo = (k, f) => { let v = this.sz.get(k); if (!v) { v = f(); this.sz.set(k, v); } return v; };
+    return this._mx || (this._mx = {
+      leaf: (n, open) => memo(n.id + '|' + open, () => { const s = BS.spec({ ...this.propsOf(n, open), open }); return { w: s.w, h: s.h }; }),
+      folded: n => memo(n.id + '|f', () => { const s = BS.spec({ ...this.propsOf(n, false), open: false }); return { w: s.w, h: s.h }; }),
+      star: n => memo(n.id + '|s', () => { const s = BS.spec({ tier: 'star', title: this.starLabel(n) }); return { w: s.w, h: s.h }; }),
+      head: n => memo(n.id + '|h', () => { const s = BS.spec({ ...this.propsOf(n, true), open: true, bodyH: 0 }); return { head: s.headH, padX: s.padX, padB: s.padBottom }; }),
+    });
+  }
+  targets(flow) { const k = (flow ? 'f' : 's') + (this.props.cohesion ?? 0.6); return this._T[k] || (this._T[k] = this.PS.ideal(this.M, { ...this.opts(), flow })); }
+  // A selected member ('item#symbol') counts as its card for participants,
+  // scope and holders until the model has member-level links.
+  base(id) { return this.M.nodes.has(id) ? id : String(id).split('#')[0]; }
+  partOf(sel) {
+    // A star relates to its planets by containment, not by links (Session
+    // 47l): selecting it lights its members (Mb) and its tethers, no import.
+    const M = this.M, S = new Set(), Mb = new Set(), stars = new Set(), star = this.starsOf(this.state);
+    for (const id of sel) {
+      const n = M.nodes.get(this.base(id)); if (!n) continue;
+      if (star && star.has(id)) { stars.add(id); (M.leafIdx.get(id) || []).forEach(i => Mb.add(i)); continue; }
+      (n.type === 'item' ? [n.li] : M.leafIdx.get(id) || []).forEach(i => S.add(i));
+    }
+    const P = new Set([...S, ...Mb]); for (const i of S) for (const j of M.adj[i]) P.add(j);
+    return { S, P, stars, any: S.size + Mb.size > 0 };
+  }
+  // Fusion (tweak, default on, Session 46y): a unit or directory holding a
+  // single box (not a card) is drawn as that box, holder labels prepended
+  // in their own type. The fused node is folded when any box of its chain
+  // is; holders count as open.
+  fuseOf(st) {
+    if (this.props.fusion === false) return null;
+    const M = this.M, f = new Map();
+    for (const n of M.nodes.values()) {
+      if (n.type === 'item' || n.type === 'layer' || (n.type === 'dir' && !st.dirs)) continue;
+      const ks = n.kids.filter(k => !(!st.dirs && isU(n) && isU(M.nodes.get(k))));
+      if (ks.length === 1 && M.nodes.get(ks[0]).type !== 'item') f.set(n.id, ks[0]);
+    }
+    return f;
+  }
+  chainOf(id) { const out = []; for (let p = this.up && this.up.get(id); p; p = this.up.get(p)) out.push(p); return out; }
+  compute(st) {
+    const fuse = this.fuseOf(st); this.fz = fuse; this._dirs = !!st.dirs; this.up = new Map(); if (fuse) for (const [p, k] of fuse) this.up.set(k, p);
+    const F0 = new Set(st.folded), F = new Set(F0);
+    if (fuse) for (const k of this.up.keys()) { if (fuse.has(k)) continue; const ch = this.chainOf(k); if (F0.has(k) || ch.some(p => F0.has(p))) F.add(k); ch.forEach(p => F.delete(p)); }
+    const C = new Set(st.cards), part = this.partOf(st.sel || []), shown = st.focus && part.any ? part.P : null;
+    const L = window.GravityLayout.layout(this.M, this.targets(st.flow), F, { ...this.opts(), dirs: st.dirs, shown, sel: shown ? part.S : null, openCards: C, metrics: this.metrics, fuse, clusters: this.clustersOf(st), showStars: !!this.starsOf(st), galaxy: this.props.galaxy ?? 1, groupGap: this.props.groupGap ?? 1, energy: this.energy(), llMass: this.props.mass ?? 1, report: r => this.report(r) });
+    return { L, F, C, shown };
+  }
+  relay() { this.cur = this.compute(this.state); for (const [id, r] of this.cur.L) this.last.set(id, r); this.forceUpdate(); }
+  // A new state. World coordinates are a function of the state; the camera
+  // moves so the anchor stays put (docs/transition-model.md "Anchor", 48h):
+  // the anchor is what the user just acted on (chevron, card, selection:
+  // its first member), lifted to the nearest holder drawn in both frames;
+  // its top-left keeps its screen position through the whole tween. With
+  // no anchor (keys, stops, mode switches, tweaks) the area-weighted centre
+  // of the boxes drawn in both frames holds instead, so the picture never
+  // flies out of view. Camera only: the world stays a function of state.
+  // `centre` (K5, control "centre focus"): the anchor tweens to the screen
+  // centre instead of holding; asked by select / focus when the result is a
+  // selection under focus.
+  go(patch, anchor, centre) {
+    if ('dirs' in patch && patch.dirs !== this.state.dirs) { this.sz.clear(); this.acts.clear(); }
+    const s = { ...this.state, ...patch }, A = this.cur, B = this.compute(s);
+    for (const [id, r] of B.L) this.last.set(id, r);
+    this.cur = B;
+    this.tw = { A, B, t0: performance.now(), anchor: this.liftAnchor(anchor, A, B), pin: null, centre: null }; this._fm = null;
+    const R0 = this.frameAt(0);
+    // K5: centring opens a focus session and remembers the camera and the
+    // anchor's place (`home`); the transition that ends the session (focus
+    // off, or nothing selected) tweens the camera back there, corrected by
+    // the anchor's displacement between the two worlds (zoom restored).
+    const inFocus = s.focus && s.sel.length > 0;
+    if (centre && this.state.centre && inFocus && this.tw.anchor && this._el) { const f = R0.get(this.tw.anchor), c = this.cam, W = this._el.clientWidth, H = this._el.clientHeight;
+      if (!this.home) this.home = { cam: { ...c }, ref: this.tw.anchor, rx: f.x, ry: f.y };
+      this.tw.centre = { from: { x: (f.x + f.w / 2) * c.k + c.x, y: (f.y + f.h / 2) * c.k + c.y, k: c.k }, to: { x: W / 2, y: (H - 30) / 2, k: Math.max(c.k, 1) } }; }
+    else if (this.home && !inFocus) { const hm = this.home, ref = this.liftAnchor(hm.ref, A, B) === hm.ref ? B.L.get(hm.ref) : null, k = hm.cam.k;
+      // Straight path: the anchor's screen point goes from where it is now to
+      // where it sits in the home view (a line), zoom eased alongside; the
+      // world's own motion is absorbed frame by frame (see tick).
+      const f0 = this.tw.anchor && R0.get(this.tw.anchor), c = this.cam;
+      if (f0 && ref) this.tw.home = { from: { x: (f0.x + f0.w / 2) * c.k + c.x, y: (f0.y + f0.h / 2) * c.k + c.y, k: c.k }, to: { x: (hm.rx + f0.w / 2) * k + hm.cam.x, y: (hm.ry + f0.h / 2) * k + hm.cam.y, k } };
+      else this.tw.home = { from: { ...this.cam }, to: { ...hm.cam }, cam: true }; this.home = null; }
+    this.armCam(R0);
+    this.setState({ ...patch, linksOn: false }); this.save();
+    cancelAnimationFrame(this._raf); this._raf = requestAnimationFrame(this.tick);
+  }
+  // Tween (Session 46z''), for every box: a box present before and after
+  // moves with its nearest such ancestor (offsets lerp in the ancestor's
+  // frame), so nothing slides out of its holder. A box that appears (or
+  // leaves) is drawn at its final (or first) size, scaled about the centre
+  // of that stable ancestor by s = min(ancestor w ratio, h ratio): it grows
+  // or shrinks in place and stays inside. Written to the DOM per frame.
+  twT() { return this.tw ? Math.min(1, (performance.now() - this.tw.t0) / TW) : 1; }
+  // Centre focus turned on during a focus session (K5, retroactive): tween
+  // the camera as a select would have, same world (A = B), opening the
+  // session (`home`) if none is open.
+  centreNow() { const s = this.state, A = this.cur; this.tw = { A, B: A, t0: performance.now(), anchor: this.liftAnchor(s.sel[0], A, A), pin: null, centre: null }; this._fm = null;
+    const R0 = this.frameAt(0), f = this.tw.anchor && R0.get(this.tw.anchor), c = this.cam; if (!f || !this._el) { this.tw = null; return; }
+    const W = this._el.clientWidth, H = this._el.clientHeight;
+    if (!this.home) this.home = { cam: { ...c }, ref: this.tw.anchor, rx: f.x, ry: f.y };
+    this.tw.centre = { from: { x: (f.x + f.w / 2) * c.k + c.x, y: (f.y + f.h / 2) * c.k + c.y, k: c.k }, to: { x: W / 2, y: (H - 30) / 2, k: Math.max(c.k, 1) } };
+    this.armCam(R0); cancelAnimationFrame(this._raf); this._raf = requestAnimationFrame(this.tick); }
+  // Hold path: the pin's screen point at t0 stays where it is (a = b).
+  armCam(R0) { const tw = this.tw; tw.exp = null; if (tw.home || tw.centre) { tw.pin = this.pinOf(R0); return; } const p = this.pinOf(R0), c = this.cam; tw.pin = p ? { x: p.x * c.k + c.x, y: p.y * c.k + c.y, k: c.k } : null; }
+  liftAnchor(id, A, B) { if (!id || typeof id !== 'string') return null; for (let p = this.M.nodes.has(id) ? id : id.split('#')[0]; p && this.M.nodes.has(p); p = this.M.nodes.get(p).parent) if (A.L.has(p) && B.L.has(p)) return p; return null; }
+  // The world point the camera holds at a frame: the anchor's top-left, else
+  // the area-weighted centre of every box drawn in both frames.
+  pinOf(R) {
+    const { A, B, anchor } = this.tw;
+    if (anchor) { const f = R.get(anchor); if (f) return this.tw.home || this.tw.centre ? { x: f.x + f.w / 2, y: f.y + f.h / 2 } : { x: f.x, y: f.y }; }
+    let sx = 0, sy = 0, sw = 0;
+    for (const [id, f] of R) if (A.L.has(id) && B.L.has(id)) { const w = f.w * f.h; sx += (f.x + f.w / 2) * w; sy += (f.y + f.h / 2) * w; sw += w; }
+    return sw ? { x: sx / sw, y: sy / sw } : null;
+  }
+  frameAt(t) {
+    const { A, B } = this.tw, M = this.M, e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, R = new Map();
+    const both = id => A.L.has(id) && B.L.has(id);
+    const stableUp = id => { for (let p = M.nodes.get(id).parent; p && M.nodes.has(p); p = M.nodes.get(p).parent) if (both(p) && R.has(p)) return p; return null; };
+    const L = (a, b) => a + (b - a) * e;
+    for (const id of this.order) {
+      const a = A.L.get(id), b = B.L.get(id);
+      if (!a && !b) continue;
+      const q = stableUp(id), Q = q && R.get(q);
+      if (a && b) {
+        if (Q) { const qa = A.L.get(q), qb = B.L.get(q); R.set(id, { x: Q.x + L(a.x - qa.x, b.x - qb.x), y: Q.y + L(a.y - qa.y, b.y - qb.y), w: L(a.w, b.w), h: L(a.h, b.h), s: 1, op: 1 }); }
+        else R.set(id, { x: L(a.x, b.x), y: L(a.y, b.y), w: L(a.w, b.w), h: L(a.h, b.h), s: 1, op: 1 });
+        continue;
+      }
+      const r = b || a, ref = Q && (b ? B : A).L.get(q);
+      const op = b ? Math.min(1, e * 2) : Math.max(0, 1 - e * 2);
+      if (!Q) { R.set(id, { ...r, s: 1, op }); continue; }
+      const s = Math.max(0.001, Math.min(1, Q.w / ref.w, Q.h / ref.h));
+      const cx = Q.x + Q.w / 2 + s * (r.x + r.w / 2 - (ref.x + ref.w / 2)), cy = Q.y + Q.h / 2 + s * (r.y + r.h / 2 - (ref.y + ref.h / 2));
+      R.set(id, { x: cx - r.w / 2, y: cy - r.h / 2, w: r.w, h: r.h, s, op });
+    }
+    return R;
+  }
+  tick = () => {
+    if (!this.tw) return;
+    const t = this.twT(), R = this.frameAt(t);
+    // Camera follows the pin by its move since the last frame (incremental,
+    // so a pan or zoom during the tween composes instead of being undone).
+    // One camera law (Session 48k): a path = the pin's screen point travels
+    // a→b (eased) while the zoom eases a.k→b.k in log space; the hold is the
+    // degenerate path (a = b, same k). Applied as the delta from the last
+    // frame's expected camera, so a pan or zoom mid-tween composes.
+    { const path = this.tw.home || this.tw.centre, e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, c = this.cam;
+      const p = path && path.cam ? null : this.pinOf(R), pin = this.tw.pin;
+      let want = null;
+      if (path && path.cam) { const { from: a, to: b } = path; want = { k: Math.exp(Math.log(a.k) + (Math.log(b.k) - Math.log(a.k)) * e), x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e }; }
+      else if (p) { const { from: a, to: b } = path || { from: pin, to: pin }, k = path ? Math.exp(Math.log(a.k) + (Math.log(b.k) - Math.log(a.k)) * e) : c.k;
+        if (a && b) want = { k, x: a.x + (b.x - a.x) * e - p.x * k, y: a.y + (b.y - a.y) * e - p.y * k }; }
+      if (want) { const ex = this.tw.exp; if (ex) { this.cam = { k: want.k * (c.k / ex.k), x: want.x + (c.x - ex.x), y: want.y + (c.y - ex.y) }; } else this.cam = want; this.tw.exp = want; this.applyCam(); } }
+    if (!this._slots && this._w) { this._slots = new Map(); this._w.querySelectorAll(':scope > [data-slot]').forEach(el => this._slots.set(el.dataset.slot, el)); }
+    if (this._slots) for (const [id, el] of this._slots) {
+      const f = R.get(id), st = el.style;
+      if (!f) { st.opacity = 0; continue; }
+      st.left = f.x + 'px'; st.top = f.y + 'px'; st.width = f.w + 'px'; st.height = f.h + 'px'; st.transform = 'scale(' + f.s + ')'; st.opacity = f.op; st.pointerEvents = t < 1 ? 'none' : (this.cur.L.has(id) ? 'auto' : 'none');
+    }
+    if (t < 1) this._raf = requestAnimationFrame(this.tick);
+    else { this.tw = null; this.setState({ linksOn: true }); }
+  };
+  toggleFold(id) { const f = new Set(this.state.folded), ch = [id, ...this.chainOf(id)];
+    if (ch.length > 1) { if (ch.some(x => f.has(x))) ch.forEach(x => f.delete(x)); else f.add(id); } else f.has(id) ? f.delete(id) : f.add(id); this.timeIt('fold'); this.go({ folded: [...f] }, id); }
+  toggleCard(id) { const c = new Set(this.state.cards); c.has(id) ? c.delete(id) : c.add(id); this.timeIt('card'); this.go({ cards: [...c] }, id); }
+  select(id, add) {
+    const s = this.state, cur = s.sel;
+    const sel = !id ? [] : add ? (cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]) : (cur.length === 1 && cur[0] === id ? [] : [id]);
+    this.timeIt('select');
+    if (s.focus) this.go({ sel }, sel[0] || cur[0], sel.length > 0); else this.set({ sel });
+  }
+  cb(id) {
+    let c = this.cbs.get(id);
+    if (!c) {
+      const n = this.M.nodes.get(id);
+      c = {
+        onSelect: e => { if (!this._sup) this.select(id, (e && e.shift) || this.state.chain); },
+        onRow: (i, e) => { if (!this._sup) this.select(id + '#' + syms(n)[i].name, (e && e.shift) || this.state.chain); },
+        onAction: () => { if (this._sup) return; n.type === 'item' ? this.toggleCard(id) : this.toggleFold(id); },
+        onHover: on => { if (on) { if (this.state.hover !== id) { this.timeIt('hover'); this.setState({ hover: id }); } } else if (this.state.hover === id) this.setState({ hover: null }); },
+      };
+      this.cbs.set(id, c);
+    }
+    return c;
+  }
+  actsOf(n, open) { const k = n.id + '|' + open; let a = this.acts.get(k); if (!a) { a = this.propsOf(n, open).actions; this.acts.set(k, a); } return a; }
+
+  // Camera: written to the DOM, never through state (no re-render on pan/zoom).
+  worldRef = el => { this._w = el; this.applyCam(); };
+  applyCam() { if (this._w) this._w.style.transform = `translate(${this.cam.x}px,${this.cam.y}px) scale(${this.cam.k})`; this.size(); this.save(); }
+  canvasRef = el => { if (el && el !== this._el) { this._el = el; el.addEventListener('wheel', this.onWheel, { passive: false }); } };
+  onWheel = ev => {
+    if (ev.target.closest && ev.target.closest('[data-ui]')) return;
+    ev.preventDefault();
+    const r = this._el.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top, c = this.cam;
+    if (!(ev.ctrlKey || ev.metaKey)) {
+      // Shift + wheel pans horizontally (some browsers already swap the axes
+      // themselves: then deltaY is 0 and deltaX carries it).
+      if (ev.shiftKey && !ev.deltaX) c.x -= ev.deltaY; else { c.x -= ev.deltaX; c.y -= ev.deltaY; }
+      this.applyCam(); return;
+    }
+    // Progressive: 0.0025 per pixel of delta (was 0.01), line / page modes
+    // scaled to pixels, one event capped at ±0.15 (was ±0.5).
+    const dy = ev.deltaY * (ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? 400 : 1);
+    const k = Math.max(0.12, Math.min(2.5, c.k * Math.exp(Math.max(-0.15, Math.min(0.15, -dy * 0.0025)))));
+    c.x = px - (px - c.x) * k / c.k; c.y = py - (py - c.y) * k / c.k; c.k = k; this.applyCam();
+  };
+  onDown = ev => { if (ev.target.closest('[data-ui]') || ev.button > 2) return; this.drag = { x: ev.clientX, y: ev.clientY, cx: this.cam.x, cy: this.cam.y, moved: false, onNode: !!ev.target.closest('[data-slot]') }; };
+  onMove = ev => {
+    const d = this.drag; if (!d) return;
+    const dx = ev.clientX - d.x, dy = ev.clientY - d.y;
+    if (!d.moved && Math.abs(dx) + Math.abs(dy) > 4) { d.moved = true; try { this._el.setPointerCapture(ev.pointerId); } catch (e) {} this.setState({ dragging: true }); }
+    if (d.moved) { this.cam.x = d.cx + dx; this.cam.y = d.cy + dy; this.applyCam(); }
+  };
+  onUp = () => {
+    const d = this.drag; this.drag = null; if (!d) return;
+    if (d.moved) { this._sup = true; setTimeout(() => { this._sup = false; }, 0); this.setState({ dragging: false }); return; }
+    if (!d.onNode && this.state.sel.length) this.select(null);
+  };
+  onDbl = ev => { if (!ev.target.closest('[data-slot]') && !ev.target.closest('[data-ui]')) this.fit(); };
+  fit = () => {
+    if (!this.cur || !this._el) return;
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const r of this.cur.L.values()) { x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y); x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h); }
+    const W = this._el.clientWidth, H = this._el.clientHeight, m = 70;
+    const k = Math.max(0.12, Math.min(1.4, Math.min((W - 2 * m) / (x1 - x0), (H - 2 * m - 50) / (y1 - y0))));
+    const to = { k, x: (W - k * (x1 + x0)) / 2, y: (H - 30 - k * (y1 + y0)) / 2 };
+    if (!this.state.ready || (this.tw && this.tw.A !== this.tw.B)) { this.cam = to; this.applyCam(); return; }   // restore / mid-relayout: jump
+    const A = this.cur; this.tw = { A, B: A, t0: performance.now(), anchor: null, pin: null, centre: null, home: { from: { ...this.cam }, to, cam: true } }; this._fm = null;
+    this.armCam(this.frameAt(0)); cancelAnimationFrame(this._raf); this._raf = requestAnimationFrame(this.tick);
+  };
+
+  renderVals() {
+    const s = this.state, on = v => v ? '#26282d' : 'transparent', fg = v => v ? '#f4f2ec' : '#c4c2bc';
+    const base = {
+      cursor: s.dragging ? 'grabbing' : 'default', graphName: this.props.graph || 'deblob-seq',
+      canvasRef: this.canvasRef, worldRef: this.worldRef, onDown: this.onDown, onMove: this.onMove, onUp: this.onUp, onDbl: this.onDbl, fit: this.fit,
+      toggleChain: () => this.set({ chain: !this.state.chain }), chainBg: on(s.chain), chainFg: fg(s.chain),
+      toggleFocus: () => this.M && this.go({ focus: !this.state.focus }, this.state.sel[0], !this.state.focus),
+      toggleCentre: () => { const c = !this.state.centre; this.set({ centre: c }); if (c && this.M && this.state.focus && this.state.sel.length) this.centreNow(); }, centreBg: on(s.centre), centreFg: fg(s.centre), focusBg: on(s.focus), focusFg: fg(s.focus),
+      toggleFlow: () => this.M && this.go({ flow: !this.state.flow }), flowBg: on(s.flow), flowFg: fg(s.flow),
+      toggleDirs: () => { if (!this.M) return; const d = !this.state.dirs, p = { dirs: d }; if (!d && this.state.depth === 0) Object.assign(p, { depth: 1, folded: [...this.PS.foldAt(this.M, 1)] }); this.go(p); },
+      dirsBg: on(s.dirs), dirsFg: fg(s.dirs),
+      stops: STOPS.filter(([, d]) => d > 0 || s.dirs).map(([label, d]) => ({ label, bg: on(s.depth === d), fg: fg(s.depth === d),
+        onClick: () => this.M && this.go({ depth: d, folded: [...this.PS.foldAt(this.M, Math.min(d, 3))], cards: d >= 4 ? this.withRows : [] }) })),
+      arrowStops: ARROWS.map(([k, label, title]) => ({ label, title, bg: on(s.arrows === k), fg: fg(s.arrows === k), onClick: () => this.set({ arrows: k }) })),
+      boxes: [], dirBoxes: [], tethers: [], linksUnder: [], linksOver: [], hitsUnder: [], hitsOver: [], worldVis: s.revealed ? 'visible' : 'hidden', linkOp: s.linksOn ? 1 : 0,
+    };
+    if (!s.ready || !this.cur) return base;
+    const M = this.M, B = this.cur, part = s.sel.length ? this.partOf(s.sel) : null, selSet = new Set(s.sel);
+    const litNode = id => { const n = M.nodes.get(id); return n.type === 'item' ? part.P.has(n.li) : (M.leafIdx.get(id) || []).some(i => part.P.has(i)); };
+    const FR = this.tw ? this.frameAt(this.twT()) : null;
+    const boxes = this.order.map(id => {
+      const n = M.nodes.get(id), r = B.L.get(id), f = FR && FR.get(id), vis = !!r, q = f || r || this.last.get(id) || { x: 0, y: 0, w: 0, h: 0 };
+      const open = n.type === 'item' ? B.C.has(id) && members(n).length > 0 : !!(r && r.open);
+      const p = this.propsOf(n, open), c = this.cb(id);
+      return { id, x: q.x, y: q.y, w: q.w, h: q.h, op: f ? f.op : vis ? 1 : 0, pe: vis && !FR ? 'auto' : 'none', sc: f ? f.s : 1,
+        tier: p.tier, kind: p.kind, title: p.title, icon: p.icon, pre: p.pre || null, open, rows: p.rows, actions: this.actsOf(n, open),
+        state: part ? (litNode(id) ? 'lit' : 'dim') : 'rest', sel: selSet.has(id), onSelect: c.onSelect, onRow: c.onRow,
+        selRows: n.type === 'item' && open ? syms(n).map((m, i) => selSet.has(id + '#' + m.name) ? i : -1).filter(i => i >= 0) : [], onAction: c.onAction, onHover: c.onHover };
+    });
+    // Stacking (Session 47d): directories < arrows under < other boxes < arrows
+    // over. Two fixed lists (a node's type never changes, so indices hold).
+    // Stars (galaxy) are labels: above the under arrows, with the boxes.
+    const star = this.starsOf(s);
+    boxes.forEach(b => { b.z = M.nodes.get(b.id).type !== 'dir' || (star && star.has(b.id)) ? 2 : 0; });
+    const dirBoxes = boxes.filter(b => M.nodes.get(b.id).type === 'dir'), rest = boxes.filter(b => M.nodes.get(b.id).type !== 'dir');
+    const edge = (r, tx, ty) => { const cx = r.x + r.w / 2, cy = r.y + r.h / 2, dx = tx - cx, dy = ty - cy; const t = Math.min(dx ? (r.w / 2 + 2) / Math.abs(dx) : Infinity, dy ? (r.h / 2 + 2) / Math.abs(dy) : Infinity, 1); return [cx + dx * t, cy + dy * t]; };
+    // Tethers: star → each drawn box whose nearest drawn holder is that star.
+    const tethers = [];
+    if (star && !FR) for (const [id, r] of B.L) {
+      let p = M.nodes.get(id).parent; while (p && M.nodes.has(p) && !B.L.has(p)) p = M.nodes.get(p).parent;
+      if (!p || !star.has(p) || !B.L.has(p)) continue;
+      const a = B.L.get(p), on = s.hover === p || selSet.has(p) || s.hover === id;
+      // A ray (dotted is taken by type-only imports): a wedge, wide at the
+      // star, a point at the planet.
+      const [x1, y1] = edge(a, r.x + r.w / 2, r.y + r.h / 2), [x2, y2] = edge(r, a.x + a.w / 2, a.y + a.h / 2);
+      const L = Math.hypot(x2 - x1, y2 - y1) || 1, hw = on ? 2.4 : 1.6, nx = -(y2 - y1) / L * hw, ny = (x2 - x1) / L * hw;
+      tethers.push({ d: `M${x1 + nx} ${y1 + ny}L${x2} ${y2}L${x1 - nx} ${y1 - ny}Z`, c: on ? '#cfcdc7' : '#8f8d87', op: on ? 0.9 : part ? 0.12 : 0.35, on });
+    }
+    tethers.sort((x, y) => x.on - y.on);
+    if (s.arrows === 'none') return { ...base, boxes: rest, dirBoxes, tethers };
+    const hov0 = s.hover && M.nodes.get(s.hover), hov = hov0 && !(star && star.has(hov0.id)) ? hov0 : null;
+    const hovL = hov && new Set(hov.type === 'item' ? [hov.li] : M.leafIdx.get(hov.id) || []);
+    const hovOK = !!hov && (!part || litNode(hov.id));
+    const pairs = new Map();
+    for (const k of M.w.keys()) {
+      const [a, b] = k.split(',').map(Number);
+      if (B.shown && !(B.shown.has(a) && B.shown.has(b))) continue;
+      const ra = this.PS.repOf(M, B.F, M.leaves[a]), rb = this.PS.repOf(M, B.F, M.leaves[b]);
+      if (ra === rb || !B.L.has(ra) || !B.L.has(rb)) continue;
+      const pk = ra < rb ? ra + '|' + rb : rb + '|' + ra, p = pairs.get(pk);
+      const sel = !!part && (part.S.has(a) || part.S.has(b)), hn = hovOK && (hovL.has(a) || hovL.has(b));
+      if (p) { p.sel = p.sel || sel; p.hn = p.hn || hn; } else pairs.set(pk, { pk, ra, rb, sel, hn });
+    }
+    // Segments end at the box borders (+2), not the centres: a line never
+    // crosses its own ends. Hit paths sit in the layer the stop and the
+    // selection put an arrow in, never moved by hover (a hover lift would
+    // cover the hovered box and loop).
+    const under = [], over = [], hitsUnder = [], hitsOver = [], R = { rest: 0, low: 0, high: 1, highest: 2 };
+    for (const p of pairs.values()) {
+      let tier = part ? (p.sel ? 'high' : 'low') : 'rest';
+      if ((p.hn || s.hoverArrow === p.pk) && tier !== 'low') tier = 'highest';
+      const a = B.L.get(p.ra), b = B.L.get(p.rb), [c, sw, op] = LOOK[tier], cb = this.lcb(p.pk);
+      const [x1, y1] = edge(a, b.x + b.w / 2, b.y + b.h / 2), [x2, y2] = edge(b, a.x + a.w / 2, a.y + a.h / 2);
+      const d = `M${x1} ${y1}L${x2} ${y2}`, l = { d, c, sw, op, r: R[tier] };
+      const byStop = s.arrows === 'over' || (s.arrows === 'lit' && !!part && p.sel);
+      ((byStop || ((s.arrows === 'lit' || s.arrows === 'auto') && tier === 'highest')) ? over : under).push(l);
+      (byStop ? hitsOver : hitsUnder).push({ d, pe: 'stroke', onEnter: cb.onEnter, onLeave: cb.onLeave });
+    }
+    under.sort((x, y) => x.r - y.r); over.sort((x, y) => x.r - y.r);
+    return { ...base, boxes: rest, dirBoxes, tethers, linksUnder: under, linksOver: over, hitsUnder, hitsOver };
+  }
+}
+</script>
+</body>
+</html>

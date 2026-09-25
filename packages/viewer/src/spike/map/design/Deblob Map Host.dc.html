@@ -327,7 +327,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
         <button onClick="{{ toggleWheelZoom }}" title="Mouse wheel zooms" style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:{{ wheelZoomBg }};color:{{ wheelZoomFg }}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="1.5" width="8" height="13" rx="4"></rect><path d="M8 4.5v2.5"></path></svg></button>
 
       </div>
-      <dc-import name="Behavior Panel" graph="{{ bpGraph }}" sel="{{ bpSel }}" behavior="{{ bpBehavior }}" label="{{ bpLabel }}" on-width="{{ onBpW }}" chrome-op="{{ chromeOp }}" hint-size="100%,100%" style="position:absolute;inset:0;pointer-events:none;z-index:3"></dc-import>
+      <dc-import name="Behavior Panel" graph="{{ bpGraph }}" sel="{{ bpSel }}" behavior="{{ bpBeh }}" label="{{ bpLabel }}" on-width="{{ onBpW }}" chrome-op="{{ chromeOp }}" hint-size="100%,100%" style="position:absolute;inset:0;pointer-events:none;z-index:3"></dc-import>
     </main>
 
     <div ref="{{ dockRef }}" onMouseEnter="{{ dockEnter }}" onMouseLeave="{{ dockLeave }}" style="flex:none;position:relative;height:{{ dockPx }}px;overflow:hidden;background:#16171a;box-shadow:inset 0 1px 0 #26282d;transition:{{ dockTr }}">
@@ -611,7 +611,7 @@ class Component extends DCLogic {
     const go = () => window.CallStack ? window.CallStack.load(src).then(D => { if (src !== this.seqSrc()) return; this.callData = D; this._stk = null; if (this.state.ready && (this.state.sel || this.state.pinned)) this.relayout(); else this.forceUpdate(); }).catch(e => console.warn('calls data', e)) : setTimeout(go, 50);
     go();
   }
-  graphSrc() { const P = this.project(); if (P) return P.graph; const g = this.props.graph || 'deblob-seq'; return g === 'deblob-seq' ? './deblob-seq-graph.js' : g === 'ai-tools' ? './ai-tools-graph.js' : g === 'deblob-fine' ? './deblob-fine-graph.js' : g === 'deblob-nested' ? './deblob-nested-graph.js' : g === 'deblob-x5' ? './deblob-x5-graph.js' : './deblob-graph.js'; }
+  graphSrc() { const P = this.project(); if (P) return P.graph; const g = this.props.graph || 'deblob-seq'; return g === 'deblob-seq' ? './data/deblob-seq-graph.js' : g === 'ai-tools' ? './data/ai-tools-graph.js' : g === 'deblob-fine' ? './data/deblob-fine-graph.js' : g === 'deblob-nested' ? './data/deblob-nested-graph.js' : g === 'deblob-x5' ? './data/deblob-x5-graph.js' : './data/deblob-graph.js'; }
 
   // Engine (host contract, ask 1): constants, layout, routing, paint and blend
   // live in map-*.js, loaded from <helmet>. Those scripts load in any order and
@@ -802,7 +802,7 @@ class Component extends DCLogic {
   // it uses: an import from the caller's module to the callee's, on the called
   // symbol when the import names it, else every import of that pair.
   stackOf(id) {
-    if (!id || !this.callData || !window.CallStack || (this.props.calls || 'arcs') === 'off' || (!this.project() && this.graphSrc() !== './deblob-seq-graph.js')) return null;
+    if (!id || !this.callData || !window.CallStack || (this.props.calls || 'arcs') === 'off' || this.graphSrc() !== './data/deblob-seq-graph.js') return null;
     if (this._stk && this._stk.id === id && this._stk.D === this.callData) return this._stk.v;
     const v = window.CallStack.of(this.callData, id);
     if (v) {
@@ -1795,7 +1795,7 @@ class Component extends DCLogic {
   projVals() {
     const L = this.state.projects || [], P = this.project(), many = L.length > 1;
     return {
-      breadcrumb: (P && P.label) || (this.g && this.g.meta && this.g.meta.breadcrumb) || 'rixo/deblob',
+      breadcrumb: (P && P.label) || (this.g && this.g.meta && this.g.meta.breadcrumb) || '',
       projSingle: !many, projMany: many, projOpen: many && !!this.state.projOpen,
       projBtnBg: this.state.projOpen ? '#1e2024' : 'transparent',
       projToggle: () => this.setState({ projOpen: !this.state.projOpen }), projClose: () => this.setState({ projOpen: false }),
@@ -2496,7 +2496,7 @@ class Component extends DCLogic {
       camPE: this.tweening ? 'none' : 'auto',
       gridPos: `${s.pan.x.toFixed(0)}px ${s.pan.y.toFixed(0)}px`,
       cursor: s.dragging ? 'grabbing' : s.spaceHeld ? 'grab' : 'default',
-      chromeOp: s.dragging ? 0.3 : 1, bpW: s.bpW || 0, bpGraph: this.g, bpSel: s.sel, bpBehavior: (this.project() || {}).behavior || null, bpLabel: (this.project() || {}).label || null, onBpW: this.onBpW,
+      chromeOp: s.dragging ? 0.3 : 1, bpW: s.bpW || 0, bpGraph: this.g, bpSel: s.sel, bpBeh: (this.project() || {}).behavior || null, bpLabel: (this.project() || {}).label || '', onBpW: this.onBpW,
       ...(() => { const q = this.seqOf(s); return { seqHooks: q.hooks, seqHook: q.hook, seqFn: q.fn, dockPx: this.seqSrc() && this.seqOpen(q) ? this.dockH0() : 0 }; })(),
       dockTr: 'height .24s cubic-bezier(.2,.7,.2,1)', dockRef: this.dockRef, dockEnter: this.dockEnter, dockLeave: this.dockLeave, onDockDown: this.onDockDown,
       seqStepTier, seqPartTier, seqPick: s.seqPick || null, onSeqCalls: this.onSeqCalls, seqClear: s.seqClear || 0, seqMapPart: this.mapPartOf(s.sel), onSeqPart: this.onSeqPart,

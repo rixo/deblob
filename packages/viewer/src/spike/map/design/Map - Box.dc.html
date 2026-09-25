@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="map-consts.js"></script>
+<script src="map-theme.js"></script>
+<script src="box-spec.js"></script>
+<style>a{color:#cfcdc7}a:hover{color:#f4f2ec}</style>
+</helmet>
+<div style="position:relative;width:{{ rootW }};height:{{ rootH }};background:{{ rootBg }};font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased">
+  <sc-if value="{{ preview }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:32px;top:24px;display:flex;flex-direction:column;gap:4px">
+      <span style="font-size:15px;font-weight:600;color:#ecebe6">Map - Box</span>
+      <span style="font-size:12px;color:#8f8d87;max-width:760px;text-wrap:pretty">One part for every node. Rows are tier presets, columns the highlight states. Hover a title (halo, selects on click), the rest of a card (lights its first action), or an action itself.</span>
+    </div>
+    <sc-for list="{{ heads }}" as="c" hint-placeholder-count="5">
+      <span style="position:absolute;left:{{ c.x }}px;top:96px;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8f8d87">{{ c.t }}</span>
+    </sc-for>
+    <sc-for list="{{ labels }}" as="l" hint-placeholder-count="8">
+      <div style="position:absolute;left:32px;top:{{ l.y }}px;width:150px;display:flex;flex-direction:column;gap:2px">
+        <span style="font-size:12.5px;font-weight:600;color:#cfcdc7">{{ l.t }}</span>
+        <span style="font-size:11.5px;color:#8f8d87">{{ l.n }}</span>
+      </div>
+    </sc-for>
+  </sc-if>
+  <sc-for list="{{ boxes }}" as="b" hint-placeholder-count="1">
+    <div data-node="{{ b.id }}" onMouseEnter="{{ b.onBody }}" onMouseLeave="{{ b.onOut }}" onClick="{{ b.onPrimary }}" style="position:absolute;left:{{ b.x }}px;top:{{ b.y }}px;width:{{ b.wc }};height:{{ b.hc }};box-sizing:border-box;border:{{ b.bw }}px solid {{ b.bc }};border-radius:{{ b.r }}px;background:{{ b.bg }};box-shadow:{{ b.sh }};opacity:{{ b.op }};overflow:{{ b.ovf }};cursor:{{ b.cur }}">
+      <div style="position:absolute;left:0;right:0;top:0;height:{{ b.band }}px;display:flex;align-items:stretch;padding:0 {{ b.padR }}px 0 0">
+        <span data-sel="1" onMouseEnter="{{ b.onTitle }}" onMouseLeave="{{ b.onBody }}" onClick="{{ b.onSelect }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding-left:{{ b.padX }}px;cursor:pointer">
+        <span style="flex:none;min-width:0;display:flex;align-items:baseline;gap:6px">
+          <sc-for list="{{ b.pre }}" as="p" hint-placeholder-count="0"><span style="flex:none;font:{{ p.font }};text-box:trim-both {{ p.edge }} alphabetic;letter-spacing:{{ p.ls }};text-transform:{{ p.tt }};color:{{ p.c }};white-space:nowrap">{{ p.t }}<span style="color:{{ p.sc }}">{{ p.slash }}</span></span></sc-for>
+          <sc-if value="{{ b.dot }}" hint-placeholder-val="{{ false }}"><span style="flex:none;align-self:center;height:0;display:flex;align-items:center;overflow:visible"><span style="flex:none;width:5px;height:5px;border-radius:50%;background:{{ b.dotC }}"></span></span></sc-if>
+          <sc-if value="{{ b.icon }}" hint-placeholder-val="{{ false }}"><span style="flex:none;align-self:center;height:0;display:flex;align-items:center;overflow:visible"><svg width="12" height="12" viewBox="{{ b.iconVb }}" style="flex:none"><path d="{{ b.iconD }}" fill="none" stroke="{{ b.iconC }}" stroke-width="1.2" stroke-dasharray="{{ b.iconDash }}" stroke-linecap="round" stroke-linejoin="round"></path></svg></span></sc-if>
+          <span style="flex:none;font:{{ b.font }};text-box:trim-both {{ b.edge }} alphabetic;letter-spacing:{{ b.ls }};text-transform:{{ b.tt }};color:{{ b.lc }};background:{{ b.lbg }};box-shadow:{{ b.lsh }};text-shadow:{{ b.tsh }};white-space:nowrap;border-radius:4px;padding:{{ b.tpad }};margin:{{ b.tmar }};cursor:pointer">{{ b.title }}<span style="color:{{ b.slashC }}">{{ b.slash }}</span></span>
+        <sc-if value="{{ b.hasSub }}" hint-placeholder-val="{{ false }}"><span style="flex:none;text-box:trim-both cap alphabetic;font:600 9.5px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;color:{{ b.subC }};white-space:nowrap">{{ b.sub }}</span></sc-if>
+          </span>
+        </span>
+        <sc-for list="{{ b.actions }}" as="a" hint-placeholder-count="1">
+          <span data-act="{{ a.id }}" title="{{ a.title }}" onMouseEnter="{{ a.onEnter }}" onMouseLeave="{{ a.onLeave }}" onClick="{{ a.onClick }}" style="flex:none;width:22px;display:flex;align-items:center;justify-content:center;cursor:pointer"><span style="width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;background:{{ a.bg }}">
+            <svg width="11" height="11" viewBox="0 0 24 24" style="transform:rotate({{ a.rot }}deg);filter:{{ a.sh }};transition:transform 160ms"><path d="{{ a.d }}" fill="{{ a.fill }}" stroke="{{ a.stroke }}" stroke-width="{{ a.sw }}" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+          </span>
+        </sc-for>
+      </div>
+      <sc-if value="{{ b.rule }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:{{ b.padX }}px;right:{{ b.padX }}px;top:{{ b.band }}px;height:1px;background:{{ b.ruleC }}"></div></sc-if>
+      <sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="0">
+        <div data-sel="1" onClick="{{ r.onClick }}" onMouseEnter="{{ r.onEnter }}" onMouseLeave="{{ r.onLeave }}" style="position:absolute;left:{{ r.x }}px;right:{{ r.x }}px;top:{{ r.y }}px;height:{{ b.rowH }}px;padding:0 4px;border-radius:4px;display:flex;align-items:center;gap:6px;background:{{ r.bg }};box-shadow:{{ r.sh }};cursor:pointer">
+          <span style="flex:none;width:5px;height:5px;border-radius:50%;background:{{ r.dotC }}"></span>
+          <span style="font:400 11.5px 'IBM Plex Mono',monospace;text-box:trim-both ex alphabetic;color:{{ r.c }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.t }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1540,&quot;height&quot;:860},&quot;tier&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;'unit'|'dir'|'group'|'band'|'card'|'row'&quot;},&quot;kind&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string | null&quot;},&quot;title&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;sub&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;icon&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;rule&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;open&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;rows&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;actions&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;{ id: string, glyph: 'chev'|'deep'|'bolt', on?: boolean, title?: string }[]&quot;},&quot;state&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;'rest'|'lit'|'dim'&quot;},&quot;sel&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;hov&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;bodyH&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;number&quot;},&quot;w&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;number&quot;},&quot;h&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;number&quot;},&quot;id&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;scheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;vivid&quot;,&quot;calm&quot;,&quot;neon&quot;],&quot;default&quot;:&quot;vivid&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;onSelect&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;},&quot;onAction&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(id: string) =&gt; void&quot;},&quot;onHover&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(on: boolean) =&gt; void&quot;},&quot;selRows&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;number[]&quot;},&quot;pre&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;{ t: string, tier: string }[]&quot;},&quot;onSelectRow&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(i: number, e: { shift: boolean }) =&gt; void&quot;}}">
+// Part (docs/box-components.md). Mounted by a page with the node's props;
+// opened on its own (no `tier`) it shows its preview board.
+const STATES = [['rest', {}], ['hover', { hov: true }], ['participant', { state: 'lit' }], ['selected', { sel: true }], ['dim', { state: 'dim' }]];
+const CHEV = on => ({ id: 'fold', glyph: 'chev', on, title: on ? 'Fold' : 'Open' });
+const EXAMPLES = [
+  { t: 'unit', n: 'open · rule', o: { tier: 'unit', title: 'snapshot', open: true, bodyH: 40, actions: [CHEV(true)] } },
+  { t: 'unit', n: 'folded · fused label', o: { tier: 'unit', title: 'cli', sub: 'assembly', kind: 'assembly', actions: [CHEV(false)] } },
+  { t: 'driver', n: 'folded · call mode', o: { tier: 'unit', title: 'cli', kind: 'driver', sub: 'driver', actions: [{ id: 'call', glyph: 'bolt', on: false, title: 'Call mode' }, CHEV(false)] } },
+  { t: 'hexagon', n: 'own colour', o: { tier: 'group', title: 'hexagon', kind: 'hex', icon: 'hex', open: true, bodyH: 30, actions: [{ id: 'deep', glyph: 'deep', on: true, title: 'Fold children' }, CHEV(true)] } },
+  { t: 'band', n: 'a box, no frame at rest', o: { tier: 'band', title: 'ports', kind: 'ports', icon: 'ports', open: true, bodyH: 30, actions: [CHEV(true)] } },
+  { t: 'fused', n: 'holder label first', o: { tier: 'group', title: 'assembly', kind: 'assembly', icon: 'assembly', pre: [{ t: 'serve', tier: 'unit' }], open: true, bodyH: 30, actions: [CHEV(true)] } },
+  { t: 'kind group', n: 'coloured frame', o: { tier: 'group', title: 'adapters', kind: 'adapters', icon: 'adapters', open: true, bodyH: 30, actions: [CHEV(true)] } },
+  { t: 'module', n: 'with members', o: { tier: 'card', title: 'snapshot', kind: 'service', open: true, rows: ['readSnapshot()', 'writeSnapshot()'], actions: [CHEV(true)] } },
+  { t: 'module', n: 'no members', o: { tier: 'card', title: 'ProjectSource', kind: 'ports' } },
+  { t: 'member row', n: 'dot is the kind', o: { tier: 'row', title: 'readSnapshot', kind: 'service' } },
+];
+const COL0 = 200, COLW = 260, ROW0 = 124, GAPY = 26;
+
+class Component extends DCLogic {
+  state = { zone: {} };
+  // Widths are measured on a canvas: re-measure once the webfonts are in.
+  componentDidMount() { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (window.BoxSpec) window.BoxSpec.clearCache(); this.forceUpdate(); }); }
+
+  zoneOf(key) { return this.state.zone[key] || null; }
+  setZone(key, z) { if ((this.state.zone[key] || null) !== z) this.setState(s => ({ zone: { ...s.zone, [key]: z } })); }
+
+  box(key, o, x, y, w, h, live) {
+    const BS = window.BoxSpec, P = this.props, z = this.zoneOf(key), acts = o.actions || [];
+    const aff = z && z.startsWith('act:') ? z.slice(4) : z === 'body' && acts[0] ? acts[0].id : null;
+    const sp = BS.spec({ ...o, hov: o.hov || z === 'title', aff, scheme: o.scheme || P.scheme });
+    const W = w ?? sp.w, H = h ?? sp.h;
+    const stop = fn => ev => { if (ev && ev.stopPropagation) ev.stopPropagation(); fn && fn(ev); };
+    const act = id => live ? () => P.onAction && P.onAction(id) : null;
+    const sel = live ? ev => P.onSelect && P.onSelect({ shift: !!(ev && (ev.shiftKey || ev.metaKey)) }) : null;
+    const rowTop = sp.rowTop;
+    return {
+      // Frameless tiers (band, row) draw their selection as a ring round the
+      // label: not clipped, and padded so it reads as a box, not as parens.
+      ovf: sp.frame ? 'hidden' : 'visible', tpad: sp.frame ? '4px' : '6px', tmar: sp.frame ? '-4px' : '-6px',
+      id: o.id || key, x, y, w: W, h: H, wc: typeof W === 'number' ? W + 'px' : W, hc: typeof H === 'number' ? H + 'px' : H, bw: sp.frame ? 1 : 0, bc: sp.bc, r: sp.r, bg: sp.bg, sh: sp.sh, op: sp.op,
+      cur: acts.length ? 'pointer' : 'default', band: sp.band, padX: sp.padX, padR: Math.max(0, sp.padX - 3),
+      dot: sp.dot, dotC: sp.dotC, icon: sp.icon, iconVb: sp.iconVb, iconD: sp.iconD, iconDash: sp.iconDash, iconC: sp.iconC,
+      font: sp.font, titleLine: sp.titleLine, ls: sp.ls, tt: sp.upper ? 'uppercase' : 'none',
+      // Optical centre (Session 47f): a label box is trimmed to the height its
+      // letters fill: cap height for uppercase labels, x-height for lowercase
+      // (code names). CSS text-box does it; no offsets.
+      edge: sp.upper ? 'cap' : 'ex', pre: sp.pre.map(p => ({ ...p, edge: p.tt === 'uppercase' ? 'cap' : 'ex' })), slash: sp.slash, slashC: sp.slashC, lc: sp.lc, lbg: sp.lbg, lsh: sp.lsh, tsh: sp.tsh, title: o.title || '', hasSub: sp.hasSub, sub: sp.sub, subC: sp.subC,
+      rule: sp.rule, ruleC: sp.ruleC, rowH: sp.rowH,
+      // Member rows (Session 46s): each row is its own select zone; hover
+      // lights the row, not the card's action; selected rows carry the ring.
+      rows: sp.rows.map((r, i) => { const hv = z === 'row:' + i, sl = (o.selRows || []).includes(i);
+        return { ...r, y: rowTop + i * sp.rowH, x: sp.padX - 4, c: hv || sl ? '#ecebe6' : r.c, bg: hv || sl ? 'rgba(255,255,255,.06)' : 'transparent', sh: sl ? '0 0 0 1.5px #f1efe9' : 'none',
+          onEnter: () => { this.setZone(key, 'row:' + i); if (live && P.onHover) P.onHover(true); }, onLeave: () => { this.setZone(key, 'body'); if (live && P.onHover) P.onHover(false); },
+          onClick: stop(live ? ev => P.onSelectRow && P.onSelectRow(i, { shift: !!(ev && (ev.shiftKey || ev.metaKey)) }) : null) }; }),
+      actions: sp.actions.map(a => ({ ...a, onEnter: () => this.setZone(key, 'act:' + a.id), onLeave: () => this.setZone(key, 'body'), onClick: stop(act(a.id)) })),
+      // Hover reported to the page (arrows) from the select zones only: the
+      // label zone and member rows, never the body (Session 46w).
+      onBody: () => { this.setZone(key, 'body'); if (live && P.onHover) P.onHover(false); },
+      onTitle: () => { this.setZone(key, 'title'); if (live && P.onHover) P.onHover(true); },
+      onOut: () => { this.setZone(key, null); if (live && P.onHover) P.onHover(false); },
+      onSelect: stop(sel),
+      onPrimary: acts[0] ? stop(act(acts[0].id)) : stop(sel),
+    };
+  }
+
+  renderVals() {
+    const P = this.props, ready = !!(window.BoxSpec && window.MapConsts && window.MapTheme);
+    if (!ready) { if (!this._wait) this._wait = setTimeout(() => { this._wait = null; this.forceUpdate(); }, 30); return { preview: false, boxes: [], heads: [], labels: [], rootW: '100%', rootH: '100%', rootBg: 'transparent' }; }
+    if (P.tier) {
+      const o = { id: P.id, tier: P.tier, kind: P.kind, title: P.title, sub: P.sub, icon: P.icon, rule: P.rule, open: P.open, rows: P.rows,
+        actions: P.actions, state: P.state, sel: P.sel, hov: P.hov, bodyH: P.bodyH, selRows: P.selRows, pre: P.pre };
+      return { preview: false, heads: [], labels: [], rootW: '100%', rootH: '100%', rootBg: 'transparent', boxes: [this.box('self', o, 0, 0, P.w ?? '100%', P.h ?? '100%', true)] };
+    }
+    // Preview board: every example × every state.
+    const boxes = [], labels = [];
+    let y = ROW0;
+    EXAMPLES.forEach((ex, r) => {
+      let rh = 0;
+      STATES.forEach(([, st], c) => {
+        const o = { ...ex.o, ...st }, sp = window.BoxSpec.spec(o);
+        boxes.push(this.box(r + ':' + c, o, COL0 + c * COLW, y, Math.min(Math.max(sp.w, ex.o.tier === 'row' ? 180 : sp.w), COLW - 24), null, false));
+        rh = Math.max(rh, sp.h);
+      });
+      labels.push({ t: ex.t, n: ex.n, y });
+      y += rh + GAPY;
+    });
+    return { preview: true, boxes, labels, heads: STATES.map(([n], c) => ({ t: n.toUpperCase(), x: COL0 + c * COLW })),
+      rootW: COL0 + STATES.length * COLW + 'px', rootH: y + 40 + 'px', rootBg: '#111216' };
+  }
+}
+</script>
+</body>
+</html>
