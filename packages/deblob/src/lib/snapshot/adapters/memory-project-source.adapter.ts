@@ -1,8 +1,9 @@
 /**
  * The world in memory: projects keyed by directory, each with its resolved
- * config, its coverage set and the directories it spans, its sizes and its
- * manifest name; a fixed clock. An unknown directory fails the way a missing
- * project would; a file without a size is a fixture bug and fails naming it.
+ * config, its coverage set and the directories it spans, its sizes, its
+ * manifest name and its README texts; a fixed clock. An unknown directory fails
+ * the way a missing project would; a file without a size is a fixture bug and
+ * fails naming it.
  */
 
 import type { ResolvedConfig } from "../../config/config.service.ts"
@@ -17,6 +18,8 @@ export type MemoryProject = {
   sizes: Readonly<Record<string, number>>
   /** The manifest's name; `null` for a project without one. */
   name: string | null
+  /** README texts by directory (`.` = the root); none when absent. */
+  readmes?: Readonly<Record<string, string>>
 }
 
 export const createMemoryProjectSource = ({
@@ -50,6 +53,15 @@ export const createMemoryProjectSource = ({
       })
     },
     manifestNameOf: async (root) => projects[root]?.name ?? null,
+    readmeTextsOf: async (root, dirs) => {
+      const readmes = projectAt(root).readmes ?? {}
+      return Object.fromEntries(
+        dirs.flatMap((dir) => {
+          const text = readmes[dir]
+          return text === undefined ? [] : [[dir, text]]
+        }),
+      )
+    },
     now: () => now,
   }
 }

@@ -1,8 +1,8 @@
 /**
- * What the design's map needs beyond the snapshot's fold, read from a project's
- * tree: the call stacks, the READMEs. One function per part, so each can be
- * replaced on its own — the symbol level already graduated into extraction.
- * Promise-only: every function may touch the platform.
+ * What the design's map needs beyond the snapshot's fold and the project's
+ * files: the call stacks. The tracer is spike code (it reads deblob's own CLI
+ * only), so it stays behind a port until it graduates; the symbol level and the
+ * READMEs already did (extraction, the project source).
  */
 
 import type { MapData, MapSequence } from "@deblob/viewer/snapshot.model"
@@ -16,9 +16,4 @@ export type MapFeed = {
    * cannot read the tree: its message says why.
    */
   sequenceOf(root: string, rows: MapRows): Promise<MapSequence>
-  /**
-   * The README of each directory given (root-relative, `.` = the root), as
-   * blocks; a directory without one is absent from the answer.
-   */
-  readmesOf(root: string, dirs: readonly string[]): Promise<MapData["readmes"]>
 }

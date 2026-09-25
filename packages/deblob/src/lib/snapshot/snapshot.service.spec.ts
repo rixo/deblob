@@ -49,13 +49,9 @@ const graphOf = async (files: readonly string[]): Promise<ImportGraph> => ({
   broken: [],
 })
 
-/**
- * A map feed with no call stack and no README — for the rows about everything
- * but the map.
- */
+/** A map feed with no call stack — for the rows about everything but the map. */
 const plainFeed = (): MapFeed => ({
   sequenceOf: async () => ({ callables: {}, participants: [], drivers: [] }),
-  readmesOf: async () => ({}),
 })
 
 describe("createSnapshotService", () => {
@@ -78,6 +74,8 @@ describe("createSnapshotService", () => {
         dirs: ["src"],
         sizes: { "src/z.ts": 10, "src/a.ts": 10 },
         name: "FAKE_PKG",
+        // the root has none: absent from the map
+        readmes: { src: "# src\n\nFAKE_PARAGRAPH" },
       },
       "/FAKE_MONO": {
         config: FAKE_MONO_CONFIG,
@@ -140,7 +138,6 @@ describe("createSnapshotService", () => {
       participants: [{ id: "m:src/a.ts", label: "a", kind: "blob", box: null }],
       drivers: [],
     }
-    const FAKE_README = [{ p: "FAKE_PARAGRAPH" }]
 
     /** The fold's map rows for the memory project: no symbol, no edge. */
     const foldRows = (modules: readonly ModuleRef[]) => ({
@@ -152,23 +149,19 @@ describe("createSnapshotService", () => {
       edges: [],
     })
 
-    /** The feed's answers, and what it was asked. */
+    /** The feed's call stacks, and what it was asked. */
     const recordingFeed = (sequenceOf: MapFeed["sequenceOf"]) => {
       const asked: unknown[] = []
       const feed: MapFeed = {
         sequenceOf: async (root, rows) => {
-          asked.push({ sequenceOf: { root, rows } })
+          asked.push({ root, rows })
           return sequenceOf(root, rows)
-        },
-        readmesOf: async (root, dirs) => {
-          asked.push({ readmesOf: { root, dirs } })
-          return { src: FAKE_README }
         },
       }
       return { feed, asked }
     }
 
-    it("feeds the call stacks on the fold's map rows, the READMEs on the root and every directory holding a file", async () => {
+    it("reads the READMEs of the root and every directory holding a file, as blocks, and feeds the call stacks the fold's map rows", async () => {
       const { feed, asked } = recordingFeed(async () => FAKE_SEQUENCE)
       const { runOf } = createSnapshotService({
         source: memorySource,
@@ -181,12 +174,9 @@ describe("createSnapshotService", () => {
         ...rows,
         sequence: FAKE_SEQUENCE,
         sequenceMissing: null,
-        readmes: { src: FAKE_README },
+        readmes: { src: [{ p: "FAKE_PARAGRAPH" }] },
       })
-      expect(asked).toEqual([
-        { readmesOf: { root: "/FAKE_ROOT", dirs: [".", "src"] } },
-        { sequenceOf: { root: "/FAKE_ROOT", rows } },
-      ])
+      expect(asked).toEqual([{ root: "/FAKE_ROOT", rows }])
     })
 
     it("draws the map without call stacks, and says why, when the tracer cannot read the tree", async () => {
@@ -203,22 +193,22 @@ describe("createSnapshotService", () => {
         ...foldRows(snapshot.modules),
         sequence: null,
         sequenceMissing: "FAKE_TRACER_MISS",
-        readmes: { src: FAKE_README },
+        readmes: { src: [{ p: "FAKE_PARAGRAPH" }] },
       })
     })
 
-    it("fails the run when the READMEs fail: a bug, not a tree the map cannot draw", async () => {
+    it("fails the run when the READMEs cannot be read: a bug, not a tree the map cannot draw", async () => {
       const run = createSnapshotService({
-        source: memorySource,
-        feed: {
-          ...plainFeed(),
-          readmesOf: async () => {
-            throw new Error("FAKE_BUG in readmesOf")
+        source: {
+          ...memorySource,
+          readmeTextsOf: async () => {
+            throw new Error("FAKE_BUG in readmeTextsOf")
           },
         },
+        feed: plainFeed(),
         extractionFor: () => graphOf,
       }).runOf("/FAKE_ROOT")
-      await expect(run).rejects.toThrow("FAKE_BUG in readmesOf")
+      await expect(run).rejects.toThrow("FAKE_BUG in readmeTextsOf")
     })
   })
 

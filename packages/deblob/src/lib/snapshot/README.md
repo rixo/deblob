@@ -20,16 +20,16 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
   every directory coverage spans, absolute. `snapshotOf(root)` is the snapshot
   alone. The map (`snapshot.map`, what the design's map draws) starts from the
   fold's own rows — modules and edges with the symbol level extraction gives
-  them — and is fed by `feed`: the READMEs of the root and every directory
-  holding a covered file, the call stacks over the rows. A tree the call tracer
-  cannot read still gets its map: `sequence: null`, and `sequenceMissing` holds
-  the tracer's message. A failure of the READMEs is the run's.
-  `projectsOf(dir)`: the projects a viewer at `dir` shows — the config of the
-  project containing `dir` (discovery, as the CLI) names them in
-  `view.projects`, or that project alone — each root with its manifest name.
-  `watchSetFor(root)` is that same set read ahead of a run — the config and the
-  directories, without the extraction — for a caller that must watch before it
-  runs.
+  them — then the READMEs of the root and every directory holding a covered
+  file, read by the source and turned into blocks (`readme.model.ts`), and the
+  call stacks over the rows, fed by `feed`. A tree the call tracer cannot read
+  still gets its map: `sequence: null`, and `sequenceMissing` holds the tracer's
+  message. A README that cannot be read fails the run. `projectsOf(dir)`: the
+  projects a viewer at `dir` shows — the config of the project containing `dir`
+  (discovery, as the CLI) names them in `view.projects`, or that project alone —
+  each root with its manifest name. `watchSetFor(root)` is that same set read
+  ahead of a run — the config and the directories, without the extraction — for
+  a caller that must watch before it runs.
 - `serveSnapshots({ channel, projects, runOf, watchSetFor, watcher, report })`:
   the protocol in one place. On connect: `projects`, then the first project's
   `snapshot`, its watch set watched. On `select`: that project's `snapshot`, the
@@ -58,6 +58,13 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
   is fed by the service (`SnapshotRows`). `readmeDirsOf(paths)`: the directories
   whose README the map shows — `.`, then every directory holding a covered file
   and each one above it, sorted.
+- `readme.model.ts` — `readmeBlocksOf(markdown)`: a README as the map's panel
+  draws it, the contract's blocks — headings (the leading `# title` dropped: the
+  panel's head names the box; deeper than 3 drawn as 3), paragraphs (lines
+  joined), fenced code with its language (an unclosed fence runs to the end),
+  tables (a head when the second row is a separator), lists (nested by indent,
+  an indented plain line continuing its item; another marker kind starts another
+  list). Bold loses its markers; code spans and links stay as written.
 - `handshake.model.ts` — `allowsHandshake({ origin, host })`: who may open the
   channel. A WebSocket handshake is not gated by CORS, so any page in the
   browser reaches a local server unless the server refuses it. Allowed is a
@@ -73,17 +80,18 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
   project containing `dir`, discovery), `loadConfigAt(root)` (the project at
   `root` exactly), `scanCoverage(config)`, `scanCoverageDirs(config)` (the
   directories coverage spans — the watch set), `sizesOf(root, files)`,
-  `manifestNameOf(root)`, `now()`. What a snapshot needs from the world, as
-  functions the driver composes from the CLI's own sequence; promise-only.
+  `manifestNameOf(root)`, `readmeTextsOf(root, dirs)` (each directory's
+  `README.md`, `.` = the root, absent when there is none), `now()`. What a
+  snapshot needs from the world, as functions the driver composes from the CLI's
+  own sequence; promise-only.
 - `ports/channel.port.ts` — `Channel`: `onClient(handler)`; a `ChannelClient`
   has `send(message)`, `onMessage(handler)` and `onClose(handler)`. Handlers
   return promises the adapter awaits.
-- `ports/map-feed.port.ts` — `MapFeed`: `sequenceOf(root, rows)` (the call
+- `ports/map-feed.port.ts` — `MapFeed`: `sequenceOf(root, rows)`, the call
   stacks over the map's rows; throws an `Error` saying why when the tracer
-  cannot read the tree), `readmesOf(root, dirs)` (each directory's README as
-  blocks, absent when it has none). One function per part, so each can be
-  replaced on its own; promise-only. The symbol level graduated into extraction
-  (step 09 checkpoint 3).
+  cannot read the tree. The tracer is spike code: it stays behind a port until
+  it graduates. The symbol level (extraction) and the READMEs (the project
+  source) already did (step 09 checkpoint 3).
 - `ports/report.port.ts` — `Report`: `(error) => void`, where the server's own
   failures go; the driver decides presentation.
 - `ports/watch.port.ts` — `Watcher`: `watch(dirs, onChange)` → `Watch` with
@@ -123,15 +131,20 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
   releases them — a real watcher's time to come up.
 - `adapters/memory-project-source.adapter.ts` —
   `createMemoryProjectSource({ projects, now })`: the world in memory, projects
-  keyed by directory; an unknown directory fails like a missing project.
+  keyed by directory, each with its README texts if it has any; an unknown
+  directory fails like a missing project.
+- `adapters/fs-readme-texts.adapter.ts` — `createFsReadmeTexts({ fs })` →
+  `{ readmeTextsOf }`: each directory's `README.md` through the fs port, left
+  out when nothing is there.
 
 The live map feed is spike code, shipped with the experimental map (step 09):
-`src/spike/map-feed/map-feed.adapter.ts`, the spike's probes behind the port —
-the tracer reads deblob's own CLI only, and needs `typescript` at run time.
+`src/spike/map-feed/map-feed.adapter.ts`, the spike's tracer behind the port —
+it reads deblob's own CLI only, and needs `typescript` at run time.
 
 The live project source is composed by `src/drivers/wiring.ts` from the config
 service's adapters (`loader.adapter.ts` — `readPackageName(root)` is the
-manifest name — and `scan.adapter.ts`) and the extraction service.
+manifest name — and `scan.adapter.ts`), `fs-readme-texts.adapter.ts` and the
+extraction service.
 
 ## Drivers (`src/drivers/`)
 

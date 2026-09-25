@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import type { ResolvedConfig } from "../../config/config.service.ts"
 import { createMemoryProjectSource } from "./memory-project-source.adapter.ts"
@@ -14,6 +14,7 @@ describe("createMemoryProjectSource", () => {
         dirs: ["src"],
         sizes: { "src/z.ts": 10, "src/a.ts": 20 },
         name: "FAKE_PKG",
+        readmes: { src: "FAKE_README" },
       },
     },
     now: "1999-12-31T23:59:59.000Z",
@@ -34,11 +35,33 @@ describe("createMemoryProjectSource", () => {
     expect(source.now()).toBe("1999-12-31T23:59:59.000Z")
   })
 
+  it("answers no README for a project that holds none", async () => {
+    const bare = createMemoryProjectSource({
+      projects: {
+        "/FAKE_BARE": {
+          config: FAKE_CONFIG,
+          files: [],
+          dirs: [],
+          sizes: {},
+          name: null,
+        },
+      },
+      now: "1999-12-31T23:59:59.000Z",
+    })
+    expect(await bare.readmeTextsOf("/FAKE_BARE", ["."])).toEqual({})
+  })
+
   test("no project there: loading fails, the manifest name is null", async () => {
     await expect(source.loadConfig("/FAKE_ELSEWHERE")).rejects.toThrow(
       "no project at /FAKE_ELSEWHERE",
     )
     expect(await source.manifestNameOf("/FAKE_ELSEWHERE")).toBeNull()
+  })
+
+  it("answers the READMEs it holds for the directories asked, the others left out", async () => {
+    expect(await source.readmeTextsOf("/FAKE_ROOT", [".", "src"])).toEqual({
+      src: "FAKE_README",
+    })
   })
 
   test("a file without a size is a fixture bug", async () => {

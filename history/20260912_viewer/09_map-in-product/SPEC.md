@@ -305,10 +305,22 @@ Checkpoints, riskiest first. Each checkpoint is its own commit.
      gained them (one line per helper), the extraction spec's edge rows gained
      their names, each written from the fixture's source.
 
-4. **The spike host goes.** `pnpm spike:map`, the host's HTTP feed and the
-   spike's `projects.ts` are deleted, along with the two shortcuts step 07
-   listed (the relative import of the feed, the direct call into deblob's config
-   code).
+   Landed, the READMEs. Reading a README is the project source's job, beside the
+   manifest and the sizes: `ProjectSource.readmeTextsOf(root, dirs)`, answered
+   live by `fs-readme-texts.adapter.ts` over the fs port (the wiring only
+   connects it) and in memory by the memory source. Turning markdown into the
+   panel's blocks is `readme.model.ts`, pure, rebuilt from the spike's rules,
+   each stated as a row. `MapFeed` is now the tracer alone.
+   - Parity (the same spec file, deleted with `readmes.ts`): the product's
+     READMEs equal the spike's on deblob's own tree, directory by directory.
+     Mutations: keeping the leading title fails it; uncapping heading levels
+     does not (deblob's READMEs go no deeper than 3), the model's row does.
+   - The spike's `?? ""` defaults under `noUncheckedIndexedAccess` became two
+     stated guarantees: a line index stays within the lines, and every group of
+     the patterns takes part in any match. `pnpm spike:map`, the host's HTTP
+     feed and the spike's `projects.ts` are deleted, along with the two
+     shortcuts step 07 listed (the relative import of the feed, the direct call
+     into deblob's config code).
 
 ## Docs
 

@@ -1,7 +1,7 @@
 /**
- * SPIKE (step 09) — delete with fine.ts and readmes.ts. The parity row: the
- * product's map rows on deblob's own tree equal the spike's, the oracle they
- * were rebuilt from.
+ * SPIKE (step 09) — delete with fine.ts and readmes.ts. The parity rows: the
+ * product's map rows and READMEs on deblob's own tree equal the spike's, the
+ * oracles they were rebuilt from.
  *
  * One ruled difference: an edge's names are sorted by code unit in the product
  * (the same bytes on every machine), by `localeCompare` in the spike. Names are
@@ -13,7 +13,9 @@ import { expect, test } from "vitest"
 
 import { createProjectSource, extractionFor } from "../../drivers/wiring.ts"
 import { createSnapshotService } from "../../lib/snapshot/snapshot.service.ts"
+import { readmeDirsOf } from "../../lib/snapshot/snapshot.model.ts"
 import { fineSnapshot } from "./fine.ts"
+import { readmesOf } from "./readmes.ts"
 
 const deblobRoot = fileURLToPath(new URL("../../../", import.meta.url))
 
@@ -27,7 +29,6 @@ test("the product's symbol level equals the spike's on deblob's own tree", async
       sequenceOf: async () => {
         throw new Error("not traced here")
       },
-      readmesOf: async () => ({}),
     },
   })
   const snapshot = await snapshotOf(deblobRoot)
@@ -67,4 +68,20 @@ test("the product's symbol level equals the spike's on deblob's own tree", async
     names: sorted(symbols.map(({ name }) => name)),
   }))
   expect(productEdges).toEqual(spikeEdges)
+})
+
+test("the product's READMEs equal the spike's on deblob's own tree", async () => {
+  const { snapshotOf } = createSnapshotService({
+    source: createProjectSource(),
+    extractionFor,
+    feed: {
+      sequenceOf: async () => {
+        throw new Error("not traced here")
+      },
+    },
+  })
+  const snapshot = await snapshotOf(deblobRoot)
+  const dirs = readmeDirsOf(snapshot.modules.map(({ path }) => path))
+  expect(Object.keys(snapshot.map.readmes).length).toBeGreaterThan(0)
+  expect(snapshot.map.readmes).toEqual(readmesOf(deblobRoot, dirs))
 })

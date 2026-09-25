@@ -35,6 +35,14 @@ export type ProjectSource = {
   ): Promise<readonly { path: string; size: number }[]>
   /** The `name` of the package manifest at `root`; `null` when there is none. */
   manifestNameOf(root: string): Promise<string | null>
+  /**
+   * The text of each directory's `README.md` (root-relative, `.` = the root),
+   * keyed by the directory given; a directory without one is left out.
+   */
+  readmeTextsOf(
+    root: string,
+    dirs: readonly string[],
+  ): Promise<Readonly<Record<string, string>>>
   /** The clock — an ISO timestamp. */
   now(): string
 }

@@ -34,6 +34,7 @@ import {
 import { createExtraction } from "../lib/extraction/extraction.service.ts"
 import type { ImportGraph } from "../lib/extraction/graph.model.ts"
 import { createNodeFs } from "../lib/fs/adapters/node-fs.adapter.ts"
+import { createFsReadmeTexts } from "../lib/snapshot/adapters/fs-readme-texts.adapter.ts"
 import type { ProjectSource } from "../lib/snapshot/ports/project-source.port.ts"
 
 /** The stock readers, in the CLI's order: the test runner before plain TS. */
@@ -46,6 +47,7 @@ export const createProjectSource = (): ProjectSource => {
   const fs = createNodeFs()
   const loader = createConfigLoader({ fs })
   const scan = createCoverageScan({ fs })
+  const readmes = createFsReadmeTexts({ fs })
 
   /** The config from what discovery found — or the defaults rooted at `dir`. */
   const configFrom = async (
@@ -92,6 +94,7 @@ export const createProjectSource = (): ProjectSource => {
     scanCoverageDirs: (config) => scan.scanCoverageDirs(config),
     sizesOf: (root, files) => scan.statSizes(root, files),
     manifestNameOf: (root) => loader.readPackageName(root),
+    readmeTextsOf: readmes.readmeTextsOf,
     now: () => new Date().toISOString(),
   }
 }

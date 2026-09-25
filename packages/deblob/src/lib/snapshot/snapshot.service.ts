@@ -21,6 +21,7 @@ import type { ProjectSource } from "./ports/project-source.port.ts"
 import type { Report } from "./ports/report.port.ts"
 import type { Watch, Watcher } from "./ports/watch.port.ts"
 import type { SnapshotRows } from "./snapshot.model.ts"
+import { readmeBlocksOf } from "./readme.model.ts"
 import { readmeDirsOf, snapshotFrom, watchSetOf } from "./snapshot.model.ts"
 
 export type SnapshotService = ReturnType<typeof createSnapshotService>
@@ -44,15 +45,19 @@ export const createSnapshotService = ({
   feed: MapFeed
 }) => {
   /**
-   * The map's data over a run's fold: its rows, then the READMEs and the call
-   * stacks fed. A tree the call tracer cannot read — any but deblob's, today —
-   * still gets its map: no call stacks, and the tracer's word for why. The
-   * READMEs have no such excuse: their failure is the run's.
+   * The map's data over a run's fold: its rows, the READMEs of the root and
+   * every directory holding a covered file as blocks, the call stacks fed. A
+   * tree the call tracer cannot read — any but deblob's, today — still gets its
+   * map: no call stacks, and the tracer's word for why. A README that cannot be
+   * read has no such excuse: its failure is the run's.
    */
   const mapOf = async (root: string, rows: SnapshotRows): Promise<MapData> => {
-    const readmes = await feed.readmesOf(
+    const texts = await source.readmeTextsOf(
       root,
       readmeDirsOf(rows.modules.map(({ path }) => path)),
+    )
+    const readmes = Object.fromEntries(
+      Object.entries(texts).map(([dir, text]) => [dir, readmeBlocksOf(text)]),
     )
     try {
       const sequence = await feed.sequenceOf(root, rows.map)
