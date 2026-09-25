@@ -189,6 +189,77 @@ accident).
 | B5   | a spec file imports the assembly                                                                                           | green                                      | a test is assembly and driver in one; a test factory is an assembly function                                                                                                                                                                                |                                                                                                                                                                          |
 | B6   | `notes.assembly.ts` imports `./cli.driver.ts`                                                                              | red, `inward-deps`, `driver-not-imported`  | "never a driver": outward (`inward-deps`, reported today), and "nothing but a boot or another driver imports a driver"                                                                                                                                      | the driver imports the assembly, never the reverse                                                                                                                       |
 
+## The driver rules — verdicts to rule (checkpoint 4)
+
+The six driver rules, one row per clause of their canon sentences. One tree
+unless said: the CLI service `src/lib/cli/cli.service.ts` (`createCli(deps)`,
+use cases `check(opts)` and `status(opts)`), the assembly `src/cli.assembly.ts`
+(`createCliAssembly({ cwd })`, returns `{ cli }`), the parser `cac` declared as
+the driver's tech (`driverTech: ["cac"]`), and the root driver
+`src/cli.driver.ts`:
+
+```ts
+export const main = () => {
+  const { cli } = createCliAssembly({ cwd: process.cwd() })
+  const parser = cac("notes")
+  parser.command("check").action((opts) => cli.check(opts))
+  parser.command("status").action((opts) => cli.status(opts))
+  parser.parse(process.argv)
+}
+```
+
+A hook is a function handed to a tech callee (the reader's cut). Each snippet
+replaces part of that driver; the verdict names its rule. Every red names its
+way out; a red with none is the finding.
+
+| #   | snippet                                                                                                                   | verdict                                                                                          | why (canon)                                                                                                                                         | way out                                                              |
+| --- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| D1  | the tree as written                                                                                                       | green                                                                                            | wiring outside hooks: an assembly call, tech setup, registration; each hook one call, a tech value in, the result returned                          |                                                                      |
+| D2  | `const { cli } = createCliAssembly({ cwd: process.cwd() + "/notes" })`                                                    | red, `wiring-outside-hooks`                                                                      | "Arguments are tech values, instances, literals" — a computed one is none                                                                           | the assembly takes `cwd`; the adapter knows its directory            |
+| D3  | `cli.status({})` in `main`, outside any hook                                                                              | red, `wiring-outside-hooks`                                                                      | "outside its hooks, a driver only wires" — a use case is not wiring                                                                                 | the call moves into a hook                                           |
+| D4  | `.action(async (opts) => (await import("./cli.assembly.ts")).createCliAssembly({ cwd: process.cwd() }).cli.check(opts))`  | green                                                                                            | "Wiring may also sit inside a hook — an assembly imported lazily on first event"; one use-case call                                                 |                                                                      |
+| D5  | `const parser = cac("notes")`, a local of `main`                                                                          | green                                                                                            | a local of the wiring function is wiring, not a definition: "the only definitions … its hooks and at most one wiring function" judges the module's  |                                                                      |
+| H1  | `.action((opts) => console.log(opts))`                                                                                    | red, `hook-one-call`                                                                             | "Zero calls is a violation too: a hook with no use case is logic with no home"                                                                      | a use case of the CLI service, rendering through its io port         |
+| H2  | `.action(async (opts) => { await cli.check(opts); return cli.status(opts) })`                                             | red, `hook-one-call`                                                                             | "Two calls mean the sequence between them is a use case nobody owns"                                                                                | a facade use case, `checkThenStatus(opts)`, the two its subfunctions |
+| H3  | `.action((opts) => { if (opts.run) return cli.check(opts) })`                                                             | red, `hook-one-call`                                                                             | "The call is unconditional"                                                                                                                         | the service decides on `opts.run`                                    |
+| H4  | `.action((opts) => cli.check({ cwd: opts.cwd ?? process.cwd() }))`                                                        | red, `hook-one-call`                                                                             | "A default on the way in (`opts.cwd ?? process.cwd()`) … is translation"                                                                            | pass both unchanged, H10; the default is the service's               |
+| H5  | `.action(async (opts) => { if (!(await cli.check(opts)).ok) process.exit(1) })`                                           | red, `hook-one-call`                                                                             | "a branch on the result (`if (result.ok) exit(0)`)"                                                                                                 | the use case returns the exit code, H6                               |
+| H6  | `.action(async (opts) => { process.exitCode = await cli.check(opts) })`                                                   | green                                                                                            | "the result is returned, or handed whole to the tech — a tech call, tech-held state"; "the exit code is part of its result"                         |                                                                      |
+| H7  | `.action(async (opts) => console.log(JSON.stringify(await cli.status(opts))))`                                            | red, `hook-one-call`                                                                             | "a transform before handing (`JSON.stringify(result)`)"                                                                                             | the service renders through its io port                              |
+| H8  | `.action(async (opts) => { try { return await cli.check(opts) } catch { process.exitCode = 2 } })`                        | red, `hook-one-call`                                                                             | "an error mapped to an exit code"                                                                                                                   | the use case maps it and returns the code                            |
+| H9  | `.action((opts) => cli.check(opts.files))`                                                                                | green                                                                                            | "a tech value may be read — a field, a destructured part — and is still a tech value" (edited at checkpoint 3); arguments "tech values … unchanged" |                                                                      |
+| H10 | `.action((opts) => cli.check(opts, process.cwd()))`                                                                       | green                                                                                            | two tech values, each unchanged                                                                                                                     |                                                                      |
+| H11 | `.action((opts) => cli.check({ ...opts, cwd: process.cwd() }))`                                                           | red, `hook-one-call`                                                                             | the two merged into one value: a translation                                                                                                        | H10                                                                  |
+| C1  | `import { createFsStore } from "./lib/notes/adapters/fs-store.adapter.ts"`, `.action(() => createFsStore(process.cwd()))` | red, `driver-calls-services` on the call; `adapter-assembly-only` on the import (reported today) | "Never an adapter: an adapter call from a hook is an effect no contract covers"                                                                     | the assembly builds it, a service calls it                           |
+| C2  | `import { parseOpts } from "./lib/cli/opts.model.ts"`, `.action((opts) => cli.check(parseOpts(opts)))`                    | red, `driver-calls-services` and `hook-one-call`                                                 | "Never a model: parsing and rendering are use cases of a service"; the parse is a translation around the call                                       | `check` takes `opts` and parses                                      |
+| C3  | `import pc from "picocolors"`, undeclared, used in wiring                                                                 | red, `driver-calls-services`                                                                     | "an external import neither claims is a violation whose resolution is the declaration"                                                              | declare it in `driverTech`; or it is a service's concern             |
+| C4  | C3 with `driverTech: ["cac", "picocolors"]`                                                                               | green                                                                                            | "what the project declares as tech"                                                                                                                 |                                                                      |
+| O1  | `const parseFoo = (s: string) => s.split(",")` at the driver's root                                                       | red, `driver-hooks-only`                                                                         | "a local `parseFoo` is a model without a test"                                                                                                      | a model function, called by a service                                |
+| O2  | in `main`: `const handlers = { check: (opts) => cli.check(opts) }`, `.action(handlers.check)`                             | red, `driver-hooks-only`                                                                         | "a table of lambdas a service without a contract" — a lambda not handed to the tech where it is written is not a hook                               | each hook handed to the tech in place                                |
+| O3  | `export const main` and `export const registerMore = (parser) => …` in one driver                                         | red, `driver-hooks-only`                                                                         | "at most one wiring function"                                                                                                                       | the second in a sub-driver                                           |
+| O4  | `export const main = (argv: string[]) => …`                                                                               | red, `driver-hooks-only`                                                                         | "a root driver's `main()`, which takes nothing and reads its tech itself"                                                                           | read `process.argv` inside                                           |
+| O5  | `type Opts = { cwd: string }` in the driver                                                                               | red, `driver-hooks-only`                                                                         | a definition, A15's ruling                                                                                                                          | the type in place, or in the service's contract                      |
+| O6  | `const NAME = "notes"` at the driver's root                                                                               | red, `driver-hooks-only`                                                                         | a definition beside the hooks and the wiring function (`stable-root` green)                                                                         | the literal in place                                                 |
+| S1  | `src/cli/check.driver.ts` exports `registerCheckCommands(parser, cli)`, called in `main`                                  | green                                                                                            | "a driver imports another driver only to call its wiring function, during its own wiring, passing tech and instances"                               |                                                                      |
+| S2  | `registerCheckCommands(parser, cli)` called inside a hook                                                                 | red, `sub-driver-wiring`                                                                         | "Calling a sub-driver from inside a hook … would let one hook chain two calls"                                                                      | call it in `main`                                                    |
+| S3  | the sub-driver exports a hook too, and the root imports it                                                                | red, `sub-driver-wiring` (the import), `driver-hooks-only` (the sub-driver's second export)      | "Never a hook"; "The sub-driver exports that one wiring function and no hook"                                                                       | the root lets the sub-driver attach its hooks                        |
+| S4  | `registerCheckCommands(parser, await cli.status({}))`                                                                     | red, `sub-driver-wiring` and `wiring-outside-hooks`                                              | "never data from the hexagon"; a use case outside a hook                                                                                            | pass `cli`; the sub-driver's hook calls `status`                     |
+| N1  | `src/lib/cli/cli.service.ts` has `import type { main } from "../../cli.driver.ts"`                                        | red, `driver-not-imported`, `inward-deps`                                                        | "type imports included"                                                                                                                             | nothing but a boot or a driver imports a driver                      |
+| N2  | a blob file imports `main`                                                                                                | red, `driver-not-imported`                                                                       | as N1                                                                                                                                               | as N1                                                                |
+
+Doubts, ruled 2026-09-25, each as written; to revisit once the detector shows
+what they give:
+
+- **D5 and O2 together** draw the line inside `main`: a local holding tech or an
+  instance is wiring; a local holding lambdas not handed to the tech is a
+  definition — the canon names "a table of lambdas".
+- **H9** follows from checkpoint 3's canon edit: a field of a tech value is a
+  tech value, so `cli.check(opts.files)` passes it unchanged. The edit was made
+  for assemblies; the paragraph it sits in defines the terms for the assembly
+  and driver rules both. Green.
+- **H10 vs H11**: two tech values as two arguments green, merged into one red —
+  the merge is the smallest translation there is, and H10 is always available.
+
 ## Testing
 
 The rows are the deliverable, and the gate is rixo's stamp, not green: every row
@@ -280,6 +351,26 @@ Gates: 931 green, coverage 100, tsc, prettier; self-check 85 (62 unknown): the
 one more is `assembly.spec.ts`'s `ROWS: readonly Row[]`, the type-name unknown
 every corpus spec carries. Its tree constants are `as const` — written bare
 first, they were five reds, rightly.
+
+### Checkpoint 4, built 2026-09-25
+
+The driver table, stamped at build. `driver.spec.ts` (new, 14 rows): hooks side
+by side in one driver where each line carries its own verdict (the
+`hook-one-call` reds, H1–H8 and H11, in one row; H6, H9, H10 in one).
+`layers.spec.ts`: N1, N2. The parser is `cac`, declared in `driverTech`.
+
+- Reported today, marked `red`: C1's import, `adapter-assembly-only` with
+  `runtime-import` beside it (a type import would pass — the table named only
+  the first); N1's `inward-deps`.
+- Everything else red is a `missed red` waiting on the driver check or the
+  matrix cells. Every marker's claimed line printed and checked.
+- O1's helper, called in a hook, adds two reds the table did not list on that
+  line: `driver-calls-services` (a local function is none of the callees
+  allowed) and `hook-one-call` (a parse around the call) — the same pair as C2.
+
+Gates: 947 green, coverage 100, tsc, prettier; self-check 86 (63 unknown): the
+one more is `driver.spec.ts`'s `ROWS: readonly Row[]`, the corpus specs' shared
+type-name unknown; its tree constants are `as const`.
 
 ## Docs
 

@@ -7,12 +7,12 @@ judges the verdict without opening a detector. ESLint's `RuleTester` and rustc's
 UI tests are the precedent.
 
 One spec per check, named after it — `layers.spec.ts`, `dag.spec.ts`,
-`modules.spec.ts`, `assembly.spec.ts` — the root `describe` the check's name,
-rows nested by the canon statement they prove. A spec may open before its check
-exists: its rows are written red first, every red a `missed red` naming the
-check it waits for (`assembly.spec.ts` today). A row is a `Row`: the sentence
-the reviewer reads, the tree, the config and the checks it runs. The whole spec
-is the table and four lines:
+`modules.spec.ts`, `assembly.spec.ts`, `driver.spec.ts` — the root `describe`
+the check's name, rows nested by the canon statement they prove. A spec may open
+before its check exists: its rows are written red first, every red a
+`missed red` naming the check it waits for (`assembly.spec.ts`, `driver.spec.ts`
+today). A row is a `Row`: the sentence the reviewer reads, the tree, the config
+and the checks it runs. The whole spec is the table and four lines:
 
 ```ts
 test.each(ROWS)("$name", async (row) => {

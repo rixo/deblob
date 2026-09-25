@@ -202,6 +202,47 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
+  {
+    // canon: `driver-not-imported`, "nothing but a boot or another driver
+    // imports a driver, type imports included"; the service also points
+    // outward, `inward-deps`.
+    name: "a service importing a driver as a type is red: type imports included",
+    files: {
+      ...ASSEMBLY,
+      "src/cli.driver.ts": `
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        export const main = () => {
+          const services = createNotesAssembly({ cwd: process.cwd() })
+          process.on("ready", () => services.notes.list())
+        }
+      `,
+      "src/search/search.service.ts": `
+        import type { main } from "../cli.driver.ts"
+        export const createSearch = (deps: { start: typeof main }) => ({ find: () => deps.start })
+        // red: inward-deps -- the type import of cli.driver: a service reaching outward
+        // missed red: driver-not-imported -- the type import of cli.driver: type imports included; the matrix cell is not built yet
+      `,
+    },
+  },
+  {
+    // canon: `driver-not-imported` — blob is neither a boot nor a driver.
+    name: "a blob file importing a driver is red",
+    files: {
+      ...ASSEMBLY,
+      "src/cli.driver.ts": `
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        export const main = () => {
+          const services = createNotesAssembly({ cwd: process.cwd() })
+          process.on("ready", () => services.notes.list())
+        }
+      `,
+      "src/legacy/start.ts": `
+        import { main } from "../cli.driver.ts"
+        export const start = () => main()
+        // missed red: driver-not-imported -- the import of cli.driver from blob; the matrix cell is not built yet
+      `,
+    },
+  },
 ]
 
 describe("layers", () => {
