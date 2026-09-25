@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+html{color-scheme:dark}
+html,body{margin:0;background:#101113;color:#c4c2bc}
+*{scrollbar-color:#3a3c42 transparent;scrollbar-width:thin}
+a{color:#8fb0e6}a:hover{color:#b5cdf2}
+</style>
+<script src="sequence-data.js?v=4"></script>
+<script src="call-stack.js?v=2"></script>
+</helmet>
+<div style="min-height:{{ pageMinH }};height:{{ pageH }};box-sizing:border-box;padding:{{ pagePad }};display:flex;flex-direction:column;gap:18px;font-family:'IBM Plex Sans',sans-serif">
+  <sc-if value="{{ showIntro }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5a5d64">deblob · sequence component · 1</div>
+    <div style="font:400 12.5px/1.5 'IBM Plex Mono',monospace;color:#8d8b85;display:flex;flex-wrap:wrap;gap:4px 18px">
+      <span>hover a step or a head</span><span>click to select</span><span>↑ ↓ step</span><span>← → fold</span><span>click a unit name to fold its lifelines</span><span>drag the corner to resize</span><span>↑ #n jumps to where a function is first expanded</span>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isOpen }}" hint-placeholder-val="{{ true }}">
+    <div style="position:relative;width:{{ panelW }};height:{{ panelH }};min-width:360px;min-height:{{ panelMinH }};max-width:100%;resize:{{ panelResize }};overflow:hidden;background:#16171a;border:{{ panelBd }};border-radius:{{ panelR }};box-shadow:{{ panelSh }};display:flex;flex-direction:column">
+      <div style="flex:none;height:36px;display:flex;align-items:center;gap:14px;padding:0 8px 0 14px;border-bottom:1px solid #222428">
+        <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#8d8b85;white-space:nowrap">sequence · call stack</span>
+        <div style="flex:none;display:flex;gap:2px">
+          <sc-for list="{{ hooks }}" as="h" hint-placeholder-count="6">
+            <button onClick="{{ h.pick }}" title="{{ h.usage }}" style="height:22px;padding:0 7px;border:0;border-radius:4px;background:{{ h.bg }};color:{{ h.c }};font:500 11px/1 'IBM Plex Mono',monospace;cursor:pointer" style-hover="color:#e6e4df">{{ h.label }}</button>
+          </sc-for>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;align-items:center;gap:6px;overflow:hidden;font:400 11.5px/1 'IBM Plex Mono',monospace;white-space:nowrap">
+          <sc-for list="{{ crumb }}" as="c" hint-placeholder-count="0">
+            <span style="display:flex;gap:6px;align-items:center"><span style="color:#4a4c52">{{ c.sep }}</span><span style="color:{{ c.color }}">{{ c.label }}</span></span>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:2px;padding:2px;border:1px solid #26282d;border-radius:6px">
+          <button onClick="{{ toBars }}" style="height:20px;padding:0 8px;border:0;border-radius:4px;background:{{ vBarsBg }};color:{{ vBarsC }};font:500 10px/1 'IBM Plex Mono',monospace;cursor:pointer">bars</button>
+          <button onClick="{{ toLines }}" style="height:20px;padding:0 8px;border:0;border-radius:4px;background:{{ vLinesBg }};color:{{ vLinesC }};font:500 10px/1 'IBM Plex Mono',monospace;cursor:pointer">lifelines</button>
+        </div>
+        <sc-if value="{{ showWin }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;gap:2px">
+          <button onClick="{{ minimize }}" title="Minimize" style="width:26px;height:26px;display:grid;place-items:center;background:transparent;border:0;border-radius:5px;color:#8d8b85;cursor:pointer" style-hover="background:#222428;color:#e6e4df"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 9.5h7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg></button>
+          <button onClick="{{ close }}" title="Close" style="width:26px;height:26px;display:grid;place-items:center;background:transparent;border:0;border-radius:5px;color:#8d8b85;cursor:pointer" style-hover="background:#222428;color:#e6e4df"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg></button>
+        </div>
+        </sc-if>
+      </div>
+
+      <div ref="{{ setScroll }}" onMouseLeave="{{ clearHover }}" style="flex:1;min-height:0;overflow:auto;position:relative">
+        <div style="display:grid;grid-template-columns:{{ gutterW }}px minmax({{ W }}px,1fr);grid-template-rows:62px minmax({{ H }}px,1fr);width:max-content;min-width:100%;min-height:100%">
+          <div style="position:sticky;top:0;left:0;z-index:6;background:#16171a;border-right:1px solid #222428"></div>
+
+          <div onMouseLeave="{{ clearHover }}" style="position:sticky;top:0;z-index:5;background:#16171a">
+            <sc-for list="{{ units }}" as="u" hint-placeholder-count="5">
+              <div onClick="{{ u.click }}" title="{{ u.title }}" style="position:absolute;top:8px;left:{{ u.x }}px;width:{{ u.w }}px;height:18px;display:flex;align-items:center;justify-content:center;gap:5px;border-bottom:1px solid #2c2f35;cursor:pointer;color:{{ u.color }};font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap" style-hover="color:#e6e4df">
+                <svg width="9" height="9" viewBox="0 0 10 10" style="transform:rotate({{ u.rot }}deg)"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                <span>{{ u.label }}</span>
+              </div>
+            </sc-for>
+            <sc-for list="{{ heads }}" as="h" hint-placeholder-count="10">
+              <div onMouseEnter="{{ h.enter }}" onClick="{{ h.click }}" style="cursor:pointer;position:absolute;top:32px;left:{{ h.l }}px;width:{{ h.w }}px;height:26px;clip-path:{{ h.clip }};display:flex;flex-direction:column;align-items:center;gap:5px;opacity:{{ h.op }};pointer-events:{{ h.pe }};cursor:default">
+                <span style="width:7px;height:7px;border-radius:2px;background:{{ h.sq }}"></span>
+                <span style="max-width:100%;overflow:hidden;text-overflow:ellipsis;font:400 11px/1 'IBM Plex Mono',monospace;color:{{ h.lc }};white-space:nowrap">{{ h.label }}</span>
+              </div>
+            </sc-for>
+            <sc-for list="{{ uheads }}" as="h" hint-placeholder-count="0">
+              <div onMouseEnter="{{ h.enter }}" style="position:absolute;top:32px;left:{{ h.l }}px;width:40px;clip-path:{{ h.clip }};height:26px;display:flex;justify-content:center;opacity:{{ h.op }};pointer-events:{{ h.pe }}">
+                <span style="position:relative;width:11px;height:11px"><span style="position:absolute;left:0;top:0;width:7px;height:7px;border-radius:2px;border:1px solid {{ h.c }};box-sizing:border-box"></span><span style="position:absolute;left:4px;top:4px;width:7px;height:7px;border-radius:2px;background:{{ h.c }}"></span></span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="position:sticky;left:0;z-index:4;background:#16171a;border-right:1px solid #222428">
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="12">
+              <div onMouseEnter="{{ r.enter }}" onClick="{{ r.click }}" style="position:absolute;left:0;right:0;top:{{ r.y }}px;height:{{ r.h }}px;clip-path:{{ r.clip }};display:flex;align-items:center;gap:0;padding-right:10px;box-sizing:border-box;background:{{ r.bg }};opacity:{{ r.op }};pointer-events:{{ r.pe }};overflow:hidden;cursor:pointer;white-space:nowrap;font:400 11.5px/1 'IBM Plex Mono',monospace">
+                <span style="flex:none;min-width:30px;box-sizing:border-box;text-align:right;padding-right:6px;font-size:10px;color:#5a5d64;white-space:nowrap">{{ r.step }}</span>
+                <span style="flex:none;width:{{ r.indent }}px"></span>
+                <span onClick="{{ r.fold }}" style="flex:none;width:16px;height:16px;display:grid;place-items:center;color:#8d8b85;opacity:{{ r.chevOp }};border-radius:3px" style-hover="background:#26282d;color:#e6e4df"><svg width="9" height="9" viewBox="0 0 10 10" style="transform:rotate({{ r.rot }}deg)"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                <sc-if value="{{ r.isCall }}" hint-placeholder-val="{{ true }}">
+                  <span style="flex:1;display:flex;align-items:center;gap:7px;min-width:0;padding-left:3px">
+                    <span style="flex:none;width:6px;height:6px;border-radius:2px;background:{{ r.sq }}"></span>
+                    <span style="overflow:hidden;text-overflow:ellipsis"><span style="color:{{ r.tc }}">{{ r.fn }}</span><span style="color:{{ r.ac }}">({{ r.args }})</span><span style="color:#5a5d64">{{ r.via }}</span></span>
+                  </span>
+                </sc-if>
+                <sc-if value="{{ r.isFrame }}" hint-placeholder-val="{{ false }}">
+                  <span style="display:flex;align-items:center;gap:7px;padding-left:3px;font-size:10.5px"><span style="color:#a3a19b">{{ r.tag }}</span><span style="color:#6a6c72">[{{ r.guard }}]</span></span>
+                </sc-if>
+                <sc-if value="{{ r.isRet }}" hint-placeholder-val="{{ false }}">
+                  <span style="padding-left:3px;color:{{ r.tc }};font-size:11px">← {{ r.ret }}</span>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+
+          <div onClick="{{ bgClick }}" style="position:relative">
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="12">
+              <div onMouseEnter="{{ r.enter }}" onClick="{{ r.click }}" style="position:absolute;left:0;right:0;top:{{ r.y }}px;height:{{ r.h }}px;clip-path:{{ r.clip }};background:{{ r.bg }};pointer-events:{{ r.pe }};cursor:pointer"></div>
+            </sc-for>
+            <sc-for list="{{ lines }}" as="l" hint-placeholder-count="10">
+              <div style="position:absolute;top:0;bottom:0;left:{{ l.x }}px;width:0;clip-path:{{ l.clip }};border-left:1px solid {{ l.c }};opacity:{{ l.op }};pointer-events:none"></div>
+            </sc-for>
+            <sc-for list="{{ frames }}" as="f" hint-placeholder-count="0">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;clip-path:{{ f.clip }};width:{{ f.w }}px;height:{{ f.h }}px;border:1px solid #2e3036;border-radius:4px;box-sizing:border-box;opacity:{{ f.op }};pointer-events:none;overflow:hidden;z-index:2">
+                <span onClick="{{ f.click }}" style="position:absolute;left:0;top:0;display:flex;gap:6px;align-items:center;height:15px;padding:0 7px;background:#1c1d21;border-right:1px solid #2e3036;border-bottom:1px solid #2e3036;border-radius:0 0 4px 0;font:500 9.5px/1 'IBM Plex Mono',monospace;color:#a3a19b;pointer-events:auto;cursor:pointer;white-space:nowrap"><span>{{ f.tag }}</span><span style="color:#6a6c72;font-weight:400">[{{ f.guard }}]</span></span>
+              </div>
+            </sc-for>
+            <sc-for list="{{ arrows }}" as="a" hint-placeholder-count="0">
+              <div style="position:absolute;inset:0;pointer-events:none;opacity:{{ a.op }};clip-path:{{ a.clip }}">
+                <div style="position:absolute;left:{{ a.left }}px;top:{{ a.top }}px;width:{{ a.width }}px;height:0;border-top:{{ a.w }}px {{ a.dash }} {{ a.color }};opacity:{{ a.opLine }}"></div>
+                <div style="position:absolute;left:{{ a.loopL }}px;top:{{ a.loopT }}px;width:14px;height:{{ a.loopH }}px;border-style:solid solid solid none;border-width:{{ a.w }}px {{ a.w }}px {{ a.w }}px 0;border-color:{{ a.color }};border-radius:0 5px 5px 0;box-sizing:border-box;opacity:{{ a.opLoop }}"></div>
+                <div style="position:absolute;left:{{ a.headL }}px;top:{{ a.headT }}px;width:7px;height:7px;transform:scaleX({{ a.flip }});opacity:{{ a.opHead }}">
+                  <svg width="7" height="7" viewBox="0 0 7 7" style="display:block;overflow:visible"><path d="{{ a.headD }}" fill="{{ a.hfill }}" stroke="{{ a.hstroke }}" stroke-width="1.1" stroke-linejoin="round"></path></svg>
+                </div>
+                <div style="position:absolute;left:{{ a.labL }}px;top:{{ a.labT }}px;width:{{ a.labW }}px;text-align:{{ a.labAlign }};font:400 10.5px/1 'IBM Plex Mono',monospace;color:{{ a.labColor }};white-space:nowrap;opacity:{{ a.opLab }}">{{ a.lab }}<span style="color:#5a5d64">{{ a.via }}</span></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ bars }}" as="b" hint-placeholder-count="0">
+              <div style="position:absolute;inset:0;pointer-events:none;opacity:{{ b.op }};clip-path:{{ b.clip }}">
+                <div style="position:absolute;left:{{ b.labL }}px;top:{{ b.labT }}px;opacity:{{ b.lo }};white-space:nowrap;font:400 10.5px/1 'IBM Plex Mono',monospace"><span style="color:{{ b.fc }}">{{ b.fn }}</span><span style="color:{{ b.ac }}">({{ b.args }})</span><span style="color:#4a4c52">{{ b.via }}</span></div>
+                <div style="position:absolute;left:{{ b.l }}px;top:{{ b.t }}px;width:{{ b.w }}px;height:3px;border-radius:2px;background:{{ b.c }}"></div>
+                <div style="position:absolute;left:{{ b.sqL }}px;top:{{ b.sqT }}px;width:7px;height:7px;border-radius:2px;background:{{ b.sq }}"></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ acts }}" as="b" hint-placeholder-count="0">
+              <div style="position:absolute;left:{{ b.l }}px;top:{{ b.t }}px;width:7px;clip-path:{{ b.clip }};height:{{ b.h }}px;background:{{ b.fill }};border:1px solid {{ b.bd }};border-radius:2px;box-sizing:border-box;opacity:{{ b.op }};pointer-events:none"></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isMin }}" hint-placeholder-val="{{ false }}">
+    <div style="width:1180px;max-width:100%;height:36px;box-sizing:border-box;display:flex;align-items:center;gap:14px;padding:0 8px 0 14px;background:#16171a;border:1px solid #26282d;border-radius:8px">
+      <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#8d8b85">sequence · call stack</span>
+      <span style="font:500 12px/1 'IBM Plex Mono',monospace;color:#e6e4df">{{ usage }}</span>
+      <button onClick="{{ restore }}" title="Restore" style="margin-left:auto;width:26px;height:26px;display:grid;place-items:center;background:transparent;border:0;border-radius:5px;color:#8d8b85;cursor:pointer" style-hover="background:#222428;color:#e6e4df"><svg width="12" height="12" viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"></rect></svg></button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isClosed }}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{ restore }}" style="align-self:flex-start;height:28px;padding:0 12px;background:#16171a;border:1px solid #26282d;border-radius:6px;color:#8d8b85;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;cursor:pointer" style-hover="color:#e6e4df;border-color:#3a3d44">reopen sequence</button>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;bars&quot;,&quot;lifelines&quot;],&quot;default&quot;:&quot;bars&quot;,&quot;tsType&quot;:&quot;'bars' | 'lifelines'&quot;},&quot;labels&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;gutter&quot;,&quot;arrow&quot;],&quot;default&quot;:&quot;gutter&quot;,&quot;tsType&quot;:&quot;'gutter' | 'arrow'&quot;,&quot;section&quot;:&quot;lifelines&quot;},&quot;returns&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;lifelines&quot;},&quot;rowH&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:18,&quot;max&quot;:30,&quot;step&quot;:1,&quot;default&quot;:22,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;}}">
+const K = { ports: '#c3a4ef', service: '#74bdf7', model: '#92d29b', adapters: '#f2a078', driver: '#6ed2c8', assembly: '#a3a19b' };
+K.port = K.ports; K.external = '#8d8b85';
+const kcol = id => (PB[id] && K[PB[id].kind]) || '#8d8b85';
+let UNITS = [], P = [], PB = {}, NODES = [], BY = {}, ROOTS = [], FIRST = {}, ROOT = '';
+const setModel = m => {
+  UNITS = m.units; P = m.participants; PB = Object.fromEntries(P.map(p => [p.id, p])); ROOT = m.root;
+  NODES = []; BY = {}; ROOTS = []; FIRST = {};
+  let step = 0, n = 0;
+  const walk = (list, caller, parent, depth) => list.forEach(src => {
+    const node = { ...src, id: 'n' + (n++), caller, parent, depth, kids: [] };
+    if (!src.frame) { node.step = ++step; if (src.ref && !src.repeat) FIRST[src.ref] = node; }
+    NODES.push(node); BY[node.id] = node;
+    (parent ? parent.kids : ROOTS).push(node);
+    if (src.kids) walk(src.kids, src.frame ? caller : src.to, node, depth + 1);
+  });
+  walk(m.tree, m.root, null, 0);
+  const calls = node => node.kids.flatMap(k => (k.frame ? calls(k) : [k, ...calls(k)]));
+  NODES.forEach(nd => {
+    if (nd.frame) nd.calls = calls(nd);
+    else nd.via = nd.repeat && FIRST[nd.repeat] ? '↑ #' + FIRST[nd.repeat].step : nd.note || '';
+  });
+};
+const callAnc = n => { const a = []; for (let p = n.parent; p; p = p.parent) if (!p.frame) a.unshift(p); return a; };
+const parentCall = n => { for (let p = n.parent; p; p = p.parent) if (!p.frame) return p; return null; };
+const isUnder = (n, anc) => { for (let p = n.parent; p; p = p.parent) if (p === anc) return true; return false; };
+const mono = 6.6;
+
+class Component extends DCLogic {
+  state = { fu: {}, fuB: {}, fn: {}, sel: null, hover: null, view: 'open', variant: null, cw: 0, hook: this.props.hook || 'check', hooks: [], ready: false };
+  // Embedded (map dock): the host says which hooks the switcher offers and which one to show.
+  // A function selected on the map (`fn`, module#Symbol) is offered alone, as one chip.
+  offered() { if (this.props.fn) return [{ name: this.props.fn, label: this.props.fn.slice(this.props.fn.indexOf('#') + 1), usage: this.props.fn }]; const all = this.state.hooks, only = this.props.hooks; return Array.isArray(only) ? all.filter(h => only.includes(h.name)) : all; }
+  wanted() { if (this.props.fn) return this.props.fn; const names = this.offered().map(h => h.name); if (this.props.hook && names.includes(this.props.hook)) return this.props.hook; return names.includes(this.state.hook) ? this.state.hook : names[0]; }
+  chrome() {
+    const e = !!this.props.embedded;
+    return e ? { pageMinH: '0', pageH: '100%', pagePad: '0', showIntro: false, panelW: '100%', panelH: '100%', panelMinH: '0', panelResize: 'none', panelBd: '0', panelR: '0', panelSh: 'none', showWin: false }
+      : { pageMinH: '100vh', pageH: 'auto', pagePad: '28px 32px', showIntro: true, panelW: '1180px', panelH: '400px', panelMinH: '140px', panelResize: 'both', panelBd: '1px solid #26282d', panelR: '8px', panelSh: '0 10px 30px rgba(0,0,0,.35)', showWin: true };
+  }
+  pickHook(name) {
+    if (!this._S) return;
+    const m = window.DeblobSequence.build(this._S, name);
+    setModel(m); this._usage = m.usage; this._from = null; this._last = null;
+    // Step numbers: the map's (call-stack.js), nested 1, 1.1, 2; blank for a
+    // call the map folds (same file) or does not trace (entry).
+    const CS = window.CallStack, D = CS && (this._D = this._D || CS.index(this._S)), st = D && CS.of(D, name.indexOf('#') > 0 ? name : 'hook:' + name);
+    this._nums = new Map(st ? st.calls.map(c => [c.id, c.num + (c.loop ? '*' : '')]) : []);
+    const allF = Object.fromEntries(UNITS.map(u => [u.id, true]));
+    const fn = {};
+    NODES.forEach(n => { if (n.kids.length && (n.frame === 'ref' || (!n.frame && callAnc(n).length))) fn[n.id] = true; });
+    this.setState({ hook: name, ready: true, fu: allF, fuB: { ...allF }, fn, sel: null, hover: null });
+    if (this._sc) this._sc.scrollTop = 0;
+  }
+  // Host asks for a call (frame id): arc click, or selection restored on reload.
+  // Looks in the shown hook, then in the other offered ones.
+  applyPick() {
+    const pc = this.props.pickCall; if (!pc || !this._S || this._picked === pc) return;
+    this._picked = pc;
+    const find = () => NODES.find(x => !x.frame && x.fid === pc.fid), cur = this.state.hook;
+    let n = find();
+    if (!n) for (const h of this.offered()) { if (h.name === cur) continue; this.pickHook(h.name); if ((n = find())) break; }
+    if (n) this.reveal(n); else if (this.state.hook !== cur) this.pickHook(cur);
+  }
+  reveal(t) {
+    this.tween();
+    this.setState(s => { const fn = { ...s.fn }; for (let p = t.parent; p; p = p.parent) fn[p.id] = false; return { fn, sel: t.id, hover: null }; });
+  }
+  // Call link: tell the host which call (frame id) is hovered / selected here.
+  emitCalls() {
+    if (!this.props.onCalls) return;
+    const f = id => (id && BY[id] && BY[id].fid) || null, H = this.state.hover, h = H && H.t === 'call' ? f(H.id) : null, s = f(this.state.sel);
+    // Lifeline / unit head hovered: its id in the snapshot (m:file, x:pkg, a unit).
+    const part = H && H.t === 'p' ? H.key : null;
+    const k = h + '|' + s + '|' + part;
+    if (k !== this._callsK) { this._callsK = k; this.props.onCalls({ hover: h, sel: s, part }); }
+  }
+  // The host runtime may call this without prevProps / prevState: compare
+  // against what we saw last instead.
+  componentDidUpdate(pp) {
+    pp = pp || this._pp || this.props; this._pp = this.props;
+    this.emitCalls();
+    if (pp.snapshot !== this.props.snapshot) this.loadSnap();
+    if (pp.clearSel !== this.props.clearSel && this.state.sel) this.setState({ sel: null });
+    if (this.props.pickCall !== pp.pickCall) this.applyPick();
+    if (this._S && (pp.hook !== this.props.hook || pp.fn !== this.props.fn || String(pp.hooks) !== String(this.props.hooks))) { const w = this.wanted(); if (w && w !== this.state.hook) this.pickHook(w); }
+    const el = this._sc, sel = this.state.sel, y = sel && this._rowY && this._rowY[sel];
+    if (!el || !y || this._scrolledSel === sel) return;
+    this._scrolledSel = sel;
+    if (y[0] < el.scrollTop) el.scrollTop = y[0] - 8;
+    else if (62 + y[0] + y[1] > el.scrollTop + el.clientHeight) el.scrollTop = 62 + y[0] + y[1] - el.clientHeight + 8;
+  }
+  setScroll = el => {
+    if (this._ro) { this._ro.disconnect(); this._ro = null; }
+    this._sc = el;
+    if (!el) return;
+    this._ro = new ResizeObserver(() => { const w = el.clientWidth; if (Math.abs(w - this.state.cw) > 1) this.setState({ cw: w }); });
+    this._ro.observe(el);
+  };
+
+  componentDidMount() {
+    this.loadSnap();
+    this.bindKeys();
+  }
+  // Snapshot path: the host's (project picker), else the default data path.
+  loadSnap() {
+    const url = this.props.snapshot || 'data/deblob.sequence.snapshot.2.json';
+    this._snapUrl = url;
+    const go = () => window.DeblobSequence.load(url).then(S => { if (url !== this._snapUrl) return; this._S = S; this._D = null; this._picked = null; this.setState({ hooks: window.DeblobSequence.hooks(S) }, () => { this.pickHook(this.wanted() || this.state.hook); this.applyPick(); }); }).catch(e => console.error('sequence load', String(e && e.stack || e)));
+    if (window.DeblobSequence) go(); else { const iv = setInterval(() => { if (window.DeblobSequence) { clearInterval(iv); go(); } }, 50); }
+  }
+  bindKeys() {
+    this._key = e => {
+      if (this.state.view !== 'open' || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+      const vis = this._vis || [], sel = this.state.sel, i = vis.indexOf(sel);
+      const go = id => { e.preventDefault(); this.setState({ sel: id, hover: null }); };
+      if (e.key === 'ArrowDown' || e.key === 'j') go(vis[Math.min(vis.length - 1, i + 1)] ?? vis[0]);
+      else if (e.key === 'ArrowUp' || e.key === 'k') go(vis[Math.max(0, i - 1)] ?? vis[0]);
+      else if (e.key === 'Escape') this.setState({ sel: null });
+      else if (sel && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        const n = BY[sel], folded = !!this.state.fn[sel];
+        if (e.key === 'ArrowLeft') {
+          if (n.kids.length && !folded) this.toggleNode(n);
+          else { const p = parentCall(n); if (p) this.setState({ sel: p.id }); }
+        } else {
+          if (folded) this.toggleNode(n);
+          else { const first = NODES.find(m => !m.frame && isUnder(m, n)); if (first) this.setState({ sel: first.id }); }
+        }
+      }
+    };
+    window.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); if (this.props.onCalls) this.props.onCalls({ hover: null, sel: null }); }
+
+  tween() {
+    this._from = this._last; this._t0 = performance.now();
+    if (this._raf) return;
+    const step = () => { this.forceUpdate(); this._raf = this._from ? requestAnimationFrame(step) : null; };
+    this._raf = requestAnimationFrame(step);
+  }
+  // T-rules of docs/transition-model.md: shared items interpolate; an item drawn in one
+  // frame only stays put, clipped to its holder's live body, fading out / in over half.
+  _blend(N) {
+    const lists = ['rows', 'frames', 'bars', 'arrows', 'acts', 'heads', 'uheads', 'lines', 'units'];
+    const norm = x => ({ clip: 'none', op: 1, ...x });
+    lists.forEach(k => N[k] = N[k].map(norm));
+    const A = this._from, now = performance.now();
+    if (!A || !A.geo) { this._from = null; return N; }
+    const t = Math.min(1, (now - this._t0) / 300);
+    if (t >= 1) { this._from = null; return N; }
+    const s = 1 - Math.pow(1 - t, 3), L = (a, b) => a + (b - a) * s, fOut = Math.max(0, 1 - 2 * t), fIn = Math.max(0, 2 * t - 1);
+    const H = L(A.H, N.H), live = {};
+    for (const id in N.geo) if (A.geo[id]) { const a = A.geo[id], b = N.geo[id]; live[id] = { y: L(a.y, b.y), h: L(a.h, b.h), end: L(a.end, b.end) }; }
+    const body = id => { for (let n = BY[id] && BY[id].parent; n; n = n.parent) if (live[n.id]) return [live[n.id].y + live[n.id].h, live[n.id].end]; return [0, H]; };
+    const vclip = (id, y, h) => { const [bt, bb] = body(id); return 'inset(' + Math.max(0, bt - y) + 'px 0 ' + Math.max(0, y + h - bb) + 'px 0)'; };
+    const mix = (pa, nb, fields, clipOf) => {
+      const pm = new Map(pa.map(x => [x.k, x])), seen = new Set();
+      const out = nb.map(b => { seen.add(b.k); const a = pm.get(b.k); if (!a) return { ...b, clip: clipOf(b), op: b.op * fIn }; const o = { ...b }; fields.forEach(f => o[f] = L(a[f], b[f])); return o; });
+      pa.forEach(a => { if (!seen.has(a.k)) out.push({ ...a, clip: clipOf(a), op: a.op * fOut, pe: 'none' }); });
+      return out;
+    };
+    const V = { ...N, H, W: L(A.W, N.W), geo: { ...N.geo, ...live } };
+    V.units = mix(A.units, N.units, ['x', 'w'], () => 'none');
+    const band = {}; V.units.forEach(u => band[u.k] = [u.x, u.x + u.w]);
+    const hclip = (uid, l, w) => { const b = band[uid]; return b ? 'inset(0 ' + Math.max(0, l + w - b[1]) + 'px 0 ' + Math.max(0, b[0] - l) + 'px)' : 'none'; };
+    V.rows = mix(A.rows, N.rows, ['y', 'h'], x => vclip(x.nid, x.y, x.h));
+    V.frames = mix(A.frames, N.frames, ['l', 't', 'w', 'h'], x => vclip(x.nid, x.t, x.h));
+    V.bars = mix(A.bars, N.bars, ['l', 'w', 't', 'sqL', 'sqT', 'labL', 'labT'], x => vclip(x.nid, 0, H));
+    V.arrows = mix(A.arrows, N.arrows, ['top', 'left', 'width', 'loopL', 'loopT', 'loopH', 'headL', 'headT', 'labL', 'labT', 'labW', 'opLine', 'opLoop', 'opHead', 'opLab'], x => vclip(x.nid, 0, H));
+    V.acts = mix(A.acts, N.acts, ['l', 't', 'h'], x => x.nid ? vclip(x.nid, x.t, x.h) : 'none');
+    V.heads = mix(A.heads, N.heads, ['l', 'w'], x => hclip(x.uid, x.l, x.w));
+    V.uheads = mix(A.uheads, N.uheads, ['l'], x => hclip(x.uid, x.l, 40));
+    V.lines = mix(A.lines, N.lines, ['x'], x => hclip(x.uid, x.x, 1));
+    return V;
+  }
+
+  toggleNode(n) {
+    this.tween();
+    this.setState(s => {
+      const fn = { ...s.fn, [n.id]: !s.fn[n.id] };
+      let sel = s.sel;
+      if (fn[n.id] && sel && isUnder(BY[sel], n)) sel = n.frame ? (parentCall(n)?.id ?? null) : n.id;
+      return { fn, sel };
+    });
+  }
+
+  renderVals() {
+    const hooksV = this.offered().map(h => ({ name: h.name, label: h.label || h.name, usage: h.usage, bg: h.name === this.state.hook ? '#26282d' : 'transparent', c: h.name === this.state.hook ? '#e6e4df' : '#8d8b85', pick: () => this.pickHook(h.name) }));
+    if (!this.state.ready) return { ...this.chrome(), isOpen: this.state.view === 'open', hooks: hooksV, usage: '', units: [], heads: [], uheads: [], lines: [], rows: [], frames: [], arrows: [], acts: [], bars: [], crumb: [], W: 0, H: 0, gutterW: 58, setScroll: this.setScroll };
+    const variant = this.state.variant ?? this.props.variant ?? 'bars', bars = variant === 'bars';
+    const mode = this.props.labels ?? 'gutter', rets = !(bars && mode === 'arrow') && (this.props.returns ?? false);
+    const R0 = this.props.rowH ?? 22, R = bars ? (mode === 'arrow' ? Math.max(R0, 26) : R0) : mode === 'arrow' ? Math.max(R0, 30) : R0;
+    const FH = 20, RH = Math.round(R * 0.8);
+    const { fn, sel, hover } = this.state;
+    const fuKey = bars ? 'fuB' : 'fu', fuX = this.state[fuKey];
+    const G = mode === 'arrow' ? (bars ? 58 : 52) : 340, barLab = bars && mode === 'arrow';
+
+    // columns
+    const col = {}, units = []; let W;
+    let x = 18;
+    UNITS.forEach(u => {
+      const ps = P.filter(p => p.unit === u.id), f = !!fuX[u.id], x0 = x;
+      if (f) { const w = Math.max(u.label.length * 6.4 + 44, 76); ps.forEach(p => col[p.id] = { x: x0 + w / 2, key: u.id }); x += w; }
+      else ps.forEach(p => { const w = Math.max(p.label.length * mono + 24, 78); col[p.id] = { x: x + w / 2, key: p.id, w }; x += w; });
+      units.push({ u, x0, w: x - x0, f, cx: x0 + (x - x0) / 2 }); x += 14;
+    });
+    W = x + 12;
+
+    // rows
+    const rowsRaw = [], info = {}; let y = 8;
+    const place = (node, hideY, gen = 0) => {
+      if (gen > 1) return;
+      const vis = hideY == null, h = node.frame ? FH : R;
+      const r = { node, type: node.frame ? 'frame' : 'call', y: vis ? y : hideY, h, vis };
+      rowsRaw.push(r); info[node.id] = r;
+      if (vis) y += h;
+      const kHide = vis ? (fn[node.id] ? r.y : null) : hideY;
+      node.kids.forEach(k => place(k, kHide, vis ? (fn[node.id] ? 1 : 0) : gen + 1));
+      if (node.frame && vis && !fn[node.id]) y += 6;
+      if (!node.frame && rets && node.ret) {
+        const rr = { node, type: 'ret', y: vis ? y : hideY, h: RH, vis }; rowsRaw.push(rr); r.ret = rr; if (vis) y += RH;
+      }
+      r.end = vis ? y : hideY;
+    };
+    ROOTS.forEach(n => place(n, null));
+    const H = y + 16;
+    const ay = r => r.y + (mode === 'arrow' ? Math.round(r.h * 0.66) : Math.round(r.h / 2));
+
+    // highlight
+    // The map's selected node lights its lifeline here (one shared selection).
+    const mk = this.props.mapPart, mapP = mk && (col[mk] ? { t: 'p', key: col[mk].key } : UNITS.some(u => u.id === mk) ? { t: 'p', key: mk } : null);
+    const subj = hover || (sel ? { t: 'call', id: sel } : null) || mapP;
+    const lit = new Set(), stack = new Set(), litKeys = new Set();
+    if (subj && subj.t === 'call') {
+      const n = BY[subj.id]; lit.add(n.id); callAnc(n).forEach(a => stack.add(a.id));
+      litKeys.add(col[n.to].key); litKeys.add(col[n.caller].key);
+    } else if (subj && subj.t === 'p') {
+      NODES.forEach(n => { if (!n.frame && (col[n.to].key === subj.key || col[n.caller].key === subj.key)) lit.add(n.id); });
+      litKeys.add(subj.key);
+    } else if (!subj && this.props.litCalls && this.props.litCalls.length) {
+      // Call link (highlight model § 1): the map's hovered arc lights its calls here.
+      const want = new Set(this.props.litCalls);
+      NODES.forEach(n => { if (!n.frame && n.fid && want.has(n.fid)) { lit.add(n.id); callAnc(n).forEach(a => stack.add(a.id)); litKeys.add(col[n.to].key); litKeys.add(col[n.caller].key); } });
+    }
+    const any = !!subj || lit.size > 0;
+    // Embedded in the map's calls world (selection-model C5): the host's tiers paint
+    // steps (a step is its call) and heads (a lifeline is its node). One hover, one selection.
+    const ST = this.props.stepTier, PT = this.props.partTier, TM = typeof ST === 'function' && typeof PT === 'function', hiT = t => t === 'high' || t === 'highest';
+    if (TM) {
+      lit.clear(); stack.clear(); litKeys.clear();
+      NODES.forEach(n => { if (!n.frame && n.fid && hiT(ST(n.fid))) lit.add(n.id); });
+      P.forEach(p => { if (hiT(PT(p.id))) litKeys.add(p.id); });
+      UNITS.forEach(u => { if (hiT(PT(u.id))) litKeys.add(u.id); });
+    }
+    const loN = n => TM ? ST(n && n.fid) === 'low' : any, loK = k => TM ? PT(k) === 'low' : any;
+
+    // activations
+    const act = {};
+    const root = { l: col[ROOT].x - 3.5, key: col[ROOT].key };
+    const acts = [{ k: 'root', l: root.l, t: 4, h: H - 8, op: 1,
+      fill: (TM ? litKeys.has(root.key) : stack.size || (subj && subj.t === 'call' && !parentCall(BY[subj.id])) || (subj && subj.t === 'p' && subj.key === root.key)) ? 'color-mix(in oklab,' + K.driver + ' 30%,#16171a)' : '#1f2024',
+      bd: (TM ? litKeys.has(root.key) : any && (stack.size || lit.size)) ? K.driver : '#3a3c42' }];
+    const arrows = [];
+    NODES.forEach(n => {
+      if (n.frame) return;
+      const r = info[n.id]; if (!r) return;
+      const pc = parentCall(n), pa = pc ? act[pc.id] : root, c = col[n.to];
+      const chain = [root, ...callAnc(n).map(a => act[a.id])];
+      const lane = chain.filter(a => a.key === c.key).length;
+      const l = c.x - 3.5 + lane * 6, yA = ay(r), self = pa.key === c.key;
+      const top = self ? yA + Math.min(9, Math.round(R * 0.4)) : yA - 2;
+      let bot;
+      if (r.ret && r.ret.vis) bot = ay(r.ret) + 2;
+      else if (r.end > r.y + r.h + 1) bot = r.end - 4;
+      else bot = top + Math.max(8, Math.round(R * 0.5));
+      act[n.id] = { l, key: c.key, top, bot };
+      const on = lit.has(n.id), st = stack.has(n.id), kc = kcol(n.to);
+      if (r.vis) acts.push({ k: n.id, nid: n.id, l, t: r.vis ? top : r.y, h: r.vis ? Math.max(0, bot - top) : 0, op: r.vis ? 1 : 0,
+        fill: on || st ? 'color-mix(in oklab,' + kc + ' 34%,#16171a)' : '#1f2024',
+        bd: on || st ? kc : (loN(n) ? '#2c2e33' : '#3a3c42') });
+
+      const color = on ? kc : st ? '#c4c2bc' : loN(n) ? '#34363c' : '#6a6c72';
+      const labColor = on ? '#e6e4df' : st ? '#c4c2bc' : loN(n) ? '#4a4c52' : '#8d8b85';
+      const w = on ? 1.5 : 1;
+      const dir = self ? 1 : Math.sign(l - pa.l) || 1;
+      const x1 = dir > 0 ? pa.l + 7 : pa.l, x2 = dir > 0 ? l : l + 7;
+      const lineL = Math.min(x1, x2) + (dir < 0 ? 5 : 0), lineW = Math.max(0, Math.abs(x2 - x1) - 5);
+      const loopT = yA, loopH = Math.max(6, top + 4 - yA);
+      const label = n.fn + '(' + n.args + ')';
+      if (r.vis) arrows.push({
+        k: n.id, nid: n.id, top: yA - w / 2, left: lineL, width: lineW, w, color, dash: 'solid',
+        opLine: r.vis && !self ? 1 : 0, loopL: pa.l + 7, loopT, loopH, opLoop: r.vis && self ? 1 : 0,
+        headL: self ? l + 7 : (dir > 0 ? x2 - 7 : x2), headT: (self ? loopT + loopH : yA) - 3.5, flip: self ? -1 : dir,
+        headD: 'M0 0L7 3.5L0 7z', hfill: color, hstroke: 'none', opHead: r.vis ? 1 : 0,
+        labL: self ? pa.l + 26 : Math.min(x1, x2), labT: self ? yA - 2 : yA - 15, labW: self ? 400 : Math.abs(x2 - x1),
+        labAlign: self ? 'left' : 'center', lab: label, via: n.via ? ' ' + n.via : '', labColor,
+        opLab: r.vis && mode === 'arrow' ? 1 : 0,
+      });
+      if (r.ret && r.ret.vis) {
+        const rr = r.ret, yR = ay(rr), rx1 = dir > 0 ? l : l + 7, rx2 = dir > 0 ? pa.l + 7 : pa.l;
+        const rcol = on ? kc : st ? '#8d8b85' : loN(n) ? '#2c2e33' : '#4a4c52';
+        arrows.push({
+          k: n.id + 'r', nid: n.id, top: yR - 0.5, left: Math.min(rx1, rx2) + (dir > 0 ? 5 : 0), width: Math.max(0, Math.abs(rx2 - rx1) - 5), w: 1, color: rcol, dash: 'dashed',
+          opLine: rr.vis && !self ? 1 : 0, loopL: 0, loopT: yR, loopH: 6, opLoop: 0,
+          headL: dir > 0 ? rx2 : rx2 - 7, headT: yR - 3.5, flip: -dir, headD: 'M1 .5L6.5 3.5L1 6.5', hfill: 'none', hstroke: rcol, opHead: rr.vis && !self ? 1 : 0,
+          labL: Math.min(rx1, rx2), labT: yR - 15, labW: Math.abs(rx2 - rx1), labAlign: 'center', lab: n.ret, via: '',
+          labColor: on ? '#c4c2bc' : loN(n) ? '#4a4c52' : '#6a6c72', opLab: rr.vis && mode === 'arrow' && !self ? 1 : 0,
+        });
+      }
+    });
+
+    // frames
+    const frames = NODES.filter(n => n.frame && info[n.id] && info[n.id].vis).map(n => {
+      const r = info[n.id], xs = [col[n.caller].x];
+      n.calls.forEach(m => xs.push(col[m.to].x));
+      const lo = Math.min(...xs), hi = Math.max(...xs), inset = n.depth * 3, l = lo - 22 + inset;
+      let right = Math.max(hi + 22 - inset, l + (n.frame.length + n.guard.length + 3) * 5.9 + 22);
+      if (barLab) n.calls.forEach(m => {
+        if (!info[m.id] || !info[m.id].vis) return;
+        const fx = col[parentCall(m) ? parentCall(m).to : ROOT].x, tx = col[m.to].x;
+        const start = Math.abs(tx - fx) < 1 ? tx - 10 : Math.min(fx, tx);
+        right = Math.max(right, start + (m.fn.length + m.args.length + 2 + (m.via ? m.via.length + 5 : 0)) * 6.3 + 10);
+      });
+      right = Math.min(right, W - 2);
+      return { k: n.id, nid: n.id, l, w: right - l, t: r.y + 2, h: r.vis ? Math.max(FH - 4, r.end - r.y - 4) : 0,
+        op: r.vis ? 1 : 0, tag: n.frame, guard: n.guard, click: e => { e.stopPropagation(); this.toggleNode(n); } };
+    });
+
+    // bars variant: one bar per call, caller column → callee column
+    const barsL = [];
+    if (bars) NODES.forEach(n => {
+      if (n.frame) return;
+      if (!info[n.id] || !info[n.id].vis) return;
+      const r = info[n.id], pc = parentCall(n), fromX = col[pc ? pc.to : ROOT].x, toX = col[n.to].x;
+      const self = Math.abs(toX - fromX) < 1, on = lit.has(n.id), st = stack.has(n.id), kc = kcol(n.to);
+      const yB = barLab ? r.y + r.h - 7 : r.y + Math.round(r.h / 2), l = self ? toX - 10 : Math.min(fromX, toX), w = self ? 20 : Math.abs(toX - fromX);
+      const tw = (n.fn.length + n.args.length + 2 + (n.via ? n.via.length + 5 : 0)) * 6.3;
+      let labL = l; if (labL + tw > W - 6) labL = Math.max(4, l + w - tw);
+      barsL.push({
+        k: n.id, nid: n.id, l, w, t: yB - 1.5, op: r.vis ? 1 : 0,
+        c: on ? kc : st ? '#6a6c72' : loN(n) ? '#26282d' : '#3a3c42',
+        sqL: toX - 3.5, sqT: yB - 3.5,
+        sq: on || st ? kc : 'color-mix(in oklab,' + kc + (loN(n) ? ' 22%' : ' 55%') + ',#16171a)',
+        labL, labT: r.y + 3, lo: barLab ? 1 : 0, fn: n.fn, args: n.args, via: n.via ? '  ' + n.via : '',
+        fc: on ? '#e6e4df' : st ? '#c4c2bc' : loN(n) ? '#4a4c52' : '#a3a19b',
+        ac: on || st ? '#8d8b85' : loN(n) ? '#3a3c42' : '#6a6c72',
+      });
+    });
+
+    // rows for template
+    const vis = [];
+    const rows = rowsRaw.filter(r => r.vis).map(r => {
+      const n = r.node, isCall = r.type === 'call', isRet = r.type === 'ret';
+      if (isCall && r.vis) vis.push(n.id);
+      const target = isCall || isRet ? n.id : null;
+      const on = target && lit.has(target), st = target && stack.has(target);
+      const kc = n.to ? kcol(n.to) : '#8d8b85';
+      const bg = target && sel === target ? '#1f2126' : (hover && hover.t === 'call' && hover.id === target) ? '#1b1c20' : 'transparent';
+      return {
+        k: r.type + n.id, nid: n.id, y: r.y, h: r.h, op: r.vis ? 1 : 0, pe: r.vis ? 'auto' : 'none', bg,
+        isCall: isCall && !barLab, isFrame: r.type === 'frame' && !barLab, isRet,
+        step: isCall ? ((this._nums && this._nums.get(n.fid)) || '') : '', indent: barLab ? 0 : (isRet ? n.depth + 1 : n.depth) * 12,
+        chevOp: !isRet && n.kids.length ? 1 : 0, rot: fn[n.id] ? -90 : 0,
+        sq: kc, fn: n.fn, args: n.args, via: n.via ? '  ' + n.via : '', tag: n.frame, guard: n.guard, ret: n.ret,
+        tc: on ? '#e6e4df' : st ? '#c4c2bc' : loN(n) ? '#5a5d64' : (isRet ? '#6a6c72' : '#c4c2bc'),
+        ac: on || st ? '#8d8b85' : loN(n) ? '#44464c' : '#6a6c72',
+        enter: () => { const h = target ? { t: 'call', id: target } : null; if ((this.state.hover && this.state.hover.id) !== (h && h.id)) this.setState({ hover: h }); },
+        click: e => { e.stopPropagation(); if (isCall && n.repeat && FIRST[n.repeat]) this.reveal(FIRST[n.repeat]); else if (target) this.setState({ sel: sel === target ? null : target, hover: null }); else this.toggleNode(n); },
+        fold: e => { e.stopPropagation(); if (n.kids.length) this.toggleNode(n); else if (target) this.setState({ sel: target, hover: null }); },
+      };
+    });
+    this._vis = vis;
+    this._rowY = Object.fromEntries(rowsRaw.filter(r => r.type === 'call').map(r => [r.node.id, [r.y, r.h]]));
+
+    // heads, lifelines, units
+    const heads = [], lines = [], uheads = [];
+    units.forEach(U => {
+      P.filter(p => p.unit === U.u.id).forEach(p => {
+        const c = col[p.id], shown = !U.f, hl = litKeys.has(p.id);
+        const w = c.w || 90;
+        if (shown) heads.push({ k: p.id, uid: U.u.id, l: c.x - w / 2, w, op: shown ? 1 : 0, pe: shown ? 'auto' : 'none', sq: kcol(p.id), label: p.label,
+          lc: hl ? '#e6e4df' : loK(p.id) ? '#5a5d64' : '#a3a19b', enter: () => this.setState({ hover: { t: 'p', key: p.id } }), click: () => this.props.onPart && this.props.onPart(p.id) });
+        if (shown) lines.push({ k: 'p' + p.id, uid: U.u.id, x: c.x, op: 1, c: hl ? '#3a3d44' : '#232529' });
+      });
+      const hl = litKeys.has(U.u.id), ucx = bars ? col[P.find(p => p.unit === U.u.id).id].x : U.cx;
+      if (U.f) uheads.push({ k: U.u.id, uid: U.u.id, l: ucx - 20, op: U.f ? 1 : 0, pe: U.f ? 'auto' : 'none', c: hl ? '#c4c2bc' : '#6a6c72', enter: () => this.setState({ hover: { t: 'p', key: U.u.id } }) });
+      if (U.f) lines.push({ k: 'u' + U.u.id, uid: U.u.id, x: ucx, op: 1, c: hl ? '#3a3d44' : '#232529' });
+    });
+    const unitsV = units.map(U => {
+      const inUnit = [...litKeys].some(k => k === U.u.id || (PB[k] && PB[k].unit === U.u.id));
+      return { k: U.u.id, x: U.x0, w: U.w, label: U.u.label, rot: U.f ? -90 : 0, title: U.f ? 'Unfold lifelines' : 'Fold lifelines',
+        color: inUnit ? '#c4c2bc' : '#6a6c72', click: () => { this.tween(); this.setState(s => ({ [fuKey]: { ...s[fuKey], [U.u.id]: !s[fuKey][U.u.id] } })); } };
+    });
+
+    // crumb
+    const cn = subj && subj.t === 'call' ? BY[subj.id] : (sel ? BY[sel] : null);
+    const crumb = cn ? [{ label: PB[ROOT].label, color: '#8d8b85', sep: '' }, ...callAnc(cn).map(a => ({ label: a.fn, color: '#8d8b85', sep: '›' })), { label: cn.fn, color: kcol(cn.to), sep: '›' }] : [];
+
+    const geo = {};
+    rowsRaw.forEach(r => { if (r.vis && r.type !== 'ret') geo[r.node.id] = { y: r.y, h: r.h, end: r.end }; });
+    const view = this.state.view;
+    const V = this._blend({
+      ...this.chrome(),
+      geo,
+      isOpen: view === 'open', isMin: view === 'min', isClosed: view === 'closed',
+      minimize: () => this.setState({ view: 'min' }), close: () => this.setState({ view: 'closed' }), restore: () => this.setState({ view: 'open' }),
+      clearHover: () => { if (this.state.hover) this.setState({ hover: null }); },
+      bgClick: () => this.setState({ sel: null }),
+      gutterW: G, W, H, setScroll: this.setScroll, hooks: hooksV, usage: this._usage,
+      units: unitsV, heads, uheads, lines, rows, frames, crumb,
+      arrows: bars ? [] : arrows, acts: bars ? [] : acts, bars: barsL,
+      vBarsBg: bars ? '#26282d' : 'transparent', vBarsC: bars ? '#e6e4df' : '#6a6c72',
+      vLinesBg: bars ? 'transparent' : '#26282d', vLinesC: bars ? '#6a6c72' : '#e6e4df',
+      toBars: () => { this._from = null; this.setState({ variant: 'bars', hover: null }); }, toLines: () => { this._from = null; this.setState({ variant: 'lifelines', hover: null }); },
+    });
+    this._last = V;
+    return V;
+  }
+}
+</script>
+</body>
+</html>

@@ -1,3 +1,5 @@
 **/__fixtures__/
 dist/
 pnpm-lock.yaml
+# the design project's code, vendored verbatim (packages/viewer/src/spike/map)
+packages/viewer/src/spike/map/design/

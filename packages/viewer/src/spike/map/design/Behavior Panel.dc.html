@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="data/behavior-lorem.js"></script>
+</helmet>
+<div ref="{{ rootRef }}" style="position:absolute;inset:0;pointer-events:none;overflow:hidden;font-family:'IBM Plex Sans',system-ui,sans-serif">
+  <div data-ui="pill" style="position:absolute;top:12px;right:{{ pillR }}px;height:32px;padding:0 3px;display:flex;align-items:center;gap:2px;border-radius:9px;background:#16171a;border:1px solid #26282d;transition:right 260ms cubic-bezier(.2,.7,.2,1), opacity .2s;pointer-events:auto;z-index:1;opacity:{{ chromeOp }}">
+    <button onClick="{{ onPanel }}" title="{{ panelTitle }}" style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:{{ panelBg }};color:{{ panelC }}" style-hover="color:#ecebe6"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="2" y="2.5" width="12" height="11" rx="2"></rect><path d="M10 2.5v11"></path></svg></button>
+    <button onClick="{{ onPin }}" title="{{ pinTitle }}" style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:{{ pinBg }};color:{{ pinC }}" style-hover="color:#ecebe6"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 2.5h5M6.5 2.5v4L4.5 9h7l-2-2.5v-4M8 9v4.5"></path></svg></button>
+  </div>
+  <div data-ui="panel" onDoubleClick="{{ stop }}" style="position:absolute;top:0;right:0;bottom:0;width:380px;background:#15161a;border-left:1px solid #26282e;box-shadow:-10px 0 24px rgba(0,0,0,.3);display:flex;flex-direction:column;transform:translateX({{ panelX }});transition:transform 260ms cubic-bezier(.2,.7,.2,1);pointer-events:auto;user-select:text;-webkit-user-select:text;cursor:default;color:#ecebe6">
+    <sc-if value="{{ hasHead }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:18px 20px 16px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid #22242a;flex:none">
+        <div style="display:flex;align-items:center;gap:9px;min-width:0">
+          <sc-if value="{{ isProj }}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" style="flex:none"><rect x="3" y="3" width="7" height="7" rx="2" fill="none" stroke="#8d8b85" stroke-width="1.75"></rect><rect x="14" y="14" width="7" height="7" rx="2" fill="none" stroke="#8d8b85" stroke-width="1.75"></rect><path d="M10 6.5h3.5a3 3 0 0 1 3 3V14" fill="none" stroke="#8d8b85" stroke-width="1.75"></path></svg></sc-if>
+          <sc-if value="{{ hasSq }}" hint-placeholder-val="{{ false }}"><span style="width:9px;height:9px;border-radius:2px;background:{{ sqBg }};box-shadow:{{ sqBd }};flex:none"></span></sc-if>
+          <span style="font:{{ titleFont }};color:#ecebe6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ title }}</span>
+          <sc-if value="{{ hasLayer }}" hint-placeholder-val="{{ false }}"><span style="font:500 11.5px 'IBM Plex Sans',sans-serif;color:{{ layerC }};white-space:nowrap">{{ layer }}</span></sc-if>
+        </div>
+        <span style="font:400 11px 'IBM Plex Mono',monospace;color:#8f8d87;overflow-wrap:anywhere">{{ path }}</span>
+        <sc-if value="{{ hasDoc }}" hint-placeholder-val="{{ false }}">
+          <p style="margin:6px 0 0;font-size:13.5px;line-height:21px;color:#cfcdc7;text-wrap:pretty"><sc-for list="{{ docSegs }}" as="g" hint-placeholder-count="1"><span style="font-family:{{ g.ff }};font-size:{{ g.fs }};color:{{ g.c }}">{{ g.t }}</span></sc-for></p>
+        </sc-if>
+      </div>
+    </sc-if>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:18px">
+      <sc-if value="{{ hasReadme }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:{{ rmPad }};border-bottom:1px solid {{ rmRule }}">
+          <sc-for list="{{ readme }}" as="b" hint-placeholder-count="2">
+            <sc-if value="{{ b.isH }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;font-weight:600;color:#ecebe6;margin-top:4px">{{ b.h }}</span></sc-if>
+            <sc-if value="{{ b.isP }}" hint-placeholder-val="{{ true }}"><p style="margin:0;font-size:14px;line-height:23px;color:#ecebe6;text-wrap:pretty"><sc-for list="{{ b.segs }}" as="g" hint-placeholder-count="1"><span style="font-family:{{ g.ff }};font-size:{{ g.fs }};color:{{ g.c }}">{{ g.t }}</span></sc-for></p></sc-if>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ hasBeh }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column">
+          <span style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8f8d87;margin-bottom:8px">BEHAVIOR</span>
+          <sc-for list="{{ groups }}" as="gr" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:2px;padding:{{ gr.gpad }};border-top:1px solid {{ gr.rule }}">
+              <sc-if value="{{ gr.showHead }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ gr.onToggle }}" style="display:flex;align-items:center;gap:7px;cursor:{{ gr.cur }}">
+                  <sc-if value="{{ gr.foldable }}" hint-placeholder-val="{{ false }}"><svg width="10" height="10" viewBox="0 0 10 10" style="flex:none;transform:rotate({{ gr.rot }}deg);transition:transform 160ms"><path d="M3.5 2 6.5 5l-3 3" fill="none" stroke="#8f8d87" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+                  <span style="width:8px;height:8px;border-radius:2px;background:{{ gr.kc }};flex:none"></span>
+                  <span style="font:500 13px 'IBM Plex Mono',monospace;color:#ecebe6;overflow-wrap:anywhere">{{ gr.name }}</span>
+                </div>
+                <span style="padding-left:{{ gr.docPad }}px;font-size:13px;line-height:20px;color:#cfcdc7;text-wrap:pretty"><sc-for list="{{ gr.doc }}" as="g" hint-placeholder-count="1"><span style="font-family:{{ g.ff }};font-size:{{ g.fs }}">{{ g.t }}</span></sc-for></span>
+                <sc-if value="{{ gr.hasFlag }}" hint-placeholder-val="{{ false }}"><span style="padding-left:{{ gr.docPad }}px;font-size:12.5px;line-height:19px;color:{{ gr.flagC }}">{{ gr.flag }}</span></sc-if>
+              </sc-if>
+              <sc-if value="{{ gr.open }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:{{ gr.rowsPad }};display:flex;flex-direction:column">
+                  <sc-for list="{{ gr.rows }}" as="r" hint-placeholder-count="4">
+                    <div onClick="{{ r.onClick }}" onMouseEnter="{{ r.onEnter }}" onMouseLeave="{{ r.onLeave }}" style="display:flex;align-items:baseline;gap:10px;margin:{{ r.mt }} -8px 0;padding:2px 8px 2px {{ r.pad }}px;border-radius:6px;cursor:{{ r.cur }};background:{{ r.bgc }}">
+                      <span style="flex:1;min-width:0;font-size:13.5px;line-height:21px;font-style:{{ r.fst }};font-weight:{{ r.fw }};text-wrap:pretty;text-decoration:{{ r.deco }};text-underline-offset:4px"><sc-for list="{{ r.segs }}" as="g" hint-placeholder-count="1"><span style="font-family:{{ g.ff }};font-size:{{ g.fs }};color:{{ g.c }}">{{ g.t }}</span></sc-for></span>
+                      <span style="flex:none;font:400 11px 'IBM Plex Mono',monospace;color:#8f8d87;opacity:{{ r.digOp }}">{{ r.dig }}</span>
+                    </div>
+                    <sc-if value="{{ r.hasNote }}" hint-placeholder-val="{{ false }}">
+                      <div style="padding:0 0 4px {{ r.pad }}px;font-size:12.5px;line-height:19px;color:#ff7a7a;text-wrap:pretty"><sc-for list="{{ r.note }}" as="g" hint-placeholder-count="1"><span style="font-family:{{ g.ff }};font-size:{{ g.fs }}">{{ g.t }}</span></sc-for></div>
+                    </sc-if>
+                    <sc-if value="{{ r.hasCode }}" hint-placeholder-val="{{ false }}">
+                      <div style="margin:6px 0 12px {{ r.pad }}px;display:flex;flex-direction:column;gap:6px">
+                        <div style="background:#0f1013;border:1px solid #23252b;border-radius:8px;padding:10px 0;overflow-x:auto">
+                          <sc-for list="{{ r.code }}" as="l" hint-placeholder-count="4"><div style="padding:0 12px;white-space:pre;font:400 11.5px/18px 'IBM Plex Mono',monospace;color:{{ l.c }};background:{{ l.bg }}">{{ l.t }}</div></sc-for>
+                          <sc-if value="{{ r.hasGot }}" hint-placeholder-val="{{ false }}"><div style="margin-top:8px;padding:6px 12px 0;border-top:1px solid #23252b;white-space:pre;font:400 11.5px/18px 'IBM Plex Mono',monospace;color:#ff7a7a">{{ r.got }}</div></sc-if>
+                        </div>
+                        <span style="font:400 11px 'IBM Plex Mono',monospace;color:#8f8d87">{{ r.where }}</span>
+                      </div>
+                    </sc-if>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;graph&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;object&quot;},&quot;sel&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string | null&quot;},&quot;onWidth&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(px: number) =&gt; void&quot;},&quot;chromeOp&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;number&quot;}}">
+const INK = '#ecebe6', INK2 = '#cfcdc7', MUTE = '#8f8d87', DIM = '#63625e', MID = '#a7a59f', RED2 = '#ff7a7a', RED = '#ff4d4d', AMB = '#ffc043';
+const SANS = "'IBM Plex Sans',system-ui,sans-serif", MONO = "'IBM Plex Mono',monospace";
+const CLAUSE = /^(when|with|without|if|given|after|before|once|while|unless|on)\b/i;
+const W = 380;
+const KC = { service: '#3fb0ff', ports: '#d69bff', model: '#6fe58a', adapters: '#ff8f4d', driver: '#2ee6d2', assembly: '#b0aea8', externals: '#8f8d87' };
+const LAYER = { hex: 'hexagon', 'g:service': 'service', 'g:ports': 'ports', 'g:model': 'model', 'g:adapters': 'adapters', 'g:driver': 'driver', 'g:assembly': 'assembly', 'g:externals': 'externals' };
+const HEX = ['service', 'ports', 'model'];
+
+const seg = (t, c, mono, big) => ({ t, ff: mono ? MONO : SANS, fs: mono ? (big ? '12.5px' : '12px') : (big ? '13.5px' : '13px'), c });
+const segsOf = (t, c, big = true) => String(t || '').split('`').map((p, i) => seg(p, c, i % 2 === 1, big)).filter(s => s.t);
+const cap = (s) => { if (s[0] && s[0].ff === SANS) s[0] = { ...s[0], t: s[0].t[0].toUpperCase() + s[0].t.slice(1) }; return s; };
+const plain = (t) => t.replace(/`/g, '');
+const pathTo = (nodes, id, acc = []) => {
+  for (const n of nodes) {
+    if (n.id === id) return [...acc, n];
+    if (n.kids) { const p = pathTo(n.kids, id, [...acc, n]); if (p) return p; }
+  }
+  return null;
+};
+const anyFail = (ns) => ns.some(n => n.fail || (n.kids && anyFail(n.kids)));
+
+function codeFor(F, name, id) {
+  const p = pathTo(F.tree, id), leaf = p[p.length - 1], L = [];
+  const push = (t, c, bg) => L.push({ t, c, bg: bg || 'transparent' });
+  const setup = (ind, lines) => { if (!lines) return; push(ind + 'beforeEach(() => {', MID); lines.forEach(s => push(ind + '  ' + s, MID)); push(ind + '})', MID); };
+  push(`describe('${name}', () => {`, DIM);
+  let ind = '  ';
+  setup(ind, F.setup);
+  for (const d of p.slice(0, -1)) { push(ind + `describe('${plain(d.t)}', () => {`, DIM); ind += '  '; setup(ind, d.setup); }
+  push(ind + `${leaf.k}('${plain(leaf.t)}', () => {`, INK);
+  (leaf.body || []).forEach((b, i) => push(ind + '  ' + b, INK, leaf.fail && i === leaf.fail.line ? 'rgba(255,77,77,.14)' : null));
+  push(ind + '})', INK);
+  for (let i = p.length - 1; i >= 0; i--) push('  '.repeat(i) + '})', DIM);
+  return L;
+}
+const gapCode = (F) => F.gap.lines.map(l => ({ t: `${l.n}  ${l.t}`, c: l.u ? INK : DIM, bg: l.u ? 'rgba(255,192,67,.12)' : 'transparent' }));
+function outline(F) {
+  const out = [];
+  const walk = (nodes, depth, under) => nodes.forEach(n => {
+    if (n.k === 'describe') { const clause = CLAUSE.test(n.t); out.push({ id: n.id, type: clause ? 'clause' : 'topic', depth, node: n }); walk(n.kids || [], depth + 1, clause); }
+    else out.push({ id: n.id, type: n.k, depth, node: n, under });
+  });
+  walk(F.tree, 0, false);
+  return out;
+}
+function sentence(r) {
+  const n = r.node;
+  if (r.type === 'it') return [seg(r.under ? 'it ' : 'It ', MUTE, false, true), ...segsOf(n.t, INK), seg('.', INK, false, true)];
+  if (r.type === 'test') return [...cap(segsOf(n.t, INK)), seg('.', INK, false, true)];
+  if (r.type === 'clause') return cap(segsOf(n.t + ',', INK2));
+  return cap(segsOf(n.t, INK));
+}
+const rowLook = (r) => ({
+  pad: r.depth * 16, mt: r.type === 'topic' ? '12px' : (r.type === 'clause' && r.depth === 0 ? '8px' : '0px'),
+  fst: r.type === 'clause' ? 'italic' : 'normal', fw: r.type === 'topic' ? 600 : 400,
+});
+const fnSyms = (it) => (it.syms || []).filter(s => s.form === 'function' && !s.typeOnly);
+
+class Component extends DCLogic {
+  state = { pin: false, manual: null, aOpen: null, aHov: null, gOpen: {} };
+  // The mount covers the map (inset 0) and the runtime passes only position /
+  // size to it: let pointer events through every wrapper up to the map canvas.
+  rootRef = el => {
+    for (let n = el && el.parentElement; n && !(n.matches && n.matches('[data-map=canvas]')) && n !== document.body; n = n.parentElement) n.style.pointerEvents = 'none';
+  };
+
+  index(g) {
+    if (this._g === g) return this._ix;
+    const items = new Map(), conts = new Map();
+    for (const c of (g && g.containers) || []) conts.set(c.id, c);
+    for (const i of (g && g.items) || []) items.set(i.id, i);
+    this._g = g; this._ix = { items, conts, list: (g && g.items) || [] };
+    return this._ix;
+  }
+  subject(sel, ix) {
+    if (!sel || typeof sel !== 'string') return null;
+    const id = sel.split('|')[0], h = id.indexOf('#'), base = h < 0 ? id : id.slice(0, h), rest = h < 0 ? '' : id.slice(h + 1);
+    const it = ix.items.get(base), c = ix.conts.get(base);
+    if (it && rest && !LAYER[rest] && !/^b:/.test(rest)) return { kind: 'member', it, sym: (it.syms || []).find(s => s.name === rest) || { name: rest, form: 'function' } };
+    if (it) return { kind: 'module', it };
+    if (c) return { kind: 'box', c, layer: rest ? (LAYER[rest] || rest.replace(/^b:/, '')) : null };
+    return null;
+  }
+
+  renderVals() {
+    const S = this.state, P = this.props, BL = window.BehaviorLorem, set = (o) => this.setState(o);
+    const ix = this.index(P.graph), sel = P.sel || null, subj = BL ? this.subject(sel, ix) : null;
+    const manual = S.manual && S.manual.sel === sel ? S.manual : null;
+    const open = S.pin || (manual ? manual.open : !!subj);
+    if (this._rep !== open) { this._rep = open; Promise.resolve().then(() => P.onWidth && P.onWidth(open ? W : 0)); }
+    const key = (k) => (sel || '') + '|' + k;
+
+    const groupOf = (F, gid, name, look) => {
+      const rows = outline(F).map(r => {
+        const leaf = r.type === 'it' || r.type === 'test', k = key(gid + ':' + r.id);
+        const on = S.aOpen === k, hov = S.aHov === k, fail = !!r.node.fail;
+        return { ...rowLook(r), segs: sentence(r),
+          deco: fail ? `underline wavy ${RED} 1px` : 'none', cur: leaf ? 'pointer' : 'default',
+          bgc: on ? 'rgba(255,255,255,.05)' : (hov && leaf ? 'rgba(255,255,255,.03)' : 'transparent'),
+          dig: on ? 'hide' : 'code', digOp: leaf && (hov || on) ? 1 : 0,
+          onClick: leaf ? () => set({ aOpen: on ? null : k }) : () => {},
+          onEnter: () => set({ aHov: k }), onLeave: () => { if (this.state.aHov === k) set({ aHov: null }); },
+          hasNote: fail, note: fail ? segsOf(r.node.fail.note, RED2, false) : [],
+          hasCode: on && leaf, code: on && leaf ? codeFor(F, name, r.id) : [],
+          hasGot: on && fail, got: fail ? r.node.fail.got : '', where: `${look.spec}:${r.node.line || ''}` };
+      });
+      if (F.gap) {
+        const k = key(gid + ':gap'), on = S.aOpen === k, hov = S.aHov === k;
+        rows.push({ pad: 0, mt: '16px', fst: 'normal', fw: 400, segs: segsOf(F.gap.t, AMB), deco: 'none', cur: 'pointer',
+          bgc: on ? 'rgba(255,255,255,.05)' : (hov ? 'rgba(255,255,255,.03)' : 'transparent'),
+          dig: on ? 'hide' : 'code', digOp: hov || on ? 1 : 0,
+          onClick: () => set({ aOpen: on ? null : k }), onEnter: () => set({ aHov: k }), onLeave: () => { if (this.state.aHov === k) set({ aHov: null }); },
+          hasNote: false, note: [], hasCode: on, code: on ? gapCode(F) : [], hasGot: false, got: '', where: F.gap.where });
+      }
+      const failing = anyFail(F.tree);
+      return { rows, failing, gap: !!F.gap };
+    };
+    const specOf = (it) => String(it.file || it.id).split('/').pop().replace(/(\.[a-z]+)$/, '.spec$1');
+    const fnDoc = (it, s) => { const F = BL.fnFor(it.id, s.name); return (BL.fns[it.id + '#' + s.name] && F.doc) || s.doc || F.doc; };
+
+    let head = null, readme = null, groups = [];
+    if (subj && subj.kind !== 'box') {
+      const it = subj.it, kc = KC[it.group] || MUTE;
+      if (subj.kind === 'member') {
+        const s = subj.sym, fn = s.form === 'function';
+        head = { title: s.name + (fn ? '()' : ''), path: it.file || it.id, doc: fnDoc(it, s), sq: kc, mono: true };
+        if (fn) { const g = groupOf(BL.fnFor(it.id, s.name), s.name, s.name, { spec: specOf(it) });
+          groups = [{ ...g, showHead: false, open: true, gpad: '0', rule: 'transparent', rowsPad: '0' }]; }
+      } else {
+        head = { title: it.label, path: it.file || it.id, doc: it.doc || BL.docFor(it.id), sq: kc, mono: true };
+        groups = fnSyms(it).map((s, i) => ({ ...groupOf(BL.fnFor(it.id, s.name), s.name, s.name, { spec: specOf(it) }),
+          showHead: true, foldable: false, open: true, name: s.name + '()', kc, doc: segsOf(fnDoc(it, s), INK2, false), docPad: 15, cur: 'default',
+          gpad: i ? '12px 0 4px' : '0 0 4px', rule: i ? '#22242a' : 'transparent', rowsPad: '6px 0 2px 0', onToggle: () => {} }));
+      }
+    } else if (subj) {
+      const c = subj.c, L = subj.layer, lk = L === 'hexagon' ? HEX : L ? [L] : null;
+      head = { title: c.label, path: c.id, layer: L, layerC: L === 'hexagon' ? '#e8c26a' : (KC[L] || MUTE), sq: null, mono: false };
+      readme = L ? null : BL.readmeFor(c.id);
+      const inC = (it) => c.id === '.' || it.c === c.id || String(it.c).startsWith(c.id + '/');
+      const fns = [];
+      for (const it of ix.list) if (inC(it) && (!lk || lk.includes(it.group))) for (const s of fnSyms(it)) fns.push([it, s]);
+      groups = fns.map(([it, s], i) => {
+        const gid = it.id + '#' + s.name, k = key('g:' + gid), on = !!S.gOpen[k], F = BL.fnFor(it.id, s.name);
+        const g = on ? groupOf(F, gid, s.name, { spec: specOf(it) }) : { rows: [], failing: anyFail(F.tree), gap: !!F.gap };
+        return { ...g, showHead: true, foldable: true, open: on, name: s.name + '()', kc: KC[it.group] || MUTE,
+          doc: segsOf(fnDoc(it, s), INK2, false), docPad: 17, cur: 'pointer', rot: on ? 90 : 0,
+          hasFlag: !on && (g.failing || g.gap), flag: g.failing ? 'One behavior does not hold.' : 'Part of it is not described by any behavior.', flagC: g.failing ? RED2 : AMB,
+          gpad: '8px 0', rule: i ? '#22242a' : 'transparent', rowsPad: '6px 0 2px 17px',
+          onToggle: () => set({ gOpen: { ...this.state.gOpen, [k]: !on } }) };
+      });
+    } else if (open && BL) {
+      const m = (P.graph && P.graph.meta) || {};
+      head = { proj: true, title: m.project || 'deblob', path: (m.breadcrumb || '') + ' · README', sq: null, mono: false };
+      readme = BL.readmeFor('.');
+    }
+
+    return {
+      pillR: open ? W + 14 : 14, panelX: open ? '0px' : 'calc(100% + 40px)', chromeOp: P.chromeOp ?? 1,
+      panelBg: open ? '#26282d' : 'transparent', panelC: open ? INK : MUTE, panelTitle: open ? 'Close panel' : 'Open panel',
+      pinBg: S.pin ? '#26282d' : 'transparent', pinC: S.pin ? INK : MUTE, pinTitle: S.pin ? 'Unpin: follow the selection' : 'Keep open',
+      onPanel: () => set({ manual: { sel, open: !open }, pin: open ? false : S.pin }),
+      onPin: () => set({ pin: !S.pin, manual: null }),
+      stop: (e) => e.stopPropagation(), rootRef: this.rootRef,
+      hasHead: !!head, isProj: !!(head && head.proj), hasSq: !!(head && head.sq) || !!(head && !head.proj && !head.sq),
+      sqBg: head && head.sq ? head.sq : 'transparent', sqBd: head && head.sq ? 'none' : 'inset 0 0 0 1.5px #cfcdc7',
+      titleFont: head && head.mono ? "500 15px 'IBM Plex Mono',monospace" : "600 15px 'IBM Plex Sans',sans-serif",
+      title: head ? head.title : '', path: head ? head.path : '',
+      hasLayer: !!(head && head.layer), layer: head ? head.layer || '' : '', layerC: (head && head.layerC) || MUTE,
+      hasDoc: !!(head && head.doc), docSegs: head && head.doc ? segsOf(head.doc, INK2) : [],
+      hasReadme: !!readme, readme: (readme || []).map(b => ({ isH: !!b.h, isP: !b.h, h: b.h || '', segs: b.p ? segsOf(b.p, INK, true) : [] })),
+      rmPad: groups.length ? '18px' : '0', rmRule: groups.length ? '#22242a' : 'transparent',
+      hasBeh: groups.length > 0, groups,
+    };
+  }
+}
+</script>
+</body>
+</html>

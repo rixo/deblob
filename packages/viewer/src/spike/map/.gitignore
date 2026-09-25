@@ -1,0 +1,13 @@
+# design/ = the design project's code, verbatim. Their docs and data never
+# enter git (their project has none of our sanitization rules): a pull copies
+# code files by hand, and these catch what slips.
+design/docs/
+design/data/*
+!design/data/gen-graph.js
+design/CLAUDE.md
+design/DECISIONS.md
+design/support.js
+design/*-graph.js
+design/*.json
+design/*.png
+design/*.md
