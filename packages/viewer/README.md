@@ -1,7 +1,9 @@
 # @deblob/viewer
 
 The deblob viewer: a browser app over a codebase deblob has extracted, launched
-by `deblob view`. It shows a project's snapshot: what it is, how big, which
+by `deblob view`. At `/` it shows the design's map of a project — experimental:
+the design room's pages, run as they send them, on the snapshot's `map` (step
+09). At `#debug` it shows the outline: what the project is, how big, which
 services, which files under each, by layer.
 
 A Svelte single-page app built by Vite. It never imports `deblob`: data reaches
@@ -17,8 +19,12 @@ through a type-only import. JSON throughout.
 
 - `Snapshot`: `generatedAt`, `project` (root, manifest name, provenance as
   `deblob check` prints it), `stats` (files, bytes, blob percent, services),
-  `modules` (path, layer, service root, private, parsed), `edges`, `unresolved`.
-  `LAYERS` is the layer vocabulary, in display order.
+  `modules` (path, layer, service root, private, parsed), `edges`, `unresolved`,
+  and `map`: what the design's map draws — the modules and edges again with
+  their symbols, the call stacks (`sequence`, `null` with `sequenceMissing`
+  saying why when the tracer cannot read the tree), each directory's README as
+  blocks. Typed on the read side: the fields the design's code reads. `LAYERS`
+  is the layer vocabulary, in display order.
 - The protocol over the socket. Server to client: `projects` (the list, each
   root and name), `snapshot`, `error` (project, message). Client to server:
   `select` (project root). On connect the server sends `projects`, then the
@@ -53,6 +59,19 @@ instead of embedding it; nothing resolves through it yet.
 connects to `/deblob/ws` on its own origin — in dev that is Vite's proxy, under
 `deblob view` it is the server itself — so the entry has no idea which one it is
 talking to.
+
+## The map
+
+Spike code, under `src/spike/map/`, outside `check` and coverage (step 09).
+`design/` holds the design room's files as they send them; `host/` runs them:
+`dc-plugin.js` compiles their `.dc.html` pages to Svelte on our DC runtime and
+answers their engine scripts (the `.js` their pages load relative to the page)
+at the app's root, in dev and in the build — only those files, never their data
+or docs. `map.js` is the bridge: their page reads its data from URLs, so it
+answers `./data/projects.json` with the current project alone (their picker
+stays hidden) and hands the graph, the call stacks and the READMEs over as
+`blob:` URLs made from the snapshot's `map`. For now the map is mounted once, on
+the first snapshot.
 
 ## The dev cycle
 
@@ -120,10 +139,12 @@ script, the data server, the config's `import type { DeblobConfig }`.
 ## Tests
 
 Through the contract: a writable store stands in for the source in the App spec,
-`createWsSource` is tested against a real `ws` server. The corpus test mounts
-every snapshot in `tmp/corpus/` — `tmp/` is gitignored throughout the repo — and
-checks what is true of any: it mounts, every service root is listed, the counts
-shown are the snapshot's. `vitest.global-setup.ts` regenerates
+`createWsSource` is tested against a real `ws` server. The entry's spec checks
+the route — the map at `/`, handed `#app` and the source, the outline at
+`#debug` — with the map stubbed: the map itself has no rows yet. The corpus test
+mounts every snapshot in `tmp/corpus/` — `tmp/` is gitignored throughout the
+repo — and checks what is true of any: it mounts, every service root is listed,
+the counts shown are the snapshot's. `vitest.global-setup.ts` regenerates
 `tmp/corpus/deblob.json` on every run by running deblob's snapshot script driver
 as a process; drop other snapshots there by hand: in any deblob project,
 `node <this repo>/packages/deblob/src/drivers/snapshot/bin.ts > <name>.json`.

@@ -1,7 +1,8 @@
 // .dc.html -> Svelte 5 component source. Mirrors support.js semantics (line refs = tmp/design-mirror/support.js).
 import { parse } from "parse5"
 
-const RUNTIME = "/dc-runtime.svelte.js"
+// by its file path: the pages compile in any Vite root (the product's, step 09)
+const RUNTIME = new URL("./dc-runtime.svelte.js", import.meta.url).pathname
 
 // support.js:326 EVENT_MAP (lowercase attr -> React prop), then React prop -> native event.
 const REACT_EVENTS = {

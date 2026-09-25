@@ -40,6 +40,13 @@ const snapshotAt = (
   modules: FAKE_MODULES,
   edges: [],
   unresolved: [],
+  map: {
+    modules: [],
+    edges: [],
+    sequence: null,
+    sequenceMissing: "FAKE_NO_TRACE",
+    readmes: {},
+  },
 })
 
 const loaded = (snapshot: Snapshot): SourceState => ({

@@ -2,32 +2,13 @@
 // live. Run from packages/viewer: `pnpm spike:map`, then /dc.html (5188).
 import { defineConfig } from "vite"
 import { svelte } from "@sveltejs/vite-plugin-svelte"
-import { readFileSync } from "node:fs"
-import { resolve, basename, relative } from "node:path"
-import { compileDc } from "./dc-compile.js"
+import { resolve, relative } from "node:path"
+import { DESIGN, dc as dcHtml } from "./dc-plugin.js"
 
-const DESIGN = resolve(import.meta.dirname, "../design")
-
+// the pages (dc-plugin.js), plus their data paths served live — this host only
 function dc() {
   return {
-    name: "dc-html",
-    enforce: "pre",
-    // `x.dc.html` resolves to `x.dc.html.svelte`: Vite's html plugin would claim a `.html` id.
-    async resolveId(source, importer) {
-      if (!source.split("?")[0].endsWith(".dc.html")) return null
-      const r = await this.resolve(source, importer, { skipSelf: true })
-      return r && r.id.split("?")[0] + ".svelte"
-    },
-    load(id) {
-      if (!id.endsWith(".dc.html.svelte")) return null
-      const file = id.slice(0, -".svelte".length)
-      this.addWatchFile(file)
-      const code = compileDc(readFileSync(file, "utf8"), {
-        name: basename(file, ".dc.html"),
-      })
-      if (process.env.DC_DUMP) console.log(code)
-      return code
-    },
+    ...dcHtml(),
     configurePreviewServer: (server) => serveData(server),
     configureServer: (server) => serveData(server),
   }

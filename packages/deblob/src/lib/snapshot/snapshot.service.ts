@@ -6,6 +6,7 @@
  */
 
 import type {
+  MapData,
   ProjectRef,
   ServerMessage,
   Snapshot,
@@ -15,10 +16,12 @@ import { isConfigError } from "../config/config.model.ts"
 import type { ResolvedConfig } from "../config/config.service.ts"
 import type { ImportGraph } from "../extraction/graph.model.ts"
 import type { Channel } from "./ports/channel.port.ts"
+import type { MapFeed } from "./ports/map-feed.port.ts"
 import type { ProjectSource } from "./ports/project-source.port.ts"
 import type { Report } from "./ports/report.port.ts"
 import type { Watch, Watcher } from "./ports/watch.port.ts"
-import { snapshotFrom, watchSetOf } from "./snapshot.model.ts"
+import type { SnapshotRows } from "./snapshot.model.ts"
+import { readmeDirsOf, snapshotFrom, watchSetOf } from "./snapshot.model.ts"
 
 export type SnapshotService = ReturnType<typeof createSnapshotService>
 
@@ -31,13 +34,44 @@ export type ProjectRun = {
 export const createSnapshotService = ({
   source,
   extractionFor,
+  feed,
 }: {
   source: ProjectSource
   /** The extraction composed for one config: the engine, the flavor, the claims. */
   extractionFor: (
     config: ResolvedConfig,
   ) => (files: readonly string[]) => Promise<ImportGraph>
+  feed: MapFeed
 }) => {
+  /**
+   * The map's data over a run's rows. A tree the call tracer cannot read — any
+   * but deblob's, today — still gets its map: no call stacks, and the tracer's
+   * word for why. The symbols and the READMEs have no such excuse: their
+   * failure is the run's.
+   */
+  const mapOf = async (root: string, rows: SnapshotRows): Promise<MapData> => {
+    const symbols = await feed.symbolsOf(root, {
+      modules: rows.modules,
+      edges: rows.edges,
+    })
+    const readmes = await feed.readmesOf(
+      root,
+      readmeDirsOf(rows.modules.map(({ path }) => path)),
+    )
+    try {
+      const sequence = await feed.sequenceOf(root, symbols)
+      return { ...symbols, sequence, sequenceMissing: null, readmes }
+    } catch (error) {
+      return {
+        ...symbols,
+        sequence: null,
+        // the port's contract: an Error whose message says why
+        sequenceMissing: (error as Error).message,
+        readmes,
+      }
+    }
+  }
+
   /** The project at `root` exactly — its config, or defaults — run once. */
   const runOf = async (root: string): Promise<ProjectRun> => {
     const config = await source.loadConfigAt(root)
@@ -47,14 +81,15 @@ export const createSnapshotService = ({
     const sizes = await source.sizesOf(config.root, files)
     const name = await source.manifestNameOf(config.root)
     const dirs = await source.scanCoverageDirs(config)
+    const rows = snapshotFrom({
+      config,
+      graph,
+      sizes,
+      name,
+      generatedAt: source.now(),
+    })
     return {
-      snapshot: snapshotFrom({
-        config,
-        graph,
-        sizes,
-        name,
-        generatedAt: source.now(),
-      }),
+      snapshot: { ...rows, map: await mapOf(config.root, rows) },
       watchSet: watchSetOf(config.root, dirs),
     }
   }

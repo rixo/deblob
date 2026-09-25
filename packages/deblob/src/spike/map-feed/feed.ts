@@ -12,11 +12,27 @@
 
 import { resolve } from "node:path"
 
-import { fineSnapshot } from "./fine.ts"
-import { sequenceSnapshot } from "./sequence.ts"
+import { createProjectSource, extractionFor } from "../../drivers/wiring.ts"
+import { createSnapshotService } from "../../lib/snapshot/snapshot.service.ts"
+import { createSpikeMapFeed } from "./map-feed.adapter.ts"
 
+// step 09: through the product's snapshot service and the feed port, flattened
+// back to the design's one-object shape; a tree the tracer cannot read throws,
+// as before
 export async function mapFeed(root: string): Promise<any> {
-  return sequenceSnapshot(root, await fineSnapshot(root))
+  const { snapshotOf } = createSnapshotService({
+    source: createProjectSource(),
+    extractionFor,
+    feed: createSpikeMapFeed(),
+  })
+  const { map, ...snapshot } = await snapshotOf(root)
+  if (map.sequence === null) throw new Error(map.sequenceMissing ?? "")
+  return {
+    ...snapshot,
+    modules: map.modules,
+    edges: map.edges,
+    ...map.sequence,
+  }
 }
 
 if (import.meta.main) {

@@ -34,6 +34,25 @@ export const watchSetOf = (
   dirs: readonly string[],
 ): readonly string[] => [root, ...dirs.map((dir) => `${root}/${dir}`)]
 
+/**
+ * The directories whose README the map shows: the root (`.`), then every
+ * directory holding a covered file and each one above it — every box the map
+ * can draw is one of them. A string walk: the paths are POSIX, root-relative.
+ */
+export const readmeDirsOf = (paths: readonly string[]): readonly string[] => {
+  const dirs = new Set<string>()
+  for (const path of paths) {
+    for (let end = path.lastIndexOf("/"); end > 0;) {
+      dirs.add(path.slice(0, end))
+      end = path.lastIndexOf("/", end - 1)
+    }
+  }
+  return [".", ...[...dirs].sort()]
+}
+
+/** A snapshot before its map is fed: the fold of one extraction run. */
+export type SnapshotRows = Omit<Snapshot, "map">
+
 export const snapshotFrom = ({
   config,
   graph,
@@ -49,7 +68,7 @@ export const snapshotFrom = ({
   sizes: readonly { path: string; size: number }[]
   name: string | null
   generatedAt: string
-}): Snapshot => {
+}): SnapshotRows => {
   const modules = [...graph.modules.values()]
   const { totalBytes, blobPercent } = sizeStatsOf(
     sizes.map(({ path, size }) => ({

@@ -4,6 +4,7 @@ import { get } from "svelte/store"
 import App from "./App.svelte"
 import { createWsSource } from "./lib/snapshot/adapters/ws-source.adapter.ts"
 import type { SourceState } from "./lib/snapshot/snapshot-source.port.ts"
+import { mountMap } from "./spike/map/host/map.js"
 
 const target = document.getElementById("app")
 if (target === null) throw new Error("viewer: no #app element to mount on")
@@ -17,7 +18,11 @@ const restored = (import.meta.hot?.data?.state ?? null) as SourceState | null
 const source = createWsSource(`ws://${location.host}/deblob/ws`, {
   initial: restored,
 })
-const app = mount(App, { target, props: { source } })
+// `#debug`: the outline (steps 01–06); anything else: the design's map
+const outline =
+  location.hash === "#debug" ? mount(App, { target, props: { source } }) : null
+const unmountMap: (() => void) | null =
+  outline === null ? mountMap(target, source) : null
 
 /* v8 ignore start -- dev glue: only a running Vite dev server drives an update */
 if (import.meta.hot) {
@@ -28,7 +33,8 @@ if (import.meta.hot) {
   import.meta.hot.accept()
   import.meta.hot.dispose((data) => {
     data.state = get(source)
-    void unmount(app)
+    if (outline !== null) void unmount(outline)
+    unmountMap?.()
   })
 }
 /* v8 ignore stop */

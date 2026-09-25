@@ -1,7 +1,7 @@
 /**
  * SPIKE (2026-09-25, map feed) — rewritten 100% before anything ships; delete
  * with src/spike. The 2026-09-19 fine probe (tmp/fine-snapshot.probe.ts), moved
- * in near-verbatim: the script body is now `fineSnapshot(root)`.
+ * in near-verbatim: the script body is now `fineSnapshot(root, snapshot)`.
  *
  * Produces the standard snapshot of a project, then a SECOND pass over the same
  * files that adds the symbol level the viewer contract drops today:
@@ -15,8 +15,7 @@ import { createRequire } from "node:module"
 import { readFileSync } from "node:fs"
 import { dirname, relative, resolve as resolvePath } from "node:path"
 
-import { createSnapshotService } from "../../lib/snapshot/snapshot.service.ts"
-import { createProjectSource, extractionFor } from "../../drivers/wiring.ts"
+import { createProjectSource } from "../../drivers/wiring.ts"
 import { createNodeFs } from "../../lib/fs/adapters/node-fs.adapter.ts"
 import { createConfigLoader } from "../../lib/config/adapters/loader.adapter.ts"
 
@@ -24,10 +23,10 @@ const require_ = createRequire(import.meta.url)
 const { parseSync } = require_("oxc-parser")
 const { ResolverFactory } = require_("oxc-resolver")
 
-export async function fineSnapshot(root: string): Promise<any> {
+// step 09: the rows are the run's own (the snapshot service's), no second
+// extraction
+export async function fineSnapshot(root: string, snapshot: any): Promise<any> {
   const source = createProjectSource()
-  const { snapshotOf } = createSnapshotService({ source, extractionFor })
-  const snapshot: any = await snapshotOf(resolvePath(root))
 
   const config: any = await source.loadConfigAt(resolvePath(root))
   const tsconfigPath = await createConfigLoader({

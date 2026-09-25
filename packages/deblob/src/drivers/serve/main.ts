@@ -23,6 +23,7 @@ import {
 } from "../../lib/snapshot/snapshot.service.ts"
 import { createFsBundle } from "../../lib/view/adapters/fs-bundle.adapter.ts"
 import { createViewService } from "../../lib/view/view.service.ts"
+import { createSpikeMapFeed } from "../../spike/map-feed/map-feed.adapter.ts"
 import { createProjectSource, extractionFor } from "../wiring.ts"
 
 export const WS_PATH = "/deblob/ws"
@@ -57,6 +58,8 @@ export const serve = async (
   const { runOf, projectsOf, watchSetFor } = createSnapshotService({
     source: createProjectSource(),
     extractionFor,
+    // spike code, shipped: the experimental map (step 09 SPEC § Shipping)
+    feed: createSpikeMapFeed(),
   })
   const projects = await projectsOf(io.cwd)
   const server = createServer()

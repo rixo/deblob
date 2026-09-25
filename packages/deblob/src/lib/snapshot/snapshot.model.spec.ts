@@ -1,7 +1,7 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import type { ImportGraph, ModuleNode } from "../extraction/graph.model.ts"
-import { snapshotFrom, watchSetOf } from "./snapshot.model.ts"
+import { readmeDirsOf, snapshotFrom, watchSetOf } from "./snapshot.model.ts"
 
 describe("snapshotFrom", () => {
   const node = (
@@ -188,5 +188,25 @@ describe("watchSetOf", () => {
       "/FAKE_ROOT/src/lib",
     ])
     expect(watchSetOf("/FAKE_ROOT", [])).toEqual(["/FAKE_ROOT"])
+  })
+})
+
+describe("readmeDirsOf", () => {
+  it("lists the root, then every directory holding a covered file and each one above it, once, sorted", () => {
+    expect(
+      readmeDirsOf([
+        "src/lib/b/b.model.ts",
+        "src/lib/a/a.model.ts",
+        "src/lib/a/private/p.model.ts",
+        "index.ts",
+      ]),
+    ).toEqual([
+      ".",
+      "src",
+      "src/lib",
+      "src/lib/a",
+      "src/lib/a/private",
+      "src/lib/b",
+    ])
   })
 })

@@ -109,6 +109,13 @@
    loaded like the config, JSON no longer read. An edited config or local file
    now loads as edited in the same process. Ruled 2026-09-25.
 
+9. `09_map-in-product/` — the design's map at `/` of the product, fed by the
+   socket (`map` in the snapshot, a `MapFeed` port in deblob); the outline at
+   `#debug`. The pipeline at full quality, their pages and our host with the
+   spike's slack; the experimental map ships on 0.0.x. Ruled 2026-09-25, four
+   checkpoints: one page in our app (landed), live and switch, symbols and
+   READMEs graduate, the spike host goes.
+
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
 through Vitest browser mode enters there).
@@ -131,6 +138,10 @@ through Vitest browser mode enters there).
   types the `.ts` sources and `.svelte` script blocks go untyped.
 - ~~**Optional peer or regular dependency** of `deblob` on the viewer~~ — closed
   2026-09-16 at step 05, see § Decisions.
+- **Release gate: the map fully connected** (rixo, 2026-09-25, step 09). A 0.0.x
+  may ship the experimental map with its gaps (no call stacks on a tree the
+  tracer cannot read, or without `typescript` installed; the view reset on each
+  save). A real release may not.
 
 ## Design track
 
@@ -153,6 +164,11 @@ a row here closes when that log records it.
   with the sequence panel on `.2`, `gen-graph` gains `buildGraph`, nothing
   design-host-only, a "Host contract (deblob)" section in their `CLAUDE.md`.
   Behavior unchanged. **Sent**, awaiting their pass.
+- **The host feeds the map by value** (2026-09-25, step 09) —
+  `data/FROM-DEBLOB.md`: data as props instead of URLs, a new value updates in
+  place (view kept), the project pick calls back, a project error has a place;
+  plus their stale default paths. **Sent**; the three fixes we owe them go in
+  one later batch.
 
 ### Queue
 

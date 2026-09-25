@@ -129,6 +129,8 @@ describe("main", () => {
       cwd: deblobRoot,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
+      // the map's call stacks make deblob's own snapshot a few MB
+      maxBuffer: 64 * 1024 * 1024,
     })
     expect((JSON.parse(out) as Snapshot).project.name).toBe("deblob")
   })

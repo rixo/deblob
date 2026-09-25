@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import type { Snapshot } from "@deblob/viewer/snapshot.model"
 
@@ -14,6 +14,7 @@ import { createMemoryChannel } from "./adapters/memory-channel.adapter.ts"
 import { createMemoryProjectSource } from "./adapters/memory-project-source.adapter.ts"
 import { createMemoryWatcher } from "./adapters/memory-watcher.adapter.ts"
 import { createMemoryReport } from "./adapters/memory-report.adapter.ts"
+import type { MapFeed } from "./ports/map-feed.port.ts"
 import type { ProjectRun } from "./snapshot.service.ts"
 import { createSnapshotService, serveSnapshots } from "./snapshot.service.ts"
 
@@ -44,6 +45,16 @@ const graphOf = async (files: readonly string[]): Promise<ImportGraph> => ({
   edges: [],
   unresolved: [],
   broken: [],
+})
+
+/**
+ * A map feed that answers its rows back, no symbol added, no call stack, no
+ * README — for the rows about everything but the map.
+ */
+const plainFeed = (): MapFeed => ({
+  symbolsOf: async (_root, rows) => rows,
+  sequenceOf: async () => ({ callables: {}, participants: [], drivers: [] }),
+  readmesOf: async () => ({}),
 })
 
 describe("createSnapshotService", () => {
@@ -82,12 +93,14 @@ describe("createSnapshotService", () => {
     const seen: { config: ResolvedConfig; files: readonly string[] }[] = []
     const { snapshotOf } = createSnapshotService({
       source: memorySource,
+      feed: plainFeed(),
       extractionFor: (config) => (files) => {
         seen.push({ config, files })
         return graphOf(files)
       },
     })
-    const snapshot = await snapshotOf("/FAKE_ROOT")
+    // the map has rows of its own, below
+    const { map: _map, ...snapshot } = await snapshotOf("/FAKE_ROOT")
     expect(seen).toEqual([
       { config: FAKE_CONFIG, files: ["src/a.ts", "src/z.ts"] },
     ])
@@ -120,9 +133,129 @@ describe("createSnapshotService", () => {
     })
   })
 
+  describe("the map", () => {
+    const FAKE_SYMBOLS = {
+      modules: [
+        {
+          path: "src/a.ts",
+          layer: "blob",
+          serviceRoot: null,
+          isPrivate: false,
+          parsed: true,
+          symbols: [
+            {
+              name: "FAKE_SYMBOL",
+              form: "function",
+              typeOnly: false,
+              members: null,
+              doc: null,
+            },
+          ],
+        },
+      ],
+      edges: [],
+    } as const
+    const FAKE_SEQUENCE = {
+      callables: {},
+      participants: [{ id: "m:src/a.ts", label: "a", kind: "blob", box: null }],
+      drivers: [],
+    }
+    const FAKE_README = [{ p: "FAKE_PARAGRAPH" }]
+
+    /** The feed's answers, and what it was asked. */
+    const recordingFeed = (sequenceOf: MapFeed["sequenceOf"]) => {
+      const asked: unknown[] = []
+      const feed: MapFeed = {
+        symbolsOf: async (root, rows) => {
+          asked.push({ symbolsOf: { root, rows } })
+          return FAKE_SYMBOLS
+        },
+        sequenceOf: async (root, symbols) => {
+          asked.push({ sequenceOf: { root, symbols } })
+          return sequenceOf(root, symbols)
+        },
+        readmesOf: async (root, dirs) => {
+          asked.push({ readmesOf: { root, dirs } })
+          return { src: FAKE_README }
+        },
+      }
+      return { feed, asked }
+    }
+
+    it("feeds the symbols on the snapshot's rows, the call stacks on the symbols, the READMEs on the root and every directory holding a file", async () => {
+      const { feed, asked } = recordingFeed(async () => FAKE_SEQUENCE)
+      const { runOf } = createSnapshotService({
+        source: memorySource,
+        feed,
+        extractionFor: () => graphOf,
+      })
+      const { snapshot } = await runOf("/FAKE_ROOT")
+      expect(snapshot.map).toEqual({
+        modules: FAKE_SYMBOLS.modules,
+        edges: [],
+        sequence: FAKE_SEQUENCE,
+        sequenceMissing: null,
+        readmes: { src: FAKE_README },
+      })
+      expect(asked).toEqual(
+        expect.arrayContaining([
+          {
+            symbolsOf: {
+              root: "/FAKE_ROOT",
+              rows: { modules: snapshot.modules, edges: snapshot.edges },
+            },
+          },
+          { sequenceOf: { root: "/FAKE_ROOT", symbols: FAKE_SYMBOLS } },
+          { readmesOf: { root: "/FAKE_ROOT", dirs: [".", "src"] } },
+        ]),
+      )
+      expect(asked).toHaveLength(3)
+    })
+
+    it("draws the map without call stacks, and says why, when the tracer cannot read the tree", async () => {
+      const { feed } = recordingFeed(async () => {
+        throw new Error("FAKE_TRACER_MISS")
+      })
+      const { runOf } = createSnapshotService({
+        source: memorySource,
+        feed,
+        extractionFor: () => graphOf,
+      })
+      const { snapshot } = await runOf("/FAKE_ROOT")
+      expect(snapshot.map).toEqual({
+        modules: FAKE_SYMBOLS.modules,
+        edges: [],
+        sequence: null,
+        sequenceMissing: "FAKE_TRACER_MISS",
+        readmes: { src: FAKE_README },
+      })
+    })
+
+    it("fails the run when the symbols or the READMEs fail: a bug, not a tree the map cannot draw", async () => {
+      const failing = (part: "symbolsOf" | "readmesOf") =>
+        createSnapshotService({
+          source: memorySource,
+          feed: {
+            ...plainFeed(),
+            [part]: async () => {
+              throw new Error(`FAKE_BUG in ${part}`)
+            },
+          },
+          extractionFor: () => graphOf,
+        }).runOf("/FAKE_ROOT")
+      await expect(failing("symbolsOf")).rejects.toThrow(
+        "FAKE_BUG in symbolsOf",
+      )
+      await expect(failing("readmesOf")).rejects.toThrow(
+        "FAKE_BUG in readmesOf",
+      )
+    })
+  })
+
   test("watchSetFor: the root and the directories coverage spans, no extraction", async () => {
     const { watchSetFor } = createSnapshotService({
       source: memorySource,
+      feed: plainFeed(),
       extractionFor: () => () => {
         throw new Error("the set is read without running the extraction")
       },
@@ -136,6 +269,7 @@ describe("createSnapshotService", () => {
   test("projectsOf: the config's view.projects, or the project alone; names, null without one", async () => {
     const { projectsOf } = createSnapshotService({
       source: memorySource,
+      feed: plainFeed(),
       extractionFor: () => graphOf,
     })
     expect(await projectsOf("/FAKE_ROOT")).toEqual([
@@ -179,6 +313,13 @@ describe("serveSnapshots", () => {
         modules: [],
         edges: [],
         unresolved: [],
+        map: {
+          modules: [],
+          edges: [],
+          sequence: null,
+          sequenceMissing: "FAKE_NO_TRACE",
+          readmes: {},
+        },
       },
       watchSet: [root, `${root}/src`],
     })
@@ -476,7 +617,11 @@ describe("self-extract", () => {
 
   test("snapshots this package with the numbers `deblob check` reports", async () => {
     const source = createProjectSource()
-    const { snapshotOf } = createSnapshotService({ source, extractionFor })
+    const { snapshotOf } = createSnapshotService({
+      source,
+      extractionFor,
+      feed: plainFeed(),
+    })
     const snapshot = await snapshotOf(deblobRoot)
 
     // the live scan's directories span every covered file — the watch set

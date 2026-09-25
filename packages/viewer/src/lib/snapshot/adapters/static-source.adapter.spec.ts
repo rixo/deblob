@@ -19,6 +19,13 @@ const FAKE_SNAPSHOT: Snapshot = {
   ],
   edges: [],
   unresolved: [],
+  map: {
+    modules: [],
+    edges: [],
+    sequence: null,
+    sequenceMissing: "FAKE_NO_TRACE",
+    readmes: {},
+  },
 }
 
 test("delivers its one state at subscription, then nothing; select is inert", () => {

@@ -27,6 +27,13 @@ const snapshotOf = (root: string): Snapshot => ({
   modules: [],
   edges: [],
   unresolved: [],
+  map: {
+    modules: [],
+    edges: [],
+    sequence: null,
+    sequenceMissing: "FAKE_NO_TRACE",
+    readmes: {},
+  },
 })
 
 const cleanups: (() => Promise<void>)[] = []
