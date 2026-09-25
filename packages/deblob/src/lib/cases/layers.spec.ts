@@ -243,6 +243,114 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
+  {
+    // canon: `boot-one-call`, "a boot imports a single driver … It imports
+    // nothing else".
+    name: "a boot importing a service beside its driver is red",
+    files: {
+      ...ASSEMBLY,
+      "src/cli.driver.ts": `
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        export const main = () => {
+          const services = createNotesAssembly({ cwd: process.cwd() })
+          process.on("ready", () => services.notes.list())
+        }
+      `,
+      "src/cli.boot.ts": `
+        import { createNotes } from "./notes/notes.service.ts"
+        import { main } from "./cli.driver.ts"
+        main()
+        // red: service-assembly-only, runtime-import -- the import of notes.service: only an assembly imports a service
+        // missed red: boot-one-call -- the import of notes.service: a boot imports nothing but its driver; the matrix cell is not built yet
+      `,
+    },
+  },
+  {
+    // canon: `boot-one-call`, "Nothing imports a boot"; a driver importing
+    // one also points outward, `inward-deps`.
+    name: "a driver importing a boot is red: nothing imports a boot",
+    files: {
+      ...ASSEMBLY,
+      "src/cli.driver.ts": `
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        export const main = () => {
+          const services = createNotesAssembly({ cwd: process.cwd() })
+          process.on("ready", () => services.notes.list())
+        }
+      `,
+      "src/cli.boot.ts": `
+        import { main } from "./cli.driver.ts"
+        main()
+      `,
+      "src/other.driver.ts": `
+        import "./cli.boot.ts"
+        export const main = () => {
+          process.on("ready", () => undefined)
+        }
+        // red: inward-deps -- the import of cli.boot: a driver reaching outward
+        // missed red: boot-one-call -- the import of cli.boot: nothing imports a boot; the matrix cell is not built yet
+      `,
+    },
+  },
+  {
+    // canon: `test-is-outside`, "It imports anything, blob included; it
+    // defines anything".
+    name: "a spec file importing blob and an adapter, and defining helpers, is green",
+    files: {
+      ...ASSEMBLY,
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/legacy/slug.ts": `
+        export const slugOf = (title: string) => title.toLowerCase()
+      `,
+      "src/notes/notes.spec.ts": `
+        import { expect, it } from "vitest"
+        import { slugOf } from "../legacy/slug.ts"
+        import { createFsStore } from "./adapters/fs-store.adapter.ts"
+        const rootOf = (name: string) => "/tmp/" + slugOf(name)
+        it("roots the store", () => {
+          expect(createFsStore(rootOf("A")).root).toBe("/tmp/a")
+        })
+      `,
+    },
+  },
+  {
+    // canon: `test-is-outside`, "nothing imports it"; a model importing one
+    // also points outward, `inward-deps`.
+    name: "a model or another spec importing a spec file is red: nothing imports a spec",
+    files: {
+      ...ASSEMBLY,
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/notes/notes.spec.ts": `
+        import { expect, it } from "vitest"
+        export const ROOT = "/tmp"
+        it("has a root", () => {
+          expect(ROOT).toBe("/tmp")
+        })
+      `,
+      "src/notes/title.model.ts": `
+        import { ROOT } from "./notes.spec.ts"
+        export const titleOf = (name: string) => ROOT + name
+        // red: inward-deps -- the import of notes.spec: a model reaching outward
+        // missed red: test-is-outside -- the import of notes.spec: nothing imports a spec; the matrix cell is not built yet
+      `,
+      "src/notes/other.spec.ts": `
+        import { expect, it } from "vitest"
+        import { ROOT } from "./notes.spec.ts"
+        it("shares a root", () => {
+          expect(ROOT).toBe("/tmp")
+        })
+        // missed red: test-is-outside -- the import of notes.spec from another spec; the matrix cell is not built yet
+      `,
+    },
+  },
 ]
 
 describe("layers", () => {

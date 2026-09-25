@@ -374,6 +374,34 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
+  {
+    // canon: `test-is-outside`, "A test file is assembly and driver in one …
+    // the test bodies are hooks … the hook count and services-only do not
+    // apply".
+    name: "a test body making two use-case calls and calling an adapter is green: the test tech exempts the count and services-only",
+    files: {
+      ...CLI,
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/lib/notes/adapters/fs-store.adapter.ts": `
+        export const createFsStore = (root: string) => ({ root })
+      `,
+      "src/cli.spec.ts": `
+        import { expect, it } from "vitest"
+        import { createCliAssembly } from "./cli.assembly.ts"
+        import { createFsStore } from "./lib/notes/adapters/fs-store.adapter.ts"
+        it("checks, then reports status", async () => {
+          const { cli } = createCliAssembly({ cwd: "/tmp" })
+          expect(await cli.check({})).toBe(4)
+          expect(await cli.status({})).toBe(0)
+          expect(createFsStore("/tmp").root).toBe("/tmp")
+        })
+      `,
+    },
+  },
 ]
 
 describe("driver", () => {

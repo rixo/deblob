@@ -551,6 +551,65 @@ const ROOT_CALLS: readonly Row[] = [
       `,
     },
   },
+  {
+    // canon: `test-is-outside`, "Shared test code gets none of this and is
+    // placed by what it is: a fake or in-memory implementation is an adapter
+    // … a data builder model". Judged as its kind, only tests using it or not.
+    name: "shared test code is judged as its kind: a fake adapter storing the clock at root is red, a data builder model is green",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/test/fake-clock.adapter.ts": `
+        const STARTED = Date.now() // red: stable-root -- a read of the clock stored at root, in a fake as in any adapter
+        export const createFakeClock = () => ({ now: () => STARTED })
+      `,
+      "src/test/note.model.ts": `
+        export const buildNote = (over: { readonly title?: string }) => ({ title: "t", ...over })
+      `,
+      "src/clock.spec.ts": `
+        import { expect, it } from "vitest"
+        import { createFakeClock } from "./test/fake-clock.adapter.ts"
+        import { buildNote } from "./test/note.model.ts"
+        it("builds", () => {
+          expect(buildNote({}).title).toBe("t")
+          expect(createFakeClock().now()).toBeGreaterThan(0)
+        })
+      `,
+    },
+  },
+  {
+    // canon: `test-is-outside`, "a matcher … registered on the runner a driver
+    // whose wiring function the spec file calls with the tech". Read through
+    // the inlining principle, the call at the spec's root is its body,
+    // `expect.extend(…)`: a registration into the runner, the exemption
+    // `stable-root` names (ruled 2026-09-25).
+    name: "a spec calling a shared matcher driver's wiring function at root is a registration: inlined, it is the runner's",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/test/matchers.driver.ts": `
+        export const registerMatchers = (expect: { extend: (matchers: object) => void }) => {
+          expect.extend({
+            toBeRed: (received: unknown) => ({ pass: received === "red", message: () => "not red" }),
+          })
+        }
+      `,
+      "src/colors.spec.ts": `
+        import { expect, it } from "vitest"
+        import { registerMatchers } from "./test/matchers.driver.ts"
+        registerMatchers(expect)
+        it("is red", () => {
+          expect("red").toBeDefined()
+        })
+      `,
+    },
+  },
 ]
 
 const READONLY_BINDINGS: readonly Row[] = [

@@ -530,7 +530,11 @@ may reopen the service example and the config pattern section.
   `04/02_rows-first` — rows, no detector, for `stable-root`'s call half and the
   ten outside rules; then call reading and the detectors against those rows;
   type names (`04/01`, checkpoints 2–3), `node_modules` types and the engine
-  last, their rows already stamped `false unknown`.
+  last, their rows already stamped `false unknown`. `04/02_rows-first` closed
+  2026-09-25 in five checkpoints: every rule has its rows, every red its way
+  out, and three canon edits came of writing them (a tech value may be read,
+  "what the assembly builds", awaiting a call is the call). Next: call reading
+  and the detectors.
 - `05_alignment-review` — the checks are implemented; one pass over every rule
   canon states for the outside kinds against what `deblob check` enforces, with
   the tests as the proof: per canon statement (each Summary bullet and the

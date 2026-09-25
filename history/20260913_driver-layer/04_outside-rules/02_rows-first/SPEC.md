@@ -260,6 +260,54 @@ what they give:
 - **H10 vs H11**: two tech values as two arguments green, merged into one red —
   the merge is the smallest translation there is, and H10 is always available.
 
+## The boot and test rules — verdicts to rule (checkpoint 5)
+
+`boot-one-call` on the CLI tree of checkpoint 4, its boot `src/cli.boot.ts`:
+
+```ts
+#!/usr/bin/env node
+import { main } from "./cli.driver.ts"
+main()
+```
+
+`test-is-outside` where its rulings put it (§ The ten rules): the red of its own
+with the import rows, its permissions beside the rule they must not trigger,
+shared test code judged as its kind. The runner is `vitest`. Every red names its
+way out.
+
+| #    | snippet                                                                                                                                      | verdict                             | why (canon)                                                                                                                                                                                                                                                 | way out                                   |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| BT1  | the boot as written, a shebang first                                                                                                         | green                               | "imports a single driver and calls its wiring function once, at module root, with no arguments"; a shebang is not a statement                                                                                                                               |                                           |
+| BT2  | `import "dotenv/config"` beside the driver import                                                                                            | red, `boot-one-call`                | "It imports nothing else"                                                                                                                                                                                                                                   | the driver imports it, its declared tech  |
+| BT3  | `main(process.argv)`                                                                                                                         | red, `boot-one-call`                | "with no arguments … touches no tech: `process` … the driver's to read"                                                                                                                                                                                     | `main` reads `process.argv`               |
+| BT4  | `const start = () => main()`, `start()`                                                                                                      | red, `boot-one-call`                | "defines nothing"                                                                                                                                                                                                                                           | `main()` bare                             |
+| BT5  | `const app = main()`                                                                                                                         | red, `boot-one-call`                | "holds nothing"                                                                                                                                                                                                                                             | `main()` bare                             |
+| BT6  | `main()` twice                                                                                                                               | red, `boot-one-call`                | "calls its wiring function once" — exactly once                                                                                                                                                                                                             | once                                      |
+| BT6b | the driver imported, `main` never called                                                                                                     | red, `boot-one-call`                | "once" is exactly once: zero is red too, and "the one module whose evaluation performs a call" performs none                                                                                                                                                | `main()`                                  |
+| BT7  | `process.title = "notes"` before `main()`                                                                                                    | red, `boot-one-call`, `stable-root` | "touches no tech"; an assignment at root                                                                                                                                                                                                                    | the driver sets it in `main`              |
+| BT8  | the boot imports `createCli` from the service                                                                                                | red, `boot-one-call`                | "imports a single driver … nothing else" — the layers cell                                                                                                                                                                                                  | the driver's assembly builds it           |
+| BT9  | the driver imports `./cli.boot.ts`                                                                                                           | red, `boot-one-call`, `inward-deps` | "Nothing imports a boot"                                                                                                                                                                                                                                    | nothing does                              |
+| T1   | a spec's test body calls `cli.check()` then `cli.status()`, and calls the fs adapter directly                                                | green                               | a spec file is assembly and driver in one; "the hook count and services-only do not apply"                                                                                                                                                                  |                                           |
+| T2   | a spec imports a blob file and an adapter, and defines helper functions                                                                      | green                               | "It imports anything, blob included; it defines anything"                                                                                                                                                                                                   |                                           |
+| T3   | a model imports a spec file; another spec imports it too                                                                                     | red, `test-is-outside`              | "nothing imports it"                                                                                                                                                                                                                                        | shared code goes where its kind says (T4) |
+| T4   | `src/test/fake-clock.adapter.ts`, used by specs only, calls `Date.now()` at root                                                             | red, `stable-root`                  | "Shared test code gets none of this and is placed by what it is: a fake … is an adapter"                                                                                                                                                                    | the read inside the fake's factory        |
+| T5   | `src/test/note.model.ts`, a data builder, `buildNote = (over) => ({ title: "t", ...over })`                                                  | green                               | "a data builder model"                                                                                                                                                                                                                                      |                                           |
+| T6   | `src/test/matchers.driver.ts` exports `registerMatchers(expect)` calling `expect.extend(…)`; a spec calls `registerMatchers(expect)` at root | green                               | canon's own example: "a matcher … registered on the runner a driver whose wiring function the spec file calls with the tech"; the call inlined is `expect.extend(…)` at the spec's root — a registration into the runner, the exemption `stable-root` names |                                           |
+
+Doubts, ruled 2026-09-25 as leaned:
+
+- **T6** is where two rules meet. `stable-root`'s exemptions are a closed list
+  ("a spec file's registration calls into the runner"), and `registerMatchers`
+  is not the runner. Read through the inlining principle, the call is its body —
+  `expect.extend(…)` — at the spec's root: a registration. My lean: green, by
+  inlining; the row pins that the inlining reaches the exemption.
+- **BT2** closes a door that side-effect imports use (`dotenv/config`,
+  `reflect-metadata`, a polyfill), which some need first, before anything loads.
+  The way out is the driver's import, which evaluates before `main` runs; an
+  import that must precede even the driver has no home. My lean: red, and I do
+  not see a program made impossible — if one exists, it is a tech whose reading
+  should say so.
+
 ## Testing
 
 The rows are the deliverable, and the gate is rixo's stamp, not green: every row
@@ -288,9 +336,8 @@ board, one line, for rixo.
 
 The table's 21 entries (6 split in two) as 19 rows in `modules.spec.ts` (17–19
 one spec file, the three registrations side by side), § "a root call is red
-when…", stamped by rixo at "build". Every tree run under every check: no red of
-another rule appeared, so each row proves only `stable-root`. What the reader
-says today:
+when…", stamped. Every tree run under every check: no red of another rule
+appeared, so each row proves only `stable-root`. What the reader says today:
 
 - Green and right: 6a (a model's decorator), 7 (default parameter), 8
   (`Object.keys`), 13 (getter), 16 (awaited / voided boot call), 17–19 (spec
@@ -322,14 +369,13 @@ are not built. The spec files touched use `it` for verb-first titles.
 
 ### Checkpoint 3, built 2026-09-25
 
-The assembly table, stamped by rixo ("lgtm, stamp it"): the
-`assembly-builds-only` rows in `assembly.spec.ts` (new, 22 rows, one shared
-`notes` tree), the `assembly-driver-only` rows in `layers.spec.ts` (B1–B6, six
-rows). Several table entries share a row where one tree says both (A3 and A4; A8
-and A10; A20 and A21; A22's import and call). Every tree run under every check:
-nothing fired but what the rows mark. Every marker's claimed line printed and
-checked at handback — a `missed red` is silent on any line until its detector
-exists.
+The assembly table, stamped: the `assembly-builds-only` rows in
+`assembly.spec.ts` (new, 22 rows, one shared `notes` tree), the
+`assembly-driver-only` rows in `layers.spec.ts` (B1–B6, six rows). Several table
+entries share a row where one tree says both (A3 and A4; A8 and A10; A20 and
+A21; A22's import and call). Every tree run under every check: nothing fired but
+what the rows mark. Every marker's claimed line printed and checked at handback
+— a `missed red` is silent on any line until its detector exists.
 
 - Reported today, marked `red`: `inward-deps` on B2, B3 and B6. B3 corrects the
   table, which listed `assembly-driver-only` alone: the type edge from a service
@@ -371,6 +417,31 @@ by side in one driver where each line carries its own verdict (the
 Gates: 947 green, coverage 100, tsc, prettier; self-check 86 (63 unknown): the
 one more is `driver.spec.ts`'s `ROWS: readonly Row[]`, the corpus specs' shared
 type-name unknown; its tree constants are `as const`.
+
+### Checkpoint 5, built 2026-09-25 — the step closes
+
+The boot and test table, stamped. `boot.spec.ts` (new, 6 rows) for the boot's
+statements; `layers.spec.ts` for the import cells (BT8, BT9, T2, T3);
+`driver.spec.ts` for T1; `modules.spec.ts` for T4–T6.
+
+- Reported today, marked `red`: BT7's assignment at root (`stable-root`); BT8's
+  import of a service, `service-assembly-only` with `runtime-import` (a boot
+  importing a service is already a seal break — the table listed `boot-one-call`
+  alone); BT9's and T3's `inward-deps`; T4's clock read stored in a fake
+  adapter.
+- BT5's held result carries a `false unknown` for `stable-root`: the truth there
+  is green (the one call's result stored adds nothing), the reader cannot follow
+  `main()`'s result yet.
+- Every marker's claimed line printed and checked.
+
+With it the step's Goal holds: every canon sentence of `stable-root`'s call half
+has a row, and each of the ten outside rules has its first pass — every red
+naming its way out, none found without one. Next on the road: call reading and
+the detectors, against these rows.
+
+Gates: 960 green, coverage 100, tsc, prettier; self-check 87 (64 unknown): the
+one more is `boot.spec.ts`'s `ROWS: readonly Row[]`, the corpus specs' shared
+type-name unknown.
 
 ## Docs
 
