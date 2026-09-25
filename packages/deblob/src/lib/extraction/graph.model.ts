@@ -229,6 +229,22 @@ export type ArgValue = {
   origin: InstanceOrigin | null
   /** Member path from the origin's result (`services.app` passed on). */
   path: readonly string[]
+  /**
+   * A record literal handed: each entry as passed, so a rule judges them one by
+   * one where `kind` joins them; `null` for anything else.
+   */
+  entries: readonly { key: string; value: ArgValue }[] | null
+  /**
+   * The call whose result this is — handed directly, past `await`, or through a
+   * `const` bound to it — so a rule reads what was called; `null` otherwise. A
+   * span of the file read.
+   */
+  from: Span | null
+  /**
+   * The function's own parameter, or a part of one: received from the caller,
+   * who is judged where it calls.
+   */
+  received: boolean
 }
 
 /**
@@ -254,8 +270,11 @@ export type CalleeKind =
   | { kind: "use-case"; member: string; origin: InstanceOrigin | null }
   | { kind: "unknown" }
 
-/** One place a call's result reaches. */
-export type ResultUse =
+/**
+ * One place a call's result reaches, and where: the reference that uses it — a
+ * binding's use on a later line is placed there, not at the call.
+ */
+export type ResultUse = (
   | { kind: "argument"; to: CalleeKind }
   | { kind: "returned" }
   | { kind: "condition" }
@@ -264,6 +283,12 @@ export type ResultUse =
   | { kind: "reassigned" }
   | { kind: "computed" }
   | { kind: "discarded" }
+  /**
+   * Called on: a method, a use case, a load run on it — the call on it is
+   * judged as a call, the value only its receiver.
+   */
+  | { kind: "receiver" }
+) & { span: Span }
 
 export type ReadCall = {
   span: Span

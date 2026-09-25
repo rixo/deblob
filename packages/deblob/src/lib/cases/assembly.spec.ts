@@ -304,16 +304,17 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // canon: "A definition is any declaration — function, class, variable,
-    // type"; "Nothing but assembly functions is defined" (ruled 2026-09-25:
-    // the file that imports everything does not collect shared shapes).
-    name: "a type defined in an assembly file is red: a type goes to the layer that owns the shape",
+    // canon: a definition is a declaration "of something that exists at run
+    // time … A type is not one: where a type may travel, the import rules
+    // already say" (re-ruled 2026-09-26, was red): `assembly-driver-only`
+    // keeps an assembly's types to drivers and assemblies.
+    name: "a type defined in an assembly file is green: a type runs nothing, and the import rules say who may read it",
     files: {
       ...NOTES,
       ...DRIVER,
       "src/notes.assembly.ts": `
         ${IMPORTS}
-        type Deps = { cwd: string; store: "fs" | "memory" } // missed red: assembly-builds-only -- a definition beside the assembly function; ${WAIT}
+        type Deps = { cwd: string; store: "fs" | "memory" }
         export const createNotesAssembly = ({ cwd }: Deps) => {
           return { notes: createNotes({ store: createFsStore(cwd) }) }
         }

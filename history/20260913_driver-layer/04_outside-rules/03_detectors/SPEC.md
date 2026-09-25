@@ -363,7 +363,7 @@ Atomic violations, grouped by fix, as § API drew them:
   calls, 15 riders. A multi-line destructuring stored from a red call is a group
   across lines: rendered well, not markable yet.
 
-### Checkpoint 4, drafted 2026-09-26
+### Checkpoint 4, built 2026-09-26
 
 The reader facts the assembly rows need, found by dumping the reading of every
 `assembly.spec.ts` row. No verdict changes here: every assembly red stays
@@ -380,12 +380,21 @@ coverage when checkpoint 5's rows take over.
 | F5. A conditional's value is the join of its arms                                                                                                                                                                                                                                                                                                                               | `store === "memory" ? createMemoryStore() : createFsStore(cwd)` reads `computed`                                        | branch on a parameter (a false red); branch on an instance (a second red) |
 | F6. A value that is a call's result carries that call (`from`), so a check reads the callee                                                                                                                                                                                                                                                                                     | `join(cwd, "notes")` handed on reads `computed`                                                                         | the pure builtin row (a false red)                                        |
 | F7. `.map(callback)` on an array is a loop: a `control` over the receiver, the callback's body its arm, the callback's parameter an element of the receiver, the map's value the join of what the callback returns; the receiver proven an array by its annotation (`T[]`, `readonly T[]`, `Array<T>`, `ReadonlyArray<T>`), else the control says so and the verdict is unknown | a `language` call handed a `function`                                                                                   | the three map rows                                                        |
-| F8. A root type declaration (`type`, `interface`) is a root definition                                                                                                                                                                                                                                                                                                          | not in the reading                                                                                                      | the type row                                                              |
 | F9. In an assembly file a local function is not inlined: it is a definition beside the assembly function, and its call a `local` callee                                                                                                                                                                                                                                         | inlined, both invisible                                                                                                 | the helper row                                                            |
 
-`stable-root` reads F8's definitions as code (readonly) and F9's calls as it
-reads any local's in a layer that may touch the tech: red, where today the
-inlined body is judged. Self-check effect to be measured.
+`stable-root` reads F9's calls as it reads any local's in a layer that may touch
+the tech: red, where today the inlined body is judged. Self-check effect to be
+measured.
+
+**Built as drafted**, F7 as ruled below, F8 dropped: a type is no definition
+(below). Each fact switched off fails a reader unit (F1 2, F2 1, F3 2, F4 2, F5
+1, F6 2, F9 1, `received` 1; F7: the loop 5, the unknown 1, the element 1, a
+read in the arm counted 1, the value read after the loop 1, a destructured name
+typed by its pattern 3, each array form 2). Found building: a loop's element can
+hold a tech value, so a read in the arm counts toward the binding storing the
+loop, and the returned record's entries are read after its value, so a loop in
+one is read first. Rows: none move — the assembly check is checkpoint 5's.
+Self-check unchanged, 140.
 
 **Ruled at review (2026-09-26):**
 
@@ -402,6 +411,16 @@ inlined body is judged. Self-check effect to be measured.
   still decides everything else. Alternatives: bind a test's sites when no
   production site binds (reverses the fakes ruling for test factories), or
   complete the load row's driver and let the test factory read unknown.
+- **Types, all layers** — a type is no definition: canon's "a definition is any
+  declaration — function, class, variable, type" loses "type"
+  (`docs/architecture.md`). A local type only names what an inline annotation
+  writes, so banning one bans typing; an exported one travels only where the
+  import rules let it — the outside targets types included, `import type` exempt
+  where a contract must cross, the service DAG over every import kind. The
+  assembly type row (02 A15) re-ruled green; F8 dropped, nothing reads it.
+- **F7, unproven** — ruled B: `.map(callback)` on what the reader cannot prove
+  an array reads unknown, in any file; the name only withholds a verdict, never
+  grants one.
 - **Q2. `request.headers.get("x-token")` read as a language call** — the symptom
   of a wider flaw, fixed before this checkpoint (§ A call on a tech value,
   below): the line reads a tech call now, and the message says so.
@@ -421,12 +440,12 @@ green.
   the reader proved the receiver to be, never the method's name; a call on a
   literal or an operator's result stays the language's. Canon's escape hatch
   stays the only one: the tech's reading declaring a call effect-free.
-- **Consequences:** `process.argv.slice(2).map(cb)` in a driver cuts `cb` as a
-  hook, until a Node reading declares `argv` an array — confessed at root
+- **Consequences:** `process.argv.slice(2)` stored at root reads as a call into
+  the host until a Node reading declares `argv` an array — confessed
   (`export const ARGS = process.argv.slice(2)`: `false red` on the call's group,
-  `missed red` on the read of the machine), the driver half to be marked when
-  the driver check can report it; `connect().then(…)` stored is three members of
-  one group. The name-based set is gone from the reader.
+  `missed red` on the read of the machine); `.map(cb)` on it reads unknown since
+  checkpoint 4 (F7); `connect().then(…)` stored is three members of one group.
+  The name-based set is gone from the reader.
 - **Rows:** new, the `get` route (`driver.spec.ts`, green, a gate for the driver
   check: nothing reports it today, the reader fixture pins the hook), the data
   layer push at root, and a binding through a language call on a local's result

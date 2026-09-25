@@ -55,7 +55,7 @@ describe("checkModules", () => {
                 span,
                 callee: { kind: "unknown" },
                 args: [],
-                result: [{ kind: "discarded" }],
+                result: [{ kind: "discarded", span }],
                 load: null,
                 registration: false,
                 handsRunner: false,
