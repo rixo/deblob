@@ -10,13 +10,15 @@ resolver nor flavor.
 `ImportGraph` (`graph.model.ts`): modules keyed by root-relative POSIX path,
 each carrying its kind — the hexagon's `model`, `ports`, `service`, its
 `adapters`, the outside kinds `assembly`, `driver`, `boot`, the `test` kind, and
-`blob` — its service root, its `private/` status, and its non-erasable runtime
-content; edges from a module to a target with an import kind (`runtime`/`type`),
-a form (`static`/`dynamic`/`require`), and a re-export flag; and the list of
-imports that did not resolve. A target is either a covered module or an external
-leaf — a package, a builtin, a declared external, a file outside coverage — that
-is never parsed through. An external leaf may carry a layer when the other side
-declared one; absent, it is unlabeled.
+`blob` — its service root, its `private/` status, its non-erasable runtime
+content, and its symbol level (what it exports, and how many declarations it
+keeps to itself); edges from a module to a target with an import kind
+(`runtime`/`type`), a form (`static`/`dynamic`/`require`), a re-export flag, and
+the names imported over it; and the list of imports that did not resolve. A
+target is either a covered module or an external leaf — a package, a builtin, a
+declared external, a file outside coverage — that is never parsed through. An
+external leaf may carry a layer when the other side declared one; absent, it is
+unlabeled.
 
 Every parsed module also carries its **reading** (`FileReading`, JSON data): its
 root statements — calls classified, definitions with their value kind and their
@@ -134,14 +136,26 @@ and open.
   cut: a function handed to a tech callee is a hook, nested hooks included; one
   handed to anything else is read inline where it sits. Takes plain data, never
   the port: the service chooses the tech.
+- `symbols.model.ts` — `symbolLevelOf({ program, source, comments })`: the
+  symbol level, pure over ESTree (step 09, the map's boxes and rows). Every name
+  the module's own exports give out — a declaration exported in place, a local
+  binding exported by a clause under its exported name or as the default —
+  resolved to the declaration that binds it: its form (`function` for a variable
+  bound to a function expression), type-only for an interface or type alias, its
+  members (interfaces, object types, classes, enums; `name()` for a callable
+  one, `[index]`, `()`, `new()`; a computed key left out), and the first
+  sentence of the JSDoc block right above it. A name imported and given out
+  again is a re-export, an edge fact. Plus the count of top-level declarations
+  nothing exports.
 
 ## Ports
 
 - `ports/extraction.port.ts` — `ExtractionEngine`: `extract(absolutePath)`
-  resolves to import occurrences, runtime content, and the parsed program with
-  its source — ESTree with TypeScript nodes, the standard shape, not the
-  engine's — or `null` when the engine has no extractor for that file kind.
-  Engine shapes never leak through it; the tree is read per file and dropped.
+  resolves to import occurrences (each with the name it binds, as the target
+  exports it), runtime content, and the parsed program with its source and its
+  comments — ESTree with TypeScript nodes, the standard shape, not the engine's
+  — or `null` when the engine has no extractor for that file kind. Engine shapes
+  never leak through it; the tree is read per file and dropped.
 - `ports/resolver.port.ts` — `Resolver`: `resolve(from, specifier)` resolves to
   a file, a builtin under its `node:` name, or an unresolved reason. Split off
   the engine because parsing reads a string and resolution reads a tree: the
@@ -167,7 +181,8 @@ and open.
 - `adapters/oxc-extraction.adapter.ts` — `createOxcEngine({ fs })`, the parser
   over `oxc-parser`: the source read through the fs port (a covered file not
   there is loud, never a parse result), ESM records plus an AST walk for
-  `require(...)`.
+  `require(...)`; each record's name from the module record (`default`, `*` for
+  a namespace or a star re-export, none for a side-effect import).
 - `adapters/oxc-resolver.adapter.ts` —
   `createOxcResolver({ tsconfigPath?, alias? })`, the resolver over
   `oxc-resolver` for the node run: the project's tsconfig `paths` and config

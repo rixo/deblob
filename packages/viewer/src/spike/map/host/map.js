@@ -32,16 +32,11 @@ const json = (value) =>
   )
 
 // the design's one-object snapshot, from ours: the map's rows in place of the
-// outline's, the call stacks spread in. Their gen-graph reads every module
-// edge's `symbols`: an edge the symbol level did not match gets none.
+// outline's, the call stacks spread in
 const designSnapshotOf = ({ map, ...snapshot }) => ({
   ...snapshot,
   modules: map.modules,
-  edges: map.edges.map((edge) =>
-    edge.to.type === "module" && edge.symbols === undefined
-      ? { ...edge, symbols: [] }
-      : edge,
-  ),
+  edges: map.edges,
   ...(map.sequence ?? {}),
 })
 

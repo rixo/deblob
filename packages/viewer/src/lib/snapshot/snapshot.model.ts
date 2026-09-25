@@ -108,9 +108,10 @@ export type MapData = {
 
 /** One covered file, its exported declarations added. */
 export type MapModuleRef = ModuleRef & {
-  readonly symbols?: readonly SymbolRef[]
-  /** How many declarations the file keeps to itself. */
-  readonly internalDeclarations?: number
+  /** Empty for a file extraction cannot parse. */
+  readonly symbols: readonly SymbolRef[]
+  /** How many top-level declarations the file keeps to itself. */
+  readonly internalDeclarations: number
 }
 
 /** An exported declaration. */
@@ -127,7 +128,11 @@ export type SymbolRef = {
 
 /** An import edge, the names it imports added. */
 export type MapEdgeRef = EdgeRef & {
-  readonly symbols?: readonly { readonly name: string }[]
+  /**
+   * As the target exports them: `default`, `*` for a namespace or a star
+   * re-export. Empty for a side-effect import, `import()`, `require()`.
+   */
+  readonly symbols: readonly { readonly name: string }[]
 }
 
 /** The call stacks: every function reached, and the drivers that reach them. */

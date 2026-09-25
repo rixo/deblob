@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
@@ -115,6 +115,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: ["val"],
       },
     ])
   })
@@ -128,6 +129,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "type",
         form: "static",
         reExport: false,
+        names: ["T"],
       },
     ])
   })
@@ -141,6 +143,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: ["T", "val"],
       },
     ])
   })
@@ -154,6 +157,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: ["T", "val"],
       },
     ])
   })
@@ -167,6 +171,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "type",
         form: "static",
         reExport: true,
+        names: ["T"],
       },
     ])
   })
@@ -180,6 +185,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: true,
+        names: ["*"],
       },
     ])
   })
@@ -193,6 +199,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: true,
+        names: ["val"],
       },
     ])
   })
@@ -206,6 +213,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: true,
+        names: ["*"],
       },
     ])
   })
@@ -219,6 +227,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: true,
+        names: ["val"],
       },
     ])
   })
@@ -232,6 +241,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: true,
+        names: ["val"],
       },
     ])
   })
@@ -245,6 +255,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: [],
       },
     ])
   })
@@ -258,6 +269,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "dynamic",
         reExport: false,
+        names: [],
       },
     ])
   })
@@ -293,6 +305,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "require",
         reExport: false,
+        names: [],
       },
     ])
   })
@@ -306,6 +319,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: ["val"],
       },
     ])
   })
@@ -338,6 +352,7 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: ["default"],
       },
     ])
   })
@@ -406,8 +421,30 @@ describe("extractGraph over the forms fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: ["outside"],
       },
     ])
+  })
+
+  it("gives each parsed module its symbol level, and a file it cannot parse none", async () => {
+    const graph = await extractForms()
+    expect(graph.modules.get("src/dep.ts")).toMatchObject({
+      symbols: [
+        {
+          name: "val",
+          form: "const",
+          typeOnly: false,
+          members: null,
+          doc: null,
+        },
+        { name: "T", form: "type", typeOnly: true, members: ["n"], doc: null },
+      ],
+      internalDeclarations: 0,
+    })
+    expect(graph.modules.get("src/widget.svelte")).toMatchObject({
+      symbols: [],
+      internalDeclarations: 0,
+    })
   })
 
   test("classifies nodes through the flavor at graph build", async () => {
@@ -599,6 +636,7 @@ describe("extractGraph over the resolution fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: ["u"],
       },
     ])
   })
@@ -612,6 +650,7 @@ describe("extractGraph over the resolution fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: ["c"],
       },
     ])
   })
@@ -636,6 +675,7 @@ describe("extractGraph over the resolution fixture", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: [],
       },
     ])
   })
@@ -668,12 +708,14 @@ describe("extractGraph — declared external specifiers", () => {
               typeOnly,
               form: "static" as const,
               reExport: false,
+              name: null,
               literal: true,
             }
           }),
           runtimeContent: [],
           program: EMPTY_PROGRAM,
           source: "",
+          comments: [],
         }
       },
     }
@@ -724,6 +766,7 @@ describe("extractGraph — declared external specifiers", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: [],
       },
     ])
     expect(graph.unresolved).toEqual([])
@@ -834,11 +877,13 @@ describe("externalLayerOf — the crossed layer carrier on external leaves", () 
                 typeOnly: false,
                 form: "static" as const,
                 reExport: false,
+                name: null,
                 literal: true,
               })),
               runtimeContent: [],
               program: EMPTY_PROGRAM,
               source: "",
+              comments: [],
             }
           : null,
     }

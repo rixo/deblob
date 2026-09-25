@@ -269,7 +269,42 @@ Checkpoints, riskiest first. Each checkpoint is its own commit.
    page instance ever made; both are spike runtime, gone with it.
 
 3. **Symbols and READMEs graduate.** The product functions, their rows, the
-   parity row.
+   parity row. Two commits: the symbols, then the READMEs.
+
+   Landed, the symbols. Their home is extraction (rixo, 2026-09-26, over a
+   map-side re-parse that would duplicate parsing and resolution): the engine
+   already parses every file and resolves every import into an edge.
+   - The engine port carries each file's comments and each import record's name
+     (`default`, `*` for a namespace or a star re-export, none for a side-effect
+     import, `import()` or `require()`), read from oxc's module record, no tree
+     walk.
+   - `symbols.model.ts` (pure over ESTree) gives each module its exported names
+     and its count of internal declarations; the graph carries them on each
+     module, and each edge carries its names, sorted by code unit, each once.
+   - The fold (`snapshotFrom`) puts them on the map's rows; the outline's
+     modules and edges keep the contract's fields only. `MapFeed` loses
+     `symbolsOf`; `sequenceOf` takes the map's rows. The contract's `symbols`
+     and `internalDeclarations` are required; the bridge's empty-`symbols` patch
+     for unmatched edges is gone.
+   - Beyond the spike, stated as the operation: a local binding exported by a
+     clause (under its exported name) or as the default resolves to its
+     declaration (the spike dropped clause exports and counted them internal); a
+     doc is a JSDoc block only (the spike took any comment); members name a
+     property bound to a function value with `()`, a private one with `#`; a
+     dotted namespace is named by its path; the forms oxc's types allow are all
+     handled, the three the grammar excludes (a non-computed key that is not an
+     identifier, private name or literal; a template enum name; a re-export
+     entry with a source naming nothing) are casts with their reason, not
+     branches.
+   - Parity (`src/spike/map-feed/parity.spec.ts`, deleted with `fine.ts`): on
+     deblob's own tree the product equals the spike, module by module and edge
+     by edge, but for the order of an edge's names (`localeCompare` in the
+     spike; code-unit order kept: the same bytes on every machine). The viewer's
+     tree measured the same by hand.
+   - The graph's new fields are required: the check specs' hand-built graphs
+     gained them (one line per helper), the extraction spec's edge rows gained
+     their names, each written from the fixture's source.
+
 4. **The spike host goes.** `pnpm spike:map`, the host's HTTP feed and the
    spike's `projects.ts` are deleted, along with the two shortcuts step 07
    listed (the relative import of the feed, the direct call into deblob's config

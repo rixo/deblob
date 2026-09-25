@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url"
 import { describe, expect, it, test } from "vitest"
 
-import type { Snapshot } from "@deblob/viewer/snapshot.model"
+import type { ModuleRef, Snapshot } from "@deblob/viewer/snapshot.model"
 
 import { main } from "../../drivers/cli/main.ts"
 import { createProjectSource, extractionFor } from "../../drivers/wiring.ts"
@@ -35,6 +35,8 @@ const node = (path: string): ModuleNode => ({
   isPrivate: false,
   parsed: true,
   runtimeContent: [],
+  symbols: [],
+  internalDeclarations: 0,
   reading: null,
   readings: [],
 })
@@ -48,11 +50,10 @@ const graphOf = async (files: readonly string[]): Promise<ImportGraph> => ({
 })
 
 /**
- * A map feed that answers its rows back, no symbol added, no call stack, no
- * README — for the rows about everything but the map.
+ * A map feed with no call stack and no README — for the rows about everything
+ * but the map.
  */
 const plainFeed = (): MapFeed => ({
-  symbolsOf: async (_root, rows) => rows,
   sequenceOf: async () => ({ callables: {}, participants: [], drivers: [] }),
   readmesOf: async () => ({}),
 })
@@ -134,27 +135,6 @@ describe("createSnapshotService", () => {
   })
 
   describe("the map", () => {
-    const FAKE_SYMBOLS = {
-      modules: [
-        {
-          path: "src/a.ts",
-          layer: "blob",
-          serviceRoot: null,
-          isPrivate: false,
-          parsed: true,
-          symbols: [
-            {
-              name: "FAKE_SYMBOL",
-              form: "function",
-              typeOnly: false,
-              members: null,
-              doc: null,
-            },
-          ],
-        },
-      ],
-      edges: [],
-    } as const
     const FAKE_SEQUENCE = {
       callables: {},
       participants: [{ id: "m:src/a.ts", label: "a", kind: "blob", box: null }],
@@ -162,17 +142,23 @@ describe("createSnapshotService", () => {
     }
     const FAKE_README = [{ p: "FAKE_PARAGRAPH" }]
 
+    /** The fold's map rows for the memory project: no symbol, no edge. */
+    const foldRows = (modules: readonly ModuleRef[]) => ({
+      modules: modules.map((module) => ({
+        ...module,
+        symbols: [],
+        internalDeclarations: 0,
+      })),
+      edges: [],
+    })
+
     /** The feed's answers, and what it was asked. */
     const recordingFeed = (sequenceOf: MapFeed["sequenceOf"]) => {
       const asked: unknown[] = []
       const feed: MapFeed = {
-        symbolsOf: async (root, rows) => {
-          asked.push({ symbolsOf: { root, rows } })
-          return FAKE_SYMBOLS
-        },
-        sequenceOf: async (root, symbols) => {
-          asked.push({ sequenceOf: { root, symbols } })
-          return sequenceOf(root, symbols)
+        sequenceOf: async (root, rows) => {
+          asked.push({ sequenceOf: { root, rows } })
+          return sequenceOf(root, rows)
         },
         readmesOf: async (root, dirs) => {
           asked.push({ readmesOf: { root, dirs } })
@@ -182,7 +168,7 @@ describe("createSnapshotService", () => {
       return { feed, asked }
     }
 
-    it("feeds the symbols on the snapshot's rows, the call stacks on the symbols, the READMEs on the root and every directory holding a file", async () => {
+    it("feeds the call stacks on the fold's map rows, the READMEs on the root and every directory holding a file", async () => {
       const { feed, asked } = recordingFeed(async () => FAKE_SEQUENCE)
       const { runOf } = createSnapshotService({
         source: memorySource,
@@ -190,26 +176,17 @@ describe("createSnapshotService", () => {
         extractionFor: () => graphOf,
       })
       const { snapshot } = await runOf("/FAKE_ROOT")
+      const rows = foldRows(snapshot.modules)
       expect(snapshot.map).toEqual({
-        modules: FAKE_SYMBOLS.modules,
-        edges: [],
+        ...rows,
         sequence: FAKE_SEQUENCE,
         sequenceMissing: null,
         readmes: { src: FAKE_README },
       })
-      expect(asked).toEqual(
-        expect.arrayContaining([
-          {
-            symbolsOf: {
-              root: "/FAKE_ROOT",
-              rows: { modules: snapshot.modules, edges: snapshot.edges },
-            },
-          },
-          { sequenceOf: { root: "/FAKE_ROOT", symbols: FAKE_SYMBOLS } },
-          { readmesOf: { root: "/FAKE_ROOT", dirs: [".", "src"] } },
-        ]),
-      )
-      expect(asked).toHaveLength(3)
+      expect(asked).toEqual([
+        { readmesOf: { root: "/FAKE_ROOT", dirs: [".", "src"] } },
+        { sequenceOf: { root: "/FAKE_ROOT", rows } },
+      ])
     })
 
     it("draws the map without call stacks, and says why, when the tracer cannot read the tree", async () => {
@@ -223,32 +200,25 @@ describe("createSnapshotService", () => {
       })
       const { snapshot } = await runOf("/FAKE_ROOT")
       expect(snapshot.map).toEqual({
-        modules: FAKE_SYMBOLS.modules,
-        edges: [],
+        ...foldRows(snapshot.modules),
         sequence: null,
         sequenceMissing: "FAKE_TRACER_MISS",
         readmes: { src: FAKE_README },
       })
     })
 
-    it("fails the run when the symbols or the READMEs fail: a bug, not a tree the map cannot draw", async () => {
-      const failing = (part: "symbolsOf" | "readmesOf") =>
-        createSnapshotService({
-          source: memorySource,
-          feed: {
-            ...plainFeed(),
-            [part]: async () => {
-              throw new Error(`FAKE_BUG in ${part}`)
-            },
+    it("fails the run when the READMEs fail: a bug, not a tree the map cannot draw", async () => {
+      const run = createSnapshotService({
+        source: memorySource,
+        feed: {
+          ...plainFeed(),
+          readmesOf: async () => {
+            throw new Error("FAKE_BUG in readmesOf")
           },
-          extractionFor: () => graphOf,
-        }).runOf("/FAKE_ROOT")
-      await expect(failing("symbolsOf")).rejects.toThrow(
-        "FAKE_BUG in symbolsOf",
-      )
-      await expect(failing("readmesOf")).rejects.toThrow(
-        "FAKE_BUG in readmesOf",
-      )
+        },
+        extractionFor: () => graphOf,
+      }).runOf("/FAKE_ROOT")
+      await expect(run).rejects.toThrow("FAKE_BUG in readmesOf")
     })
   })
 

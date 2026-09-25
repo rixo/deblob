@@ -169,6 +169,13 @@ a row here closes when that log records it.
   place (view kept), the project pick calls back, a project error has a place;
   plus their stale default paths. **Sent**; the three fixes we owe them go in
   one later batch.
+- **The fixes we owe, and the view store** (2026-09-26, step 09) —
+  `data/FROM-DEBLOB.md`: the two fixes to their files (call mode on any project,
+  the panel following a project switch); a `viewStore` prop for Gravity (the
+  host names saved view state, the page shapes it; research note
+  `09_map-in-product/research/state-restore.md`); the smaller restore points;
+  what Gravity needs to mount under our host; the prefetch warning. The by-value
+  post stays open above. **Sent**.
 
 ### Queue
 

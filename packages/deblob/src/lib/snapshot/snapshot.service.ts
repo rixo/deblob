@@ -44,26 +44,22 @@ export const createSnapshotService = ({
   feed: MapFeed
 }) => {
   /**
-   * The map's data over a run's rows. A tree the call tracer cannot read — any
-   * but deblob's, today — still gets its map: no call stacks, and the tracer's
-   * word for why. The symbols and the READMEs have no such excuse: their
-   * failure is the run's.
+   * The map's data over a run's fold: its rows, then the READMEs and the call
+   * stacks fed. A tree the call tracer cannot read — any but deblob's, today —
+   * still gets its map: no call stacks, and the tracer's word for why. The
+   * READMEs have no such excuse: their failure is the run's.
    */
   const mapOf = async (root: string, rows: SnapshotRows): Promise<MapData> => {
-    const symbols = await feed.symbolsOf(root, {
-      modules: rows.modules,
-      edges: rows.edges,
-    })
     const readmes = await feed.readmesOf(
       root,
       readmeDirsOf(rows.modules.map(({ path }) => path)),
     )
     try {
-      const sequence = await feed.sequenceOf(root, symbols)
-      return { ...symbols, sequence, sequenceMissing: null, readmes }
+      const sequence = await feed.sequenceOf(root, rows.map)
+      return { ...rows.map, sequence, sequenceMissing: null, readmes }
     } catch (error) {
       return {
-        ...symbols,
+        ...rows.map,
         sequence: null,
         // the port's contract: an Error whose message says why
         sequenceMissing: (error as Error).message,

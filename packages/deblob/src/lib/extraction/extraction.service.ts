@@ -32,6 +32,7 @@ import type { Reader } from "./ports/reader.port.ts"
 import type { Resolver } from "./ports/resolver.port.ts"
 import type { ImportTargetKind } from "./reading.model.ts"
 import { brokenLinesOf, readModule } from "./reading.model.ts"
+import { symbolLevelOf } from "./symbols.model.ts"
 import type { Designations } from "./recognition.model.ts"
 import { createRecognition } from "./recognition.model.ts"
 
@@ -403,6 +404,7 @@ export const createExtraction = ({
         const key = `${file}\0${targetKey(target)}`
         const existing = edges.get(key)
         const kind = record.typeOnly ? "type" : "runtime"
+        const named = record.name === null ? [] : [record.name]
         if (!existing) {
           edges.set(key, {
             from: file,
@@ -410,10 +412,12 @@ export const createExtraction = ({
             kind,
             form: record.form,
             reExport: record.reExport,
+            names: named,
           })
         } else {
           // one edge per (from, target); runtime wins the kind merge, and
-          // reExport ORs across occurrences independently of it
+          // reExport ORs across occurrences independently of it; the names
+          // are every occurrence's
           const runtimeWins = existing.kind === "type" && kind === "runtime"
           edges.set(key, {
             from: file,
@@ -421,6 +425,7 @@ export const createExtraction = ({
             kind: runtimeWins ? kind : existing.kind,
             form: runtimeWins ? record.form : existing.form,
             reExport: existing.reExport || record.reExport,
+            names: [...existing.names, ...named],
           })
         }
       }
@@ -439,6 +444,9 @@ export const createExtraction = ({
         isPrivate: classification.isPrivate,
         parsed: extraction !== null,
         runtimeContent: extraction ? extraction.runtimeContent : [],
+        ...(extraction
+          ? symbolLevelOf(extraction)
+          : { symbols: [], internalDeclarations: 0 }),
         reading,
         readings: [],
       })
@@ -485,7 +493,17 @@ export const createExtraction = ({
       }
     }
 
-    return { root, modules, edges: [...edges.values()], unresolved, broken }
+    return {
+      root,
+      modules,
+      // each name once, sorted: occurrences repeat and come in any order
+      edges: [...edges.values()].map((edge) => ({
+        ...edge,
+        names: [...new Set(edge.names)].sort(),
+      })),
+      unresolved,
+      broken,
+    }
   }
 
   return { extractGraph }

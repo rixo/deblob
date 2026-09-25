@@ -1,6 +1,10 @@
 import { describe, expect, it, test } from "vitest"
 
-import type { ImportGraph, ModuleNode } from "../extraction/graph.model.ts"
+import type {
+  DeclaredSymbol,
+  ImportGraph,
+  ModuleNode,
+} from "../extraction/graph.model.ts"
 import { readmeDirsOf, snapshotFrom, watchSetOf } from "./snapshot.model.ts"
 
 describe("snapshotFrom", () => {
@@ -14,10 +18,20 @@ describe("snapshotFrom", () => {
     isPrivate: false,
     parsed: true,
     runtimeContent: [],
+    symbols: [],
+    internalDeclarations: 0,
     reading: null,
     readings: [],
     ...overrides,
   })
+
+  const FAKE_SYMBOL: DeclaredSymbol = {
+    name: "FAKE_SYMBOL",
+    form: "const",
+    typeOnly: false,
+    members: null,
+    doc: "FAKE_DOC",
+  }
 
   const FAKE_GRAPH: ImportGraph = {
     root: "/FAKE_ROOT",
@@ -26,6 +40,8 @@ describe("snapshotFrom", () => {
         node("src/FAKE_A/a.model.ts", {
           layer: "model",
           serviceRoot: "src/FAKE_A",
+          symbols: [FAKE_SYMBOL],
+          internalDeclarations: 2,
         }),
         node("src/FAKE_A/private/p.model.ts", {
           layer: "model",
@@ -47,6 +63,7 @@ describe("snapshotFrom", () => {
         kind: "runtime",
         form: "static",
         reExport: false,
+        names: ["FAKE_SYMBOL"],
       },
     ],
     unresolved: [
@@ -118,8 +135,34 @@ describe("snapshotFrom", () => {
           parsed: false,
         },
       ],
-      edges: FAKE_GRAPH.edges,
+      // the outline's edges: the contract's fields, not the graph's
+      edges: [
+        {
+          from: "src/FAKE_B/b.service.ts",
+          to: { type: "module", path: "src/FAKE_A/a.model.ts" },
+          kind: "runtime",
+          form: "static",
+          reExport: false,
+        },
+      ],
       unresolved: FAKE_GRAPH.unresolved,
+      map: {
+        modules: snapshot.modules.map((module) => ({
+          ...module,
+          symbols: module.path === "src/FAKE_A/a.model.ts" ? [FAKE_SYMBOL] : [],
+          internalDeclarations: module.path === "src/FAKE_A/a.model.ts" ? 2 : 0,
+        })),
+        edges: [
+          {
+            from: "src/FAKE_B/b.service.ts",
+            to: { type: "module", path: "src/FAKE_A/a.model.ts" },
+            kind: "runtime",
+            form: "static",
+            reExport: false,
+            symbols: [{ name: "FAKE_SYMBOL" }],
+          },
+        ],
+      },
     })
     // the contract is JSON: no runtime content, no maps leak through
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot)

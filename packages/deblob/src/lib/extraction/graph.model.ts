@@ -136,6 +136,28 @@ export type RuntimeEntry = {
   exported: boolean
 }
 
+/**
+ * One exported declaration, as a map box reads it — the symbol level
+ * (`symbols.model.ts`). `form` is the declaration's kind: `function` (a
+ * function declaration, or a variable bound to an arrow or function
+ * expression), `class`, `interface`, `type`, `enum`, `namespace`, `import`
+ * (`export import A = B`), `global`, the variable keyword (`const`, `let`,
+ * `var`, …), or `default` for `export default`.
+ */
+export type DeclaredSymbol = {
+  name: string
+  form: string
+  /** Erased at compile time: an interface or a type alias. */
+  typeOnly: boolean
+  /**
+   * Interface, object type, class and enum members by name, `name()` for a
+   * callable one; `null` for the forms that have none.
+   */
+  members: readonly string[] | null
+  /** The first sentence of the JSDoc block right above it, on one line. */
+  doc: string | null
+}
+
 export type ModuleNode = {
   path: string
   layer: Layer
@@ -157,6 +179,13 @@ export type ModuleNode = {
    * statements are edge facts, never listed here.
    */
   runtimeContent: readonly RuntimeEntry[]
+  /**
+   * The exported declarations, statement order — the map's symbol level. Empty
+   * for `parsed: false` nodes (no claim).
+   */
+  symbols: readonly DeclaredSymbol[]
+  /** How many top-level declarations the module does not export. */
+  internalDeclarations: number
   /**
    * What the reader saw: root statements for every parsed file; functions and
    * hooks for the outside kinds, cut with the file's tech, every function bound
@@ -557,6 +586,13 @@ export type ImportEdge = {
    * OR under the edge merge, independent of the runtime-wins kind merge.
    */
   reExport: boolean
+  /**
+   * The names the importer binds over the edge, as the target exports them —
+   * `default`, `*` for a namespace or a star re-export — sorted, each once.
+   * Empty when no occurrence binds a name (a side-effect import, `import()`,
+   * `require()`).
+   */
+  names: readonly string[]
 }
 
 /** A specifier that failed resolution — surfaced, never dropped. */

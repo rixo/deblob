@@ -22,8 +22,9 @@ through a type-only import. JSON throughout.
 - `Snapshot`: `generatedAt`, `project` (root, manifest name, provenance as
   `deblob check` prints it), `stats` (files, bytes, blob percent, services),
   `modules` (path, layer, service root, private, parsed), `edges`, `unresolved`,
-  and `map`: what the design's map draws — the modules and edges again with
-  their symbols, the call stacks (`sequence`, `null` with `sequenceMissing`
+  and `map`: what the design's map draws — the modules again with their exports
+  (`symbols`) and their count of internal declarations, the edges again with the
+  names they import, the call stacks (`sequence`, `null` with `sequenceMissing`
   saying why when the tracer cannot read the tree), each directory's README as
   blocks. Typed on the read side: the fields the design's code reads. `LAYERS`
   is the layer vocabulary, in display order.

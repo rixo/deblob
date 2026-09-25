@@ -4,7 +4,12 @@
  * CLI's own headline numbers, computed by the same functions.
  */
 
-import type { Snapshot } from "@deblob/viewer/snapshot.model"
+import type {
+  EdgeRef,
+  MapData,
+  ModuleRef,
+  Snapshot,
+} from "@deblob/viewer/snapshot.model"
 
 import {
   provenanceOf,
@@ -12,7 +17,11 @@ import {
   sizeStatsOf,
 } from "../cli/render.model.ts"
 import type { ResolvedConfig } from "../config/config.service.ts"
-import type { ImportGraph, ModuleNode } from "../extraction/graph.model.ts"
+import type {
+  ImportEdge,
+  ImportGraph,
+  ModuleNode,
+} from "../extraction/graph.model.ts"
 
 /**
  * A config path as the project sees it — relative to its root when under it, as
@@ -50,8 +59,38 @@ export const readmeDirsOf = (paths: readonly string[]): readonly string[] => {
   return [".", ...[...dirs].sort()]
 }
 
-/** A snapshot before its map is fed: the fold of one extraction run. */
-export type SnapshotRows = Omit<Snapshot, "map">
+/** A graph module as the outline reads it: the contract's fields only. */
+const moduleRefOf = ({
+  path,
+  layer,
+  serviceRoot,
+  isPrivate,
+  parsed,
+}: ModuleNode): ModuleRef => ({ path, layer, serviceRoot, isPrivate, parsed })
+
+/** A graph edge as the outline reads it: its names ride in the map. */
+const edgeRefOf = ({
+  from,
+  to,
+  kind,
+  form,
+  reExport,
+}: ImportEdge): EdgeRef => ({
+  from,
+  to,
+  kind,
+  form,
+  reExport,
+})
+
+/**
+ * The fold of one extraction run: the snapshot, its map's rows (modules and
+ * edges with their symbol level) and nothing else of the map yet — the call
+ * stacks and the READMEs are fed after.
+ */
+export type SnapshotRows = Omit<Snapshot, "map"> & {
+  map: Pick<MapData, "modules" | "edges">
+}
 
 export const snapshotFrom = ({
   config,
@@ -96,14 +135,20 @@ export const snapshotFrom = ({
       blobPercent,
       services: serviceCountOf(modules.map((node) => node.serviceRoot)),
     },
-    modules: modules.map(({ path, layer, serviceRoot, isPrivate, parsed }) => ({
-      path,
-      layer,
-      serviceRoot,
-      isPrivate,
-      parsed,
-    })),
-    edges: graph.edges,
+    modules: modules.map(moduleRefOf),
+    edges: graph.edges.map(edgeRefOf),
     unresolved: graph.unresolved,
+    // the map's rows: the same modules and edges, their symbol level added
+    map: {
+      modules: modules.map((node) => ({
+        ...moduleRefOf(node),
+        symbols: node.symbols,
+        internalDeclarations: node.internalDeclarations,
+      })),
+      edges: graph.edges.map((edge) => ({
+        ...edgeRefOf(edge),
+        symbols: edge.names.map((symbol) => ({ name: symbol })),
+      })),
+    },
   }
 }
