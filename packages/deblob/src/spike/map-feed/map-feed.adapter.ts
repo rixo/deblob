@@ -2,8 +2,7 @@
  * SPIKE (2026-09-25, step 09) — delete with src/spike. The map feed port on the
  * spike's tracer, as it is: the call stacks (sequence.ts: deblob's CLI only,
  * throws on any other tree). The symbol level and the READMEs graduated (step
- * 09 checkpoint 3); fine.ts and readmes.ts stay only as the parity row's
- * oracles. The tracer graduates with the tracer work.
+ * 09 checkpoint 3). The tracer graduates with the tracer work.
  *
  * Known gap: the tracer's module list relabels `src/drivers/cli/main.ts` as a
  * driver; only its `callables`, `participants` and `drivers` are kept, so the

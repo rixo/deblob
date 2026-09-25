@@ -46,6 +46,7 @@
   },
   "scripts": {
     "build": "run-s build:*",
+    "build:clean": "node --eval \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build:content": "node scripts/build-content.ts",
     "build:ts": "tsc -p tsconfig.build.json",
     "build:viewer": "node scripts/build-viewer.ts",

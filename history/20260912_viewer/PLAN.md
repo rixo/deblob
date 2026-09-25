@@ -113,8 +113,9 @@
    socket (`map` in the snapshot, a `MapFeed` port in deblob); the outline at
    `#debug`. The pipeline at full quality, their pages and our host with the
    spike's slack; the experimental map ships on 0.0.x. Ruled 2026-09-25, four
-   checkpoints: one page in our app (landed), live and switch, symbols and
-   READMEs graduate, the spike host goes.
+   checkpoints, all landed: one page in our app, live and switch (their picker
+   the switch), symbols (into extraction) and READMEs graduate, the spike host
+   goes. Left spike: the DC host the product runs, and the tracer.
 
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright

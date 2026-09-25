@@ -20,11 +20,9 @@ import { mount, unmount } from "svelte"
 import "../design/gen-graph.js"
 import { bootPage } from "./dc-runtime.svelte.js"
 
-// the spike host's options (vite.config.js)
-const GRAPH_OPTS = {
-  hooks: true,
-  initialCollapsed: ["src/lib/snapshot", "src/lib/view"],
-}
+// their driver hooks drawn as items; nothing pre-folded — the folds the spike
+// host passed named deblob's own directories
+const GRAPH_OPTS = { hooks: true }
 
 const json = (value) =>
   URL.createObjectURL(

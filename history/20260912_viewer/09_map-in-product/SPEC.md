@@ -317,10 +317,33 @@ Checkpoints, riskiest first. Each checkpoint is its own commit.
      does not (deblob's READMEs go no deeper than 3), the model's row does.
    - The spike's `?? ""` defaults under `noUncheckedIndexedAccess` became two
      stated guarantees: a line index stays within the lines, and every group of
-     the patterns takes part in any match. `pnpm spike:map`, the host's HTTP
-     feed and the spike's `projects.ts` are deleted, along with the two
-     shortcuts step 07 listed (the relative import of the feed, the direct call
-     into deblob's config code).
+     the patterns takes part in any match.
+
+4. **The spike host goes.** `pnpm spike:map`, the host's HTTP feed and the
+   spike's `projects.ts` are deleted, along with the two shortcuts step 07
+   listed (the relative import of the feed, the direct call into deblob's config
+   code).
+
+   Landed: viewer — the host's `vite.config.js` (its HTTP feed, both shortcuts),
+   `main.js`, `dc.html` and the `spike:map` script; `dc-plugin.js` keeps its
+   design directory to itself. deblob — `feed.ts`, `projects.ts`, and with them
+   the parity row and its two oracles, `fine.ts` and `readmes.ts` (their job
+   done in checkpoint 3). What stays spike: the viewer's DC host the product
+   runs (plugin, compiler, runtime, bridge) and deblob's tracer (`sequence.ts`,
+   its adapter). Probed `deblob view` from the built bundle in
+   `packages/viewer`: three projects, a pick of deblob (439 callables, 12
+   READMEs), kept on reload; `verify:pack` green.
+
+   Found and fixed on the way:
+   - `build:ts` never cleaned `dist`: a source deleted since the last build left
+     its output there, and a pack from a working copy shipped it
+     (`npm pack --dry-run` listed `fine.js`, `readmes.js`; `prepack` builds, but
+     the build removed nothing). deblob's build now starts with `build:clean`,
+     removing `dist` before the other steps write it; the pack lists only the
+     tracer and its adapter under `spike/`, `verify:pack` green.
+   - The bridge pre-folded `src/lib/snapshot` and `src/lib/view`, the spike
+     host's option, naming deblob's own directories in shipped code. Gone:
+     nothing is pre-folded.
 
 ## Docs
 

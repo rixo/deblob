@@ -2,5 +2,4 @@
 // product's vite.config.ts: dc-plugin.js is spike JavaScript.
 import type { Plugin } from "vite"
 
-export declare const DESIGN: string
 export declare function dc(): Plugin

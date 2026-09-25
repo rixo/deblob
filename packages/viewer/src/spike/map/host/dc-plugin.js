@@ -8,7 +8,7 @@ import { readFileSync, readdirSync } from "node:fs"
 import { basename, resolve } from "node:path"
 import { compileDc } from "./dc-compile.js"
 
-export const DESIGN = resolve(import.meta.dirname, "../design")
+const DESIGN = resolve(import.meta.dirname, "../design")
 
 // their tests and headless checks (`x.test.js`, `x.check.js`) are not engine
 const engineScripts = () =>

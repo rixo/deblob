@@ -48,7 +48,6 @@
     "dev:vite": "vite",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "spike:map": "vite --config src/spike/map/host/vite.config.js"
+    "typecheck": "tsc --noEmit"
   }
 }
