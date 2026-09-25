@@ -68,7 +68,7 @@ import { createNodeFs } from "../../lib/fs/adapters/node-fs.adapter.ts"
 import type { Fs } from "../../lib/fs/fs.port.ts"
 import { createPackageMetaReader } from "../../lib/extraction/adapters/package-meta.adapter.ts"
 import { createPlainTsReader } from "../../lib/extraction/adapters/plain-ts-reader.adapter.ts"
-import { createTestRunnerReader } from "../../lib/extraction/adapters/test-runner-reader.adapter.ts"
+import { createGoodEnoughTestsReader } from "../../lib/extraction/adapters/good-enough-tests-reader.adapter.ts"
 import {
   classifyStockEntry,
   STOCK_FLAVORS,
@@ -90,7 +90,7 @@ import { createRecognition } from "../../lib/extraction/recognition.model.ts"
  * plain TS, so its naming designates the test kind first.
  */
 const STOCK_READERS: ReaderRegistry = {
-  "test-runner": createTestRunnerReader,
+  "good-enough-tests": createGoodEnoughTestsReader,
   "plain-ts": createPlainTsReader,
 }
 

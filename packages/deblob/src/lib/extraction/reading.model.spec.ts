@@ -405,7 +405,7 @@ describe("readModule", () => {
     test("a test kind: functions cut, and the hooks registered at root, nested", () => {
       const reading = read("root-forms.ts", {
         layer: "test",
-        tech: { name: "test-runner", exempts: ["registration"] },
+        tech: { name: "good-enough-tests", exempts: ["registration"] },
       })
       expect(reading.exempts).toEqual(["registration"])
       expect(reading.functions.map((fn) => fn.name)).toEqual(["fn", "declared"])

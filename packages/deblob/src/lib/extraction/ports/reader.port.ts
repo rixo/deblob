@@ -5,7 +5,7 @@
  * it is one reader per tech, as the flavor is one per naming convention. A
  * reader binds files by glob — the stock readers as builtin bindings, config's
  * bindings first — and reads, among the files it binds, the kinds it knows; a
- * reader of one kind designates that kind by binding (the test runner's binding
+ * reader of one kind designates that kind by binding (the test reader's binding
  * is what makes a file a test file — canon: "spec files by the test globs").
  * The cut is one rule for every tech shipped so far (a function handed to a
  * tech callee — the reading's), so a reader is its binding, its kinds, its

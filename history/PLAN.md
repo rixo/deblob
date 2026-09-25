@@ -79,6 +79,15 @@
 
 ### Ideas
 
+- **A reader per runner** (rixo, 2026-09-26) — each tech has its own reader, the
+  one authority on what the tech means in the codebase: its files, its claims,
+  its names, its exemptions. A vitest reader reads the vitest config (include
+  globs, `globals`, `setupFiles`), possibly asks vitest itself for the list of
+  tests; a jest reader declares its globals, so a free `describe` is the
+  runner's only where a reader says so. `good-enough-tests` stays the first,
+  fast adapter: common conventions over every runner it knows. `Reader` stays
+  the one generic port: a runner's globals is a generic addition (the free names
+  a tech defines), made by the first reader that needs it.
 - **`deblob blob [--branch]`** (rixo, 2026-09-25) — list the blob files. With
   `--branch`, only the blob files in the diff, by default the current branch
   against `origin/main`.

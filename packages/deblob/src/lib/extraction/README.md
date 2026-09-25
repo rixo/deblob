@@ -193,9 +193,10 @@ and open.
   every script file, reads the assembly, driver and boot ones among them; claims
   nothing (builtins and host globals are tech by the reading's table,
   third-party packages by `driverTech`); exempts nothing.
-- `adapters/test-runner-reader.adapter.ts` — the test reader: binds the test
-  naming (`*.spec.*`, `*.test.*`, `__tests__/`) and reads the test kind only, so
-  its binding is what makes a file a test file — canon's "spec files by the test
+- `adapters/good-enough-tests-reader.adapter.ts` — the good-enough test reader,
+  common conventions over every runner it knows: binds the test naming
+  (`*.spec.*`, `*.test.*`, `__tests__/`) and reads the test kind only, so its
+  binding is what makes a file a test file — canon's "spec files by the test
   globs"; claims the runners it knows (a census, `driverTech` for the next one);
   exempts registration, the call count, services-only and definitions.
 - `adapters/package-meta.adapter.ts` — the cross-package reader,

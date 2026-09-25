@@ -248,7 +248,7 @@ describe("resolveConfig — the outside kinds: designations, configLoads, driver
 
   test("the tests key is gone: a teaching error names the runner's binding", () => {
     expect(() => resolve({ tests: ["e2e/**"] })).toThrowError(
-      /"tests" is gone.*readers: \{ "test-runner"/s,
+      /"tests" is gone.*readers: \{ "good-enough-tests"/s,
     )
   })
 })

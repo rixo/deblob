@@ -29,7 +29,7 @@ import { createFsResolver } from "../../extraction/adapters/fs-resolver.adapter.
 import { createOxcEngine } from "../../extraction/adapters/oxc-extraction.adapter.ts"
 import { createPackageMetaReader } from "../../extraction/adapters/package-meta.adapter.ts"
 import { createPlainTsReader } from "../../extraction/adapters/plain-ts-reader.adapter.ts"
-import { createTestRunnerReader } from "../../extraction/adapters/test-runner-reader.adapter.ts"
+import { createGoodEnoughTestsReader } from "../../extraction/adapters/good-enough-tests-reader.adapter.ts"
 import {
   STOCK_FLAVORS,
   classifyStockEntry,
@@ -46,7 +46,7 @@ import { createRunner } from "./runner.service.ts"
 export const CASE_ROOT = "/case"
 
 const STOCK_READERS = {
-  "test-runner": createTestRunnerReader,
+  "good-enough-tests": createGoodEnoughTestsReader,
   "plain-ts": createPlainTsReader,
 }
 

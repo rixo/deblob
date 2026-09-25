@@ -1,10 +1,10 @@
 import { expect, test } from "vitest"
 
-import { createTestRunnerReader } from "./test-runner-reader.adapter.ts"
+import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.adapter.ts"
 
 test("binds the test naming, reads the test kind only, claims the runners it knows by package, exempts the four", () => {
-  const reader = createTestRunnerReader()
-  expect(reader.name).toBe("test-runner")
+  const reader = createGoodEnoughTestsReader()
+  expect(reader.name).toBe("good-enough-tests")
   expect(reader.files).toEqual([
     "**/*.{spec,test}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
     "**/__tests__/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",

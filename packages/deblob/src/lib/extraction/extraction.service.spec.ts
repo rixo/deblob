@@ -7,7 +7,7 @@ import { createOxcResolver } from "./adapters/oxc-resolver.adapter.ts"
 import { createTsSuffixesFactoriesFlavor } from "./adapters/ts-suffixes-factories-flavor.adapter.ts"
 import { createExtraction } from "./extraction.service.ts"
 import { createPlainTsReader } from "./adapters/plain-ts-reader.adapter.ts"
-import { createTestRunnerReader } from "./adapters/test-runner-reader.adapter.ts"
+import { createGoodEnoughTestsReader } from "./adapters/good-enough-tests-reader.adapter.ts"
 import type {
   ImportEdge,
   ImportGraph,
@@ -938,7 +938,7 @@ describe("the reading on the graph — the reading fixture", () => {
    * claims.
    */
   const extractReading = (
-    readers = [createPlainTsReader(), createTestRunnerReader()],
+    readers = [createPlainTsReader(), createGoodEnoughTestsReader()],
     configLoads: readonly { file: string; name: string }[] = [
       { file: "src/app/app.service.ts", name: "load" },
     ],
@@ -978,13 +978,13 @@ describe("the reading on the graph — the reading fixture", () => {
   const kindsOf = (calls: readonly ReadCall[]) =>
     calls.map((call) => call.callee.kind)
 
-  test("chooses the reader by binding and kind: plain-ts for assembly, driver and boot; test-runner for the files its naming binds; none inside", async () => {
+  test("chooses the reader by binding and kind: plain-ts for assembly, driver and boot; good-enough-tests for the files its naming binds; none inside", async () => {
     const graph = await extractReading()
     expect(readingOf(graph, "src/cli.assembly.ts").tech).toBe("plain-ts")
     expect(readingOf(graph, "src/cli.driver.ts").tech).toBe("plain-ts")
     expect(readingOf(graph, "src/cli.boot.ts").tech).toBe("plain-ts")
     expect(readingOf(graph, "src/app/app.service.spec.ts").tech).toBe(
-      "test-runner",
+      "good-enough-tests",
     )
     expect(readingOf(graph, "src/app/app.service.spec.ts").exempts).toEqual([
       "registration",
@@ -1014,7 +1014,7 @@ describe("the reading on the graph — the reading fixture", () => {
   })
 
   test("tripwire: an outside kind no injected reader covers reads as null, no throw", async () => {
-    const graph = await extractReading([createTestRunnerReader()])
+    const graph = await extractReading([createGoodEnoughTestsReader()])
     // the boot calls `main()`: a world for the driver, which no reader reads
     // in any world — no reading, and no world reading either
     expect(graph.modules.get("src/cli.driver.ts")).toMatchObject({
@@ -1023,23 +1023,27 @@ describe("the reading on the graph — the reading fixture", () => {
       reading: null,
       readings: [],
     })
-    expect(readingOf(graph, "src/globals.spec.ts").tech).toBe("test-runner")
+    expect(readingOf(graph, "src/globals.spec.ts").tech).toBe(
+      "good-enough-tests",
+    )
   })
 
   test("a configured binding comes first, and the kinds filter holds: plain-ts bound over the spec naming does not read a test file", async () => {
     const graph = await extractReading([
       { ...createPlainTsReader(), files: ["**/*.spec.ts"] },
-      createTestRunnerReader(),
+      createGoodEnoughTestsReader(),
     ])
     // the runner's binding still designates the kind, plain-ts reads no test
     // kind, so the file falls to the runner — not to null
-    expect(readingOf(graph, "src/globals.spec.ts").tech).toBe("test-runner")
+    expect(readingOf(graph, "src/globals.spec.ts").tech).toBe(
+      "good-enough-tests",
+    )
     expect(graph.modules.get("src/globals.spec.ts")?.layer).toBe("test")
     // a binding the runner gains from config reads with the four exemptions
     const bound = await extractReading([
-      { ...createTestRunnerReader(), files: ["src/legacy.ts"] },
+      { ...createGoodEnoughTestsReader(), files: ["src/legacy.ts"] },
       createPlainTsReader(),
-      createTestRunnerReader(),
+      createGoodEnoughTestsReader(),
     ])
     expect(bound.modules.get("src/legacy.ts")).toMatchObject({ layer: "test" })
     expect(readingOf(bound, "src/legacy.ts").exempts).toHaveLength(4)
@@ -1354,7 +1358,7 @@ describe("the reading on the graph — the reading fixture", () => {
       engine: createOxcEngine({ fs }),
       resolver: createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
       flavor: createTsSuffixesFactoriesFlavor(),
-      readers: [createPlainTsReader(), createTestRunnerReader()],
+      readers: [createPlainTsReader(), createGoodEnoughTestsReader()],
     })
     // only cli.driver.ts calls it once other.driver.ts is left out
     const single = await extraction.extractGraph({

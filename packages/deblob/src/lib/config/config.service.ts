@@ -61,9 +61,9 @@ export type DeblobConfig = {
    * Reader bindings — reader name → globs (root-relative POSIX) for files a
    * stock reader reads on top of its builtin binding; a configured binding
    * comes before every builtin one. A reader of one kind designates that kind
-   * by binding: `{ "test-runner": ["e2e/**"] }` makes the e2e tree test files,
-   * read with the runner's exemptions, next to the `*.spec.*` naming the runner
-   * binds by itself. Default: `{}`.
+   * by binding: `{ "good-enough-tests": ["e2e/**"] }` makes the e2e tree test
+   * files, read with the runner's exemptions, next to the `*.spec.*` naming the
+   * runner binds by itself. Default: `{}`.
    */
   readers?: Readonly<Record<string, readonly string[]>>
   /**
@@ -530,7 +530,7 @@ export const resolveConfig = (
   }
   if ("tests" in record) {
     throw new ConfigError(
-      `config key "tests" is gone — a test file is one the test runner's binding names (*.spec.*, *.test.*, __tests__/); bind other paths with readers: { "test-runner": [...] }`,
+      `config key "tests" is gone — a test file is one the test reader's binding names (*.spec.*, *.test.*, __tests__/); bind other paths with readers: { "good-enough-tests": [...] }`,
     )
   }
 

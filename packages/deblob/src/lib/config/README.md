@@ -11,10 +11,10 @@ adapters over the platform; assembly owns the load → resolve sequence.
   (globs for the kinds a framework names itself — the stock flavor reads
   `.assembly.ts`, `.driver.ts`, `.boot.ts` regardless), `readers` (reader name →
   globs, a stock reader bound to more files than its builtin naming, config's
-  binding first; a test file is one the test runner's binding names, so
-  `{ "test-runner": ["e2e/**"] }` is how other test paths are declared — the
-  `tests` key of the unreleased step 01 is gone and says so), `configLoads` (the
-  use cases an assembly may await, `"<file>#<name>"`, one or a list),
+  binding first; a test file is one the test reader's binding names, so
+  `{ "good-enough-tests": ["e2e/**"] }` is how other test paths are declared —
+  the `tests` key of the unreleased step 01 is gone and says so), `configLoads`
+  (the use cases an assembly may await, `"<file>#<name>"`, one or a list),
   `driverTech` (specifier patterns over packages a driver may import as its
   tech), `include`, `exclude`, `pure`, `typeOnlyExempt`, `mutableModuleState`
   (`true` lets module-level bindings be mutable-typed — the opt-out of
