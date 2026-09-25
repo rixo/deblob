@@ -566,6 +566,17 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
 
 ### Ideas
 
+- **A tech module passed on is an adapter skipped** (2026-09-25, found drafting
+  `04/03_detectors`). The reading classes an import a tech claims as a tech
+  value, so a driver can `import * as url from "node:url"`, hand the module to
+  its assembly, and the assembly to a service: every row green, the service
+  doing tech work with no port and no adapter — assembly laundering one layer
+  out. Canon's tech values are data the tech hands the program (argv, env, a
+  request), not capabilities. Needs a canon sentence (roughly: a tech module
+  handed on is an adapter skipped) and a row (the driver passing the module →
+  red; way out: a port naming the question, `dirnameOf(moduleUrl: string)`, an
+  adapter the assembly builds). Related: the host-global half of
+  `service-purity` below.
 - **An entry point nothing imports** (rixo, 2026-09-21, reassess near the end of
   this chapter). The rule for an unruled tech is settled for imported files:
   what the codebase imports lands in the graph, and what nothing claims is blob

@@ -124,7 +124,13 @@ and open.
   method's. Every call carries its arguments (kind, and for an instance where it
   came from) and where its result reaches; a use case that matches a declared
   load by member name — and by file when the instance is traced to a factory
-  that is not an assembly's record — is marked, its result a tech value. The
+  that is not an assembly's record — is marked, its result a tech value. A call
+  into the runner the file's own reader claims, where that reader exempts
+  registration, is marked a `registration`; a call read inside a tracked local's
+  body carries the root call that ran it (`site`); a definition whose
+  initializer is a call carries that call (`storedCall`), past `await` and the
+  other wrappers. The external import's claim says who made it: `reader` (the
+  file's own), `tech` (`driverTech`, a concrete builtin), `model` (pure). The
   cut: a function handed to a tech callee is a hook, nested hooks included; one
   handed to anything else is read inline where it sits. Takes plain data, never
   the port: the service chooses the tech.

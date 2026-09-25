@@ -54,7 +54,14 @@ One function per check, all over `ImportGraph` from `extraction`:
   diagnoses.
 - `checkModules(graph, { mutableModuleState? })` — `stable-root`: a root
   statement that writes, a root binding that holds state or stores a read of the
-  machine. Each violation carries `unknown`: `null` when the red is proven (a
+  machine, and a root call that reaches the tech, runs a use case, sets up a
+  driver's tech, or goes into a function of a file whose layer may touch the
+  tech (`reaches`, `null` for a callee the reader cannot place). Exempt by kind:
+  a spec file's registrations into its runner (a driver's wiring function handed
+  the runner's tech included), the boot's one call. A red call inside a tracked
+  local is reported where it sits, the root call that ran it in `via`; a binding
+  storing a red call's result draws no second verdict unless it is a `let` or
+  `var`. Each violation carries `unknown`: `null` when the red is proven (a
   binding's `by` naming the form that proves it), else the reader's
   `UnknownCondition` — an unknown fails like a red and says what the reader
   could not see. A broken line gets no verdict; the graph's `broken` carries it.

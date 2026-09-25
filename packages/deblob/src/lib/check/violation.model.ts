@@ -237,10 +237,20 @@ export type ModulesViolation = {
       /**
        * A root statement that is neither a call nor a definition and still does
        * something when the module is evaluated — or one the reader does not
-       * recognise, an unknown. Canon's last shape — the call that reaches out —
-       * comes with its clause.
+       * recognise, an unknown.
        */
       shape: "root-statement"
+    }
+  | {
+      /**
+       * A call at root that reaches the tech, runs a use case, or goes into a
+       * function of a file whose layer may touch the tech — presumed to have
+       * side effects; or a call the reader cannot place, `reaches` then `null`
+       * and `unknown` set. `name` is what it is called when the call names it.
+       */
+      shape: "root-call"
+      reaches: "tech" | "use-case" | "function" | "wiring" | "unclaimed" | null
+      name: string | null
     }
   | {
       /**

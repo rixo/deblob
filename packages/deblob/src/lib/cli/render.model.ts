@@ -20,6 +20,7 @@ import { isRuleId, ruleOrder } from "../check/rule.model.ts"
 import type {
   DagViolation,
   LayersViolation,
+  ModulesViolation,
   PortsViolation,
   SurfaceViolation,
   Violation,
@@ -226,6 +227,11 @@ const messageOf = (violation: FileViolation, prefix: string): string => {
         const by = violation.by as { form: string; name: string | null }
         return `line ${violation.line} binds mutable state at module root — ${mutableWords(by, js)}; ${js ? JS_WAYS_OUT : "use as const, a readonly type, or move it inside a factory"}`
       }
+      if (violation.shape === "root-call") {
+        if (violation.reaches === null)
+          return `line ${violation.line} may run on import${via} — unknown: ${unknownWords({ kind: "callee" })}; move it inside a factory or a function`
+        return `line ${violation.line} runs on import${via} — ${reachWords(violation.reaches, violation.name)}, presumed to act; move it inside a factory or a function`
+      }
       if (violation.unknown !== null)
         return `line ${violation.line} may run on import${via} — unknown: ${unknownWords(violation.unknown)}; move it inside a function`
       return `line ${violation.line} runs on import${via} — a module's evaluation performs no side effect; move it inside a factory or a function`
@@ -334,6 +340,31 @@ const unknownWords = (condition: UnknownCondition): string => {
         : `the reader does not follow ${VALUE_WORDS[condition.form] ?? condition.form}`
     case "statement":
       return `the reader does not recognise this statement (${condition.form})`
+    case "callee":
+      return "the reader cannot tell what this call reaches"
+  }
+}
+
+/** What a root call reaches, in words: why it is presumed to act. */
+const reachWords = (
+  reaches: NonNullable<
+    Extract<ModulesViolation, { shape: "root-call" }>["reaches"]
+  >,
+  name: string | null,
+): string => {
+  switch (reaches) {
+    case "tech":
+      return name === null
+        ? "a call into the host"
+        : `a call into ${name}, the tech`
+    case "use-case":
+      return `a call to the use case ${name}`
+    case "function":
+      return `a call into ${name}, a function of a file that may touch the tech`
+    case "wiring":
+      return `the wiring function ${name} runs, and sets up its tech`
+    case "unclaimed":
+      return `a call into ${name}, a package nothing claims`
   }
 }
 

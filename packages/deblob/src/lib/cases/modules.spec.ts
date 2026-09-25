@@ -92,7 +92,7 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/clock/adapters/system-clock.adapter.ts": `
         export const nameOf = (name: string) => "clock:" + name
-        export const NAME: string = nameOf("system") // missed red: stable-root -- a local of an adapter, whose layer may touch the tech — the side effect cannot be ruled out; the call shape is not built yet
+        export const NAME: string = nameOf("system") // red: stable-root -- a local of an adapter, whose layer may touch the tech — the side effect cannot be ruled out
         export const createSystemClock = () => ({ now: () => Date.now() })
       `,
     },
@@ -105,10 +105,10 @@ const ROOT_CALLS: readonly Row[] = [
     files: {
       "src/cli.driver.ts": `
         const readHome = () => {
-          const home = process.cwd() // missed red: stable-root -- the helper's body is the root's, so its tech call is a root call; the call shape is not built yet
+          const home = process.cwd() // red: stable-root -- the helper's body is the root's, so its tech call is a root call
           return home.length
         }
-        export const HOME_LENGTH: number = readHome() // missed via: stable-root -- the root call that runs readHome's body on import; the call shape is not built yet
+        export const HOME_LENGTH: number = readHome() // via: stable-root -- the root call that runs readHome's body on import
         export const main = () => {
           process.on("ready", () => readHome())
         }
@@ -121,7 +121,8 @@ const ROOT_CALLS: readonly Row[] = [
     name: "a service calling into tech at root is red: a host global is the tech's, a language global is not",
     files: {
       "src/paths.service.ts": `
-        export const HOME: string = process.cwd() // missed red: stable-root, ambient-access -- tech reached at import time, and the environment discovered; the call shape and ambient-access are not built yet
+        // missed red: ambient-access -- the environment discovered; ambient-access is not built yet
+        export const HOME: string = process.cwd() // red: stable-root -- tech reached at import time
         export const ONE_LABEL: string = String(1)
         export const createPaths = () => ({ home: HOME })
       `,
@@ -137,7 +138,7 @@ const ROOT_CALLS: readonly Row[] = [
         if (process.env["SOME_MADE_UP_DEBUG"]) {
           throw new Error("made up")
         }
-        if (process.cwd() === "/") { // missed red: stable-root -- a call, presumed to have side effects; the call shape is not built yet
+        if (process.cwd() === "/") { // red: stable-root -- a call, presumed to have side effects
           throw new Error("made up")
         }
         export const createEnvServer = () => ({ port: 3000 })
@@ -161,7 +162,7 @@ const ROOT_CALLS: readonly Row[] = [
         import { createCliAssembly } from "./cli.assembly.ts"
         // false unknown: stable-root -- a call's result is not followed yet
         const services = createCliAssembly() // red: stable-root -- a call result is not provably immutable
-        services.app.run() // missed red: stable-root -- a use case runs at import time; the call shape is not built yet
+        services.app.run() // red: stable-root -- a use case runs at import time
         export const main = () => {
           process.on("ready", () => services.app.run())
         }
@@ -201,7 +202,7 @@ const ROOT_CALLS: readonly Row[] = [
         const app = createApp() // red: stable-root -- a call result is not provably immutable, and every test shares it
         let calls = 0 // red: stable-root -- mutable state at spec root
         const twice = (n: number) => n * 2
-        main() // missed red: stable-root -- the driver's wiring runs at import time — the exemption is registrations into the runner, not any call; the call shape is not built yet
+        main() // red: stable-root -- the driver's wiring runs at import time — the exemption is registrations into the runner, not any call
         describe("app", () => {
           it("runs", () => {
             calls += 1
@@ -244,7 +245,6 @@ const ROOT_CALLS: readonly Row[] = [
     name: "a new of a host class at root is a call reaching the tech",
     files: {
       "src/jobs/adapters/worker-pool.adapter.ts": `
-        // false unknown: stable-root -- a call's result is not followed yet
         export const WORKER = new Worker("./w.js") // red: stable-root -- a new is a call, and Worker is the host's: the tech reached on import
       `,
     },
@@ -256,7 +256,6 @@ const ROOT_CALLS: readonly Row[] = [
     files: {
       "src/http/adapters/fetch-status.adapter.ts": `
         const STATUS_URL = "https://example.test/status"
-        // false unknown: stable-root -- a call's result is not followed yet
         export const RES: Response = await fetch(STATUS_URL) // red: stable-root -- fetch reaches the tech on import; await adds nothing
       `,
     },
@@ -267,8 +266,8 @@ const ROOT_CALLS: readonly Row[] = [
     name: "an immediately invoked function runs its body at root: a tech call inside it is red where it sits",
     files: {
       "src/log/adapters/console-log.adapter.ts": `
-        export const X: number = (() => { // missed via: stable-root -- the call that runs the body on import; the call shape is not built yet
-          console.log("x") // missed red: stable-root -- the body runs on load, so its tech call is a root call; the call shape is not built yet
+        export const X: number = (() => { // missed via: stable-root -- the call that runs the body on import; an immediately invoked function is not read yet
+          console.log("x") // missed red: stable-root -- the body runs on load, so its tech call is a root call; an immediately invoked function is not read yet
           return 1
         })()
       `,
@@ -382,7 +381,7 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/clock/adapters/system-clock.adapter.ts": `
         import { nameOf } from "../private/naming.adapter.ts"
-        export const NAME: string = nameOf("x") // missed red: stable-root -- a function of an adapter file, whose layer may touch the tech; the call shape is not built yet
+        export const NAME: string = nameOf("x") // red: stable-root -- a function of an adapter file, whose layer may touch the tech
       `,
     },
   },
@@ -403,7 +402,6 @@ const ROOT_CALLS: readonly Row[] = [
       "src/fixtures.spec.ts": `
         import { expect, it } from "vitest"
         import { loadFixture } from "./legacy/fixtures.ts"
-        // false unknown: stable-root -- a call's result is not followed yet
         const DATA = loadFixture() // red: stable-root -- a blob's function run on import; not a registration
         it("reads", () => {
           expect(DATA.a).toBe(1)
@@ -422,7 +420,6 @@ const ROOT_CALLS: readonly Row[] = [
       "node_modules/sql-template-tag/index.js": "module.exports = {}",
       "src/users/adapters/sql-users.adapter.ts": `
         import sql from "sql-template-tag"
-        // false unknown: stable-root -- a call's result is not followed yet
         export const ALL_USERS = sql\`select * from users\` // red: stable-root -- a tagged template calls the tag on import
       `,
     },
@@ -443,7 +440,7 @@ const ROOT_CALLS: readonly Row[] = [
     name: "an optional tech call at root is a tech call",
     files: {
       "src/log/adapters/warn-log.adapter.ts": `
-        process.emitWarning?.("x") // missed red: stable-root -- an optional call is a call, the tech reached on import; the call shape is not built yet
+        process.emitWarning?.("x") // red: stable-root -- an optional call is a call, the tech reached on import
       `,
     },
   },
@@ -470,7 +467,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/cli.boot.ts": `
         import { main } from "./cli.driver.ts"
         // missed red: boot-one-call -- "nothing else … called": a second call beside the one; the boot check is not built yet
-        // missed red: stable-root -- a second call on import, the tech's; the exemption is the one call; the call shape is not built yet
+        // missed red: stable-root -- a second call on import, the tech's; the exemption is the one call, bare; the reader takes .catch for a language call
         main().catch(console.error)
       `,
     },
@@ -534,6 +531,26 @@ const ROOT_CALLS: readonly Row[] = [
     },
   },
   {
+    // canon: "a spec file's registration calls into the runner" — the runner,
+    // not the host: an exemption list is closed.
+    name: "a spec file calling the host at root is red: only its runner's calls are registrations",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/cwd.spec.ts": `
+        import { expect, it } from "vitest"
+        process.chdir("/tmp") // red: stable-root -- a call into the host at a spec's root: not the runner
+        const FIXTURE = import.meta.resolve("./fixture.json") // red: stable-root -- the host's resolver, called at a spec's root: not the runner
+        it("runs in tmp", () => {
+          expect(process.cwd()).toBe("/tmp")
+        })
+      `,
+    },
+  },
+  {
     // canon: "a call is presumed to have side effects … until the tech's reading
     // declares that call effect-free". `import()` is a call into the host's
     // module loader: a presumption, not a proven instability — the loaded
@@ -545,8 +562,8 @@ const ROOT_CALLS: readonly Row[] = [
         export const HEAVY = 1
       `,
       "src/loader.model.ts": `
-        import("./heavy.model.ts") // missed red: stable-root -- a call into the module loader on import; a static import says the same; the call shape is not built yet
-        await import("./heavy.model.ts") // missed red: stable-root -- awaited, the same call; the call shape is not built yet
+        import("./heavy.model.ts") // missed red: stable-root -- a call into the module loader on import; a static import says the same; a dynamic import is not read as a call yet
+        await import("./heavy.model.ts") // missed red: stable-root -- awaited, the same call; a dynamic import is not read as a call yet
         export const loadHeavy = () => import("./heavy.model.ts")
       `,
     },
@@ -606,6 +623,32 @@ const ROOT_CALLS: readonly Row[] = [
         registerMatchers(expect)
         it("is red", () => {
           expect("red").toBeDefined()
+        })
+      `,
+    },
+  },
+  {
+    // canon: "a driver whose wiring function the spec file calls with the
+    // tech" — the tech is the runner the file is read for: a wiring function
+    // handed the host sets up the host's tech on import, like `main()`.
+    name: "a spec calling a shared driver's wiring function with the host at root is red: only the runner handed on is a registration",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/test/cwd.driver.ts": `
+        export const enterTmp = (host: { chdir: (path: string) => void }) => {
+          host.chdir("/tmp")
+        }
+      `,
+      "src/cwd.spec.ts": `
+        import { expect, it } from "vitest"
+        import { enterTmp } from "./test/cwd.driver.ts"
+        enterTmp(process) // red: stable-root -- the driver's wiring runs at import time, handed the host, not the runner
+        it("runs in tmp", () => {
+          expect(1).toBe(1)
         })
       `,
     },
@@ -895,7 +938,7 @@ const READONLY_BINDINGS: readonly Row[] = [
         if (Math.random() > 2) throw new Error("made up")
         export const LONGEST: number = Math.max(1, 2)
         export const CWDS: readonly string[] = ["a"].map(() =>
-          process.cwd(), // missed red: stable-root -- a call, red where it sits; the binding above stores its result and adds no red; the call shape is not built yet
+          process.cwd(), // red: stable-root -- a call, red where it sits; the binding above stores its result and adds no red
         )
         export const createMachineReads = () => ({ names: NAMES })
       `,
@@ -916,7 +959,7 @@ const READONLY_BINDINGS: readonly Row[] = [
         export let counter = 0
         export const CACHE = new Map<string, number>()
         export const SOME_MADE_UP_PORT: string = process.env["SOME_MADE_UP_PORT"] ?? "3000"
-        export const HOME: string = process.cwd() // missed red: stable-root -- a call is presumed to have side effects — the setting is about state; the call shape is not built yet
+        export const HOME: string = process.cwd() // red: stable-root -- a call is presumed to have side effects — the setting is about state
         export const createMemoryCache = () => ({ hit: () => counter++ })
       `,
     },
@@ -999,7 +1042,7 @@ const ROOT_STATEMENTS: readonly Row[] = [
       "src/guard.model.ts": `
         export const SOME_MADE_UP_DEBUG: boolean = false
         if (SOME_MADE_UP_DEBUG) {
-          console.log("debug") // missed red: stable-root -- a tech call at root, under a branch or not; the call shape is not built yet
+          console.log("debug") // red: stable-root -- a tech call at root, under a branch or not
         }
         export const isDebug = () => SOME_MADE_UP_DEBUG
       `,
@@ -1051,8 +1094,8 @@ const INLINED_SCOPE: readonly Row[] = [
     name: "a tracked local reaching the host is red at its own line when it is inlined into a root callback",
     files: {
       "src/paths.model.ts": `
-        const readHome = () => process.cwd() // missed red: stable-root -- the host's tech at import time, at the line the inlined body puts it; the call shape is not built yet
-        export const HOMES: readonly string[] = ["a"].map(() => readHome()) // missed via: stable-root -- the root callback that runs readHome's body on import; the call shape is not built yet
+        const readHome = () => process.cwd() // red: stable-root -- the host's tech at import time, at the line the inlined body puts it
+        export const HOMES: readonly string[] = ["a"].map(() => readHome()) // via: stable-root -- the root callback that runs readHome's body on import
       `,
     },
   },
@@ -1062,8 +1105,8 @@ const INLINED_SCOPE: readonly Row[] = [
     name: "the same local, at a site whose callback parameter rebinds the very name it reads: the red is unmoved",
     files: {
       "src/paths.model.ts": `
-        const readHome = () => process.cwd() // missed red: stable-root -- the callback's own \`process\` is not the one readHome reads; the call shape is not built yet
-        export const HOMES: readonly string[] = ["a"].map((process) => readHome()) // missed via: stable-root -- the root callback that runs readHome's body on import; the call shape is not built yet
+        const readHome = () => process.cwd() // red: stable-root -- the callback's own \`process\` is not the one readHome reads
+        export const HOMES: readonly string[] = ["a"].map((process) => readHome()) // via: stable-root -- the root callback that runs readHome's body on import
       `,
     },
   },

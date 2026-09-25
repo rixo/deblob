@@ -129,7 +129,8 @@ const ROWS: readonly Row[] = [
       "src/cli.boot.ts": `
         import { main } from "./cli.driver.ts"
         main()
-        main() // missed red: boot-one-call, stable-root -- a second call; the exemption is the one call; ${WAIT}, and the call shape is not built yet
+        // missed red: boot-one-call -- a second call; ${WAIT}
+        main() // red: stable-root -- a second call; the exemption is the one call
       `,
       "src/worker.boot.ts": `
         import { main } from "./cli.driver.ts"

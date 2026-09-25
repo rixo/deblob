@@ -43,8 +43,12 @@ export type ImportTargetKind =
   | {
       kind: "external"
       package: string | null
-      /** Tech: a tech's claim, `driverTech`, or a concrete builtin; model: pure. */
-      claim: "tech" | "model" | "unclaimed"
+      /**
+       * Tech: `driverTech`, or a concrete builtin; `reader`: the file's own
+       * reader's claim — tech too, and the one a registration calls into;
+       * model: pure.
+       */
+      claim: "reader" | "tech" | "model" | "unclaimed"
     }
   | { kind: "unresolved" }
 
@@ -958,7 +962,7 @@ export const readModule = ({
       return {
         rest,
         callee:
-          target.claim === "tech"
+          target.claim === "tech" || target.claim === "reader"
             ? { kind: "tech", package: pkg }
             : target.claim === "model"
               ? modelCallee(binding.specifier)
@@ -1018,7 +1022,8 @@ export const readModule = ({
           const target = importTargetOf(binding.import!.specifier)
           return {
             kind:
-              target.kind === "external" && target.claim === "tech"
+              target.kind === "external" &&
+              (target.claim === "tech" || target.claim === "reader")
                 ? "tech"
                 : target.kind === "unresolved"
                   ? "unknown"
@@ -1103,6 +1108,11 @@ export const readModule = ({
   const tracked = new Map<Binding, { fn: AstNode; scope: Scope }>()
   /** The tracked locals being read at a site: a call to one reads `local`. */
   const inlining = new Set<Binding>()
+  /**
+   * The outermost tracked-local call whose body is being read: the site a call
+   * read inside it runs from on import. `null` outside any.
+   */
+  let inlineSite: Span | null = null
   /**
    * An inlined call's value by call node — a binding's initializer is evaluated
    * again, without emitting, when the binding resolves.
@@ -1243,6 +1253,33 @@ export const readModule = ({
     }
     return { root: current, members, computed }
   }
+
+  /**
+   * Whether a callee or a value starts, through members and calls
+   * (`describe.each(rows)` starts from `describe`), from an import the file's
+   * own reader claims.
+   */
+  const startsFromReader = (node: AstNode): boolean => {
+    let current = unwrap(node)
+    while (
+      current.type === "MemberExpression" ||
+      current.type === "CallExpression"
+    ) {
+      current = unwrap(
+        (current.type === "MemberExpression"
+          ? current["object"]
+          : current["callee"]) as AstNode,
+      )
+    }
+    if (current.type !== "Identifier") return false
+    const binding = lookup(scope, current["name"] as string)
+    if (binding === null || binding.kind !== "import") return false
+    const target = importTargetOf(binding.import!.specifier)
+    return target.kind === "external" && target.claim === "reader"
+  }
+
+  /** Whether the file's own reader exempts registrations into its tech. */
+  const registers = tech !== null && tech.exempts.includes("registration")
 
   /**
    * The value kind at the root of an assignment target: a binding's own kind (a
@@ -1460,6 +1497,7 @@ export const readModule = ({
     argNodes: readonly AstNode[],
     callee: CalleeKind,
     ctx: Ctx,
+    site: Span,
   ): Resolved => {
     const { fn } = local
     const byPosition = (fn["params"] as AstNode[]).map((param) =>
@@ -1566,6 +1604,8 @@ export const readModule = ({
       if (target.memo === null)
         target.memo = { kind: "literal", origin: null, path: [] }
     inlining.add(binding)
+    const outerSite = inlineSite
+    inlineSite ??= site
     try {
       let expression: Resolved | null = null
       const inner = inScopeOf(local.scope, params, () =>
@@ -1585,6 +1625,7 @@ export const readModule = ({
         : { kind: "computed", origin: null, path: [] }
     } finally {
       inlining.delete(binding)
+      inlineSite = outerSite
     }
   }
 
@@ -1690,7 +1731,14 @@ export const readModule = ({
       const binding = lookup(scope, callee.name) as Binding
       const local = tracked.get(binding)
       if (local !== undefined && !inlining.has(binding)) {
-        const value = inlineLocal(local, binding, argNodes, callee, ctx)
+        const value = inlineLocal(
+          local,
+          binding,
+          argNodes,
+          callee,
+          ctx,
+          spanOf(node),
+        )
         inlineMemo.set(node, value)
         return value
       }
@@ -1713,6 +1761,11 @@ export const readModule = ({
       args: [],
       result: results,
       load,
+      registration:
+        registers && callee.kind === "tech" && startsFromReader(calleeNode),
+      handsRunner:
+        registers && argNodes.length > 0 && argNodes.every(startsFromReader),
+      site: inlineSite,
     }
     call.args = readArgs(argNodes, callee, call, emitting)
     if (emitting) {
@@ -2071,6 +2124,19 @@ export const readModule = ({
     }
   }
 
+  /**
+   * The call whose result an initializer stores, past the wrappers — awaiting a
+   * call is the call; `null` when the initializer is not a call.
+   */
+  const storedCallOf = (init: AstNode): Span | null => {
+    const stored = unwrap(init)
+    return stored.type === "CallExpression" ||
+      stored.type === "NewExpression" ||
+      stored.type === "TaggedTemplateExpression"
+      ? spanOf(stored)
+      : null
+  }
+
   const emitDefinitions = (declaration: AstNode, exported: boolean): void => {
     for (const declarator of declaration["declarations"] as AstNode[]) {
       const init = declarator["init"]
@@ -2089,6 +2155,7 @@ export const readModule = ({
         }
       })
       const form = declaration["kind"] as string
+      const storedCall = isNode(init) ? storedCallOf(init) : null
       const immutability = declaratorImmutability(
         form,
         declarator,
@@ -2105,6 +2172,7 @@ export const readModule = ({
           value: resolveBinding(binding).kind,
           immutability,
           storesMachineRead,
+          storedCall,
           inlined: frame !== null,
           span: spanOf(node),
         })
@@ -2152,6 +2220,7 @@ export const readModule = ({
             namesIn(new Set()),
           ),
           storesMachineRead,
+          storedCall: storedCallOf(declaration),
           inlined: frame !== null,
           span: spanOf(statement),
         })
@@ -2181,6 +2250,7 @@ export const readModule = ({
           // code, not state
           immutability: READONLY,
           storesMachineRead: false,
+          storedCall: null,
           inlined: frame !== null,
           span: spanOf(statement),
         })

@@ -250,18 +250,20 @@ export const createExtraction = ({
       // a tech's claim first, then the project's; then purity says model,
       // concrete says tech (a builtin, a declared external, a file outside
       // coverage), unclassified says declare it
-      const claimed = tech?.claims(specifier) === true || driverTech(specifier)
+      const byReader = tech?.claims(specifier) === true
       const purity = externalPurityOf(target, pureSet)
       return {
         kind: "external",
         package: target.package,
-        claim: claimed
-          ? "tech"
-          : purity === "pure"
-            ? "model"
-            : purity === "concrete"
-              ? "tech"
-              : "unclaimed",
+        claim: byReader
+          ? "reader"
+          : driverTech(specifier)
+            ? "tech"
+            : purity === "pure"
+              ? "model"
+              : purity === "concrete"
+                ? "tech"
+                : "unclaimed",
       }
     }
 

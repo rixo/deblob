@@ -90,6 +90,8 @@ const portsViolation = (
 
 type RootBinding = Extract<ModulesViolation, { shape: "root-binding" }>
 
+type RootCall = Extract<ModulesViolation, { shape: "root-call" }>
+
 const rootBinding = (
   fields: Partial<Pick<RootBinding, "line" | "holds" | "by" | "unknown">>,
   file = "src/billing/refund.model.ts",
@@ -781,6 +783,72 @@ describe("renderCheckResults", () => {
       ).toContain(
         "line 7 may run on import — unknown: the reader does not recognise this statement (DebuggerStatement); move it inside a function",
       )
+    })
+
+    describe("a root call", () => {
+      const call = (
+        fields: Partial<Pick<RootCall, "reaches" | "name" | "unknown" | "via">>,
+      ): RootCall => ({
+        check: "modules",
+        ruleset: "arch",
+        rules: ["stable-root"],
+        file: "src/billing/adapters/refund.adapter.ts",
+        serviceRoot: "src/billing",
+        line: 7,
+        via: [],
+        shape: "root-call",
+        reaches: "tech",
+        name: null,
+        unknown: null,
+        ...fields,
+      })
+
+      test.each([
+        ["tech", null, "a call into the host"],
+        ["tech", "node:fs", "a call into node:fs, the tech"],
+        ["use-case", "app.run", "a call to the use case app.run"],
+        [
+          "function",
+          "nameOf",
+          "a call into nameOf, a function of a file that may touch the tech",
+        ],
+        [
+          "wiring",
+          "main",
+          "the wiring function main runs, and sets up its tech",
+        ],
+        [
+          "unclaimed",
+          "left-pad",
+          "a call into left-pad, a package nothing claims",
+        ],
+      ] as const)(
+        "a call reaching %s (%s) says: %s",
+        (reaches, name, words) => {
+          expect(message(call({ reaches, name }))).toContain(
+            `line 7 runs on import — ${words}, presumed to act; move it inside a factory or a function`,
+          )
+        },
+      )
+
+      it("names the root call that runs it from elsewhere, and the unknown in words", () => {
+        expect(
+          message(
+            call({
+              via: [
+                { file: "src/billing/adapters/refund.adapter.ts", line: 12 },
+              ],
+            }),
+          ),
+        ).toContain(
+          "line 7 runs on import, reached from src/billing/adapters/refund.adapter.ts:12 — a call into the host",
+        )
+        expect(
+          message(call({ reaches: null, unknown: { kind: "callee" } })),
+        ).toContain(
+          "line 7 may run on import — unknown: the reader cannot tell what this call reaches; move it inside a factory or a function",
+        )
+      })
     })
 
     test("ports shapes: export, contains, runtime edges both directions", () => {

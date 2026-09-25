@@ -277,6 +277,24 @@ export type ReadCall = {
    * not an assembly's record. A matched load's result is a tech value.
    */
   load: { file: string; name: string } | null
+  /**
+   * A call into the runner the file's own reader claims, where that reader
+   * exempts registration — a spec file's `describe`, `vi.mock`,
+   * `expect.extend`: the calls `stable-root` exempts by kind.
+   */
+  registration: boolean
+  /**
+   * Every argument is the runner the file's own reader claims, handed on —
+   * `registerMatchers(expect)`: a shared driver's wiring function called with
+   * the runner, not with any tech.
+   */
+  handsRunner: boolean
+  /**
+   * For a call read inside a tracked local's body: the root call that ran the
+   * body, the outermost when locals nest — where the call runs on import from.
+   * `null` for a call written where it runs.
+   */
+  site: Span | null
 }
 
 /**
@@ -306,6 +324,11 @@ export type UnknownCondition =
   | { kind: "value"; form: string; name: string | null }
   /** A root statement the reader does not recognise, by its ESTree type. */
   | { kind: "statement"; form: string }
+  /**
+   * A call whose callee the reader cannot place: an import that did not land,
+   * `this`, a value of kind unknown.
+   */
+  | { kind: "callee" }
 
 /**
  * Whether a root binding can be mutated, as the reader proves it: readonly to
@@ -364,6 +387,13 @@ export type ReadStatement =
        * is not a read: the call is judged where it sits.
        */
       storesMachineRead: boolean
+      /**
+       * The call whose result the binding stores, when its initializer is one
+       * (past `await` and the other wrappers); `null` otherwise. A call's
+       * result stored at root adds nothing to the call: a rule judging the call
+       * there judges the binding by it.
+       */
+      storedCall: Span | null
       /**
        * Defined in a body read inline — a callback's, a tracked local's — so a
        * local of each run, not a binding of the body it was read into.
