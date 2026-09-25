@@ -327,7 +327,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
         <button onClick="{{ toggleWheelZoom }}" title="Mouse wheel zooms" style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:{{ wheelZoomBg }};color:{{ wheelZoomFg }}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="1.5" width="8" height="13" rx="4"></rect><path d="M8 4.5v2.5"></path></svg></button>
 
       </div>
-      <dc-import name="Behavior Panel" graph="{{ bpGraph }}" sel="{{ bpSel }}" on-width="{{ onBpW }}" chrome-op="{{ chromeOp }}" hint-size="100%,100%" style="position:absolute;inset:0;pointer-events:none;z-index:3"></dc-import>
+      <dc-import name="Behavior Panel" graph="{{ bpGraph }}" sel="{{ bpSel }}" behavior="{{ bpBehavior }}" label="{{ bpLabel }}" on-width="{{ onBpW }}" chrome-op="{{ chromeOp }}" hint-size="100%,100%" style="position:absolute;inset:0;pointer-events:none;z-index:3"></dc-import>
     </main>
 
     <div ref="{{ dockRef }}" onMouseEnter="{{ dockEnter }}" onMouseLeave="{{ dockLeave }}" style="flex:none;position:relative;height:{{ dockPx }}px;overflow:hidden;background:#16171a;box-shadow:inset 0 1px 0 #26282d;transition:{{ dockTr }}">
@@ -802,7 +802,7 @@ class Component extends DCLogic {
   // it uses: an import from the caller's module to the callee's, on the called
   // symbol when the import names it, else every import of that pair.
   stackOf(id) {
-    if (!id || !this.callData || !window.CallStack || (this.props.calls || 'arcs') === 'off' || this.graphSrc() !== './deblob-seq-graph.js') return null;
+    if (!id || !this.callData || !window.CallStack || (this.props.calls || 'arcs') === 'off' || (!this.project() && this.graphSrc() !== './deblob-seq-graph.js')) return null;
     if (this._stk && this._stk.id === id && this._stk.D === this.callData) return this._stk.v;
     const v = window.CallStack.of(this.callData, id);
     if (v) {
@@ -2496,7 +2496,7 @@ class Component extends DCLogic {
       camPE: this.tweening ? 'none' : 'auto',
       gridPos: `${s.pan.x.toFixed(0)}px ${s.pan.y.toFixed(0)}px`,
       cursor: s.dragging ? 'grabbing' : s.spaceHeld ? 'grab' : 'default',
-      chromeOp: s.dragging ? 0.3 : 1, bpW: s.bpW || 0, bpGraph: this.g, bpSel: s.sel, onBpW: this.onBpW,
+      chromeOp: s.dragging ? 0.3 : 1, bpW: s.bpW || 0, bpGraph: this.g, bpSel: s.sel, bpBehavior: (this.project() || {}).behavior || null, bpLabel: (this.project() || {}).label || null, onBpW: this.onBpW,
       ...(() => { const q = this.seqOf(s); return { seqHooks: q.hooks, seqHook: q.hook, seqFn: q.fn, dockPx: this.seqSrc() && this.seqOpen(q) ? this.dockH0() : 0 }; })(),
       dockTr: 'height .24s cubic-bezier(.2,.7,.2,1)', dockRef: this.dockRef, dockEnter: this.dockEnter, dockLeave: this.dockLeave, onDockDown: this.onDockDown,
       seqStepTier, seqPartTier, seqPick: s.seqPick || null, onSeqCalls: this.onSeqCalls, seqClear: s.seqClear || 0, seqMapPart: this.mapPartOf(s.sel), onSeqPart: this.onSeqPart,

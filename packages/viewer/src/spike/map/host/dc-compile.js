@@ -170,11 +170,41 @@ function compileAttr(raw, scope, warn) {
 
 const kebabToCamel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
 
+// support.js:303 RAW_WRAP: table tags are renamed before parsing, or the HTML
+// table rules foster-parent the <sc-for> / <sc-if> around rows out of the
+// table; walkElement names them back. Svelte also rejects text and a bare
+// <tr> under <table> (React builds the DOM without the parser, so it never
+// sees them): whitespace between tags inside a table is dropped, and rows
+// not already in a section get a <tbody>.
+const RAW_WRAP = [
+  "select",
+  "table",
+  "tbody",
+  "thead",
+  "tfoot",
+  "tr",
+  "td",
+  "th",
+  "caption",
+]
+const RAW_UNWRAP = Object.fromEntries(RAW_WRAP.map((t) => ["sc-raw-" + t, t]))
+const rawWrap = (html) =>
+  html
+    .replace(
+      new RegExp(`(</?)(${RAW_WRAP.join("|")})(?=[\\s>])`, "gi"),
+      "$1sc-raw-$2",
+    )
+    .replace(/<sc-raw-table[\s\S]*?<\/sc-raw-table>/gi, (t) =>
+      t.replace(/>\s+</g, "><"),
+    )
+const SECTIONS = new Set(["thead", "tbody", "tfoot", "caption", "colgroup"])
+
 // ---- template walk ----
 export function compileDc(
   source,
   { name, warn = (m) => console.warn(`[dc] ${name}: ${m}`) },
 ) {
+  source = rawWrap(source)
   const doc = parse(source, { sourceCodeLocationInfo: true })
   const find = (n, pred) => {
     if (pred(n)) return n
@@ -317,7 +347,7 @@ export function compileDc(
 
   // support.js:752 walkElement + support.js:415 collectProps (kind "dom").
   function walkElement(node, scope) {
-    const tag = node.tagName
+    const tag = RAW_UNWRAP[node.tagName] || node.tagName
     const attrs = []
     const classes = []
     let classExpr = null
@@ -384,7 +414,14 @@ export function compileDc(
       tag === "template"
         ? walkChildren(node.content, scope)
         : walkChildren(node, scope)
-    return `${open}>${kids}</${tag}>`
+    const bare =
+      tag === "table" &&
+      node.childNodes.some(
+        (c) => c.tagName && !SECTIONS.has(RAW_UNWRAP[c.tagName] || c.tagName),
+      )
+    return bare
+      ? `${open}><tbody>${kids}</tbody></${tag}>`
+      : `${open}>${kids}</${tag}>`
   }
 
   const template = walkChildren(xdc, [])

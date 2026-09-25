@@ -64,6 +64,7 @@ const liveProject = (id) => ({
   label: LABEL[id],
   graph: `./live/${id}/graph.js`,
   sequence: `./live/${id}/sequence.json`,
+  behavior: `./live/${id}/behavior.json`,
 })
 const PROJECTS = { projects: Object.keys(LIVE).map(liveProject) }
 const cached = new Map()
@@ -75,7 +76,7 @@ const live = (id) => {
     const t0 = performance.now()
     const { mapFeed } = await import(FEED)
     const S = await mapFeed(LIVE[id])
-    globalThis.GenGraph || (await import(resolve(DESIGN, "data/gen-graph.js")))
+    globalThis.GenGraph || (await import(resolve(DESIGN, "gen-graph.js")))
     const opts = {
       hooks: true,
       initialCollapsed: ["src/lib/snapshot", "src/lib/view"],
@@ -97,33 +98,6 @@ const live = (id) => {
   return p
 }
 
-// The right panel's data (their `data/behavior-lorem.js` interface), live:
-// READMEs only, no test extraction yet — a function's behavior is an empty
-// tree, its doc the symbol's own (the panel falls back to `s.doc`), no module
-// doc. Their panel loads this once per page, with no project in the url: the
-// script carries every project and picks the page's the way the map does
-// (`?project`, else the picker's localStorage key, else the first). Asked in
-// FROM-DEBLOB: a per-project path in projects.json.
-const behaviorScript = (
-  byProject,
-) => `// live, deblob spike map-feed (host/vite.config.js)
-(function (root) {
-  const R = ${JSON.stringify(byProject)};
-  // the map reads ?project at load only; a pick in the picker writes the key
-  const KEY = 'deblob-map.project', stored = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
-  let url0 = null; try { url0 = new URLSearchParams(location.search).get('project'); } catch (e) {}
-  const ls0 = stored();
-  const current = () => { const ls = stored(), want = ls !== ls0 ? ls : url0 || ls; return R[want] || Object.values(R)[0] || {}; };
-  root.BehaviorLorem = {
-    fns: {},
-    get readmes() { return current(); },
-    fnFor: () => ({ tree: [] }),
-    readmeFor: (id) => current()[id] || null,
-    docFor: () => null,
-  };
-})(typeof window !== 'undefined' ? window : globalThis);
-`
-
 // their data paths, served live (their data/ is never in git)
 function serveData(server) {
   server.middlewares.use((req, res, next) => {
@@ -132,33 +106,17 @@ function serveData(server) {
       res.setHeader("content-type", "application/json")
       return res.end(JSON.stringify(PROJECTS))
     }
-    if (url === "/data/behavior-lorem.js") {
-      return Promise.all(Object.keys(LIVE).map(live)).then(
-        (all) => {
-          res.setHeader("content-type", "text/javascript")
-          res.setHeader("cache-control", "no-store")
-          const byProject = Object.fromEntries(
-            Object.keys(LIVE).map((id, i) => [
-              liveProject(id).id,
-              all[i].readmes,
-            ]),
-          )
-          res.end(behaviorScript(byProject))
-        },
-        (e) => {
-          res.statusCode = 500
-          res.end(String((e && e.stack) || e))
-        },
-      )
-    }
     // their contract paths (FROM-DEBLOB ask 4), for a page with no project
     // picked yet: the first live tree
     const first = Object.keys(LIVE)[0]
     const lm =
       url === "/deblob-seq-graph.js" ||
+      url === "/data/deblob-seq-graph.js" ||
       url === "/data/deblob.sequence.snapshot.2.json"
         ? [url, first]
-        : url.match(/^\/live\/([^/]+)\/(graph\.js|sequence\.json)$/)
+        : url.match(
+            /^\/live\/([^/]+)\/(graph\.js|sequence\.json|behavior\.json)$/,
+          )
     if (lm && LIVE[lm[1]]) {
       return live(lm[1]).then(
         (L) => {
@@ -168,7 +126,15 @@ function serveData(server) {
             js ? "text/javascript" : "application/json",
           )
           res.setHeader("cache-control", "no-store")
-          res.end(js ? L.graph : L.json)
+          // the right panel (their `behavior` url): READMEs only — no test
+          // extraction yet, so no `fns`: the panel says "not extracted yet"
+          res.end(
+            js
+              ? L.graph
+              : url.endsWith("/behavior.json")
+                ? JSON.stringify({ readmes: L.readmes })
+                : L.json,
+          )
         },
         (e) => {
           res.statusCode = 500
