@@ -18,11 +18,28 @@ const restored = (import.meta.hot?.data?.state ?? null) as SourceState | null
 const source = createWsSource(`ws://${location.host}/deblob/ws`, {
   initial: restored,
 })
-// `#debug`: the outline (steps 01–06); anything else: the design's map
-const outline =
-  location.hash === "#debug" ? mount(App, { target, props: { source } }) : null
-const unmountMap: (() => void) | null =
-  outline === null ? mountMap(target, source) : null
+const isDebug = (): boolean => location.hash === "#debug"
+
+/** `#debug`: the outline (steps 01–06); anything else: the design's map. */
+const mountView = (debug: boolean): (() => void) => {
+  if (!debug) return mountMap(target, source)
+  const app = mount(App, { target, props: { source } })
+  return () => void unmount(app)
+}
+
+let shown = isDebug()
+let unmountView = mountView(shown)
+
+// the next view is up before the last one goes: the source never loses its
+// last subscriber, so the socket and the snapshot stay
+const followHash = (): void => {
+  if (isDebug() === shown) return
+  shown = isDebug()
+  const next = mountView(shown)
+  unmountView()
+  unmountView = next
+}
+addEventListener("hashchange", followHash)
 
 /* v8 ignore start -- dev glue: only a running Vite dev server drives an update */
 if (import.meta.hot) {
@@ -33,8 +50,8 @@ if (import.meta.hot) {
   import.meta.hot.accept()
   import.meta.hot.dispose((data) => {
     data.state = get(source)
-    if (outline !== null) void unmount(outline)
-    unmountMap?.()
+    removeEventListener("hashchange", followHash)
+    unmountView()
   })
 }
 /* v8 ignore stop */

@@ -4,7 +4,9 @@ The deblob viewer: a browser app over a codebase deblob has extracted, launched
 by `deblob view`. At `/` it shows the design's map of a project — experimental:
 the design room's pages, run as they send them, on the snapshot's `map` (step
 09). At `#debug` it shows the outline: what the project is, how big, which
-services, which files under each, by layer.
+services, which files under each, by layer. The entry follows the hash: the next
+view is mounted before the last one goes, so the socket and the snapshot stay
+across a switch.
 
 A Svelte single-page app built by Vite. It never imports `deblob`: data reaches
 it through its one input, a **snapshot source** — a Svelte store of whole
@@ -68,10 +70,18 @@ Spike code, under `src/spike/map/`, outside `check` and coverage (step 09).
 answers their engine scripts (the `.js` their pages load relative to the page)
 at the app's root, in dev and in the build — only those files, never their data
 or docs. `map.js` is the bridge: their page reads its data from URLs, so it
-answers `./data/projects.json` with the current project alone (their picker
-stays hidden) and hands the graph, the call stacks and the READMEs over as
-`blob:` URLs made from the snapshot's `map`. For now the map is mounted once, on
-the first snapshot.
+answers `./data/projects.json` with every project, so their picker is the
+project switch, and hands the current one's graph, call stacks and READMEs over
+as `blob:` URLs made from the snapshot's `map`. Any other project's graph is an
+empty module whose import tells the bridge it was picked — their pick imports
+the graph, its only word today — and the bridge asks the server for it. Each new
+snapshot remounts their page: they keep a view (pan, zoom, selection) per graph
+URL, and a new URL has none, so a redraw starts from their default view — until
+they take data by value and update in place (our ask). Above the page, a strip
+of ours: loading, the server's error, the tracer's reason when a project has no
+call stacks, and the "experimental map" tag. Their page's root is
+`position: fixed`; our `#dc-root` contains it (`contain: layout`) so it fills
+the space under the strip.
 
 ## The dev cycle
 

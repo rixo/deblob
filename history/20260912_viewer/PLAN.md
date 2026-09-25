@@ -184,6 +184,14 @@ ask.
 
 ### Ideas
 
+- **Tracer: "cannot read" vs "crashed"** (2026-09-25, rixo: "that stinks") — the
+  snapshot service turns any throw of `sequenceOf` into `sequence: null` plus
+  the message, shown as a calm line. Two different things land there: a tree the
+  tracer does not know (every tree but deblob's today: expected) and a tracer
+  bug on a tree it should read (a failure: should be reported, loud). The port
+  cannot tell them apart. Revisit when the tracer graduates: a typed "not
+  readable" answer, and any other throw a bug.
+
 - **Non-deterministic test fixtures** (2026-09-15, rixo) — the corpus test runs
   over a snapshot of the live codebase, regenerated every run (step 03's seed
   ruling). Revisit testing against non-deterministic inputs: what such a test

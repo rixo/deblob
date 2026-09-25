@@ -106,10 +106,11 @@ other, and on a local socket the bytes cost nothing.
   It never edits their files.
   - The graph, the sequence and the behavior for the current snapshot become
     `blob:` URLs, new ones on each snapshot.
-  - `./data/projects.json` answers one project, the current one. With one
-    project, their picker stays hidden (their rule: none or one → no picker).
-  - The project switch is ours: a strip above the map, the same list as the
-    debug view's nav, sending `select`.
+  - `./data/projects.json` answers every project the server offers: their picker
+    is the project switch (rixo, 2026-09-25, at cp2's review: connect to their
+    dropdown, invent nothing). Only the current project has data; any other's
+    graph is an empty module whose import says it was picked (their picker's
+    only word until design ask 3), and the bridge sends `select`.
   - On a new snapshot, the page is remounted. Cost, confessed: their saved view
     (pan, zoom, selection) is keyed by the graph URL, and a new `blob:` URL has
     no saved view, so each redraw starts from the default view. Design ask 2
@@ -233,8 +234,40 @@ Checkpoints, riskiest first. Each checkpoint is its own commit.
    - An edge the symbol level did not match carries no `symbols`, which their
      `gen-graph.js` requires; the bridge gives it an empty list.
 
-2. **Live and switch.** Remount on each snapshot, the switch strip, `#debug` on
-   a hash change.
+2. **Live and switch.** Remount on each snapshot, the switch (their picker),
+   `#debug` on a hash change.
+
+   Landed: probed headless on the three projects of this machine, in dev and in
+   `deblob view` from the bundle — first map, a switch to deblob (call stacks
+   up, the tracer's line gone), a save redrawing it, `#debug` and back on the
+   same project with no new request. What it took:
+   - The entry mounts the next view before tearing the last one down: the source
+     keeps a subscriber, so its socket and snapshot stay. One row: the outline
+     on `#debug`, the map again after, and no remount on a hash that keeps the
+     view (the guard was mutated off: the row went red).
+   - The switch is their picker (rixo at review: a strip of buttons of ours was
+     invented UI). `projects.json` lists every project; a project not shown gets
+     an empty graph module whose import calls the bridge — their pick does
+     `import(project.graph)`, the only word it gives — and the bridge sends
+     `select`. The snapshot remounts the page, which reopens on the project
+     their picker stored (their localStorage; their `?project=` URL parameter
+     wins over it, so a page opened with one follows it back). Labels are the
+     manifest names: their picker shows the root beside each.
+   - The strip left is plain DOM in the bridge: loading, the server's error, the
+     tracer's reason (the goal's "says so once": while that project is shown)
+     and the "experimental map" tag. Spike code, outside the coverage gate a
+     `.svelte` file would fall under.
+   - Their page's root is `position: fixed; inset: 0`, so it covered the strip
+     and took its clicks. Our `#dc-root` gets `contain: layout`, which makes it
+     the containing block of fixed descendants: their page fills the space under
+     the strip, their file untouched.
+   - "Experimental" is said on the strip and in both READMEs (deblob's names the
+     gaps and `/#debug`).
+
+   Gaps, confessed: each remount leaves one more copy of the DC runtime's
+   full-page style in `<head>`, and its probe hook (`__dcLogics`) keeps every
+   page instance ever made; both are spike runtime, gone with it.
+
 3. **Symbols and READMEs graduate.** The product functions, their rows, the
    parity row.
 4. **The spike host goes.** `pnpm spike:map`, the host's HTTP feed and the

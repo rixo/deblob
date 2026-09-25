@@ -53,6 +53,9 @@ deblob view                  serve the viewer on this project
   package, so there is nothing to install and nothing to build. Which projects
   it lists comes from config (`view.projects`), never from the command line;
   with no list it shows the project you ran it in. Ctrl-C stops it; it exits 0.
+  The page is a map of the project, **experimental**: call stacks only on a tree
+  the tracer can read (deblob's own, today, with `typescript` installed), and
+  each save redraws it from its default view. The plain outline is at `/#debug`.
   It answers its own page and nothing else: the data channel refuses a handshake
   from any other origin, so no page you happen to have open elsewhere in the
   browser can read your file tree through it. A client that is not a browser has
