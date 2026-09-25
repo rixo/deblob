@@ -123,12 +123,12 @@ describe("resolveConfig — defaults", () => {
       {
         root: "/somewhere",
         configPath: "/somewhere/deblob.config.ts",
-        localPath: "/somewhere/deblob.local.json",
+        localPath: "/somewhere/deblob.local.ts",
         flavors: FLAVORS,
         readers: READERS,
       },
     )
-    expect(resolved.localPath).toBe("/somewhere/deblob.local.json")
+    expect(resolved.localPath).toBe("/somewhere/deblob.local.ts")
   })
 })
 
@@ -643,7 +643,7 @@ describe("resolveConfig — view", () => {
 })
 
 describe("overlayLocalConfig", () => {
-  const LOCAL = "/fixture-root/deblob.local.json"
+  const LOCAL = "/fixture-root/deblob.local.ts"
 
   test("merges per top-level key, local winning", () => {
     expect(
@@ -677,7 +677,7 @@ describe("overlayLocalConfig", () => {
   test("rejects a non-object local value, naming the local file", () => {
     for (const local of [["x"], "x", 42, null]) {
       expect(() => overlayLocalConfig({}, local, LOCAL)).toThrowError(
-        /deblob\.local\.json must hold an object/,
+        /deblob\.local\.ts must export an object/,
       )
     }
   })
@@ -686,7 +686,7 @@ describe("overlayLocalConfig", () => {
     expect(() =>
       overlayLocalConfig({}, { SOME_MADE_UP_KEY: true }, LOCAL),
     ).toThrowError(
-      /unknown key "SOME_MADE_UP_KEY" in \/fixture-root\/deblob\.local\.json.*view/s,
+      /unknown key "SOME_MADE_UP_KEY" in \/fixture-root\/deblob\.local\.ts.*view/s,
     )
   })
 

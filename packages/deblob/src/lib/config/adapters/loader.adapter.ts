@@ -1,11 +1,13 @@
 /**
- * Config loading — the filesystem walk over the fs port, plus the one platform
- * call no port reads: native `import()` of the config file (Node strips types
- * from `.ts` configs; erasable syntax only). Assembly (CLI main) calls these
- * and pipes the raw value through `resolveConfig` itself; the adapter never
- * sees the resolution.
+ * Config loading — the filesystem walk over the fs port, plus the platform
+ * calls no port reads: native `import()` of the config and local files (Node
+ * strips types from `.ts` ones; erasable syntax only) and the `stat` that tells
+ * an edited file from an unchanged one. Assembly (CLI main) calls these and
+ * pipes the raw value through `resolveConfig` itself; the adapter never sees
+ * the resolution.
  */
 
+import { stat } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
@@ -22,7 +24,12 @@ const CONFIG_FILENAMES = [
 ]
 
 /** The machine-local overlay, beside the config — never committed. */
-const LOCAL_FILENAME = "deblob.local.json"
+const LOCAL_FILENAMES = [
+  "deblob.local.ts",
+  "deblob.local.mts",
+  "deblob.local.js",
+  "deblob.local.mjs",
+] as const
 
 /** What discovery found in one directory: at least one of the two files. */
 export type DiscoveredConfig = {
@@ -41,11 +48,31 @@ export const createConfigLoader = ({
 }: {
   fs: Pick<Fs, "exists" | "readFile">
 }) => {
-  /** The overlay beside a config file, when present. */
-  const localConfigBeside = async (dir: string): Promise<string | null> => {
-    const localPath = join(dir, LOCAL_FILENAME)
-    return (await fs.exists(localPath)) ? localPath : null
+  /**
+   * The one file of `names` in `dir`, or null; two or more is ambiguity, not
+   * precedence — `what` names the kind in the message.
+   */
+  const oneOf = async (
+    dir: string,
+    names: readonly string[],
+    what: string,
+  ): Promise<string | null> => {
+    const found = await Promise.all(
+      names.map((name) => fs.exists(join(dir, name))),
+    )
+    const present = names.filter((_, index) => found[index])
+    if (present.length > 1) {
+      throw new ConfigError(
+        `${dir} contains ${present.join(" and ")} — keep exactly one ${what} per directory`,
+      )
+    }
+    const [single] = present
+    return single === undefined ? null : join(dir, single)
   }
+
+  /** The overlay beside a config file, when present. */
+  const localConfigBeside = (dir: string): Promise<string | null> =>
+    oneOf(dir, LOCAL_FILENAMES, "deblob local file")
 
   /**
    * The config in one directory, exactly — no walk: a directory that is a
@@ -54,27 +81,18 @@ export const createConfigLoader = ({
    */
   const configAt = async (dir: string): Promise<DiscoveredConfig | null> => {
     const root = resolve(dir)
-    const found = await Promise.all(
-      CONFIG_FILENAMES.map((name) => fs.exists(join(root, name))),
-    )
-    const present = CONFIG_FILENAMES.filter((_, index) => found[index])
-    const [single] = present
-    if (present.length > 1) {
-      throw new ConfigError(
-        `${root} contains ${present.join(" and ")} — keep exactly one deblob config per directory`,
-      )
-    }
+    const configPath = await oneOf(root, CONFIG_FILENAMES, "deblob config")
     const localPath = await localConfigBeside(root)
-    if (!single && !localPath) return null
-    return { root, configPath: single ? join(root, single) : null, localPath }
+    if (!configPath && !localPath) return null
+    return { root, configPath, localPath }
   }
 
   /**
    * Upward walk from `cwd`, nearest wins — placement freedom with the
    * no-inheritance ban intact: one directory, never a stack. The walk stops at
-   * the first directory holding a config file or a `deblob.local.json`: a lone
-   * local file is a configless project with an overlay, never ignored. Two
-   * config files in one directory is ambiguity, not precedence.
+   * the first directory holding a config file or a local file: a lone local
+   * file is a configless project with an overlay, never ignored. Two config
+   * files, or two local files, in one directory is ambiguity, not precedence.
    */
   const discoverConfig = async (
     cwd: string,
@@ -104,19 +122,6 @@ export const createConfigLoader = ({
     }
     const root = dirname(configPath)
     return { root, configPath, localPath: await localConfigBeside(root) }
-  }
-
-  /**
-   * The overlay's JSON, raw; unparseable fails loud with the path — and so does
-   * one gone since discovery, read as the empty text it now is.
-   */
-  const readLocalConfig = async (localPath: string): Promise<unknown> => {
-    const text = await fs.readFile(localPath)
-    try {
-      return JSON.parse(text ?? "")
-    } catch (error) {
-      throw new ConfigError(`failed to parse ${localPath}`, { cause: error })
-    }
   }
 
   /**
@@ -251,23 +256,28 @@ export const createConfigLoader = ({
     configAt,
     discoverConfig,
     explicitConfigPath,
-    readLocalConfig,
     tsconfigPathOf,
     readPackageName,
     readPackageSurface,
   }
 }
 
-/** Native import of the config file; returns its default export, raw. */
+/**
+ * Native import of a config or local file; returns its default export, raw. The
+ * URL carries the file's mtime: Node caches a module by URL, so an edited file
+ * is a new URL and imports fresh, an unchanged one answers from the cache. Only
+ * the file itself: a module it imports stays cached.
+ */
 export const importConfigDefault = async (
   configPath: string,
 ): Promise<unknown> => {
   let module: Record<string, unknown>
   try {
-    module = (await import(pathToFileURL(configPath).href)) as Record<
-      string,
-      unknown
-    >
+    // nanoseconds, an integer: a fractional ms (`?v=…042.0232`) reads as a file
+    // extension to Vite's transform, which then parses a .ts config as JS
+    const { mtimeNs } = await stat(configPath, { bigint: true })
+    const url = `${pathToFileURL(configPath).href}?v=${mtimeNs}`
+    module = (await import(url)) as Record<string, unknown>
   } catch (error) {
     throw new ConfigError(configImportErrorMessage(error, configPath), {
       cause: error,

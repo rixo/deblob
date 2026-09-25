@@ -72,7 +72,7 @@ export const createProjectSource = (): ProjectSource => {
         ? base
         : overlayLocalConfig(
             base,
-            await loader.readLocalConfig(localPath),
+            await importConfigDefault(localPath),
             localPath,
           )
     return resolveConfig(raw, {

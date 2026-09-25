@@ -42,7 +42,7 @@ describe("main", () => {
     const temp = await mkdtemp(join(tmpdir(), "deblob-snapshot-local-"))
     try {
       await writeFile(join(temp, "deblob.config.ts"), "export default {}\n")
-      await writeFile(join(temp, "deblob.local.json"), "{}\n")
+      await writeFile(join(temp, "deblob.local.ts"), "export default {}\n")
       const { code, out } = await run(temp)
       expect(code).toBe(0)
       const snapshot = JSON.parse(out) as Snapshot
@@ -50,9 +50,10 @@ describe("main", () => {
         root: temp,
         name: null,
         provenance:
-          "deblob.config.ts + deblob.local.json (flavor: ts-suffixes-factories)",
+          "deblob.config.ts + deblob.local.ts (flavor: ts-suffixes-factories)",
       })
-      // the config file is the one covered file, "export default {}\n"
+      // the config file is the one covered file, "export default {}\n": the
+      // local file, a script beside it, is machine state, never project code
       expect(snapshot.stats).toEqual({
         files: 1,
         bytes: 18,
@@ -67,11 +68,11 @@ describe("main", () => {
   test("a lone local file: configless with an overlay, provenance names it", async () => {
     const temp = await mkdtemp(join(tmpdir(), "deblob-snapshot-lone-local-"))
     try {
-      await writeFile(join(temp, "deblob.local.json"), "{}\n")
+      await writeFile(join(temp, "deblob.local.ts"), "export default {}\n")
       const { code, out } = await run(temp)
       expect(code).toBe(0)
       expect((JSON.parse(out) as Snapshot).project.provenance).toBe(
-        "deblob.local.json (flavor: ts-suffixes-factories)",
+        "deblob.local.ts (flavor: ts-suffixes-factories)",
       )
     } finally {
       await rm(temp, { recursive: true, force: true })

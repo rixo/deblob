@@ -35,7 +35,9 @@ export const DEFAULT_INCLUDE: readonly string[] = ["**"]
  * Non-removable: user `exclude` appends, never replaces — re-including
  * `node_modules` in the graph is not a flavor. A measured list, honestly open:
  * a generator not on it enters coverage until excluded by hand. Dot-dir members
- * are already dead via the hidden-path rule; listed for explicitness.
+ * are already dead via the hidden-path rule; listed for explicitness. The local
+ * overlay is machine state, gitignored and unreviewed: never project code, or
+ * one commit would measure differently on two machines.
  */
 export const EXCLUDE_BASELINE: readonly string[] = [
   "**/node_modules/**",
@@ -46,6 +48,7 @@ export const EXCLUDE_BASELINE: readonly string[] = [
   "**/.svelte-kit/**",
   "**/.next/**",
   "**/.nuxt/**",
+  "**/deblob.local.*",
 ]
 
 /**

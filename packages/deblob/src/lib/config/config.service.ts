@@ -164,7 +164,7 @@ export type DeblobConfig = {
    * The viewer's projects: directories, each a deblob project of its own
    * (config discovery starts there), paths relative to the declaring file's
    * directory. Committed, a monorepo root lists the projects its viewer shows;
-   * in `deblob.local.json` beside the config, one machine lists its checkouts.
+   * in `deblob.local.ts` beside the config, one machine lists its checkouts.
    * Default: `{ projects: [] }` — the viewer shows the current project alone.
    */
   view?: { projects?: readonly string[] }
@@ -178,7 +178,10 @@ export type ResolvedConfig = {
   root: string
   /** `null` for a configless run — provenance the runner surfaces. */
   configPath: string | null
-  /** The `deblob.local.json` overlaid on the config; `null` when none. */
+  /**
+   * The `deblob.local.{ts,mts,js,mjs}` overlaid on the config; `null` when
+   * none.
+   */
   localPath: string | null
   flavor: FlavorResolver
   /**
@@ -515,10 +518,11 @@ const viewOf = (
 }
 
 /**
- * `deblob.local.json` over the config: per top-level key, local wins, arrays
- * and objects replace. The local value must be an object of known keys; a
- * failure names the local file, since the merged value cannot. The result is a
- * raw config for `resolveConfig`, which validates every key's shape.
+ * The local file's default export over the config: per top-level key, local
+ * wins, arrays and objects replace. The local value must be an object of known
+ * keys; a failure names the local file, since the merged value cannot. The
+ * result is a raw config for `resolveConfig`, which validates every key's
+ * shape.
  */
 export const overlayLocalConfig = (
   base: unknown,
@@ -532,7 +536,7 @@ export const overlayLocalConfig = (
   }
   if (typeof local !== "object" || local === null || Array.isArray(local)) {
     throw new ConfigError(
-      `${localPath} must hold an object — the same keys as deblob.config.ts, as JSON`,
+      `${localPath} must export an object — the same keys as deblob.config.ts`,
     )
   }
   for (const key of Object.keys(local)) {

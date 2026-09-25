@@ -1120,19 +1120,14 @@ describe("provenanceOf", () => {
     ).toBe("deblob.config.ts (flavor: ts-suffixes-factories)")
     expect(
       provenanceOf(
-        { configPath: "deblob.config.ts", localPath: "deblob.local.json" },
+        { configPath: "deblob.config.ts", localPath: "deblob.local.ts" },
         flavor,
       ),
-    ).toBe(
-      "deblob.config.ts + deblob.local.json (flavor: ts-suffixes-factories)",
-    )
+    ).toBe("deblob.config.ts + deblob.local.ts (flavor: ts-suffixes-factories)")
     // a lone overlay is a configless project that still read a file
     expect(
-      provenanceOf(
-        { configPath: null, localPath: "deblob.local.json" },
-        flavor,
-      ),
-    ).toBe("deblob.local.json (flavor: ts-suffixes-factories)")
+      provenanceOf({ configPath: null, localPath: "deblob.local.ts" }, flavor),
+    ).toBe("deblob.local.ts (flavor: ts-suffixes-factories)")
   })
 })
 

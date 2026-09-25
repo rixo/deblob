@@ -15,7 +15,7 @@ describe("serve", () => {
     fileURLToPath(new URL(path, import.meta.url))
 
   /**
-   * A viewer project of its own, never the real one (a `deblob.local.json`
+   * A viewer project of its own, never the real one (a `deblob.local.ts`
    * dropped in the viewer package would change its list): a root listing two
    * subprojects, each a bare directory with one covered file — no config of its
    * own: a listed directory is the project, the root's config is not its.

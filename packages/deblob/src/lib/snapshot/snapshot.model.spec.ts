@@ -72,7 +72,7 @@ describe("snapshotFrom", () => {
       config: {
         root: "/FAKE_ROOT",
         configPath: "/FAKE_ROOT/deblob.config.ts",
-        localPath: "/FAKE_ROOT/deblob.local.json",
+        localPath: "/FAKE_ROOT/deblob.local.ts",
         flavorName: "FAKE_FLAVOR",
       },
       graph: FAKE_GRAPH,
@@ -85,8 +85,7 @@ describe("snapshotFrom", () => {
       project: {
         root: "/FAKE_ROOT",
         name: "FAKE_PKG",
-        provenance:
-          "deblob.config.ts + deblob.local.json (flavor: FAKE_FLAVOR)",
+        provenance: "deblob.config.ts + deblob.local.ts (flavor: FAKE_FLAVOR)",
       },
       stats: { files: 4, bytes: 500, blobPercent: 20, services: 2 },
       modules: [

@@ -72,6 +72,12 @@ wins, arrays and objects replace).
 - **Leftover `deblob.local.json`:** not read and not flagged. It is not a deblob
   file any more, and a guard for a file nobody was ever given would be a nanny
   guard.
+- **Never project code** (rixo, 2026-09-25, found at checkpoint 2). A `.ts`
+  local file is a script, so under the default `include: ["**"]` it would enter
+  the analysis: counted in the stats, a blob module in the graph, on the one
+  machine that has it. `**/deblob.local.*` joins the exclusions users can't
+  remove (`EXCLUDE_BASELINE`), so one commit measures the same on every machine.
+  The config stays covered: it is committed and reviewed.
 
 ## Testing
 

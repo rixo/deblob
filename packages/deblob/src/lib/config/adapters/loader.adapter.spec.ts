@@ -23,8 +23,6 @@ const {
   readPackageSurface,
 } = createConfigLoader({ fs: createNodeFs() })
 
-const execFileAsync = promisify(execFile)
-
 const fixture = (name: string): string =>
   fileURLToPath(new URL(`../__fixtures__/${name}`, import.meta.url))
 
@@ -415,7 +413,7 @@ describe("importConfigDefault + the assembly sequence", () => {
         const second = await importConfigDefault(file)
         console.log(JSON.stringify({ first, second, same: first === second }))
       `
-      const { stdout } = await execFileAsync(process.execPath, [
+      const { stdout } = await promisify(execFile)(process.execPath, [
         "--input-type=module",
         "-e",
         script,

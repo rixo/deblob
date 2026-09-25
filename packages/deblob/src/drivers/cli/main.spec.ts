@@ -511,11 +511,11 @@ describe("bare deblob — status, always exit 0", () => {
     const temp = await mkdtemp(join(tmpdir(), "deblob-bare-local-"))
     try {
       await writeFile(join(temp, "deblob.config.ts"), "export default {}\n")
-      await writeFile(join(temp, "deblob.local.json"), "{}\n")
+      await writeFile(join(temp, "deblob.local.ts"), "export default {}\n")
       const { code, out } = await run([], { cwd: temp })
       expect(code).toBe(0)
       expect(out).toContain(
-        "deblob.config.ts + deblob.local.json (flavor: ts-suffixes-factories)",
+        "deblob.config.ts + deblob.local.ts (flavor: ts-suffixes-factories)",
       )
     } finally {
       await rm(temp, { recursive: true, force: true })
@@ -525,10 +525,10 @@ describe("bare deblob — status, always exit 0", () => {
   test("a lone local file: configless with an overlay, provenance names it", async () => {
     const temp = await mkdtemp(join(tmpdir(), "deblob-bare-lone-local-"))
     try {
-      await writeFile(join(temp, "deblob.local.json"), "{}\n")
+      await writeFile(join(temp, "deblob.local.ts"), "export default {}\n")
       const { code, out } = await run([], { cwd: temp })
       expect(code).toBe(0)
-      expect(out).toContain("deblob.local.json (flavor: ts-suffixes-factories)")
+      expect(out).toContain("deblob.local.ts (flavor: ts-suffixes-factories)")
       expect(out).not.toContain("deblob.config.ts")
     } finally {
       await rm(temp, { recursive: true, force: true })
