@@ -111,10 +111,13 @@ The twelve keys, all optional:
 
 Discovery walks upward from cwd; the nearest config wins and its directory
 becomes the project root. No merging, no inheritance across directories. One
-overlay in the same directory: a `deblob.local.json` beside the config holds the
-same keys as JSON and wins per key (arrays and objects replace, never merge) —
-the machine-local part of a config, gitignored by convention, named in the bare
-status line whenever it was read. `-c/--config <path>` overrides the walk.
+overlay in the same directory: a `deblob.local.{ts,mts,js,mjs}` beside the
+config holds the same keys and wins per key (arrays and objects replace, never
+merge) — the machine-local part of a config, gitignored by convention, never
+analyzed as project code, named in the bare status line whenever it was read.
+`-c/--config <path>` overrides the walk. A long-running process (`deblob view`)
+reads an edited config or local file as edited; a module either one imports
+stays cached until a restart.
 
 A declared `pure` entry is trusted, not verified — the guarantee is only as good
 as the config review. Unlisted third-party imported from a pure layer fires as

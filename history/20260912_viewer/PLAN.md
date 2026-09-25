@@ -27,14 +27,15 @@
   key in `deblob.config.ts`: directories, each a deblob project with its own
   config discovery starting there, paths relative to the declaring file. Two
   uses, one key: committed, a monorepo root listing the projects its viewer
-  shows; local, a `deblob.local.json` beside the config listing checkouts on one
+  shows; local, a `deblob.local.ts` beside the config listing checkouts on one
   machine. The local file is a partial config with the same keys and the same
   validation (a typo fails on the existing unknown-key error), found by the same
   discovery, merged per top-level key with local winning and arrays replacing,
-  gitignored by convention, JSON because it is data. No `deblob view <dir>`: the
-  list covers the need. `deblob view` with no configured projects shows the
-  current project alone. The in-app project switch is the server knowing the
-  whole list; no restart.
+  gitignored by convention. JSON at first ("because it is data"); TS since
+  2026-09-25 (step 08), the same kind of file as the config, loaded the same
+  way, and never project code. No `deblob view <dir>`: the list covers the need.
+  `deblob view` with no configured projects shows the current project alone. The
+  in-app project switch is the server knowing the whole list; no restart.
 - **Testing, three loops over one input.** Manual exploration: the dev server
   over the configured projects, `deblob` itself and real checkouts, daily.
   Corpus test: a directory of banked snapshots, the test iterates over whatever

@@ -38,7 +38,7 @@ const DEBLOB = resolve(import.meta.dirname, "../../../../../deblob")
 const FEED = resolve(DEBLOB, "src/spike/map-feed/feed.ts")
 const READMES = resolve(DEBLOB, "src/spike/map-feed/readmes.ts")
 // live trees, by id: the viewer's projects as `deblob view` reads them
-// (view.projects + deblob.local.json, a checkout elsewhere goes there), the
+// (view.projects + deblob.local.ts, a checkout elsewhere goes there), the
 // ones the tracer cannot read skipped (it reads deblob's CLI only)
 const VIEWER = resolve(import.meta.dirname, "../../../..")
 const { mapProjects } = await import(

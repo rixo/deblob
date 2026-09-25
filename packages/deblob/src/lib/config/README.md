@@ -36,10 +36,10 @@ adapters over the platform; assembly owns the load → resolve sequence.
   only; whether its file is covered is extraction's to say. This is a service,
   not a model, because it holds port shapes.
 - `overlayLocalConfig(base, local, localPath)` → the raw value for
-  `resolveConfig`: `deblob.local.json` merged over the config, per top-level
-  key, local winning, arrays and objects replacing. A non-object or an unknown
-  key in the local file fails naming that file — after the merge the source of a
-  key is gone, so this is the one place that message can come from.
+  `resolveConfig`: the local file's default export merged over the config, per
+  top-level key, local winning, arrays and objects replacing. A non-object or an
+  unknown key in the local file fails naming that file — after the merge the
+  source of a key is gone, so this is the one place that message can come from.
 - `config.model.ts` — `ConfigError`, its duck-typed guard `isConfigError` (by
   name; `instanceof` breaks across realms) and `asConfigErrorOrRethrow`, the
   coverage constants (`DEFAULT_INCLUDE`, the non-removable `EXCLUDE_BASELINE`,
@@ -51,16 +51,21 @@ adapters over the platform; assembly owns the load → resolve sequence.
 
 - `adapters/loader.adapter.ts` — `createConfigLoader({ fs })` over the fs port
   (`lib/fs/`), promise-only: `discoverConfig(cwd)` walks upward to the nearest
-  directory holding a `deblob.config.{ts,mts,js,mjs}` or a `deblob.local.json`
-  and reports the root and both paths (either may be absent, never both),
-  `explicitConfigPath` honors `-c` and looks the overlay up beside the explicit
-  file, `readLocalConfig` parses the overlay's JSON (unparseable, or gone since
-  discovery, fails naming it), `tsconfigPathOf` finds the tsconfig feeding
-  resolution, `readPackageSurface(root)` reads the package's own `deblob` field
-  and exports map for the surface check — a key this version cannot honor, a
-  malformed `blob`, or a field without an exports map fail loud there. Outside
-  the factory, `importConfigDefault` loads the file through native `import()`
-  (Node strips types; erasable syntax only): a platform call no port reads.
+  directory holding a `deblob.config.{ts,mts,js,mjs}` or a
+  `deblob.local.{ts,mts,js,mjs}` (two of either kind in one directory is
+  ambiguity) and reports the root and both paths (either may be absent, never
+  both), `explicitConfigPath` honors `-c` and looks the overlay up beside the
+  explicit file, `tsconfigPathOf` finds the tsconfig feeding resolution,
+  `readPackageSurface(root)` reads the package's own `deblob` field and exports
+  map for the surface check — a key this version cannot honor, a malformed
+  `blob`, or a field without an exports map fail loud there. Outside the
+  factory, `importConfigDefault` loads a config or local file through native
+  `import()` (Node strips types; erasable syntax only): a platform call no port
+  reads. Its URL carries the file's mtime, so in a long-running process an
+  edited file loads as edited and an unchanged one answers from Node's cache.
+  Two limits: a module the file imports stays cached (an edit there needs a
+  restart), and a filesystem with coarse timestamps (FAT, some network mounts)
+  can miss the second of two saves close together.
 - `adapters/scan.adapter.ts` — `createCoverageScan({ fs })`:
   `scanCoverage(config)` globs the governed subtree through the port under the
   full-scan model (every covered file is a graph node, orphans included, hidden
@@ -75,7 +80,8 @@ resolution; the disk they read is the fs port's, so a run over a tree of strings
 
 No merging, no inheritance across directories: the nearest config wins and its
 directory is the root. The one overlay lives in that same directory:
-`deblob.local.json`, the machine-local part of the config, same keys as JSON,
-winning per key. No defaults that widen: knobs only tighten canon, and the
-exclude baseline cannot be removed. No flavor imports: a flavor is an adapter of
-`extraction`; the registry arrives injected.
+`deblob.local.{ts,mts,js,mjs}`, the machine-local part of the config, same keys,
+winning per key, never project code (`EXCLUDE_BASELINE` names it). No defaults
+that widen: knobs only tighten canon, and the exclude baseline cannot be
+removed. No flavor imports: a flavor is an adapter of `extraction`; the registry
+arrives injected.

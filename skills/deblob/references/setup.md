@@ -75,11 +75,11 @@ assembly.
   (`pnpm -r run check:arch`, turbo, …). Discovery walks upward from cwd, nearest
   config wins.
 - Never a discoverable config (`deblob.config.{ts,mts,js,mjs}`, or a
-  `deblob.local.json` — discovery stops on it too) at the repo root — it
-  silently captures every package lacking its own, with the wrong root and
+  `deblob.local.{ts,mts,js,mjs}` — discovery stops on it too) at the repo root —
+  it silently captures every package lacking its own, with the wrong root and
   repo-wide coverage.
 - Shared settings: configs never merge across directories (the one overlay is
-  `deblob.local.json` beside a config — machine-local, gitignored, never for
+  `deblob.local.ts` beside a config — machine-local, gitignored, never for
   shared settings), but they're native TS — compose in userland. A root
   `deblob.config.base.ts` (discovery matches only the exact names
   `deblob.config.{ts,mts,js,mjs}` — a `.base` suffix is never picked up) exports

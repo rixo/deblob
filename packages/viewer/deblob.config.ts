@@ -9,7 +9,7 @@ const config: DeblobConfig = {
   // the Vite entry: builds the source, mounts the app
   assembly: ["src/main.ts"],
   // what `pnpm dev` shows: this package first, then deblob — the switch has
-  // something to switch to; your own checkouts go in deblob.local.json
+  // something to switch to; your own checkouts go in deblob.local.ts
   view: { projects: [".", "../deblob"] },
 }
 

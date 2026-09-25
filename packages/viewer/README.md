@@ -86,12 +86,18 @@ is a reload away, as hot updates go.
 
 The projects shown are this package's `view.projects`: the committed config
 lists this package and `deblob`, so the switch has two entries out of the box.
-To view your own checkouts, list them in a `deblob.local.json` beside
+To view your own checkouts, list them in a `deblob.local.ts` beside
 `deblob.config.ts` — gitignored, same keys as the config (the local list
 replaces the committed one):
 
-```json
-{ "view": { "projects": ["../deblob", "/path/to/a/checkout"] } }
+```ts
+import type { DeblobConfig } from "../deblob/src/index.ts"
+
+const local: DeblobConfig = {
+  view: { projects: ["../deblob", "/path/to/a/checkout"] },
+}
+
+export default local
 ```
 
 Each is a deblob project of its own: its config discovered from that directory,
