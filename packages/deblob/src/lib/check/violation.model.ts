@@ -6,6 +6,7 @@
 import type {
   EdgeTarget,
   Layer,
+  Span,
   UnknownCondition,
 } from "../extraction/graph.model.ts"
 import type { RuleId } from "./rule.model.ts"
@@ -232,6 +233,14 @@ export type ModulesViolation = {
    * which fails like a red.
    */
   unknown: UnknownCondition | null
+  /** What the violation is about, in its file: what a `cause` names. */
+  subject: Span
+  /**
+   * The red call this violation's subject is the result of — a binding storing
+   * it, a call of what it returned — when there is one: removing the call
+   * removes this violation too, so it is the same fix. `null` otherwise.
+   */
+  cause: Span | null
 } & (
   | {
       /**

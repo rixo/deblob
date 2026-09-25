@@ -480,12 +480,31 @@ const ROWS: readonly Row[] = [
       ...NOTES,
       ...DRIVER,
       "src/notes.assembly.ts": `
+        import { realpathSync } from "node:fs"
+        ${IMPORTS}
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          return { notes: createNotes({ store: createFsStore(realpathSync(cwd)) }) } // missed red: assembly-builds-only -- a call that builds nothing, the tech's; ${WAIT}
+        }
+        // missed red: assembly-builds-only -- the import of node:fs: concrete tech in an assembly; the matrix cell is not built yet
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 3: the row above used
+    // node:path, which deblob ships pure.
+    // canon: "A model call is allowed on the same terms as any other — its
+    // result is passed on or returned". A pure builtin is model: `join` is the
+    // model function the computed-argument row's way out names.
+    name: "a pure builtin's function, its result passed on, is a model call: green",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
         import { join } from "node:path"
         ${IMPORTS}
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
-          return { notes: createNotes({ store: createFsStore(join(cwd, "notes")) }) } // missed red: assembly-builds-only -- a tech call in the wiring; ${WAIT}
+          return { notes: createNotes({ store: createFsStore(join(cwd, "notes")) }) }
         }
-        // missed red: assembly-builds-only -- the import of node:path: concrete tech in an assembly; the matrix cell is not built yet
       `,
     },
   },

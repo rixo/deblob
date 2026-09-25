@@ -1,5 +1,6 @@
 import { describe, expect, it, test } from "vitest"
 
+import { groupByFix } from "../check/grouping.model.ts"
 import type { RuleId } from "../check/rule.model.ts"
 import type {
   BarrelsViolation,
@@ -8,6 +9,7 @@ import type {
   ModulesViolation,
   PortsViolation,
   PrivateViolation,
+  Violation,
 } from "../check/violation.model.ts"
 import {
   ANSI_COLORS,
@@ -25,7 +27,19 @@ import {
   sizeStatsOf,
   SURFACE_NOT_CLAIMED,
 } from "./render.model.ts"
-import type { GraphStats } from "./render.model.ts"
+import type { Colors, GraphStats } from "./render.model.ts"
+
+/** Violations rendered as the CLI does: grouped by fix first. */
+const renderViolations = (
+  violations: readonly Violation[],
+  stats: GraphStats,
+  colors: Colors,
+  pathPrefix?: string,
+): string =>
+  renderCheckResults(groupByFix(violations), stats, colors, pathPrefix)
+
+/** Where a statement-level violation's subject sits — a line's span. */
+const SUBJECT = { start: 100, end: 110, line: 7, column: 0 } as const
 
 const layersViolation = (
   overrides: Partial<LayersViolation> = {},
@@ -103,6 +117,8 @@ const rootBinding = (
   serviceRoot: "src/billing",
   line: 7,
   via: [],
+  subject: SUBJECT,
+  cause: null,
   shape: "root-binding",
   holds: "state",
   by: null,
@@ -121,7 +137,7 @@ const STATS: GraphStats = {
 
 describe("renderCheckResults", () => {
   it("counts the unknowns apart in the summary: a red the reader could not prove is still a violation, and says so", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [
         rootBinding({ line: 1, by: { form: "let", name: null } }),
         rootBinding({ line: 2, unknown: { kind: "type-name", name: "Table" } }),
@@ -134,8 +150,50 @@ describe("renderCheckResults", () => {
     )
   })
 
+  it("lays a group out as its lead with its riders under it, and counts it once", () => {
+    const lead: RootCall = {
+      check: "modules",
+      ruleset: "arch",
+      rules: ["stable-root"],
+      file: "src/status/adapters/fetch-status.adapter.ts",
+      serviceRoot: "src/status",
+      line: 3,
+      via: [],
+      subject: SUBJECT,
+      cause: null,
+      shape: "root-call",
+      reaches: "tech",
+      name: null,
+      unknown: null,
+    }
+    const rider = rootBinding(
+      { line: 3, unknown: { kind: "type-name", name: "Response" } },
+      lead.file,
+    )
+    expect(
+      renderCheckResults([{ lead, riders: [rider] }], STATS, NO_COLORS),
+    ).toBe(
+      [
+        "src/status",
+        "  src/status/adapters/fetch-status.adapter.ts",
+        "    modules  line 3 runs on import — a call into the host, presumed to",
+        "             act; move it inside a factory or a function (stable-root)",
+        "             + line 3 may bind state at module root — unknown: the",
+        "               reader does not follow the type name Response yet; write",
+        "               the type out in place, or move it inside a factory",
+        "               (stable-root)",
+        "",
+        // one fix, one count; the lead is proven, so no unknown is counted
+        "1 violation (1 modules) · 214 files · 218kb · 25% blob",
+        "12 services · 380 imports",
+        "why: deblob explain stable-root · or rerun with --explain",
+        "",
+      ].join("\n"),
+    )
+  })
+
   it("renders the fiction's grouped listing: service → file → tagged lines", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [layersViolation(), privateViolation()],
       STATS,
       NO_COLORS,
@@ -168,7 +226,7 @@ describe("renderCheckResults", () => {
         type: "module",
         path: `src/invoice/${"x".repeat(pad)}.model.ts`,
       } as const
-      const output = renderCheckResults(
+      const output = renderViolations(
         [
           layersViolation({ rules: ["blob-quarantine"], target }),
           layersViolation({
@@ -193,7 +251,7 @@ describe("renderCheckResults", () => {
   })
 
   test("the footer orders rules as the summary does, not alphabetically", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [
         privateViolation(),
         layersViolation({ rules: ["service-purity", "runtime-import"] }),
@@ -208,7 +266,7 @@ describe("renderCheckResults", () => {
   })
 
   test("pathPrefix lands on every module path, never on package specifiers", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [layersViolation(), privateViolation()],
       STATS,
       NO_COLORS,
@@ -222,23 +280,23 @@ describe("renderCheckResults", () => {
   })
 
   test("a clean run is the summary and coverage lines, no footer", () => {
-    expect(renderCheckResults([], STATS, NO_COLORS)).toBe(
+    expect(renderViolations([], STATS, NO_COLORS)).toBe(
       "0 violations · 214 files · 218kb · 25% blob\n12 services · 380 imports\n",
     )
   })
 
   test("coverage line: the exports segment exists iff a claim was checked, disclosed only when nonzero", () => {
     const claimed = { ...STATS, surface: { checked: 7, disclosed: 2 } }
-    expect(renderCheckResults([], claimed, NO_COLORS)).toContain(
+    expect(renderViolations([], claimed, NO_COLORS)).toContain(
       "\n12 services · 380 imports · exports 7 checked, 2 disclosed\n",
     )
     const undisclosed = { ...STATS, surface: { checked: 1, disclosed: 0 } }
-    expect(renderCheckResults([], undisclosed, NO_COLORS)).toContain(
+    expect(renderViolations([], undisclosed, NO_COLORS)).toContain(
       "\n12 services · 380 imports · exports 1 checked\n",
     )
     // singulars
     expect(
-      renderCheckResults(
+      renderViolations(
         [],
         { ...STATS, services: 1, imports: 1, surface: null },
         NO_COLORS,
@@ -253,13 +311,13 @@ describe("renderCheckResults", () => {
   })
 
   test("singular: 1 violation", () => {
-    const output = renderCheckResults([layersViolation()], STATS, NO_COLORS)
+    const output = renderViolations([layersViolation()], STATS, NO_COLORS)
     expect(output).toContain("1 violation (1 layers)")
     expect(output).not.toContain("1 violations")
   })
 
   it("groups deterministically: services ascending, blob bucket last, files ascending", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [
         layersViolation({
           file: "src/zeta/a.service.ts",
@@ -286,7 +344,7 @@ describe("renderCheckResults", () => {
   })
 
   it("orders violations inside a file by check name", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [
         portsViolation({
           file: "src/invoice/checkout.service.ts",
@@ -315,7 +373,7 @@ describe("renderCheckResults", () => {
       [exportViolation("AAA_FAKE"), exportViolation("ZZZ_FAKE")],
       [exportViolation("ZZZ_FAKE"), exportViolation("AAA_FAKE")],
     ]) {
-      const output = renderCheckResults(input, STATS, NO_COLORS)
+      const output = renderViolations(input, STATS, NO_COLORS)
       expect(output.indexOf("AAA_FAKE")).toBeLessThan(
         output.indexOf("ZZZ_FAKE"),
       )
@@ -324,11 +382,8 @@ describe("renderCheckResults", () => {
 
   describe("messages", () => {
     // collapse the hanging-indent wrap so substrings assert on whole phrases
-    const message = (
-      violation: Parameters<typeof renderCheckResults>[0][0],
-      prefix = "",
-    ) =>
-      renderCheckResults([violation], STATS, NO_COLORS, prefix).replace(
+    const message = (violation: Violation, prefix = "") =>
+      renderViolations([violation], STATS, NO_COLORS, prefix).replace(
         /\n {13}/g,
         " ",
       )
@@ -556,6 +611,8 @@ describe("renderCheckResults", () => {
         serviceRoot: "src/billing",
         line: 7,
         via: [],
+        subject: SUBJECT,
+        cause: null,
         shape: "root-statement",
         unknown: null,
       })
@@ -577,6 +634,8 @@ describe("renderCheckResults", () => {
           { file: "src/billing/refund.model.ts", line: 12 },
           { file: "src/billing/ledger.model.ts", line: 3 },
         ],
+        subject: SUBJECT,
+        cause: null,
         shape: "root-statement",
         unknown: null,
       })
@@ -790,6 +849,8 @@ describe("renderCheckResults", () => {
           serviceRoot: "src/billing",
           line: 7,
           via: [],
+          subject: SUBJECT,
+          cause: null,
           shape: "root-statement",
           unknown: { kind: "statement", form: "DebuggerStatement" },
         }),
@@ -809,6 +870,8 @@ describe("renderCheckResults", () => {
         serviceRoot: "src/billing",
         line: 7,
         via: [],
+        subject: SUBJECT,
+        cause: null,
         shape: "root-call",
         reaches: "tech",
         name: null,
@@ -956,7 +1019,7 @@ describe("renderCheckResults", () => {
       }) as DagViolation
 
     it("renders the fiction's cross-service block with quoted carrying edges", () => {
-      const output = renderCheckResults([serviceCycle()], STATS, NO_COLORS)
+      const output = renderViolations([serviceCycle()], STATS, NO_COLORS)
       expect(output).toBe(
         [
           "cross-service",
@@ -977,7 +1040,7 @@ describe("renderCheckResults", () => {
     })
 
     it("orders blocks in a bucket by rule (the summary's order), then membership", () => {
-      const output = renderCheckResults(
+      const output = renderViolations(
         [
           moduleCycle({
             group: { kind: "cross-service" },
@@ -991,7 +1054,7 @@ describe("renderCheckResults", () => {
         output.indexOf("src/lib/api/client.ts ⇄"),
       )
       // either input order — the sort, not the input, decides
-      const reversed = renderCheckResults(
+      const reversed = renderViolations(
         [
           serviceCycle(),
           moduleCycle({
@@ -1013,15 +1076,15 @@ describe("renderCheckResults", () => {
         members: ["src/lib/yyy.ts", "src/lib/zzz.ts"],
         files: ["src/lib/yyy.ts", "src/lib/zzz.ts"],
       } as Partial<DagViolation>)
-      const output = renderCheckResults([late, early], STATS, NO_COLORS)
+      const output = renderViolations([late, early], STATS, NO_COLORS)
       expect(output.indexOf("src/lib/aaa.ts ⇄")).toBeLessThan(
         output.indexOf("src/lib/yyy.ts ⇄"),
       )
-      expect(renderCheckResults([early, late], STATS, NO_COLORS)).toBe(output)
+      expect(renderViolations([early, late], STATS, NO_COLORS)).toBe(output)
     })
 
     it("renders the module cycle in the blob bucket, last", () => {
-      const output = renderCheckResults(
+      const output = renderViolations(
         [moduleCycle(), serviceCycle()],
         STATS,
         NO_COLORS,
@@ -1037,7 +1100,7 @@ describe("renderCheckResults", () => {
     })
 
     it("marks type-only and wiring hops, and extends the remedy for wiring", () => {
-      const output = renderCheckResults(
+      const output = renderViolations(
         [
           serviceCycle({
             hops: [
@@ -1074,7 +1137,7 @@ describe("renderCheckResults", () => {
     })
 
     it("renders a longer witness as an arrow chain and notes entanglement", () => {
-      const output = renderCheckResults(
+      const output = renderViolations(
         [
           serviceCycle({
             // rootless service dirs: the hop label falls back to the whole root

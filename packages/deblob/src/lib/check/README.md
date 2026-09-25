@@ -59,13 +59,21 @@ One function per check, all over `ImportGraph` from `extraction`:
   tech (`reaches`, `null` for a callee the reader cannot place). Exempt by kind:
   a spec file's registrations into its runner (a driver's wiring function handed
   the runner's tech included), the boot's one call. A red call inside a tracked
-  local is reported where it sits, the root call that ran it in `via`; a binding
-  storing a red call's result draws no second verdict unless it is a `let`, a
-  `var` or a writable static — a root class's static field is a root binding.
+  local is reported where it sits, the root call that ran it in `via`. A root
+  class's static field is a root binding. Atomic: one violation per clause a
+  statement breaks, none withheld because another covers it; a violation whose
+  subject is a red call's result — a binding storing it (not a `let`, a `var` or
+  a writable static, state whatever it holds), a call of what it returned —
+  names that call as its `cause`, and every violation names its own `subject`.
   Each violation carries `unknown`: `null` when the red is proven (a binding's
   `by` naming the form that proves it), else the reader's `UnknownCondition` —
   an unknown fails like a red and says what the reader could not see. A broken
   line gets no verdict; the graph's `broken` carries it.
+- `groupByFix(violations)` (`grouping.model.ts`) — one group per fix: a
+  violation rides with the violation whose subject its `cause` names, the
+  chain's root leading; one without a cause, or whose cause no violation
+  answers, leads a group of one. What the renderer lays out and the corpus
+  matches.
 - `violation.model.ts` — the violation shapes, one structured value per finding
   carrying every fact rendering needs.
 

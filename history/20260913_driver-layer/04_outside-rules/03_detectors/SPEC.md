@@ -155,6 +155,36 @@ importing anything but one driver; anything importing a boot); `test-is-outside`
 claims nor `driverTech` declares, or of a pure one (`driver-calls-services`).
 `CHECK_RULES` grows accordingly.
 
+### Atomic violations, grouped by fix
+
+**Drafted 2026-09-26, built at checkpoint 3.** Three concerns, three owners:
+
+- **Detection reports atomic facts.** A check emits one violation per clause a
+  statement breaks, and never withholds one because another covers it. What
+  checkpoints 1 and 2 folded goes back to being facts: a binding storing a red
+  call's result draws its own verdict again (the four `false unknown` of
+  checkpoint 1's rows 1, 2, 11, 12 come back as unknowns), and a decorator
+  factory's application is a call of its own, beside the factory's call.
+- **Grouping is a model, and asserted.** One fix, one group: a violation whose
+  subject is the result of a call judged red rides with that call's violation —
+  removing the call removes it. The call's violation leads. The rule is stated
+  over every violation, not per shape: a violation says what it derives from
+  (`cause`, the span of the red call its subject came out of), and the grouping
+  model, pure, turns violations into groups by it. A violation with no cause
+  leads its own group of one.
+- **Formatting only lays out groups.** The renderer prints a group as its lead
+  with its riders under it; it decides nothing about what belongs together.
+
+**The marker grammar gains `+`**: slugs joined by `+` are one group, the first
+the lead, whose verdict the marker's word states; `,` still separates groups.
+`// red: stable-root + stable-root` is a red call and a violation riding with
+it; `// red: stable-root, stable-root` is two groups, two fixes. The runner
+matches groups, not violations: a group reported with riders the marker does not
+list, or listed as separate groups, fails its row. A group whose members sit on
+different lines is not expressible yet, and no row needs one.
+
+The summary counts groups: one fix, one count (ruled 2026-09-26).
+
 ## Testing
 
 The gate is the rows: a checkpoint is done when the rows it owns show plain
@@ -182,12 +212,20 @@ Checkpoints, one commit each, one go each, riskiest judgments first:
 2. **The reader forms the rows exposed.** A static field initializer and a
    static block run on load; a decorator is a call on class evaluation; an
    IIFE's `via` (rows 3–6b). Each is a reader addition with its row as the gate.
-3. **The `assembly` check.** The tightest rule, and the one the chapter exists
+3. **Atomic violations, grouped by fix** (added 2026-09-26, § API). Before any
+   new detector: every later check would otherwise bake its grouping into
+   detection. The marker grammar, the grouping model, the renderer, and the rows
+   of checkpoints 1 and 2 rewritten to state their groups.
+4. **The reader facts the assembly rows need** (split out 2026-09-26): where a
+   built value is used, a record argument's entries, a ternary's value as its
+   arms', a map whose callback builds, a type declared at root, an assembly's
+   local helper as a callee.
+5. **The `assembly` check.** The tightest rule, and the one the chapter exists
    for.
-4. **The `driver` check.** Where hook cutting meets the rules, and where the
+6. **The `driver` check.** Where hook cutting meets the rules, and where the
    provisional rulings (D5/O2, H9, H10/H11) meet a detector: each is shown
    against its row at handback.
-5. **The `boot` check and the `layers` cells.** The smallest, mostly tables.
+7. **The `boot` check and the `layers` cells.** The smallest, mostly tables.
 
 ### Checkpoint 1, built 2026-09-25
 
@@ -272,6 +310,58 @@ Still `missed`: row 15's `.catch`, the one `stable-root` limit left with a row.
 Known and unrowed: a computed member key and `extends` also run on class
 evaluation and are not read; a named function expression invoked on the spot
 that calls itself reads its own name as a host global.
+
+### Checkpoint 3, built 2026-09-26
+
+Atomic violations, grouped by fix, as § API drew them:
+
+- **Detection is atomic again.** The stored-result rule of checkpoint 1 is gone:
+  a binding storing a red call's result draws its own verdict. A decorator
+  factory is two calls: `@Injectable()` calls the factory, then calls its result
+  on the class.
+- **Every `stable-root` violation names its `subject`** (the span it is about)
+  **and its `cause`**: the red call its subject is the result of — the call a
+  binding stores (not a `let`, a `var` or a writable static: state whatever it
+  holds, a fix of its own), or the call whose result a call calls — followed
+  through a green link: `connect(url).then(…)` stored holds what came out of
+  `connect()`. A call the reader could not place is not a cause: its fix is not
+  removing it.
+- **Reader additions.** `ReadCall.calleeCall`: the call whose result a call
+  calls, the root of its member chain. And two found building, one rule: what an
+  unclaimed package gives is the package's, as the same on the tech is the
+  tech's, an intrinsic prototype method (`.then`) the language's. The reader
+  typed an unclaimed package's call result `computed`, so calling it read as a
+  language call, green — `@Injectable()`'s application, `cac("x").option(…)`.
+  And a member of an unclaimed package's default import, called
+  (`mongoose.connect()`), read green the same way, where the namespace import
+  read red.
+- **`groupByFix`** (`check/grouping.model.ts`), pure: a violation rides with the
+  one whose subject its cause names; a chain leads at its root; a cause no
+  violation answers leads a group of one. The runner and the CLI both group
+  through it.
+- **Markers.** `+` joins a group, `,` separates groups; `via` names no group. A
+  rider on another line than its lead is reported as `stable-root (line 7)`,
+  which no marker writes: such a row fails visibly instead of matching by
+  accident.
+- **The renderer** prints a group's lead, its riders under it marked `+`; the
+  summary counts groups, and counts an unknown by its lead.
+- **Rows now stating their groups** (`modules.spec.ts`): the `new Worker`, the
+  awaited `fetch`, both tech decorators, a spec's blob function stored, the
+  tagged template, `import.meta.resolve` stored, the stored `import()` — each
+  `red: stable-root + stable-root`. The `let` and writable-static row keeps two
+  groups. **New rows:** a method chained on an unclaimed package's call (three
+  in one group); a binding holding `.then` on a red call (one group, through the
+  green link); a default import's method called at root.
+- **Falsification:** each clause switched off in turn — the binding's cause (6
+  rows fail), the `let`/`var`/static exception to it (1), a call's cause (2),
+  the grouping itself (8), the runner matching riders (11), the cause through a
+  green link (1), an unclaimed package's result called (3), its prototype method
+  the language's (1), a default import's member (1). The cause only when the
+  call is red fails no row (an unplaced callee cannot be built from a case), and
+  fails its unit.
+- **Self-check:** 139 groups, unchanged: the returned bindings ride with their
+  calls, 15 riders. A multi-line destructuring stored from a red call is a group
+  across lines: rendered well, not markable yet.
 
 ## Docs
 

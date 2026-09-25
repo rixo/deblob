@@ -25,17 +25,23 @@ import type {
   SurfaceViolation,
   Violation,
 } from "../check/violation.model.ts"
+import type { ViolationGroup } from "../check/grouping.model.ts"
 import type { ExplainEntry } from "../explain/rule-content.model.ts"
 import { KNOWN_CHECKS } from "./cli.model.ts"
 
 /** Everything but dag renders as service → file → tagged message lines. */
 type FileViolation = Exclude<Violation, DagViolation>
 
+/** One fix, in a file: a lead and the violations it removes with it. */
+type FileGroup = { lead: FileViolation; riders: readonly FileViolation[] }
+
 /** Output width the fiction wraps at. */
 const WIDTH = 72
 /** Violation lines: 4-space indent + check tag padded to this field. */
 const TAG_FIELD = 9
 const CONTINUATION = " ".repeat(4 + TAG_FIELD)
+/** A rider's continuation lines, under its text past the `+ `. */
+const RIDER_CONTINUATION = `${CONTINUATION}  `
 
 export type Colors = {
   strong: (text: string) => string
@@ -493,23 +499,23 @@ const exportsSegment = (
  * shape as the bare headline, so the two commands read as one instrument.
  */
 const summaryLine = (
-  violations: readonly Violation[],
+  groups: readonly ViolationGroup[],
   stats: InventoryStats,
 ): string => {
   const trailer = `${plural(stats.files, "file")} · ${formatSize(stats.totalBytes)} · ${stats.blobPercent}% blob`
-  if (violations.length === 0) return `0 violations · ${trailer}`
+  if (groups.length === 0) return `0 violations · ${trailer}`
+  // one fix, one count: a group counts as its lead
+  const leads = groups.map((group) => group.lead)
   const counts = KNOWN_CHECKS.flatMap((check) => {
-    const count = violations.filter(
-      (violation) => violation.check === check,
-    ).length
+    const count = leads.filter((lead) => lead.check === check).length
     return count > 0 ? [`${count} ${check}`] : []
   })
   // a red the reader could not prove: still a violation, counted apart
-  const unknowns = violations.filter(
-    (violation) => "unknown" in violation && violation.unknown !== null,
+  const unknowns = leads.filter(
+    (lead) => "unknown" in lead && lead.unknown !== null,
   ).length
   const unknown = unknowns > 0 ? ` · ${unknowns} unknown` : ""
-  return `${plural(violations.length, "violation")} (${counts.join(", ")})${unknown} · ${trailer}`
+  return `${plural(groups.length, "violation")} (${counts.join(", ")})${unknown} · ${trailer}`
 }
 
 /**
@@ -533,28 +539,30 @@ const coverageLine = (stats: GraphStats): string =>
   ].join(" · ")
 
 /**
- * The check output: grouped service → file → tagged lines, cycle findings as
- * blocks in their bucket — `cross-service` after the named services, `blob`
- * last (findings on unlabeled files, the flagship term on first contact) — then
- * the summary line, the coverage line, and one footer hint to the teaching
- * channel. Fully deterministic — goldens and CI diffs stay stable. Every path
- * prints whole under `pathPrefix` (the runner's cwd → config-root hop, `""`
- * when they coincide) so terminal ctrl+click resolves from where the user ran
- * the command.
+ * The check output: grouped service → file → tagged lines, one per fix — a
+ * group's lead, its riders under it, marked `+` — cycle findings as blocks in
+ * their bucket — `cross-service` after the named services, `blob` last
+ * (findings on unlabeled files, the flagship term on first contact) — then the
+ * summary line, the coverage line, and one footer hint to the teaching channel.
+ * Fully deterministic — goldens and CI diffs stay stable. Every path prints
+ * whole under `pathPrefix` (the runner's cwd → config-root hop, `""` when they
+ * coincide) so terminal ctrl+click resolves from where the user ran the
+ * command.
  */
 export const renderCheckResults = (
-  violations: readonly Violation[],
+  groups: readonly ViolationGroup[],
   stats: GraphStats,
   colors: Colors,
   pathPrefix: string = "",
 ): string => {
   const lines: string[] = []
 
-  const services = new Map<string | null, Map<string, FileViolation[]>>()
+  const services = new Map<string | null, Map<string, FileGroup[]>>()
   const dagByService = new Map<string, DagViolation[]>()
   const dagCross: DagViolation[] = []
   const dagBlob: DagViolation[] = []
-  for (const violation of violations) {
+  for (const group of groups) {
+    const violation = group.lead
     if (violation.check === "dag") {
       const { group } = violation
       if (group.kind === "cross-service") {
@@ -569,11 +577,12 @@ export const renderCheckResults = (
       continue
     }
     const files =
-      services.get(violation.serviceRoot) ?? new Map<string, FileViolation[]>()
+      services.get(violation.serviceRoot) ?? new Map<string, FileGroup[]>()
     services.set(violation.serviceRoot, files)
     const list = files.get(violation.file) ?? []
     files.set(violation.file, list)
-    list.push(violation)
+    // a rider shares its lead's file: it comes out of the lead's call
+    list.push({ lead: violation, riders: group.riders as FileViolation[] })
   }
 
   // rule first (no-service-cycle before no-runtime-cycle — the summary's
@@ -591,27 +600,32 @@ export const renderCheckResults = (
     for (const file of [...files.keys()].sort()) {
       // whole path, not basename — the line is a ctrl+click target
       lines.push(`  ${pathPrefix}${file}`)
-      const sorted = (files.get(file) as FileViolation[])
-        .map((violation) => ({
-          violation,
-          message: `${messageOf(violation, pathPrefix)} (${ruleCite(violation.rules)})`,
+      const cited = (violation: FileViolation): string =>
+        `${messageOf(violation, pathPrefix)} (${ruleCite(violation.rules)})`
+      const sorted = (files.get(file) as FileGroup[])
+        .map(({ lead, riders }) => ({
+          lead,
+          message: cited(lead),
+          riders: riders.map(cited).sort(),
         }))
         // check name, then rendered message — full output determinism
         .map((entry) => ({
           ...entry,
-          key: `${entry.violation.check}\u0000${entry.message}`,
+          key: `${entry.lead.check}\u0000${entry.message}`,
         }))
         .sort((a, b) => (a.key < b.key ? -1 : 1))
-      for (const { violation, message } of sorted) {
-        const tag = colors.accent(violation.check.padEnd(TAG_FIELD))
+      for (const { lead, message, riders } of sorted) {
+        const tag = colors.accent(lead.check.padEnd(TAG_FIELD))
         const [head, ...rest] = wrap(
-          `    ${violation.check.padEnd(TAG_FIELD)}`,
+          `    ${lead.check.padEnd(TAG_FIELD)}`,
           message,
         )
         lines.push(
-          (head as string).replace(violation.check.padEnd(TAG_FIELD), tag),
+          (head as string).replace(lead.check.padEnd(TAG_FIELD), tag),
           ...rest,
         )
+        for (const rider of riders)
+          lines.push(...wrap(`${CONTINUATION}+ `, rider, RIDER_CONTINUATION))
       }
     }
   }
@@ -649,12 +663,16 @@ export const renderCheckResults = (
     lines.push("")
   }
 
-  lines.push(summaryLine(violations, stats), coverageLine(stats))
+  lines.push(summaryLine(groups, stats), coverageLine(stats))
 
-  if (violations.length > 0) {
-    const rules = [...new Set(violations.flatMap((v) => v.rules))].sort(
-      byRuleOrder,
-    )
+  if (groups.length > 0) {
+    const rules = [
+      ...new Set(
+        groups.flatMap(({ lead, riders }) =>
+          [lead, ...riders].flatMap((v) => v.rules),
+        ),
+      ),
+    ].sort(byRuleOrder)
     lines.push(
       colors.dim(
         // pasteable as-is — the observed reflex is copying the whole list

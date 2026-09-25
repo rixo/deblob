@@ -14,19 +14,25 @@ both builds and fires.
   failing. `Case` and `Row` (`markers.model.ts`) are what a spec hands it;
   `AS_MARKED` is the match a row asserts.
 - `markers.model.ts` — the marker grammar and the match.
-  `// red: <slug>[, <slug>]* [-- <why>]`: one violation per slug, a repeated
-  slug counts twice, the why is for the reader (never compared; the message is
-  the renderer's, proven in the CLI golden). At a line's end it claims that
-  line; alone on its line it claims the next code line, so stacked markers each
-  claim it with their own why; alone at the end of the file it claims the file,
-  the form for a violation without a line (today's edge-level ones).
-  `// via: <slug>`, same form, marks a line that triggers a red elsewhere — a
-  root call running a helper whose body is red at its own line — and matches an
-  entry of the violation's `via` list. An expected failure states the right
-  verdict where the reader gets it wrong: `// false red: <slug> -- <why>`
-  (reported there, wrongly), `// missed red: <slug> -- <why>` (red there, not
-  reported), `false via` and `missed via` the same, the why required, placed as
-  any marker. `red` claims a proven red only; where the reader answers unknown,
+  `// red: <slug>[, <slug>]* [-- <why>]`: one group per slug, a repeated slug
+  counts twice; slugs joined by `+` are one group, one fix
+  (`// red: stable-root + stable-root`: a red call and the binding riding with
+  it), the first its lead, whose verdict the marker's word states. The runner
+  groups the reports (`groupByFix`) and matches groups: riders the marker does
+  not list, or a group marked as separate ones, fail the row; a rider on another
+  line than its lead is not expressible yet. The why is for the reader (never
+  compared; the message is the renderer's, proven in the CLI golden). At a
+  line's end it claims that line; alone on its line it claims the next code
+  line, so stacked markers each claim it with their own why; alone at the end of
+  the file it claims the file, the form for a violation without a line (today's
+  edge-level ones). `// via: <slug>`, same form without groups, marks a line
+  that triggers a red elsewhere — a root call running a helper whose body is red
+  at its own line — and matches an entry of the violation's `via` list. An
+  expected failure states the right verdict where the reader gets it wrong:
+  `// false red: <slug> -- <why>` (reported there, wrongly),
+  `// missed red: <slug> -- <why>` (red there, not reported), `false via` and
+  `missed via` the same, the why required, placed as any marker. `red` claims a
+  proven red only; where the reader answers unknown,
   `// false unknown: <slug> -- <why>` marks a limit to lift — alone, the truth
   is green; stacked above a `red`, the truth is red, and that `red` is not
   counted while the unknown holds — and `// stubborn unknown: <slug> -- <why>` a
@@ -47,9 +53,9 @@ both builds and fires.
   like the other two; and `expectedFailures` for one still failing, as its
   marker reads, which fails nothing — the terms of `unittest` and pytest
   (`xfail`, strict `XPASS`); a line claim never stands for a file claim, nor the
-  reverse; `reportedOf` names every file that closes a cycle. `stripMarkers` is
-  the grammar's inverse, for a corpus author who wants the same tree claiming
-  green.
+  reverse; `reportedOf` reduces a group to what a marker claims, and names every
+  file that closes a cycle. `stripMarkers` is the grammar's inverse, for a
+  corpus author who wants the same tree claiming green.
 - `cases.assembly.ts` — `assembleCase(files)` → `{ judge, check }`: the memory
   adapters built from the tree, the real chain wired over them, the runner over
   it. Returns the check port too, for a spec that wants the violations.

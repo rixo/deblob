@@ -14,13 +14,15 @@ pin out. The process, streams, and exit codes belong to the driver.
   `rulesForTopic(topic)` maps an `explain` topic (a check name, a rule slug) to
   rules; `isRuleNumber(topic)` spots a 0.0.4-era number so the driver's refusal
   can say rules are named now.
-- `renderCheckResults(violations, stats, colors, pathPrefix)` — the check
-  listing: findings grouped and sorted deterministically, each with its cited
-  rules, then the summary line (verdict + inventory: files, size, blob %), the
-  coverage line (services, imports, and `exports N checked, M disclosed` when a
-  `deblob` claim was checked — absent otherwise, so a dropped field is a visible
-  diff), and the fired rules as a pasteable `explain` invocation. `GraphStats`
-  carries the numbers; `InventoryStats` is the half both commands share.
+- `renderCheckResults(groups, stats, colors, pathPrefix)` — the check listing:
+  one entry per fix (`groupByFix`), its lead's line with its riders under it,
+  marked `+`, sorted deterministically, each with its cited rules; it decides
+  nothing about what belongs together. Then the summary line (verdict — groups
+  counted, one fix one count — and inventory: files, size, blob %), the coverage
+  line (services, imports, and `exports N checked, M disclosed` when a `deblob`
+  claim was checked — absent otherwise, so a dropped field is a visible diff),
+  and the fired rules as a pasteable `explain` invocation. `GraphStats` carries
+  the numbers; `InventoryStats` is the half both commands share.
 - `renderUnresolved(entries, colors, prefix)` and
   `renderUnverified(entries, colors, prefix)` — the two stderr blocks of an
   uncertifiable run, remedies included. `SURFACE_NOT_CLAIMED` — the one-line

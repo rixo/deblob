@@ -24,6 +24,7 @@ import type {
   ResolveSurfaceOptions,
   SurfaceReport,
 } from "../../lib/check/surface.model.ts"
+import { groupByFix } from "../../lib/check/grouping.model.ts"
 import type { RuleId } from "../../lib/check/rule.model.ts"
 import { ruleOrder } from "../../lib/check/rule.model.ts"
 import type { Violation } from "../../lib/check/violation.model.ts"
@@ -423,7 +424,7 @@ const runCheck = async (
   }
 
   const listing = renderCheckResults(
-    violations,
+    groupByFix(violations),
     stats,
     colors,
     pathPrefixOf(io.cwd, config.root),

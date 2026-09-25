@@ -2,14 +2,18 @@
  * The verdict markers a case writes in its source, and the match against what
  * the checks reported. A marker is `// red: <slug>[, <slug>]* [-- <why>]`: one
  * violation per slug, a slug repeated is two violations, the why is for the
- * reader and never compared. At a line's end it claims that line. Alone on its
- * line it claims the next code line, so several stacked above one line claim it
- * each with its own why; alone at the end of the file it claims the file — the
- * form for a violation that carries no line (today's edge-level ones). A tree
- * with no marker claims green everywhere: the match lists what was marked and
- * not reported, and what was reported and not marked, counted, and strict both
- * ways — a violation with a line never satisfies a file claim, nor the
- * reverse.
+ * reader and never compared. Slugs joined by `+` are one group, one fix: `//
+ * red: stable-root + stable-root` is a red and a violation riding with it, the
+ * first slug the lead, whose verdict the marker's word states; `,` separates
+ * groups. The match is over groups: a group reported with riders its marker
+ * does not list, or listed as separate groups, is a mismatch. At a line's end a
+ * marker claims that line. Alone on its line it claims the next code line, so
+ * several stacked above one line claim it each with its own why; alone at the
+ * end of the file it claims the file — the form for a violation that carries no
+ * line (today's edge-level ones). A tree with no marker claims green
+ * everywhere: the match lists what was marked and not reported, and what was
+ * reported and not marked, counted, and strict both ways — a violation with a
+ * line never satisfies a file claim, nor the reverse.
  *
  * A red can be triggered from elsewhere: a helper's tech call is red at its own
  * line, but it runs on import because a root statement calls the helper. Each
@@ -48,6 +52,7 @@
 
 import type { RuleId } from "../../check/rule.model.ts"
 import { RULE_IDS } from "../../check/rule.model.ts"
+import type { ViolationGroup } from "../../check/grouping.model.ts"
 import type { Violation } from "../../check/violation.model.ts"
 import type { BrokenSite } from "../../extraction/graph.model.ts"
 import type { CheckName } from "../../cli/cli.model.ts"
@@ -87,6 +92,11 @@ export type VerdictMarker = {
   /** The line claimed; `null` claims the file. */
   line: number | null
   slug: RuleId
+  /**
+   * The slugs joined to `slug` by `+`: the violations its fix removes with it.
+   * Absent on a group of one, and on a `via`.
+   */
+  riders?: readonly RuleId[]
   /** Prose for the reviewer, kept for the listing, never matched. */
   why: string | null
 }
@@ -107,14 +117,21 @@ export type BrokenMarker = {
 /** A place in the tree: a trigger of a red, in any file. */
 export type Site = { file: string; line: number }
 
-/** What a check reported, reduced to what a marker can claim. */
+/** What a check reported, reduced to what a marker can claim: one group. */
 export type Reported = {
   file: string
   line: number | null
+  /** The lead's rules. */
   slugs: readonly RuleId[]
+  /**
+   * The riders' rules, as a marker writes them; a rider on another line than
+   * the lead's carries it, `stable-root (line 7)`, which no marker writes.
+   * Absent on a group of one.
+   */
+  riders?: readonly string[]
   /** The lines that trigger this red from elsewhere; empty when none. */
   via: readonly Site[]
-  /** Present on a red the reader could not prove: an unknown. */
+  /** Present when the lead is a red the reader could not prove: an unknown. */
   unknown?: true
 }
 
@@ -159,12 +176,12 @@ const LOOKS_LIKE_MARKER =
   /\/\/\s*(?:red|via|false|missed|stubborn|unknown|broken)\b/i
 
 const MARKER =
-  /^\/\/ (?:(false|missed|stubborn) )?(red|via|unknown): ([a-z]+(?:-[a-z]+)*(?:, [a-z]+(?:-[a-z]+)*)*)(?: -- (\S.*))?$/
+  /^\/\/ (?:(false|missed|stubborn) )?(red|via|unknown): ([a-z]+(?:-[a-z]+)*(?:(?:, | \+ )[a-z]+(?:-[a-z]+)*)*)(?: -- (\S.*))?$/
 
 const BROKEN = /^\/\/ broken -- (\S.*)$/
 
 const GRAMMAR =
-  "`// red: <slug>[, <slug>]* [-- <why>]`, `// via:` the same, either as an expected failure (`// false red: <slug> -- <why>`, `// missed red:`), an unknown (`// stubborn unknown: <slug> -- <why>`, `// false unknown:`, `// missed unknown:`), or `// broken -- <why>`"
+  "`// red: <slug>[ + <slug>]*[, <slug>[ + <slug>]*]* [-- <why>]`, `// via: <slug>[, <slug>]*`, either as an expected failure (`// false red: <slug> -- <why>`, `// missed red:`), an unknown (`// stubborn unknown: <slug> -- <why>`, `// false unknown:`, `// missed unknown:`), or `// broken -- <why>`"
 
 const isRuleId = (value: string): value is RuleId =>
   (RULE_IDS as readonly string[]).includes(value)
@@ -176,7 +193,8 @@ type LineMarkers = {
   alone: boolean
   kind: Marker["kind"]
   expectedFailure: ExpectedFailure | null
-  slugs: RuleId[]
+  /** One entry per group: its lead's slug first, then its riders'. */
+  groups: RuleId[][]
   why: string | null
 }
 
@@ -206,7 +224,7 @@ const lineMarkersOf = (
       alone: before.trim() === "",
       kind: "broken",
       expectedFailure: null,
-      slugs: [],
+      groups: [],
       why: broken[1] as string,
     }
   }
@@ -215,17 +233,21 @@ const lineMarkersOf = (
   const kind = match?.[2]
   // an expected failure says what it waits for, a stubborn unknown what it
   // kept: without its why, malformed; `stubborn` is for an unknown only, and
-  // an unknown is always `stubborn`, `false` or `missed`
+  // an unknown is always `stubborn`, `false` or `missed`; a trigger names
+  // the slug of the red it triggers, never a group
   if (
     match === null ||
     (prefix !== undefined && match[4] === undefined) ||
     (prefix === "stubborn" && kind !== "unknown") ||
-    (kind === "unknown" && prefix === undefined)
+    (kind === "unknown" && prefix === undefined) ||
+    (kind === "via" && (match[3] as string).includes(" + "))
   ) {
     throw malformed()
   }
-  const slugs = (match[3] as string).split(", ")
-  for (const slug of slugs) {
+  const groups = (match[3] as string)
+    .split(", ")
+    .map((group) => group.split(" + "))
+  for (const slug of groups.flat()) {
     if (!isRuleId(slug)) {
       throw new Error(
         `${where}: marker names no rule: ${slug} (rules: ${RULE_IDS.join(", ")})`,
@@ -240,7 +262,7 @@ const lineMarkersOf = (
       prefix === undefined || prefix === "stubborn"
         ? null
         : (prefix as ExpectedFailure),
-    slugs: slugs as RuleId[],
+    groups: groups as RuleId[][],
     why: match[4] ?? null,
   }
 }
@@ -269,14 +291,15 @@ export const markersOf = (file: string, source: string): Marker[] => {
     }
     if (found.kind === "broken")
       return [{ kind: "broken" as const, file, line, why: found.why as string }]
-    return found.slugs.map((slug) => ({
+    return found.groups.map(([slug, ...riders]) => ({
       kind: found.kind as VerdictMarker["kind"],
       ...(found.expectedFailure === null
         ? {}
         : { expectedFailure: found.expectedFailure }),
       file,
       line,
-      slug,
+      slug: slug as RuleId,
+      ...(riders.length === 0 ? {} : { riders }),
       why: found.why,
     }))
   })
@@ -295,11 +318,19 @@ export const stripMarkers = (source: string): string =>
     })
     .join("\n")
 
+/** A violation's line, when it names one: the outside rules judge statements. */
+const lineOf = (violation: Violation): number | null =>
+  "line" in violation ? violation.line : null
+
 /**
- * A violation's files: the one it names; for a cycle, every file that closes it
- * — a service cycle's hops by their importing file, a module cycle's files.
+ * A group's files: the one its lead names; for a cycle, every file that closes
+ * it — a service cycle's hops by their importing file, a module cycle's files.
+ * The group's triggers are its members'.
  */
-export const reportedOf = (violation: Violation): Reported[] => {
+export const reportedOf = ({
+  lead: violation,
+  riders,
+}: ViolationGroup): Reported[] => {
   const files =
     violation.check !== "dag"
       ? [violation.file]
@@ -308,8 +339,15 @@ export const reportedOf = (violation: Violation): Reported[] => {
         : violation.files
   // the outside rules judge statements, so they name a line and match on it;
   // the edge-level checks have none and match a file claim
-  const line = "line" in violation ? violation.line : null
-  const via = "via" in violation ? violation.via : []
+  const line = lineOf(violation)
+  const via = [violation, ...riders].flatMap((member) =>
+    "via" in member ? member.via : [],
+  )
+  const riderSlugs = riders.flatMap((rider) =>
+    rider.rules.map((slug) =>
+      lineOf(rider) === line ? slug : `${slug} (line ${lineOf(rider)})`,
+    ),
+  )
   const unknown =
     "unknown" in violation && violation.unknown !== null
       ? { unknown: true as const }
@@ -318,6 +356,7 @@ export const reportedOf = (violation: Violation): Reported[] => {
     file,
     line,
     slugs: violation.rules,
+    ...(riderSlugs.length === 0 ? {} : { riders: riderSlugs }),
     via,
     ...unknown,
   }))
@@ -329,19 +368,25 @@ const key = (file: string, line: number | null, slug: string): string =>
 const viaKey = (site: Site, slug: string): string =>
   key(site.file, site.line, `via ${slug}`)
 
-const markerKey = (marker: VerdictMarker): string =>
-  key(
+/** A group as a marker writes it, riders sorted: `stable-root + stable-root`. */
+const groupText = (slug: string, riders: readonly string[] = []): string =>
+  [slug, ...[...riders].sort()].join(" + ")
+
+const markerKey = (marker: VerdictMarker): string => {
+  const group = groupText(marker.slug, marker.riders)
+  return key(
     marker.file,
     marker.line,
-    marker.kind === "red" ? marker.slug : `${marker.kind} ${marker.slug}`,
+    marker.kind === "red" ? group : `${marker.kind} ${group}`,
   )
+}
 
 /** An expected failure as its marker reads: `file:line false red slug`. */
 const expectedFailureOf = (marker: VerdictMarker): string =>
   key(
     marker.file,
     marker.line,
-    `${marker.expectedFailure} ${marker.kind} ${marker.slug}`,
+    `${marker.expectedFailure} ${marker.kind} ${groupText(marker.slug, marker.riders)}`,
   )
 
 /**
@@ -392,7 +437,11 @@ export const matchVerdicts = (
   const failAsExpected = (marker: VerdictMarker): void => {
     expectedFailures.push(`${expectedFailureOf(marker)} -- ${marker.why}`)
     if (marker.kind === "unknown" && marker.expectedFailure === "false") {
-      const red = key(marker.file, marker.line, marker.slug)
+      const red = key(
+        marker.file,
+        marker.line,
+        groupText(marker.slug, marker.riders),
+      )
       held.set(red, (held.get(red) ?? 0) + 1)
     }
   }
@@ -419,11 +468,12 @@ export const matchVerdicts = (
         triggers.add(trigger)
         claim(trigger)
       }
+      const group = groupText(slug, report.riders)
       claim(
         key(
           report.file,
           report.line,
-          report.unknown === true ? `unknown ${slug}` : slug,
+          report.unknown === true ? `unknown ${group}` : group,
         ),
       )
     }

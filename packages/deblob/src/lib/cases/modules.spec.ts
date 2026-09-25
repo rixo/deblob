@@ -241,11 +241,12 @@ const ROOT_CALLS: readonly Row[] = [
   },
   {
     // canon: "a call that reaches the tech". A `new` is a call; `Worker` is the
-    // host's. The binding stores the call's result and adds no red.
+    // host's. The binding stores the call's result: its verdict rides with the
+    // call, removing the call removes it — one fix.
     name: "a new of a host class at root is a call reaching the tech",
     files: {
       "src/jobs/adapters/worker-pool.adapter.ts": `
-        export const WORKER = new Worker("./w.js") // red: stable-root -- a new is a call, and Worker is the host's: the tech reached on import
+        export const WORKER = new Worker("./w.js") // red: stable-root + stable-root -- a new is a call, and Worker is the host's: the tech reached on import; the binding holding its result rides with it
       `,
     },
   },
@@ -256,7 +257,7 @@ const ROOT_CALLS: readonly Row[] = [
     files: {
       "src/http/adapters/fetch-status.adapter.ts": `
         const STATUS_URL = "https://example.test/status"
-        export const RES: Response = await fetch(STATUS_URL) // red: stable-root -- fetch reaches the tech on import; await adds nothing
+        export const RES: Response = await fetch(STATUS_URL) // red: stable-root + stable-root -- fetch reaches the tech on import; await adds nothing; the binding holding its result rides with it
       `,
     },
   },
@@ -289,8 +290,9 @@ const ROOT_CALLS: readonly Row[] = [
   },
   {
     // canon: "its evaluation creates no mutable state". A call's result stored
-    // adds nothing to the call — unless the binding is reassignable: a `let` or
-    // a writable static is state whatever it holds, so the line carries both.
+    // rides with the call, one fix — unless the binding is reassignable: a
+    // `let` or a writable static is state whatever it holds, a fix of its own,
+    // so the line carries two.
     name: "a red call stored in a let or a writable static is two reds: the call, and the state",
     files: {
       "src/paths/adapters/cwd-paths.adapter.ts": `
@@ -374,7 +376,7 @@ const ROOT_CALLS: readonly Row[] = [
       "node_modules/@nestjs/common/index.js": "module.exports = {}",
       "src/repo/adapters/nest-repo.adapter.ts": `
         import { Injectable } from "@nestjs/common"
-        @Injectable() // red: stable-root -- the tech's decorator runs on import and registers the class
+        @Injectable() // red: stable-root + stable-root -- the tech's decorator runs on import and registers the class: the factory's call, its result applied riding with it
         export class Repo {}
       `,
     },
@@ -393,7 +395,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/users/adapters/user-row.adapter.ts": `
         import { Column } from "typeorm"
         export class UserRow {
-          @Column() // red: stable-root -- the tech's decorator runs when the class is evaluated, on load
+          @Column() // red: stable-root + stable-root -- the tech's decorator runs when the class is evaluated, on load: the factory's call, its result applied riding with it
           name = String(1)
         }
       `,
@@ -466,7 +468,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/fixtures.spec.ts": `
         import { expect, it } from "vitest"
         import { loadFixture } from "./legacy/fixtures.ts"
-        const DATA = loadFixture() // red: stable-root -- a blob's function run on import; not a registration
+        const DATA = loadFixture() // red: stable-root + stable-root -- a blob's function run on import; not a registration; the binding holding its result rides with it
         it("reads", () => {
           expect(DATA.a).toBe(1)
         })
@@ -484,7 +486,65 @@ const ROOT_CALLS: readonly Row[] = [
       "node_modules/sql-template-tag/index.js": "module.exports = {}",
       "src/users/adapters/sql-users.adapter.ts": `
         import sql from "sql-template-tag"
-        export const ALL_USERS = sql\`select * from users\` // red: stable-root -- a tagged template calls the tag on import
+        export const ALL_USERS = sql\`select * from users\` // red: stable-root + stable-root -- a tagged template calls the tag on import; the binding holding its result rides with it
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 3.
+    // canon: "a call that reaches the tech", and "a package nothing claims is
+    // not proven free". What the package's call returned is the package's: a
+    // method called on it runs the package's code. Removing the first call
+    // removes the chain and the binding: one fix.
+    name: "a method chained on an unclaimed package's call is the package's: one fix, led by the first call",
+    files: {
+      "node_modules/cac/package.json": JSON.stringify({
+        name: "cac",
+        main: "./index.js",
+      }),
+      "node_modules/cac/index.js": "module.exports = {}",
+      "src/cli/adapters/cac-cli.adapter.ts": `
+        import { cac } from "cac"
+        export const CLI = cac("notes").option("--verbose", "log more") // red: stable-root + stable-root + stable-root -- cac runs on import; the method called on what it returned is the package's; the binding holds the result
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 3.
+    // canon: "a call that reaches the tech". `.then` is the language's, green;
+    // the binding still holds what came out of `connect()`, through it:
+    // removing `connect()` removes the binding's red too — one fix.
+    name: "a binding holding a language call chained on a red call rides with the red call",
+    files: {
+      "node_modules/mongoose/package.json": JSON.stringify({
+        name: "mongoose",
+        main: "./index.js",
+      }),
+      "node_modules/mongoose/index.js": "module.exports = {}",
+      "src/db/adapters/mongo-db.adapter.ts": `
+        import { connect } from "mongoose"
+        const NOTES_DB = "mongodb://localhost/notes"
+        export const READY = connect(NOTES_DB).then(() => true) // red: stable-root + stable-root -- connect runs on import; .then is the language's; the binding holds what came out of connect()
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 3: a default import's member
+    // read as a language call, green.
+    // canon: "a package nothing claims is not proven free". A member of the
+    // package's export, called, is the package's code, however it is
+    // imported.
+    name: "a method of an unclaimed package's default import, called at root, is the package's",
+    files: {
+      "node_modules/mongoose/package.json": JSON.stringify({
+        name: "mongoose",
+        main: "./index.js",
+      }),
+      "node_modules/mongoose/index.js": "module.exports = {}",
+      "src/db/adapters/mongo-db.adapter.ts": `
+        import mongoose from "mongoose"
+        const NOTES_DB = "mongodb://localhost/notes"
+        mongoose.connect(NOTES_DB) // red: stable-root -- a call into mongoose on import, a package nothing claims
       `,
     },
   },
@@ -607,7 +667,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/cwd.spec.ts": `
         import { expect, it } from "vitest"
         process.chdir("/tmp") // red: stable-root -- a call into the host at a spec's root: not the runner
-        const FIXTURE = import.meta.resolve("./fixture.json") // red: stable-root -- the host's resolver, called at a spec's root: not the runner
+        const FIXTURE = import.meta.resolve("./fixture.json") // red: stable-root + stable-root -- the host's resolver, called at a spec's root: not the runner; the binding holding its result rides with it
         it("runs in tmp", () => {
           expect(process.cwd()).toBe("/tmp")
         })
@@ -628,7 +688,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/loader.model.ts": `
         import("./heavy.model.ts") // red: stable-root -- a call into the module loader on import; a static import says the same
         await import("./heavy.model.ts") // red: stable-root -- awaited, the same call
-        export const HEAVY_MODULE = await import("./heavy.model.ts") // red: stable-root -- stored, the same call; the binding adds nothing
+        export const HEAVY_MODULE = await import("./heavy.model.ts") // red: stable-root + stable-root -- stored, the same call; the binding holding its result rides with it
         export const loadHeavy = () => import("./heavy.model.ts")
       `,
     },

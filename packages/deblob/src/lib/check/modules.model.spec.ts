@@ -10,9 +10,9 @@ import { checkModules } from "./modules.model.ts"
  * carries no reading at all: every outside kind is bound by a stock reader and
  * the coverage extensions are all JavaScript-family, so a covered module with a
  * null reading cannot be built out of a case's tree of strings today. And a
- * root call whose callee the reader cannot place: the one such callee at root
- * is an import that did not resolve, and a case refuses a tree that does not
- * resolve.
+ * root call whose callee the reader cannot place, with the binding storing it:
+ * the one such callee at root is an import that did not resolve, and a case
+ * refuses a tree that does not resolve.
  */
 
 const NODE_DEFAULTS = {
@@ -38,8 +38,8 @@ describe("checkModules", () => {
     expect(checkModules(graph)).toEqual([])
   })
 
-  it("answers unknown for a root call whose callee the reader cannot place", () => {
-    const span = { start: 0, end: 10, line: 2, column: 0 }
+  it("answers unknown for a root call whose callee the reader cannot place, and leads no fix with it", () => {
+    const span = { start: 16, end: 26, line: 2, column: 16 }
     const graph = buildGraph([
       {
         ...NODE_DEFAULTS,
@@ -60,7 +60,29 @@ describe("checkModules", () => {
                 registration: false,
                 handsRunner: false,
                 site: null,
+                calleeCall: null,
               },
+            },
+            // the binding storing it: its verdict is its own, an unknown call
+            // is not a red one a fix removes
+            {
+              kind: "definition",
+              name: "HANDLE",
+              form: "const",
+              exported: false,
+              value: "unknown",
+              immutability: {
+                proof: "unknown",
+                condition: {
+                  kind: "call-result",
+                  callee: null,
+                  construct: false,
+                },
+              },
+              storesMachineRead: false,
+              storedCall: span,
+              inlined: false,
+              span: { start: 6, end: 12, line: 2, column: 6 },
             },
           ],
           hooks: [],
@@ -76,6 +98,7 @@ describe("checkModules", () => {
         reaches: null,
         unknown: { kind: "callee" },
       }),
+      expect.objectContaining({ shape: "root-binding", cause: null }),
     ])
   })
 })

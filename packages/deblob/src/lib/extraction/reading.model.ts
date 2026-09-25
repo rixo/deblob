@@ -227,6 +227,14 @@ const WRAPPERS = new Set([
   "AwaitExpression",
 ])
 
+/** The forms that call: `import()` is a call into the host's module loader. */
+const CALL_FORMS: ReadonlySet<string> = new Set([
+  "CallExpression",
+  "NewExpression",
+  "TaggedTemplateExpression",
+  "ImportExpression",
+])
+
 const unwrap = (node: AstNode): AstNode => {
   let current = node
   while (WRAPPERS.has(current.type)) {
@@ -1326,6 +1334,43 @@ export const readModule = ({
     }
   }
 
+  /** What a call calls: a tagged template's tag, any other call's callee. */
+  const calleeNodeOf = (node: AstNode): AstNode =>
+    (node.type === "TaggedTemplateExpression"
+      ? node["tag"]
+      : node["callee"]) as AstNode
+
+  /**
+   * The call whose result a callee calls: the root of its member chain, when
+   * that root is a call — `import()` included, a call into the loader.
+   */
+  const calleeCallOf = (node: AstNode): Span | null => {
+    const { root } = chainOf(node)
+    return CALL_FORMS.has(root.type) ? spanOf(root) : null
+  }
+
+  /**
+   * A call on what an unclaimed package gave — an export's member, a call's
+   * result — is the package's, as the same on the tech is the tech's; an
+   * intrinsic prototype method (`.then`) is the language's.
+   */
+  const onUnclaimed = (
+    callee: Extract<CalleeKind, { kind: "unclaimed" }>,
+    members: readonly string[],
+  ): CalleeKind =>
+    PROTOTYPE_METHODS.has(members[members.length - 1] as string)
+      ? { kind: "language" }
+      : callee
+
+  /** A member of an import, called: `mongoose.connect()`, `fs.readFileSync()`. */
+  const memberOfImport = (
+    callee: CalleeKind,
+    rest: readonly string[],
+  ): CalleeKind =>
+    callee.kind === "unclaimed"
+      ? onUnclaimed(callee, rest)
+      : memberCallee(resultOf(callee), rest)
+
   /** The callee kind of a call, walking the chain's root as needed. */
   const calleeOf = (node: AstNode, emitting: boolean): CalleeKind => {
     const { root, members, computed } = chainOf(node)
@@ -1356,7 +1401,7 @@ export const readModule = ({
       if (binding.kind === "import") {
         const { callee, rest } = calleeOfImport(binding.import!, members)
         if (rest.length === 0) return callee
-        return memberCallee(resultOf(callee), rest)
+        return memberOfImport(callee, rest)
       }
       const resolved = resolveBinding(binding)
       if (members.length === 0) {
@@ -1392,7 +1437,7 @@ export const readModule = ({
         { specifier, imported: "*", typeOnly: false },
         members,
       )
-      return rest.length === 0 ? callee : memberCallee(resultOf(callee), rest)
+      return rest.length === 0 ? callee : memberOfImport(callee, rest)
     }
     // any other root — a call's result, an expression — is classified by its
     // value kind, called inline or through a member chain
@@ -1400,13 +1445,21 @@ export const readModule = ({
     // called is a use case with the member unknown, a tech value the tech, a
     // computed or literal value the language; `unknown` only for a value of
     // kind unknown (`this`, a binding through itself)
-    const value =
+    if (
       root.type === "CallExpression" ||
       root.type === "NewExpression" ||
       root.type === "TaggedTemplateExpression"
-        ? evaluateCall(root, { kind: "computed" }, emitting)
-        : evaluate(root, { kind: "computed" }, emitting)
-    return memberCallee(value, members)
+    ) {
+      const value = evaluateCall(root, { kind: "computed" }, emitting)
+      // what an unclaimed package's call returned is the package's:
+      // `@Injectable()` applies its decorator, `cac("x").option(…)` calls
+      // its method
+      const made = calleeOf(calleeNodeOf(root), false)
+      return made.kind === "unclaimed"
+        ? onUnclaimed(made, members)
+        : memberCallee(value, members)
+    }
+    return memberCallee(evaluate(root, { kind: "computed" }, emitting), members)
   }
 
   /** `import("./x")` or `require("./x")` (the host's, unbound): the specifier. */
@@ -1751,7 +1804,7 @@ export const readModule = ({
     const memo = inlineMemo.get(node)
     if (!emitting && memo !== undefined) return memo
     const isTagged = node.type === "TaggedTemplateExpression"
-    const calleeNode = (isTagged ? node["tag"] : node["callee"]) as AstNode
+    const calleeNode = calleeNodeOf(node)
     const argNodes = isTagged
       ? ((node["quasi"] as AstNode)["expressions"] as AstNode[])
       : (node["arguments"] as AstNode[])
@@ -1801,6 +1854,7 @@ export const readModule = ({
       handsRunner:
         registers && argNodes.length > 0 && argNodes.every(startsFromReader),
       site: inlineSite,
+      calleeCall: calleeCallOf(calleeNode),
     }
     call.args = readArgs(argNodes, callee, call, emitting)
     emitCall(call, spanOf(calleeNode), emitting)
@@ -2020,6 +2074,7 @@ export const readModule = ({
             registration: false,
             handsRunner: false,
             site: inlineSite,
+            calleeCall: null,
           },
           spanOf(node),
           emitting,
@@ -2134,23 +2189,20 @@ export const readModule = ({
   }
 
   /**
-   * A decorator is a call when the class is evaluated: `@sealed` calls
-   * `sealed`, `@Injectable()` calls the factory, whose result applied to the
-   * class is the same decorator — one call, read where the `@` sits.
+   * A decorator is a call when the class is evaluated, read where the `@` sits:
+   * `@sealed` calls `sealed`; `@Injectable()` is two calls, the factory's and
+   * its result's, applied to the class — the application's callee is the
+   * factory call's result.
    */
   const applyDecorator = (decorator: AstNode): void => {
-    const expression = decorator["expression"] as AstNode
-    const inner = unwrap(expression)
     evaluateCall(
-      inner.type === "CallExpression"
-        ? inner
-        : {
-            ...decorator,
-            type: "CallExpression",
-            callee: expression,
-            arguments: [],
-            optional: false,
-          },
+      {
+        ...decorator,
+        type: "CallExpression",
+        callee: decorator["expression"] as AstNode,
+        arguments: [],
+        optional: false,
+      },
       { kind: "discarded" },
       true,
     )
@@ -2275,12 +2327,7 @@ export const readModule = ({
    */
   const storedCallOf = (init: AstNode): Span | null => {
     const stored = unwrap(init)
-    return stored.type === "CallExpression" ||
-      stored.type === "NewExpression" ||
-      stored.type === "TaggedTemplateExpression" ||
-      stored.type === "ImportExpression"
-      ? spanOf(stored)
-      : null
+    return CALL_FORMS.has(stored.type) ? spanOf(stored) : null
   }
 
   const emitDefinitions = (declaration: AstNode, exported: boolean): void => {

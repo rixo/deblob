@@ -295,6 +295,12 @@ export type ReadCall = {
    * `null` for a call written where it runs.
    */
   site: Span | null
+  /**
+   * The call whose result this call calls, when its callee is one — a decorator
+   * factory's result applied to the class, `cac().command("x")`, the root of
+   * the member chain. `null` for a callee that is not a call's result.
+   */
+  calleeCall: Span | null
 }
 
 /**
@@ -389,9 +395,8 @@ export type ReadStatement =
       storesMachineRead: boolean
       /**
        * The call whose result the binding stores, when its initializer is one
-       * (past `await` and the other wrappers); `null` otherwise. A call's
-       * result stored at root adds nothing to the call: a rule judging the call
-       * there judges the binding by it.
+       * (past `await` and the other wrappers); `null` otherwise. The binding's
+       * violation derives from the call's: removing a red call removes both.
        */
       storedCall: Span | null
       /**
