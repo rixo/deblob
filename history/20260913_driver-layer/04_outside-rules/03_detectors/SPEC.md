@@ -363,6 +363,79 @@ Atomic violations, grouped by fix, as § API drew them:
   calls, 15 riders. A multi-line destructuring stored from a red call is a group
   across lines: rendered well, not markable yet.
 
+### Checkpoint 4, drafted 2026-09-26
+
+The reader facts the assembly rows need, found by dumping the reading of every
+`assembly.spec.ts` row. No verdict changes here: every assembly red stays
+`missed` until checkpoint 5; this checkpoint makes each row's verdict readable
+off the reading, and its gate is reading-level units, one per fact, cut against
+coverage when checkpoint 5's rows take over.
+
+| Fact                                                                                                                                                                                                                                                                                                                                                                            | Today                                                                                                                   | Rows that need it                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| F1. Where a built value is used: each `ResultUse` carries its span                                                                                                                                                                                                                                                                                                              | a use has no place: `limits.max` on line 11 is recorded on the call on line 10                                          | a field read on what the assembly built                                   |
+| F2. A field read straight off a call is `member`                                                                                                                                                                                                                                                                                                                                | `createFsStore(cwd).root` reads `computed`                                                                              | the same row                                                              |
+| F3. A built value called on is a `receiver` use: the call on it is judged as a call                                                                                                                                                                                                                                                                                             | `notes.list()` records `member`/`computed` on `createNotes`'s result; `createConfig({ cwd }).load()` records `computed` | the use-case row (a second, wrong red); both load rows (a false red)      |
+| F4. A record argument carries its entries, each an `ArgValue`                                                                                                                                                                                                                                                                                                                   | `createNotes({ store: root, limits: limits.max })` collapses to `instance`                                              | the field-read row's line 11                                              |
+| F5. A conditional's value is the join of its arms                                                                                                                                                                                                                                                                                                                               | `store === "memory" ? createMemoryStore() : createFsStore(cwd)` reads `computed`                                        | branch on a parameter (a false red); branch on an instance (a second red) |
+| F6. A value that is a call's result carries that call (`from`), so a check reads the callee                                                                                                                                                                                                                                                                                     | `join(cwd, "notes")` handed on reads `computed`                                                                         | the pure builtin row (a false red)                                        |
+| F7. `.map(callback)` on an array is a loop: a `control` over the receiver, the callback's body its arm, the callback's parameter an element of the receiver, the map's value the join of what the callback returns; the receiver proven an array by its annotation (`T[]`, `readonly T[]`, `Array<T>`, `ReadonlyArray<T>`), else the control says so and the verdict is unknown | a `language` call handed a `function`                                                                                   | the three map rows                                                        |
+| F8. A root type declaration (`type`, `interface`) is a root definition                                                                                                                                                                                                                                                                                                          | not in the reading                                                                                                      | the type row                                                              |
+| F9. In an assembly file a local function is not inlined: it is a definition beside the assembly function, and its call a `local` callee                                                                                                                                                                                                                                         | inlined, both invisible                                                                                                 | the helper row                                                            |
+
+`stable-root` reads F8's definitions as code (readonly) and F9's calls as it
+reads any local's in a layer that may touch the tech: red, where today the
+inlined body is judged. Self-check effect to be measured.
+
+**Ruled at review (2026-09-26):**
+
+- **Q1. A parameter no production site binds** — ruled as recommended: a
+  received argument is green whatever its kind; what is passed in is judged
+  where the function is called (a driver's wiring by `wiring-outside-hooks`, a
+  parent assembly by this rule, a test free by design). `createRootedAssembly`
+  (the load row) is called by nothing; the test-factory row's assembly is called
+  by a spec only, and a test's call site binds nothing (a test hands fakes).
+  Both read their parameter `unknown`, so a factory handed it would be unknown
+  where the rows say green. Recommended: canon's letter, "tech values received
+  as parameters" — an argument that is the function's own parameter, or a part
+  of one, is _received_ (`ArgValue.received`), green whatever its kind; the kind
+  still decides everything else. Alternatives: bind a test's sites when no
+  production site binds (reverses the fakes ruling for test factories), or
+  complete the load row's driver and let the test factory read unknown.
+- **Q2. `request.headers.get("x-token")` read as a language call** — the symptom
+  of a wider flaw, fixed before this checkpoint (§ A call on a tech value,
+  below): the line reads a tech call now, and the message says so.
+
+### A call on a tech value, fixed 2026-09-26
+
+Found drafting checkpoint 4: the reader took a call on a tech value for the
+language's when its name was an intrinsic prototype method's (`get`, `push`,
+`then`, `slice`). The name cannot tell a string's `.trim()` from a server's
+`.get()`: an Express `server.get(path, handler)` in a wiring function read as a
+language call, its handler inlined into the wiring function instead of cut as a
+hook (where `server.post` was cut); `window.dataLayer.push(…)` at root read
+green.
+
+- **Ruled:** a call on a tech value, or on what an unclaimed package gave, is
+  the tech's or the package's, whatever its name. Classification follows what
+  the reader proved the receiver to be, never the method's name; a call on a
+  literal or an operator's result stays the language's. Canon's escape hatch
+  stays the only one: the tech's reading declaring a call effect-free.
+- **Consequences:** `process.argv.slice(2).map(cb)` in a driver cuts `cb` as a
+  hook, until a Node reading declares `argv` an array — confessed at root
+  (`export const ARGS = process.argv.slice(2)`: `false red` on the call's group,
+  `missed red` on the read of the machine), the driver half to be marked when
+  the driver check can report it; `connect().then(…)` stored is three members of
+  one group. The name-based set is gone from the reader.
+- **Rows:** new, the `get` route (`driver.spec.ts`, green, a gate for the driver
+  check: nothing reports it today, the reader fixture pins the hook), the data
+  layer push at root, and a binding through a language call on a local's result
+  (the green link the `.then` row used to pin); re-stamp, the `.then` row.
+  Falsification: the host global's call (1 row), a tech value's (reader units),
+  an unclaimed package's (1 row).
+- **Self-check:** 140, one new: `bin.ts`'s `process.argv.slice(2)` at root, a
+  line already red.
+
 ## Docs
 
 `check/README.md`: the three checks and the call clause. `cases/README.md`: the

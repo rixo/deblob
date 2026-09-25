@@ -174,28 +174,6 @@ const LITERAL_GLOBALS: ReadonlySet<string> = new Set([
   "Infinity",
 ])
 
-/**
- * The method names of the intrinsics' prototypes — `map`, `slice`, `then`,
- * `toString` — read off the engine's own intrinsics, which are the language's
- * by definition: a member call on a tech value under one of these names is a
- * language call (`process.argv.slice(2)`), any other name is the tech's
- * (`process.on`, `cli.command`). Only the constructors named above are read, so
- * a host's globals contribute nothing.
- */
-const PROTOTYPE_METHODS: ReadonlySet<string> = new Set(
-  [...LANGUAGE_GLOBALS].flatMap((name) => {
-    const intrinsic = (globalThis as Record<string, unknown>)[name]
-    const prototype =
-      typeof intrinsic === "function"
-        ? (intrinsic as { prototype?: unknown }).prototype
-        : undefined
-    if (typeof prototype !== "object" || prototype === null) return []
-    return Object.entries(Object.getOwnPropertyDescriptors(prototype))
-      .filter(([, descriptor]) => typeof descriptor.value === "function")
-      .map(([member]) => member)
-  }),
-)
-
 type AstNode = Record<string, unknown> & {
   type: string
   start: number
@@ -1315,7 +1293,6 @@ export const readModule = ({
     root: Resolved,
     members: readonly string[],
   ): CalleeKind => {
-    const last = members[members.length - 1] as string
     switch (root.kind) {
       case "instance":
         return {
@@ -1323,10 +1300,10 @@ export const readModule = ({
           member: [...root.path, ...members].join("."),
           origin: root.origin,
         }
+      // the name cannot prove what the tech value is: a call on it is the
+      // tech's, `.trim()` as much as `.get()` (ruled 2026-09-26)
       case "tech":
-        return PROTOTYPE_METHODS.has(last)
-          ? { kind: "language" }
-          : { kind: "tech", package: null }
+        return { kind: "tech", package: null }
       case "unknown":
         return { kind: "unknown" }
       default:
@@ -1350,26 +1327,15 @@ export const readModule = ({
   }
 
   /**
-   * A call on what an unclaimed package gave — an export's member, a call's
-   * result — is the package's, as the same on the tech is the tech's; an
-   * intrinsic prototype method (`.then`) is the language's.
+   * A member of an import, called: `mongoose.connect()`, `fs.readFileSync()`. A
+   * call on what an unclaimed package gave is the package's, as the same on the
+   * tech is the tech's.
    */
-  const onUnclaimed = (
-    callee: Extract<CalleeKind, { kind: "unclaimed" }>,
-    members: readonly string[],
-  ): CalleeKind =>
-    PROTOTYPE_METHODS.has(members[members.length - 1] as string)
-      ? { kind: "language" }
-      : callee
-
-  /** A member of an import, called: `mongoose.connect()`, `fs.readFileSync()`. */
   const memberOfImport = (
     callee: CalleeKind,
     rest: readonly string[],
   ): CalleeKind =>
-    callee.kind === "unclaimed"
-      ? onUnclaimed(callee, rest)
-      : memberCallee(resultOf(callee), rest)
+    callee.kind === "unclaimed" ? callee : memberCallee(resultOf(callee), rest)
 
   /** The callee kind of a call, walking the chain's root as needed. */
   const calleeOf = (node: AstNode, emitting: boolean): CalleeKind => {
@@ -1381,15 +1347,7 @@ export const readModule = ({
       const binding = lookup(scope, name)
       if (binding === null) {
         if (LANGUAGE_GLOBALS.has(name)) return { kind: "language" }
-        // a host global: the host is the tech; a language method on it
-        // (`process.env.X.trim()`) reads the tech value it is called on
-        if (
-          members.length > 0 &&
-          PROTOTYPE_METHODS.has(members[members.length - 1] as string)
-        ) {
-          countRead(emitting)
-          return { kind: "language" }
-        }
+        // a host global: the host is the tech, and so is any call on it
         return { kind: "tech", package: null }
       }
       if (emitting)
@@ -1417,15 +1375,7 @@ export const readModule = ({
         if (resolved.kind === "unknown") return { kind: "unknown" }
         return { kind: "language" }
       }
-      const callee = memberCallee(resolved, members)
-      // a language method on a tech value held as a read (`env.X.trim()`)
-      if (
-        callee.kind === "language" &&
-        resolved.kind === "tech" &&
-        holdsRead(binding)
-      )
-        countRead(emitting)
-      return callee
+      return memberCallee(resolved, members)
     }
     if (root.type === "ImportExpression") {
       const value = evaluate(root, { kind: "computed" }, emitting)
@@ -1455,9 +1405,7 @@ export const readModule = ({
       // `@Injectable()` applies its decorator, `cac("x").option(…)` calls
       // its method
       const made = calleeOf(calleeNodeOf(root), false)
-      return made.kind === "unclaimed"
-        ? onUnclaimed(made, members)
-        : memberCallee(value, members)
+      return made.kind === "unclaimed" ? made : memberCallee(value, members)
     }
     return memberCallee(evaluate(root, { kind: "computed" }, emitting), members)
   }

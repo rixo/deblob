@@ -1084,11 +1084,14 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(
       calls.find((call) => call.span.line === 29)?.args.map((arg) => arg.kind),
     ).toEqual(["tech", "instance"])
-    // the hooks: one use-case call each, through the assembly's returned record
-    expect(main.hooks.map((hook) => hook.span.line)).toEqual([15, 19, 24, 34])
+    // the hooks: one use-case call each, through the assembly's returned
+    // record — and `files.map(…)`'s callback, `files` a tech call's result
+    expect(main.hooks.map((hook) => hook.span.line)).toEqual([
+      15, 19, 24, 31, 34,
+    ])
     // assignments in a hook: statements of their own, the target root's kind
     // — the hook's parameter and the host global are both tech-held
-    expect(main.hooks[3]?.body).toEqual([
+    expect(main.hooks[4]?.body).toEqual([
       { kind: "assignment", target: "tech", span: expect.anything() },
       { kind: "assignment", target: "tech", span: expect.anything() },
     ])
@@ -1122,10 +1125,12 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(kindsOf(callsOf(main.hooks[2]?.hooks[0]?.body ?? []))).toEqual([
       "use-case",
     ])
-    // `.map` and `.then` callbacks: not hooks — read inline where they sit.
-    // The use case hidden in the `.then` is a call of the wiring zone, its
-    // result handed to the language; nothing open
-    expect(at(31)).toEqual([{ kind: "language" }])
+    // a call on a tech value is the tech's whatever its name — the name cannot
+    // prove `files` an array — so `.map`'s callback is a hook; a `.then` on
+    // the language's promise is not: read inline where it sits. The use case
+    // hidden in the `.then` is a call of the wiring zone, its result handed to
+    // the language; nothing open
+    expect(at(31)).toEqual([{ kind: "tech", package: null }])
     expect(at(32)).toEqual([
       { kind: "language" },
       {

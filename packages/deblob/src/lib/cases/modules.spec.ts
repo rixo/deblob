@@ -510,11 +510,13 @@ const ROOT_CALLS: readonly Row[] = [
     },
   },
   {
-    // Added at the detectors step, checkpoint 3.
-    // canon: "a call that reaches the tech". `.then` is the language's, green;
-    // the binding still holds what came out of `connect()`, through it:
-    // removing `connect()` removes the binding's red too — one fix.
-    name: "a binding holding a language call chained on a red call rides with the red call",
+    // Re-stamped at the detectors step, checkpoint 3: `.then` read the
+    // language's by its name until the ruling below; it is the package's now,
+    // a third member of the group.
+    // canon: "a call that reaches the tech"; "a package nothing claims is not
+    // proven free". A call on what the package gave is the package's whatever
+    // its name (ruled 2026-09-26): the name cannot prove a promise.
+    name: "a promise chained on an unclaimed package's call is the package's: one fix, led by the first call",
     files: {
       "node_modules/mongoose/package.json": JSON.stringify({
         name: "mongoose",
@@ -524,7 +526,55 @@ const ROOT_CALLS: readonly Row[] = [
       "src/db/adapters/mongo-db.adapter.ts": `
         import { connect } from "mongoose"
         const NOTES_DB = "mongodb://localhost/notes"
-        export const READY = connect(NOTES_DB).then(() => true) // red: stable-root + stable-root -- connect runs on import; .then is the language's; the binding holds what came out of connect()
+        export const READY = connect(NOTES_DB).then(() => true) // red: stable-root + stable-root + stable-root -- connect runs on import; .then is called on what it gave, the package's; the binding holds the result
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 3.
+    // canon: "a call that … goes into a local function of a file whose layer
+    // may touch the tech". `.trim()` on the local's string result is the
+    // language's, green; the binding holds what came out of `nameOf()`,
+    // through it: removing the call removes the binding's red too — one fix.
+    name: "a binding holding a language call chained on a red call rides with the red call",
+    files: {
+      "src/clock/adapters/system-clock.adapter.ts": `
+        export const nameOf = (name: string): string => "clock:" + name
+        export const NAME = nameOf(" system ").trim() // red: stable-root + stable-root -- a local of an adapter, run on import; .trim() is the language's on its string; the binding holds what came out of nameOf()
+        export const createSystemClock = () => ({ now: () => Date.now() })
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 3: the push read as the
+    // language's by its name, green.
+    // canon: "a call that reaches the tech". `window` is the host's, and so is
+    // any call on it: `push` is the analytics queue's, whatever an array's is
+    // called (ruled 2026-09-26).
+    name: "a method on a host global named like an array's is still the host's: a push into the page's data layer at root is red",
+    files: {
+      "src/analytics/adapters/gtm-analytics.adapter.ts": `
+        window.dataLayer.push({ event: "loaded" }) // red: stable-root -- a call into the host on import
+        export const createGtmAnalytics = () => ({ track: (event: string) => window.dataLayer.push({ event }) })
+      `,
+    },
+  },
+
+  {
+    // Added at the detectors step, checkpoint 3: the known cost of today's
+    // name ruling, confessed.
+    // canon: "stores nothing read from the machine". `process.argv` is an
+    // array and `.slice` the language's: the call is free, the binding stores
+    // a read of the machine — one red. The reader cannot prove `argv` an array
+    // until a Node reading declares it, so it takes `.slice` for the host's
+    // call, the binding riding with it.
+    name: "a language method on a host array stored at root is a read of the machine, not a call into the host",
+    files: {
+      "src/cli/adapters/argv-args.adapter.ts": `
+        // false red: stable-root + stable-root -- .slice read as the host's call: the name cannot prove argv an array until a Node reading declares it
+        // missed red: stable-root -- the binding stores a read of the machine; missed while the call is taken for the host's
+        export const ARGS = process.argv.slice(2)
+        export const createArgvArgs = () => ({ list: () => ARGS })
       `,
     },
   },

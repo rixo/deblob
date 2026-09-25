@@ -53,6 +53,35 @@ const IMPORTS = `
 
 const ROWS: readonly Row[] = [
   {
+    // Added at the detectors step, checkpoint 3: `get` read as the
+    // language's by its name, so its handler was read inline into the wiring
+    // function — a use case outside the hooks — where `post` was cut.
+    // canon: a hook is a function handed to the tech; "each hook … exactly
+    // one use-case call". A call on the server is the tech's whatever its
+    // name (ruled 2026-09-26).
+    name: "a route registered with get is a hook like any other: its handler holds the one use case",
+    config: { driverTech: ["express"] },
+    files: {
+      ...CLI,
+      "node_modules/express/package.json": JSON.stringify({
+        name: "express",
+        main: "./index.js",
+      }),
+      "node_modules/express/index.js": "module.exports = {}",
+      "src/web.driver.ts": `
+        import express from "express"
+        import { createCliAssembly } from "./cli.assembly.ts"
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const server = express()
+          server.get("/check", (request: unknown) => cli.check(request))
+          server.post("/status", (request: unknown) => cli.status(request))
+          server.listen(3000)
+        }
+      `,
+    },
+  },
+  {
     // canon: "outside its hooks, a driver only wires: assembly calls, tech
     // setup (the parser, the server, the mount), sub-driver registration";
     // "each hook … exactly one use-case call", its result returned.

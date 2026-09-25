@@ -120,29 +120,29 @@ and open.
   a free global is the language when ECMAScript defines it and the host's tech
   otherwise; a local function a local, carrying the flavor's word as `factory`
   (a local factory's instance has no origin); a member called on an instance is
-  a use case, on a tech value the tech unless the name is an intrinsic prototype
-  method's. Every call carries its arguments (kind, and for an instance where it
-  came from) and where its result reaches; a use case that matches a declared
-  load by member name — and by file when the instance is traced to a factory
-  that is not an assembly's record — is marked, its result a tech value. A call
-  into the runner the file's own reader claims, where that reader exempts
-  registration, is marked a `registration`; a call read inside a tracked local's
-  body carries the root call that ran it (`site`); a definition whose
-  initializer is a call carries that call (`storedCall`), past `await` and the
-  other wrappers; a call whose callee is a call's result carries that call
-  (`calleeCall`), the root of its member chain. What an unclaimed package gives
-  — an export's member, a call's result — called, is that package's, an
-  intrinsic prototype method the language's. The external import's claim says
-  who made it: `reader` (the file's own), `tech` (`driverTech`, a concrete
-  builtin), `model` (pure). What runs where it is written is read there: an
-  immediately invoked function's body, inline at its call (its `site`);
-  `import()`, a call into the host's module loader; a class's evaluation — its
-  decorators and its members' (a factory's, `@Injectable()`, two calls: the
-  factory's and its result's, applied), its static blocks, its static fields as
-  definitions (`readonly` proven by what it holds, a writable one reassignable,
-  form `static`). The cut: a function handed to a tech callee is a hook, nested
-  hooks included; one handed to anything else is read inline where it sits.
-  Takes plain data, never the port: the service chooses the tech.
+  a use case, on a tech value the tech, whatever its name (`.get()`, `.trim()`:
+  the name cannot prove what the value is). Every call carries its arguments
+  (kind, and for an instance where it came from) and where its result reaches; a
+  use case that matches a declared load by member name — and by file when the
+  instance is traced to a factory that is not an assembly's record — is marked,
+  its result a tech value. A call into the runner the file's own reader claims,
+  where that reader exempts registration, is marked a `registration`; a call
+  read inside a tracked local's body carries the root call that ran it (`site`);
+  a definition whose initializer is a call carries that call (`storedCall`),
+  past `await` and the other wrappers; a call whose callee is a call's result
+  carries that call (`calleeCall`), the root of its member chain. What an
+  unclaimed package gives — an export's member, a call's result — called, is
+  that package's. The external import's claim says who made it: `reader` (the
+  file's own), `tech` (`driverTech`, a concrete builtin), `model` (pure). What
+  runs where it is written is read there: an immediately invoked function's
+  body, inline at its call (its `site`); `import()`, a call into the host's
+  module loader; a class's evaluation — its decorators and its members' (a
+  factory's, `@Injectable()`, two calls: the factory's and its result's,
+  applied), its static blocks, its static fields as definitions (`readonly`
+  proven by what it holds, a writable one reassignable, form `static`). The cut:
+  a function handed to a tech callee is a hook, nested hooks included; one
+  handed to anything else is read inline where it sits. Takes plain data, never
+  the port: the service chooses the tech.
 
 ## Ports
 

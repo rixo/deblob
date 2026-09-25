@@ -183,8 +183,9 @@ describe("readModule", () => {
       // an unbound tag, `process.on`: the host is the tech
       expect(callee(26)).toEqual({ kind: "tech", package: null })
       expect(callee(56)).toEqual({ kind: "tech", package: null })
-      // a prototype method on a tech value: the language
-      expect(callee(55)).toEqual({ kind: "language" })
+      // a call on a tech value is the tech's, whatever its name
+      // (`process.argv.slice(2)`): the name cannot prove what the value is
+      expect(callee(55)).toEqual({ kind: "tech", package: null })
       // a member of a computed value, a call on a literal
       expect(callee(42)).toEqual({ kind: "language" })
       expect(callee(57)).toEqual({ kind: "language" })
@@ -653,8 +654,8 @@ describe("readModule", () => {
 
     test("bare calls on odd roots: a file outside coverage is the tech; a non-literal import or an expression called is the language; a module namespace called bare stays unknown", () => {
       expect(callee(67)).toEqual({ kind: "tech", package: "./outside.ts" })
-      // a prototype method on a tech-held value
-      expect(callee(68)).toEqual({ kind: "language" })
+      // a call on a tech-held value is the tech's, whatever its name
+      expect(callee(68)).toEqual({ kind: "tech", package: null })
       // the promise of a module the reader cannot name: a computed value
       expect(callee(69)).toEqual({ kind: "language" })
       // a namespace is not callable — no export named, nothing to classify
