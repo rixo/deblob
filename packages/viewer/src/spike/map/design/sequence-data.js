@@ -4,8 +4,10 @@
 (function (root) {
   const TAG = { if: 'opt', '?:': 'opt', '&&': 'opt', '||': 'opt', '??': 'opt', switch: 'alt', dispatch: 'alt', loop: 'loop', catch: 'catch', callback: 'later' };
   const cut = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
-  let snapP = null;
-  const load = url => (snapP = snapP || fetch(url).then(r => r.json()));
+  // one fetch per url (the embedded panel and a standalone one share it); a
+  // project switch asks for another url and must get that snapshot
+  const snaps = new Map();
+  const load = url => { if (!snaps.has(url)) snaps.set(url, fetch(url).then(r => r.json())); return snaps.get(url); };
 
   function build(S, hookName, opts) {
     const hide = new Set((opts && opts.hide) || ['unbound']);

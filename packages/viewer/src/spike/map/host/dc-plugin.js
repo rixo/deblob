@@ -10,9 +10,10 @@ import { compileDc } from "./dc-compile.js"
 
 export const DESIGN = resolve(import.meta.dirname, "../design")
 
+// their tests and headless checks (`x.test.js`, `x.check.js`) are not engine
 const engineScripts = () =>
   readdirSync(DESIGN).filter(
-    (name) => name.endsWith(".js") && !name.endsWith(".test.js"),
+    (name) => name.endsWith(".js") && !/\.(test|check)\.js$/.test(name),
   )
 
 export function dc() {

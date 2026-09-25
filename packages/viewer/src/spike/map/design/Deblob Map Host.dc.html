@@ -802,7 +802,7 @@ class Component extends DCLogic {
   // it uses: an import from the caller's module to the callee's, on the called
   // symbol when the import names it, else every import of that pair.
   stackOf(id) {
-    if (!id || !this.callData || !window.CallStack || (this.props.calls || 'arcs') === 'off' || this.graphSrc() !== './data/deblob-seq-graph.js') return null;
+    if (!id || !this.callData || !window.CallStack || (this.props.calls || 'arcs') === 'off' || (!this.project() && this.graphSrc() !== './data/deblob-seq-graph.js')) return null;
     if (this._stk && this._stk.id === id && this._stk.D === this.callData) return this._stk.v;
     const v = window.CallStack.of(this.callData, id);
     if (v) {
