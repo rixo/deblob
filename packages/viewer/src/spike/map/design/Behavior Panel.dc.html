@@ -34,8 +34,36 @@
       <sc-if value="{{ hasReadme }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:{{ rmPad }};border-bottom:1px solid {{ rmRule }}">
           <sc-for list="{{ readme }}" as="b" hint-placeholder-count="2">
-            <sc-if value="{{ b.isH }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;font-weight:600;color:#ecebe6;margin-top:4px">{{ b.h }}</span></sc-if>
-            <sc-if value="{{ b.isP }}" hint-placeholder-val="{{ true }}"><p style="margin:0;font-size:14px;line-height:23px;color:#ecebe6;text-wrap:pretty"><sc-for list="{{ b.segs }}" as="g" hint-placeholder-count="1"><span style="font-family:{{ g.ff }};font-size:{{ g.fs }};color:{{ g.c }}">{{ g.t }}</span></sc-for></p></sc-if>
+            <sc-if value="{{ b.isH }}" hint-placeholder-val="{{ false }}"><span style="font-size:{{ b.hfs }};font-weight:600;color:#ecebe6;margin-top:4px;text-wrap:pretty"><sc-for list="{{ b.segs }}" as="g" hint-placeholder-count="1"><span style="font-family:{{ g.ff }};color:{{ g.c }}">{{ g.t }}</span></sc-for></span></sc-if>
+            <sc-if value="{{ b.isP }}" hint-placeholder-val="{{ true }}"><p style="margin:0;font-size:14px;line-height:23px;color:#ecebe6;text-wrap:pretty"><sc-for list="{{ b.segs }}" as="g" hint-placeholder-count="1"><span style="font-family:{{ g.ff }};font-size:{{ g.fs }};color:{{ g.c }};text-decoration:{{ g.deco }};text-underline-offset:3px">{{ g.t }}</span></sc-for></p></sc-if>
+            <sc-if value="{{ b.isList }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <sc-for list="{{ b.items }}" as="it" hint-placeholder-count="3">
+                  <div style="display:flex;gap:8px;padding-left:{{ it.pad }}px;font-size:14px;line-height:23px;color:#ecebe6">
+                    <span style="flex:none;min-width:14px;color:#8f8d87;font:400 12px/23px 'IBM Plex Mono',monospace">{{ it.mark }}</span>
+                    <span style="flex:1;min-width:0;text-wrap:pretty"><sc-for list="{{ it.segs }}" as="g" hint-placeholder-count="1"><span style="font-family:{{ g.ff }};font-size:{{ g.fs }};color:{{ g.c }};text-decoration:{{ g.deco }};text-underline-offset:3px">{{ g.t }}</span></sc-for></span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ b.isCode }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#0f1013;border:1px solid #23252b;border-radius:8px;padding:10px 0;overflow-x:auto">
+                <sc-for list="{{ b.lines }}" as="l" hint-placeholder-count="3"><div style="padding:0 12px;white-space:pre;font:400 11.5px/18px 'IBM Plex Mono',monospace;color:#cfcdc7">{{ l.t }}</div></sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ b.isTable }}" hint-placeholder-val="{{ false }}">
+              <div style="overflow-x:auto;border:1px solid #23252b;border-radius:8px">
+                <table style="border-collapse:collapse;width:100%;font-size:12.5px;line-height:18px">
+                  <sc-for list="{{ b.rows }}" as="row" hint-placeholder-count="3">
+                    <tr>
+                      <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="2">
+                        <td style="padding:6px 10px;vertical-align:top;border-top:1px solid {{ row.rule }};color:{{ row.c }};font-weight:{{ row.fw }};text-wrap:pretty"><sc-for list="{{ cell.segs }}" as="g" hint-placeholder-count="1"><span style="font-family:{{ g.ff }};font-size:{{ g.fsS }}">{{ g.t }}</span></sc-for></td>
+                      </sc-for>
+                    </tr>
+                  </sc-for>
+                </table>
+              </div>
+            </sc-if>
           </sc-for>
         </div>
       </sc-if>
@@ -92,8 +120,47 @@ const KC = { service: '#3fb0ff', ports: '#d69bff', model: '#6fe58a', adapters: '
 const LAYER = { hex: 'hexagon', 'g:service': 'service', 'g:ports': 'ports', 'g:model': 'model', 'g:adapters': 'adapters', 'g:driver': 'driver', 'g:assembly': 'assembly', 'g:externals': 'externals' };
 const HEX = ['service', 'ports', 'model'];
 
-const seg = (t, c, mono, big) => ({ t, ff: mono ? MONO : SANS, fs: mono ? (big ? '12.5px' : '12px') : (big ? '13.5px' : '13px'), c });
+const seg = (t, c, mono, big, deco) => ({ t, ff: mono ? MONO : SANS, fs: mono ? (big ? '12.5px' : '12px') : (big ? '13.5px' : '13px'), fsS: mono ? '11.5px' : '12.5px', c, deco: deco || 'none' });
 const segsOf = (t, c, big = true) => String(t || '').split('`').map((p, i) => seg(p, c, i % 2 === 1, big)).filter(s => s.t);
+// README inline text: `code` and [text](url) (shown as underlined text).
+const inline = (t, c) => {
+  const out = [];
+  String(t || '').split('`').forEach((p, i) => {
+    if (i % 2) { if (p) out.push(seg(p, c, true, true)); return; }
+    let last = 0, m = null; const re = /\[([^\]]+)\]\(([^)]+)\)/g;
+    while ((m = re.exec(p))) { if (m.index > last) out.push(seg(p.slice(last, m.index), c, false, true)); out.push(seg(m[1], c, false, true, 'underline 1px #5d5c58')); last = m.index + m[0].length; }
+    if (last < p.length) out.push(seg(p.slice(last), c, false, true));
+  });
+  return out;
+};
+// README blocks (reply to FROM-DEBLOB ask 4): { h, level? } · { p } · { ul | ol: [text | { t, ul | ol }] }
+// · { code, lang? } · { table: { head?: [text], rows: [[text]] } }. Unknown kinds are skipped.
+const NB = { isH: false, isP: false, isList: false, isCode: false, isTable: false, segs: [], items: [], lines: [], rows: [], hfs: '13px' };
+function blocks(B) {
+  const out = [];
+  for (const b of B || []) {
+    if (!b) continue;
+    if (b.h != null) out.push({ ...NB, isH: true, segs: inline(b.h, INK), hfs: (b.level || 2) <= 1 ? '15px' : b.level === 2 || !b.level ? '13.5px' : '13px' });
+    else if (b.p != null) out.push({ ...NB, isP: true, segs: inline(b.p, INK) });
+    else if (b.ul || b.ol) {
+      const items = [];
+      const walk = (L, ordered, depth) => (L || []).forEach((x, i) => {
+        const t = typeof x === 'string' ? x : (x && x.t) || '';
+        items.push({ pad: depth * 18, mark: ordered ? (i + 1) + '.' : '•', segs: inline(t, INK) });
+        if (x && typeof x === 'object') { if (x.ul) walk(x.ul, false, depth + 1); if (x.ol) walk(x.ol, true, depth + 1); }
+      });
+      walk(b.ul || b.ol, !!b.ol, 0);
+      out.push({ ...NB, isList: true, items });
+    } else if (b.code != null) out.push({ ...NB, isCode: true, lines: String(b.code).replace(/\n$/, '').split('\n').map(t => ({ t: t || ' ' })) });
+    else if (b.table) {
+      const T = b.table, rows = [];
+      if (T.head) rows.push({ cells: T.head.map(c => ({ segs: inline(c, INK) })), rule: 'transparent', c: INK, fw: 600 });
+      (T.rows || []).forEach((r, i) => rows.push({ cells: r.map(c => ({ segs: inline(String(c), INK2) })), rule: i || T.head ? '#23252b' : 'transparent', c: INK2, fw: 400 }));
+      out.push({ ...NB, isTable: true, rows });
+    }
+  }
+  return out;
+}
 const cap = (s) => { if (s[0] && s[0].ff === SANS) s[0] = { ...s[0], t: s[0].t[0].toUpperCase() + s[0].t.slice(1) }; return s; };
 const plain = (t) => t.replace(/`/g, '');
 const pathTo = (nodes, id, acc = []) => {
@@ -144,6 +211,21 @@ const fnSyms = (it) => (it.syms || []).filter(s => s.form === 'function' && !s.t
 
 class Component extends DCLogic {
   state = { pin: false, manual: null, aOpen: null, aHov: null, gOpen: {} };
+  // Data source (reply to FROM-DEBLOB ask 3): the project's `behavior` url
+  // (JSON { readmes, fns, docs }) when projects.json names one, loaded on a
+  // project switch; else the seeded lorem. With real data nothing is
+  // invented: a missing function entry is "not known yet".
+  source() {
+    const url = this.props.behavior || null, BL = window.BehaviorLorem;
+    if (!url) return BL ? { fnFor: BL.fnFor, readmeFor: BL.readmeFor, docFor: BL.docFor, authored: (id, n) => !!BL.fns[id + '#' + n] } : null;
+    if (this._url !== url) {
+      this._url = url; this._data = null;
+      fetch(url).then(r => r.ok ? r.json() : null).catch(() => null).then(j => { if (this._url === url) { this._data = j || {}; this.forceUpdate(); } });
+    }
+    const D = this._data; if (!D) return null;
+    return { fnFor: (id, n) => (D.fns || {})[id + '#' + n] || { known: false, tree: [] }, readmeFor: id => (D.readmes || {})[id] || null,
+      docFor: id => (D.docs || {})[id] || null, authored: (id, n) => !!(D.fns || {})[id + '#' + n] };
+  }
   // The mount covers the map (inset 0) and the runtime passes only position /
   // size to it: let pointer events through every wrapper up to the map canvas.
   rootRef = el => {
@@ -169,14 +251,21 @@ class Component extends DCLogic {
   }
 
   renderVals() {
-    const S = this.state, P = this.props, BL = window.BehaviorLorem, set = (o) => this.setState(o);
+    const S = this.state, P = this.props, BL = this.source(), set = (o) => this.setState(o);
     const ix = this.index(P.graph), sel = P.sel || null, subj = BL ? this.subject(sel, ix) : null;
+    if (this._proj !== P.behavior) { this._proj = P.behavior; if (S.aOpen || Object.keys(S.gOpen).length) Promise.resolve().then(() => this.setState({ aOpen: null, gOpen: {} })); }
     const manual = S.manual && S.manual.sel === sel ? S.manual : null;
     const open = S.pin || (manual ? manual.open : !!subj);
     if (this._rep !== open) { this._rep = open; Promise.resolve().then(() => P.onWidth && P.onWidth(open ? W : 0)); }
     const key = (k) => (sel || '') + '|' + k;
 
+    const note = (t, c) => ({ pad: 0, mt: '0px', fst: 'normal', fw: 400, segs: segsOf(t, c), deco: 'none', cur: 'default', bgc: 'transparent', dig: '', digOp: 0,
+      onClick: () => {}, onEnter: () => {}, onLeave: () => {}, hasNote: false, note: [], hasCode: false, code: [], hasGot: false, got: '', where: '' });
+    // Ask 5: `known: false` = behavior not extracted yet (no mark, said once);
+    // known with an empty tree = nothing describes it (flagged, amber).
     const groupOf = (F, gid, name, look) => {
+      if (F.known === false) return { rows: [note('Behavior not extracted yet.', MUTE)], failing: false, gap: false, unknown: true };
+      if (!(F.tree || []).length) return { rows: [note('No behavior describes it.', AMB)], failing: false, gap: true, empty: true };
       const rows = outline(F).map(r => {
         const leaf = r.type === 'it' || r.type === 'test', k = key(gid + ':' + r.id);
         const on = S.aOpen === k, hov = S.aHov === k, fail = !!r.node.fail;
@@ -202,7 +291,7 @@ class Component extends DCLogic {
       return { rows, failing, gap: !!F.gap };
     };
     const specOf = (it) => String(it.file || it.id).split('/').pop().replace(/(\.[a-z]+)$/, '.spec$1');
-    const fnDoc = (it, s) => { const F = BL.fnFor(it.id, s.name); return (BL.fns[it.id + '#' + s.name] && F.doc) || s.doc || F.doc; };
+    const fnDoc = (it, s) => { const F = BL.fnFor(it.id, s.name); return BL.authored(it.id, s.name) ? F.doc || s.doc : s.doc || F.doc; };
 
     let head = null, readme = null, groups = [];
     if (subj && subj.kind !== 'box') {
@@ -213,7 +302,7 @@ class Component extends DCLogic {
         if (fn) { const g = groupOf(BL.fnFor(it.id, s.name), s.name, s.name, { spec: specOf(it) });
           groups = [{ ...g, showHead: false, open: true, gpad: '0', rule: 'transparent', rowsPad: '0' }]; }
       } else {
-        head = { title: it.label, path: it.file || it.id, doc: it.doc || BL.docFor(it.id), sq: kc, mono: true };
+        head = { title: it.label, path: it.file || it.id, doc: BL.docFor(it.id) || it.doc, sq: kc, mono: true };
         groups = fnSyms(it).map((s, i) => ({ ...groupOf(BL.fnFor(it.id, s.name), s.name, s.name, { spec: specOf(it) }),
           showHead: true, foldable: false, open: true, name: s.name + '()', kc, doc: segsOf(fnDoc(it, s), INK2, false), docPad: 15, cur: 'default',
           gpad: i ? '12px 0 4px' : '0 0 4px', rule: i ? '#22242a' : 'transparent', rowsPad: '6px 0 2px 0', onToggle: () => {} }));
@@ -227,16 +316,16 @@ class Component extends DCLogic {
       for (const it of ix.list) if (inC(it) && (!lk || lk.includes(it.group))) for (const s of fnSyms(it)) fns.push([it, s]);
       groups = fns.map(([it, s], i) => {
         const gid = it.id + '#' + s.name, k = key('g:' + gid), on = !!S.gOpen[k], F = BL.fnFor(it.id, s.name);
-        const g = on ? groupOf(F, gid, s.name, { spec: specOf(it) }) : { rows: [], failing: anyFail(F.tree), gap: !!F.gap };
+        const g = on ? groupOf(F, gid, s.name, { spec: specOf(it) }) : { rows: [], failing: anyFail(F.tree || []), gap: F.known !== false && (!!F.gap || !(F.tree || []).length) };
         return { ...g, showHead: true, foldable: true, open: on, name: s.name + '()', kc: KC[it.group] || MUTE,
           doc: segsOf(fnDoc(it, s), INK2, false), docPad: 17, cur: 'pointer', rot: on ? 90 : 0,
-          hasFlag: !on && (g.failing || g.gap), flag: g.failing ? 'One behavior does not hold.' : 'Part of it is not described by any behavior.', flagC: g.failing ? RED2 : AMB,
+          hasFlag: !on && (g.failing || g.gap), flag: g.failing ? 'One behavior does not hold.' : (F.tree || []).length ? 'Part of it is not described by any behavior.' : 'No behavior describes it.', flagC: g.failing ? RED2 : AMB,
           gpad: '8px 0', rule: i ? '#22242a' : 'transparent', rowsPad: '6px 0 2px 17px',
           onToggle: () => set({ gOpen: { ...this.state.gOpen, [k]: !on } }) };
       });
     } else if (open && BL) {
       const m = (P.graph && P.graph.meta) || {};
-      head = { proj: true, title: m.project || 'deblob', path: (m.breadcrumb || '') + ' · README', sq: null, mono: false };
+      head = { proj: true, title: m.project || '', path: (P.label || m.breadcrumb || '') + ' · README', sq: null, mono: false };
       readme = BL.readmeFor('.');
     }
 
@@ -253,7 +342,7 @@ class Component extends DCLogic {
       title: head ? head.title : '', path: head ? head.path : '',
       hasLayer: !!(head && head.layer), layer: head ? head.layer || '' : '', layerC: (head && head.layerC) || MUTE,
       hasDoc: !!(head && head.doc), docSegs: head && head.doc ? segsOf(head.doc, INK2) : [],
-      hasReadme: !!readme, readme: (readme || []).map(b => ({ isH: !!b.h, isP: !b.h, h: b.h || '', segs: b.p ? segsOf(b.p, INK, true) : [] })),
+      hasReadme: !!readme, readme: blocks(readme),
       rmPad: groups.length ? '18px' : '0', rmRule: groups.length ? '#22242a' : 'transparent',
       hasBeh: groups.length > 0, groups,
     };

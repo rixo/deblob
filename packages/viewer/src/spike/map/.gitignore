@@ -1,13 +1,11 @@
 # design/ = the design project's code, verbatim. Their docs and data never
 # enter git (their project has none of our sanitization rules): a pull copies
-# code files by hand, and these catch what slips.
+# the code files they list (their data/TO-DEBLOB.md) by hand, and these catch
+# what slips. Their homes: docs in docs/, data in data/, CLAUDE.md and
+# github.md at the root.
 design/docs/
-design/data/*
-!design/data/gen-graph.js
-design/CLAUDE.md
-design/DECISIONS.md
+design/data/
 design/support.js
-design/*-graph.js
+design/*.md
 design/*.json
 design/*.png
-design/*.md

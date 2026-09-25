@@ -4,7 +4,8 @@
 // { buildGraph, genGraph }; the two globals stay for old run_script callers.
 //   buildGraph(S, opts) → { meta, initialCollapsed, containers, items, edges }
 //   genGraph(S, opts)   → the graph module's JS source (same bytes as before)
-//   opts.initialCollapsed, opts.header (comment lines), opts.hooks (add driver hooks as items)
+//   opts.initialCollapsed, opts.header (comment lines), opts.hooks (add driver hooks as items),
+//   opts.breadcrumb (meta.breadcrumb; default S.project.name — code names no real project)
 (function (root) {
 function buildGraph(S, opts) {
   opts = opts || {};
@@ -60,7 +61,7 @@ function buildGraph(S, opts) {
     d.hooks.forEach(h => hookItems.push({ id: 'hook:' + h.name, c, group: 'driver', label: h.name, hook: h.name, driver: d.name, usage: h.usage }));
   });
   const all = [...items, ...hookItems, ...extItems];
-  const meta = { project: S.project.name, breadcrumb: 'rixo/deblob', files: S.stats.files, services: S.stats.services, blobPercent: S.stats.blobPercent, provenance: S.project.provenance, generatedAt: S.generatedAt, fine: true };
+  const meta = { project: S.project.name, breadcrumb: opts.breadcrumb ?? S.project.name, files: S.stats.files, services: S.stats.services, blobPercent: S.stats.blobPercent, provenance: S.project.provenance, generatedAt: S.generatedAt, fine: true };
   return { meta, initialCollapsed: opts.initialCollapsed || [], containers, items: all, edges };
 }
 function genGraph(S, opts) {
