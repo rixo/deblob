@@ -79,6 +79,19 @@
 
 ### Ideas
 
+- **`deblob blob [--branch]`** (rixo, 2026-09-25) — list the blob files. With
+  `--branch`, only the blob files in the diff, by default the current branch
+  against `origin/main`.
+- **`deblob deblob <path>`, the retrofit story** (rixo, 2026-09-26) — a sister
+  of `check` that walks a codebase along the blob → strict deblob axis, printing
+  only the next rung's violations: boot, driver and assembly wiring first, then
+  units split by domain, and so on. Each rung is best defined by the view it
+  unlocks in the map (entry points and wiring, then hexagons). Can go past
+  canon: ask for what makes the code readable to the tool (specs colocated under
+  a given naming, a mechanically extractable golden suite) and flag what the
+  extractor fails to categorize or link — likely a different word than
+  violation. Path forms: `deblob deblob lib/extraction`, `extraction` for short,
+  `./src/lib/extraction` relative.
 - **Built-in knowledge** (rixo, 2026-09-24) — what deblob knows without reading
   it: facts a language or a tech guarantees, shipped with deblob, as a source of
   knowledge beside its reader and the TypeScript engine. JavaScript first,
