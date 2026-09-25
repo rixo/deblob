@@ -1,0 +1,147 @@
+// The design's map (../design, their pages verbatim) on our DC runtime, fed
+// live. Run from packages/viewer: `pnpm spike:map`, then /dc.html (5188).
+import { defineConfig } from "vite"
+import { svelte } from "@sveltejs/vite-plugin-svelte"
+import { readFileSync } from "node:fs"
+import { resolve, basename, relative } from "node:path"
+import { compileDc } from "./dc-compile.js"
+
+const DESIGN = resolve(import.meta.dirname, "../design")
+
+function dc() {
+  return {
+    name: "dc-html",
+    enforce: "pre",
+    // `x.dc.html` resolves to `x.dc.html.svelte`: Vite's html plugin would claim a `.html` id.
+    async resolveId(source, importer) {
+      if (!source.split("?")[0].endsWith(".dc.html")) return null
+      const r = await this.resolve(source, importer, { skipSelf: true })
+      return r && r.id.split("?")[0] + ".svelte"
+    },
+    load(id) {
+      if (!id.endsWith(".dc.html.svelte")) return null
+      const file = id.slice(0, -".svelte".length)
+      this.addWatchFile(file)
+      const code = compileDc(readFileSync(file, "utf8"), {
+        name: basename(file, ".dc.html"),
+      })
+      if (process.env.DC_DUMP) console.log(code)
+      return code
+    },
+    configurePreviewServer: (server) => serveData(server),
+    configureServer: (server) => serveData(server),
+  }
+}
+
+// live feed (packages/deblob/src/spike/map-feed) through their gen-graph
+const DEBLOB = resolve(import.meta.dirname, "../../../../../deblob")
+const FEED = resolve(DEBLOB, "src/spike/map-feed/feed.ts")
+// live trees, by id: the viewer's projects as `deblob view` reads them
+// (view.projects + deblob.local.json, a checkout elsewhere goes there), the
+// ones the tracer cannot read skipped (it reads deblob's CLI only)
+const VIEWER = resolve(import.meta.dirname, "../../../..")
+const { mapProjects } = await import(
+  resolve(DEBLOB, "src/spike/map-feed/projects.ts")
+)
+const LIVE = {}
+const LABEL = {}
+for (const [i, { root, name }] of (await mapProjects(VIEWER)).entries()) {
+  const at = relative(VIEWER, root) || "."
+  try {
+    await (await import(FEED)).mapFeed(root)
+  } catch (e) {
+    console.error(
+      `[map-feed] skipped ${name} (${at}): ${(e && e.message) || e}`,
+    )
+    continue
+  }
+  LIVE[`${name}-${i}`] = root
+  LABEL[`${name}-${i}`] = `${name} (${at}, live)`
+}
+const liveProject = (id) => ({
+  id,
+  label: LABEL[id],
+  graph: `./live/${id}/graph.js`,
+  sequence: `./live/${id}/sequence.json`,
+})
+const PROJECTS = { projects: Object.keys(LIVE).map(liveProject) }
+const cached = new Map()
+const live = (id) => {
+  // one extraction serves the page's two requests (graph + sequence)
+  const c = cached.get(id)
+  if (c && Date.now() - c.at < 2000) return c.p
+  const p = (async () => {
+    const t0 = performance.now()
+    const { mapFeed } = await import(FEED)
+    const S = await mapFeed(LIVE[id])
+    globalThis.GenGraph || (await import(resolve(DESIGN, "data/gen-graph.js")))
+    const graph = globalThis.GenGraph.genGraph(S, {
+      hooks: true,
+      initialCollapsed: ["src/lib/snapshot", "src/lib/view"],
+      header: [`// live ${id}, deblob spike map-feed`],
+    })
+    console.log(
+      `[map-feed ${id}] ${S.modules.length} modules, ${Object.keys(S.callables).length} callables, ${Math.round(performance.now() - t0)} ms`,
+    )
+    return { json: JSON.stringify(S), graph }
+  })()
+  cached.set(id, { at: Date.now(), p })
+  p.catch(() => cached.delete(id))
+  return p
+}
+
+// their data paths, served live (their data/ is never in git)
+function serveData(server) {
+  server.middlewares.use((req, res, next) => {
+    const url = decodeURIComponent(req.url.split("?")[0])
+    if (url === "/data/projects.json") {
+      res.setHeader("content-type", "application/json")
+      return res.end(JSON.stringify(PROJECTS))
+    }
+    // their contract paths (FROM-DEBLOB ask 4), for a page with no project
+    // picked yet: the first live tree
+    const first = Object.keys(LIVE)[0]
+    const lm =
+      url === "/deblob-seq-graph.js" ||
+      url === "/data/deblob.sequence.snapshot.2.json"
+        ? [url, first]
+        : url.match(/^\/live\/([^/]+)\/(graph\.js|sequence\.json)$/)
+    if (lm && LIVE[lm[1]]) {
+      return live(lm[1]).then(
+        (L) => {
+          const js = url.endsWith(".js")
+          res.setHeader(
+            "content-type",
+            js ? "text/javascript" : "application/json",
+          )
+          res.setHeader("cache-control", "no-store")
+          res.end(js ? L.graph : L.json)
+        },
+        (e) => {
+          res.statusCode = 500
+          res.end(String((e && e.stack) || e))
+        },
+      )
+    }
+    next()
+  })
+}
+
+export default defineConfig({
+  root: import.meta.dirname,
+  publicDir: DESIGN,
+  resolve: { alias: { "@design": DESIGN } },
+  // the dep scan reads `.svelte` ids from disk: ours are compiled .dc.html
+  optimizeDeps: { entries: [] },
+  preview: { port: 5189, strictPort: true },
+  build: { rollupOptions: { input: resolve(import.meta.dirname, "dc.html") } },
+  server: {
+    port: 5188,
+    strictPort: true,
+    fs: { allow: [resolve(import.meta.dirname, "..")] },
+  },
+  plugins: [
+    dc(),
+    svelte({ compilerOptions: { runes: true }, onwarn: () => {} }),
+  ],
+})

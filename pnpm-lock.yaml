@@ -90,6 +90,9 @@ importers:
       npm-run-all2:
         specifier: ^9.0.2
         version: 9.0.2
+      parse5:
+        specifier: 8.0.1
+        version: 8.0.1
       svelte:
         specifier: 5.57.0
         version: 5.57.0
