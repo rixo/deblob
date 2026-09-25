@@ -240,6 +240,56 @@ export async function sequenceSnapshot(
    * `a.b.c` → ["a", "b", "c"]; null when any hop is computed or the root is not
    * a name.
    */
+  /**
+   * Why a call stayed unbound — a measurement (which unbound calls are misses
+   * of ours, which are right to leave out), not a verdict. `computed`: the
+   * callee is no name chain; `held-refused`: a held value called in a shape
+   * `onHeld` declines; `global` / `builtin-method`: the language's own, by name
+   * only (a user method named `get` counts as builtin); `unresolved`: the rest,
+   * the candidates.
+   */
+  const GLOBALS = new Set(
+    "Array Object JSON Math Number String Boolean Symbol Promise Map Set WeakMap WeakSet Error TypeError RangeError SyntaxError Date RegExp Reflect console process Buffer URL URLSearchParams structuredClone parseInt parseFloat isNaN setTimeout clearTimeout queueMicrotask BigInt Intl TextEncoder TextDecoder AbortController fetch".split(
+      " ",
+    ),
+  )
+  const BUILTIN_METHODS = new Set(
+    "push pop shift unshift slice splice map flatMap filter reduce find findIndex findLast some every includes indexOf lastIndexOf join concat sort reverse keys values entries forEach at fill flat get set has delete add clear split replace replaceAll startsWith endsWith trim trimStart trimEnd padStart padEnd toLowerCase toUpperCase charAt charCodeAt codePointAt match matchAll test exec repeat localeCompare normalize substring toString toFixed then catch finally call apply bind stringify parse assign freeze fromEntries isArray from of all allSettled race resolve reject max min floor ceil round abs log warn error".split(
+      " ",
+    ),
+  )
+  const unboundWhy = (
+    chain: string[] | null,
+    refused: string | null,
+    params: () => Set<string>,
+  ) =>
+    refused ??
+    (chain === null
+      ? "computed"
+      : GLOBALS.has(chain[0]!)
+        ? "global"
+        : chain.length > 1 && BUILTIN_METHODS.has(chain.at(-1)!)
+          ? "builtin-method"
+          : params().has(chain[0]!)
+            ? "param"
+            : "unresolved")
+  /** Names the parameters of `fns` bind (destructuring included). */
+  const paramNames = (fns: N[]): Set<string> => {
+    const out = new Set<string>()
+    const add = (p: N): void => {
+      if (!p) return
+      if (p.type === "Identifier") out.add(p.name)
+      else if (p.type === "AssignmentPattern") add(p.left)
+      else if (p.type === "RestElement") add(p.argument)
+      else if (p.type === "TSParameterProperty") add(p.parameter)
+      else if (p.type === "ArrayPattern") p.elements.forEach(add)
+      else if (p.type === "ObjectPattern")
+        for (const q of p.properties) add(q.type === "Property" ? q.value : q)
+    }
+    for (const fn of fns) for (const p of fn?.params ?? []) add(p)
+    return out
+  }
+
   const chainOf = (c: N): string[] | null => {
     const out: string[] = []
     let n = unwrap(c)
@@ -1040,6 +1090,8 @@ export async function sequenceSnapshot(
      * found
      */
     ref: string | null
+    /** Unbound only: why the tracer gave up (UNBOUND_WHY, a measurement) */
+    why?: string
   }
 
   /**
@@ -1305,6 +1357,7 @@ export async function sequenceSnapshot(
         }
 
         const chain = chainOf(n.callee)
+        let refused: string | null = null
         if (chain) {
           // longest held prefix: `deps.loader.discoverConfig` → deps.loader holds an instance
           for (let k = chain.length; k >= 1; k--) {
@@ -1313,6 +1366,7 @@ export async function sequenceSnapshot(
             const rest = chain.slice(k)
             if (rest.length === 0 && onHeld(held, null)) return
             if (rest.length === 1 && onHeld(held, rest[0]!)) return
+            refused = `held-refused:${held.kind}:${rest.length}`
             break
           }
           const [head, second] = chain
@@ -1368,7 +1422,14 @@ export async function sequenceSnapshot(
             }
           }
         }
-        push({ kind: "unbound", to: from, target: null })
+        push({
+          kind: "unbound",
+          to: from,
+          target: null,
+          why: unboundWhy(chain, refused, () =>
+            paramNames([body.fn, ...path.filter(isFn)]),
+          ),
+        })
       })
     }
 
