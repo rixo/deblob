@@ -104,6 +104,10 @@
    SDD and review like any step; only code quality gets slack. SPEC written
    after its first commits (2026-09-25).
 
+8. `08_local-ts/` — the local overlay becomes `deblob.local.{ts,mts,js,mjs}`,
+   loaded like the config, JSON no longer read. An edited config or local file
+   now loads as edited in the same process. Ruled 2026-09-25.
+
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
 through Vitest browser mode enters there).
