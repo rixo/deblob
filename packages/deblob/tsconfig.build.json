@@ -8,5 +8,5 @@
     "rewriteRelativeImportExtensions": true
   },
   "include": ["src"],
-  "exclude": ["src/**/*.spec.ts", "src/**/__fixtures__"]
+  "exclude": ["src/**/*.spec.ts", "src/**/__fixtures__", "src/spike"]
 }

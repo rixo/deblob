@@ -16,6 +16,8 @@ export default defineConfig({
         "src/drivers/cli/bin.ts",
         "src/drivers/serve/bin.ts",
         "src/drivers/snapshot/bin.ts",
+        // throwaway code, rewritten 100% — delete with the directory
+        "src/spike/**",
       ],
       thresholds: {
         lines: 100,

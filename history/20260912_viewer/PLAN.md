@@ -98,6 +98,12 @@
    predicate as a model, the channel's required `allows` answering 403, the
    refusal line on the driver's stderr).
 
+7. `07_map-spike/` — a spike: the design's map, run verbatim on our runtime and
+   fed from a live tree, to measure what real data costs. It lives in
+   `src/spike/` on this branch and gets absorbed as it stabilizes. It follows
+   SDD and review like any step; only code quality gets slack. SPEC written
+   after its first commits (2026-09-25).
+
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
 through Vitest browser mode enters there).
