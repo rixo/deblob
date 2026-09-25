@@ -266,8 +266,8 @@ const ROOT_CALLS: readonly Row[] = [
     name: "an immediately invoked function runs its body at root: a tech call inside it is red where it sits",
     files: {
       "src/log/adapters/console-log.adapter.ts": `
-        export const X: number = (() => { // missed via: stable-root -- the call that runs the body on import; an immediately invoked function is not read yet
-          console.log("x") // missed red: stable-root -- the body runs on load, so its tech call is a root call; an immediately invoked function is not read yet
+        export const X: number = (() => { // via: stable-root -- the call that runs the body on import
+          console.log("x") // red: stable-root -- the body runs on load, so its tech call is a root call
           return 1
         })()
       `,
@@ -282,7 +282,51 @@ const ROOT_CALLS: readonly Row[] = [
     files: {
       "src/clock/adapters/system-clock.adapter.ts": `
         export class Clock {
-          static started = Date.now() // missed red: stable-root -- a read of the clock stored on load, in a writable static; a static field is not read yet
+          static started = Date.now() // red: stable-root -- a read of the clock stored on load, in a writable static
+        }
+      `,
+    },
+  },
+  {
+    // canon: "its evaluation creates no mutable state". A call's result stored
+    // adds nothing to the call — unless the binding is reassignable: a `let` or
+    // a writable static is state whatever it holds, so the line carries both.
+    name: "a red call stored in a let or a writable static is two reds: the call, and the state",
+    files: {
+      "src/paths/adapters/cwd-paths.adapter.ts": `
+        export let CWD = process.cwd() // red: stable-root, stable-root -- the call reaches the tech; a let is state whatever it holds
+        export class Paths {
+          static cwd = process.cwd() // red: stable-root, stable-root -- the same, in a writable static
+        }
+      `,
+    },
+  },
+  {
+    // A static field is a root binding (ruled 2026-09-26).
+    // canon: "its evaluation creates no mutable state". A root class's static
+    // fields are made when the class is evaluated, on load: `readonly` is their
+    // `const`, a writable one is reassignable like a `let`. A method is code.
+    name: "a root class's static fields are root bindings: writable is state, readonly is judged by what it holds",
+    files: {
+      "src/counter.model.ts": `
+        const KEY = "k"
+        export class Counter {
+          static count = 0 // red: stable-root -- a writable static is state on the class, reassignable like a let
+          static #instances = 0 // red: stable-root -- private, still reassignable
+          static "label" = "c" // red: stable-root -- a quoted name, the same field
+          static [KEY] = 1 // red: stable-root -- a computed name, the same field
+          static pending: number // red: stable-root -- no initializer, still writable
+          static readonly MAX = 3
+          static readonly LIMIT: number = 3
+          static readonly EMPTY: string
+          declare static seeded: boolean
+          static readonly NAMES = ["a"] // red: stable-root -- readonly, but an array literal keeps its mutators
+          static create() {
+            return new Counter()
+          }
+        }
+        export const Tally = class {
+          static total = 0 // red: stable-root -- a class expression at root is evaluated on load too
         }
       `,
     },
@@ -295,7 +339,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/log/adapters/console-log.adapter.ts": `
         export class Logger {
           static {
-            console.log("loaded") // missed red: stable-root -- a static block runs on load, its tech call with it; a static block is not read yet
+            console.log("loaded") // red: stable-root -- a static block runs on load, its tech call with it
           }
         }
       `,
@@ -330,8 +374,28 @@ const ROOT_CALLS: readonly Row[] = [
       "node_modules/@nestjs/common/index.js": "module.exports = {}",
       "src/repo/adapters/nest-repo.adapter.ts": `
         import { Injectable } from "@nestjs/common"
-        @Injectable() // missed red: stable-root -- the tech's decorator runs on import and registers the class; a decorator is not read yet
+        @Injectable() // red: stable-root -- the tech's decorator runs on import and registers the class
         export class Repo {}
+      `,
+    },
+  },
+  {
+    // canon: "a call that reaches the tech". A member's decorator runs when the
+    // class is evaluated, as the class's does; an instance field's initializer
+    // runs at construction, not on load.
+    name: "a tech package's decorator on a member of a root class is a call reaching the tech",
+    files: {
+      "node_modules/typeorm/package.json": JSON.stringify({
+        name: "typeorm",
+        main: "./index.js",
+      }),
+      "node_modules/typeorm/index.js": "module.exports = {}",
+      "src/users/adapters/user-row.adapter.ts": `
+        import { Column } from "typeorm"
+        export class UserRow {
+          @Column() // red: stable-root -- the tech's decorator runs when the class is evaluated, on load
+          name = String(1)
+        }
       `,
     },
   },
@@ -562,8 +626,9 @@ const ROOT_CALLS: readonly Row[] = [
         export const HEAVY = 1
       `,
       "src/loader.model.ts": `
-        import("./heavy.model.ts") // missed red: stable-root -- a call into the module loader on import; a static import says the same; a dynamic import is not read as a call yet
-        await import("./heavy.model.ts") // missed red: stable-root -- awaited, the same call; a dynamic import is not read as a call yet
+        import("./heavy.model.ts") // red: stable-root -- a call into the module loader on import; a static import says the same
+        await import("./heavy.model.ts") // red: stable-root -- awaited, the same call
+        export const HEAVY_MODULE = await import("./heavy.model.ts") // red: stable-root -- stored, the same call; the binding adds nothing
         export const loadHeavy = () => import("./heavy.model.ts")
       `,
     },

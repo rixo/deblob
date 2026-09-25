@@ -483,7 +483,10 @@ describe("readModule", () => {
     const main = reading.functions.find((fn) => fn.name === "main")
     if (!main) throw new Error("main not read")
     const calls = callsOf(main.body)
-    const callee = (line: number): CalleeKind => callAt(calls, line).callee
+    // the outer call of its line: an `import()` on the way is a call too,
+    // emitted first
+    const callee = (line: number): CalleeKind =>
+      callAt(calls.toReversed(), line).callee
 
     test("an instance called bare is a use case named by its binding; a namespace called bare, a parameter, a tech value, a bare let: by their kinds", () => {
       expect(callee(9)).toEqual({

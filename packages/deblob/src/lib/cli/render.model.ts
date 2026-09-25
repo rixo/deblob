@@ -262,6 +262,12 @@ const mutableWords = (
     case "let":
     case "var":
       return `a ${by.form} can be reassigned`
+    case "static": {
+      const field = by.name === null ? "a static field" : `static ${by.name}`
+      return js
+        ? `${field} can be reassigned`
+        : `${field} without readonly can be reassigned`
+    }
     case "ObjectExpression":
       return js
         ? "a record literal, not frozen"

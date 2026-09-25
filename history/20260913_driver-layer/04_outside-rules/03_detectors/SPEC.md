@@ -236,6 +236,43 @@ Ruled at this handback (§ Ruled): row 15, globals-mode runners, `node:url`, the
 layers that may touch the tech, and the matcher exemption. Row 15 stays a
 `missed red` for `stable-root`, the reader taking `.catch` for a language call.
 
+### Checkpoint 2, built 2026-09-26
+
+The reader forms the rows exposed, each read where it runs:
+
+- **An immediately invoked function** is inlined like a tracked local, with no
+  binding: its body's calls are root calls, the invoking call their `via`.
+- **`import()`** is a call into the host's module loader, the tech; a binding
+  storing it is a stored call.
+- **A class's evaluation**: its decorators and its members' (one call each —
+  `@Injectable()` is the factory's call, its application the same decorator),
+  its static blocks, its static fields. A static field is a root binding (§
+  Ruled): `readonly` judged by what it holds, a writable one reassignable like a
+  `let` (form `static`). An instance field runs at construction and is not read.
+- **Flipped:** rows 3 (IIFE, with its `via`), 4 (static field), 5 (static
+  block), the tech decorator, and 20 (`import()`). **New rows:** a member's
+  decorator; every static form (a `declare` one is a type, green); `import()`
+  stored in a binding; a red call stored in a `let` or a writable static is two
+  reds (§ Ruled, violations stack).
+- **Coverage drove a refactor, not a row**: `import()` had its own classify-only
+  guard, reachable only by an `import()` in a branch's test. A call is now
+  emitted in one place, ordinary calls and `import()` alike, and the guard is
+  the one realistic rows already cover.
+- **A gap from checkpoint 1**: the stored-result rule's exception — a `let` or
+  `var` is state whatever it holds — had no row; removing it failed nothing, so
+  checkpoint 1's "no clause survives unfailed" was wrong for it. The last new
+  row pins it, and the writable static with it.
+- **Falsification:** each clause switched off in turn — the IIFE (1 row fails),
+  `import()` (1), a class's decorator (1), a member's (1), a static block (1), a
+  static field (2), a `declare` static skipped (1), a stored `import()` (1), the
+  `let`/`var` exception (1), the writable static's (1).
+- **Self-check:** unchanged, 139.
+
+Still `missed`: row 15's `.catch`, the one `stable-root` limit left with a row.
+Known and unrowed: a computed member key and `extends` also run on class
+evaluation and are not read; a named function expression invoked on the spot
+that calls itself reads its own name as a host global.
+
 ## Docs
 
 `check/README.md`: the three checks and the call clause. `cases/README.md`: the
@@ -266,6 +303,15 @@ The chapter PLAN's step queue: this step, then the alignment review.
   - **Every layer but model and service may touch the tech**, so a local
     function called at their root is red: the frame does nothing at root beyond
     its exempt calls.
+- **Violations stack, never merge; one per fix** (ruled 2026-09-26). Two defects
+  on one line, each with its own fix, are two violations, each with its reason
+  and its way out: merged diagnostics multiply their combinations, separate ones
+  stay modular, and under-reporting is the worse failure. A red call stored in a
+  `let` is two reds. Calls one fix removes together are one: `@Injectable()`,
+  the factory's call and its application, is one decorator.
+- **A root class's static field is a root binding** (ruled 2026-09-26). It is
+  made when the class is evaluated, on load: `readonly` is its `const`, a
+  writable static is reassignable state whatever it holds.
 - **The matcher exemption reads the call, not the body** (ruled 2026-09-26). A
   shared driver's wiring function handed only the runner is exempt at a spec's
   root; its body is judged where it is written, by the driver check. Each rule

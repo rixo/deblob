@@ -1490,10 +1490,13 @@ export const readModule = ({
    * the body is the callee's and is read in the scope it was written in. A
    * local or parameter at the site that shadows a name the body reads never
    * captures it.
+   *
+   * An immediately invoked function is read the same way, its site the call
+   * that invokes it, with no binding: nothing else can call it.
    */
   const inlineLocal = (
     local: { fn: AstNode; scope: Scope },
-    binding: Binding,
+    binding: Binding | null,
     argNodes: readonly AstNode[],
     callee: CalleeKind,
     ctx: Ctx,
@@ -1603,7 +1606,7 @@ export const readModule = ({
     for (const target of params)
       if (target.memo === null)
         target.memo = { kind: "literal", origin: null, path: [] }
-    inlining.add(binding)
+    if (binding !== null) inlining.add(binding)
     const outerSite = inlineSite
     inlineSite ??= site
     try {
@@ -1624,7 +1627,7 @@ export const readModule = ({
         ? { kind: "literal", origin: null, path: [] }
         : { kind: "computed", origin: null, path: [] }
     } finally {
-      inlining.delete(binding)
+      if (binding !== null) inlining.delete(binding)
       inlineSite = outerSite
     }
   }
@@ -1712,6 +1715,33 @@ export const readModule = ({
     return args
   }
 
+  /**
+   * Where a call's result goes: a bound result's flow is its binding's uses,
+   * filled as they come; an unbound one reaches its own position only.
+   */
+  const resultsOf = (ctx: Ctx, callee: CalleeKind): ResultUse[] => {
+    if (ctx.kind !== "bound") return [useOf(ctx)]
+    const results = ctx.binding.results ?? []
+    ctx.binding.results = results
+    ctx.binding.boundCallees.push(callee)
+    return results
+  }
+
+  /**
+   * A call into the reading, when emitting — a pass that only classifies emits
+   * nothing; a callee the reader cannot place is open at its own span.
+   */
+  const emitCall = (
+    call: ReadCall,
+    calleeSpan: Span,
+    emitting: boolean,
+  ): void => {
+    if (!emitting) return
+    if (call.callee.kind === "unknown")
+      open.push({ span: calleeSpan, why: "unknown-callee" })
+    emit({ kind: "call", call })
+  }
+
   const evaluateCall = (
     node: AstNode,
     ctx: Ctx,
@@ -1722,10 +1752,24 @@ export const readModule = ({
     if (!emitting && memo !== undefined) return memo
     const isTagged = node.type === "TaggedTemplateExpression"
     const calleeNode = (isTagged ? node["tag"] : node["callee"]) as AstNode
-    const callee = calleeOf(calleeNode, emitting)
     const argNodes = isTagged
       ? ((node["quasi"] as AstNode)["expressions"] as AstNode[])
       : (node["arguments"] as AstNode[])
+    const invoked = unwrap(calleeNode)
+    if (emitting && isFunctionNode(invoked) && node.type === "CallExpression") {
+      // an immediately invoked function: its body runs here, read at the site
+      const value = inlineLocal(
+        { fn: invoked, scope },
+        null,
+        argNodes,
+        { kind: "language" },
+        ctx,
+        spanOf(node),
+      )
+      inlineMemo.set(node, value)
+      return value
+    }
+    const callee = calleeOf(calleeNode, emitting)
     if (emitting && callee.kind === "local") {
       // a local callee is a binding of this scope by construction
       const binding = lookup(scope, callee.name) as Binding
@@ -1743,16 +1787,7 @@ export const readModule = ({
         return value
       }
     }
-    // a bound result's flow is its binding's uses, filled as they come; an
-    // unbound one reaches its own position only
-    let results: ResultUse[]
-    if (ctx.kind === "bound") {
-      results = ctx.binding.results ?? []
-      ctx.binding.results = results
-      ctx.binding.boundCallees.push(callee)
-    } else {
-      results = [useOf(ctx)]
-    }
+    const results = resultsOf(ctx, callee)
     const load = callee.kind === "use-case" ? loadOf(callee) : null
     if (ctx.kind === "bound" && load !== null) ctx.binding.boundLoad = true
     const call: ReadCall = {
@@ -1768,11 +1803,7 @@ export const readModule = ({
       site: inlineSite,
     }
     call.args = readArgs(argNodes, callee, call, emitting)
-    if (emitting) {
-      if (callee.kind === "unknown")
-        open.push({ span: spanOf(calleeNode), why: "unknown-callee" })
-      emit({ kind: "call", call })
-    }
+    emitCall(call, spanOf(calleeNode), emitting)
     // a matched load's result counts as a tech value from then on
     return load === null
       ? resultOf(callee)
@@ -1974,12 +2005,32 @@ export const readModule = ({
       case "MetaProperty":
         countRead(emitting)
         return { kind: "tech", origin: null, path: [] }
-      case "ImportExpression":
+      case "ImportExpression": {
         evaluate(node["source"] as AstNode, { kind: "computed" }, emitting)
+        // a call into the host's module loader, as a static import is one;
+        // what it resolves to is followed by name (`importLikeSource`)
+        const loader: CalleeKind = { kind: "tech", package: null }
+        emitCall(
+          {
+            span: spanOf(node),
+            callee: loader,
+            args: [],
+            result: resultsOf(ctx, loader),
+            load: null,
+            registration: false,
+            handsRunner: false,
+            site: inlineSite,
+          },
+          spanOf(node),
+          emitting,
+        )
         return computed
+      }
+      case "ClassExpression":
+        if (emitting) evaluateClass(node)
+        return { kind: "function", origin: null, path: [] }
       case "ArrowFunctionExpression":
       case "FunctionExpression":
-      case "ClassExpression":
         return { kind: "function", origin: null, path: [] }
       case "ObjectExpression": {
         const kinds: ValueKind[] = []
@@ -2082,6 +2133,100 @@ export const readModule = ({
     }
   }
 
+  /**
+   * A decorator is a call when the class is evaluated: `@sealed` calls
+   * `sealed`, `@Injectable()` calls the factory, whose result applied to the
+   * class is the same decorator — one call, read where the `@` sits.
+   */
+  const applyDecorator = (decorator: AstNode): void => {
+    const expression = decorator["expression"] as AstNode
+    const inner = unwrap(expression)
+    evaluateCall(
+      inner.type === "CallExpression"
+        ? inner
+        : {
+            ...decorator,
+            type: "CallExpression",
+            callee: expression,
+            arguments: [],
+            optional: false,
+          },
+      { kind: "discarded" },
+      true,
+    )
+  }
+
+  /**
+   * What runs when a class is evaluated, where it is evaluated: its decorators
+   * and its members', its static field initializers, its static blocks. An
+   * instance field runs at construction, a method when called. Read when
+   * emitting only: none of it changes the class's value.
+   */
+  const evaluateClass = (node: AstNode): void => {
+    for (const decorator of node["decorators"] as AstNode[])
+      applyDecorator(decorator)
+    const members = (node["body"] as AstNode)["body"] as AstNode[]
+    for (const member of members) {
+      // a static block carries no decorators
+      for (const decorator of (member["decorators"] ?? []) as AstNode[])
+        applyDecorator(decorator)
+      if (member.type === "StaticBlock") {
+        walkBlock(member["body"] as AstNode[])
+        continue
+      }
+      // a `declare` field is a type, nothing at run time
+      if (
+        member["static"] === true &&
+        member.type !== "MethodDefinition" &&
+        member["declare"] !== true
+      )
+        emitStaticField(member)
+    }
+  }
+
+  /**
+   * A static field is a binding of the class, made when the class is evaluated:
+   * `readonly` is its `const`, a writable one reassignable like a `let`,
+   * whatever it holds.
+   */
+  const emitStaticField = (member: AstNode): void => {
+    const value = member["value"]
+    let resolved: Resolved = { kind: "literal", origin: null, path: [] }
+    const storesMachineRead = readsMachine(() => {
+      if (isNode(value)) resolved = evaluate(value, { kind: "computed" }, true)
+    })
+    const key = member["key"] as AstNode
+    const name =
+      member["computed"] === true
+        ? null
+        : key.type === "Literal"
+          ? String(key["value"])
+          : key.type === "PrivateIdentifier"
+            ? `#${key["name"] as string}`
+            : (key["name"] as string)
+    const annotation = annotationOf(member)
+    const held = isNode(value)
+      ? initializerImmutability(value, namesIn(new Set()))
+      : READONLY
+    emit({
+      kind: "definition",
+      name,
+      form: "static",
+      exported: false,
+      value: resolved.kind,
+      immutability:
+        member["readonly"] !== true
+          ? mutableBy("static", name)
+          : annotation === null
+            ? held
+            : typedAs(typeImmutability(annotation), held),
+      storesMachineRead,
+      storedCall: isNode(value) ? storedCallOf(value) : null,
+      inlined: frame !== null,
+      span: spanOf(member),
+    })
+  }
+
   const walkBlock = (statements: readonly AstNode[]): void => {
     inScope([], () => {
       declareBlock(scope, statements)
@@ -2132,7 +2277,8 @@ export const readModule = ({
     const stored = unwrap(init)
     return stored.type === "CallExpression" ||
       stored.type === "NewExpression" ||
-      stored.type === "TaggedTemplateExpression"
+      stored.type === "TaggedTemplateExpression" ||
+      stored.type === "ImportExpression"
       ? spanOf(stored)
       : null
   }
@@ -2234,6 +2380,7 @@ export const readModule = ({
       case "ClassDeclaration":
       case "TSEnumDeclaration": {
         if (statement["declare"] === true) return
+        if (statement.type === "ClassDeclaration") evaluateClass(statement)
         const id = statement["id"]
         emit({
           kind: "definition",

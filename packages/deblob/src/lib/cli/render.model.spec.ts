@@ -684,6 +684,19 @@ describe("renderCheckResults", () => {
 
       test.each([
         ["var", null, "ts", "a var can be reassigned"],
+        [
+          "static",
+          "count",
+          "ts",
+          "static count without readonly can be reassigned",
+        ],
+        ["static", "count", "js", "static count can be reassigned"],
+        [
+          "static",
+          null,
+          "ts",
+          "a static field without readonly can be reassigned",
+        ],
         ["ArrayExpression", null, "ts", "an array literal without as const"],
         ["ArrayExpression", null, "js", "an array literal, not frozen"],
         ["TSTypeReference", "Map", "ts", "a Map, which keeps its mutators"],

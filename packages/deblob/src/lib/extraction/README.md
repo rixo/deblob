@@ -130,8 +130,13 @@ and open.
   body carries the root call that ran it (`site`); a definition whose
   initializer is a call carries that call (`storedCall`), past `await` and the
   other wrappers. The external import's claim says who made it: `reader` (the
-  file's own), `tech` (`driverTech`, a concrete builtin), `model` (pure). The
-  cut: a function handed to a tech callee is a hook, nested hooks included; one
+  file's own), `tech` (`driverTech`, a concrete builtin), `model` (pure). What
+  runs where it is written is read there: an immediately invoked function's
+  body, inline at its call (its `site`); `import()`, a call into the host's
+  module loader; a class's evaluation — its decorators and its members', one
+  call each, its static blocks, its static fields as definitions (`readonly`
+  proven by what it holds, a writable one reassignable, form `static`). The cut:
+  a function handed to a tech callee is a hook, nested hooks included; one
   handed to anything else is read inline where it sits. Takes plain data, never
   the port: the service chooses the tech.
 

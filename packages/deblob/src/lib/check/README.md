@@ -60,11 +60,12 @@ One function per check, all over `ImportGraph` from `extraction`:
   a spec file's registrations into its runner (a driver's wiring function handed
   the runner's tech included), the boot's one call. A red call inside a tracked
   local is reported where it sits, the root call that ran it in `via`; a binding
-  storing a red call's result draws no second verdict unless it is a `let` or
-  `var`. Each violation carries `unknown`: `null` when the red is proven (a
-  binding's `by` naming the form that proves it), else the reader's
-  `UnknownCondition` — an unknown fails like a red and says what the reader
-  could not see. A broken line gets no verdict; the graph's `broken` carries it.
+  storing a red call's result draws no second verdict unless it is a `let`, a
+  `var` or a writable static — a root class's static field is a root binding.
+  Each violation carries `unknown`: `null` when the red is proven (a binding's
+  `by` naming the form that proves it), else the reader's `UnknownCondition` —
+  an unknown fails like a red and says what the reader could not see. A broken
+  line gets no verdict; the graph's `broken` carries it.
 - `violation.model.ts` — the violation shapes, one structured value per finding
   carrying every fact rendering needs.
 

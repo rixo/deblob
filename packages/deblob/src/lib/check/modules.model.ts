@@ -230,11 +230,13 @@ const judgeModule = (
       }
       const { immutability } = statement
       // what a binding holds, stored from a call judged red, adds nothing to
-      // the call — a read made on the way to the callee included; a `let` or
-      // `var` is state whatever it holds
+      // the call — a read made on the way to the callee included; a `let`, a
+      // `var` or a writable static is state whatever it holds
       const reassignable =
         immutability.proof === "mutable" &&
-        (immutability.form === "let" || immutability.form === "var")
+        (immutability.form === "let" ||
+          immutability.form === "var" ||
+          immutability.form === "static")
       if (!reassignable && storesRedCall(statement.storedCall)) return []
       // a read of the machine first: no annotation proves what it held; a
       // call's result is not one — the call is judged where it sits
