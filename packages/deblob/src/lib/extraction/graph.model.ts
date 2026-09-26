@@ -297,6 +297,11 @@ export type ResultUse = (
    * judged as a call, the value only its receiver.
    */
   | { kind: "receiver" }
+  /**
+   * Written into a member (`process.exitCode = …`): handed whole to what holds
+   * it, a value of kind `target` — tech-held state when the tech's.
+   */
+  | { kind: "assigned"; target: ValueKind }
 ) & { span: Span }
 
 export type ReadCall = {

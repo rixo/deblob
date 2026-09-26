@@ -100,18 +100,18 @@ const ROOT_CALLS: readonly Row[] = [
   {
     // canon: "a call that reaches the tech". The body is read at the site, so the
     // tech call is a root call. Flag F6, closed 2026-09-20: one red, at the tech
-    // call's own line, not a second on the local call.
+    // call's own line, not a second on the local call. Moved from a driver to
+    // an adapter at the detectors step, checkpoint 6: a driver's local
+    // function is no longer read inline — it stays a definition.
     name: "a tracked local is read as the root's own body: a tech call inside it is red where the call sits",
     files: {
-      "src/cli.driver.ts": `
+      "src/home/adapters/home.adapter.ts": `
         const readHome = () => {
           const home = process.cwd() // red: stable-root -- the helper's body is the root's, so its tech call is a root call
           return home.length
         }
         export const HOME_LENGTH: number = readHome() // via: stable-root -- the root call that runs readHome's body on import
-        export const main = () => {
-          process.on("ready", () => readHome())
-        }
+        export const createHome = () => ({ read: () => readHome() })
       `,
     },
   },
@@ -161,7 +161,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/cli.driver.ts": `
         import { createCliAssembly } from "./cli.assembly.ts"
         // false unknown: stable-root -- a call's result is not followed yet
-        const services = createCliAssembly() // red: stable-root -- a call result is not provably immutable
+        const services = createCliAssembly() // red: stable-root, driver-hooks-only -- a call result is not provably immutable; and a definition beside the hooks and the wiring function
         services.app.run() // red: stable-root -- a use case runs at import time
         export const main = () => {
           process.on("ready", () => services.app.run())
@@ -788,6 +788,8 @@ const ROOT_CALLS: readonly Row[] = [
       "node_modules/vitest/index.js": "module.exports = {}",
       "src/test/matchers.driver.ts": `
         export const registerMatchers = (expect: { extend: (matchers: object) => void }) => {
+          // false unknown: driver-calls-services -- the runner, handed in by a spec: a test's call site binds no parameter
+          // false red: wiring-outside-hooks -- matchers in a record handed to the runner: the reader cuts a hook only when handed alone
           expect.extend({
             toBeRed: (received: unknown) => ({ pass: received === "red", message: () => "not red" }),
           })
@@ -816,7 +818,7 @@ const ROOT_CALLS: readonly Row[] = [
       "node_modules/vitest/index.js": "module.exports = {}",
       "src/test/cwd.driver.ts": `
         export const enterTmp = (host: { chdir: (path: string) => void }) => {
-          host.chdir("/tmp")
+          host.chdir("/tmp") // false unknown: driver-calls-services -- the host, handed in by a spec: a test's call site binds no parameter
         }
       `,
       "src/cwd.spec.ts": `

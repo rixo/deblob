@@ -94,6 +94,13 @@ const extractions = new Map(
   ),
 )
 
+/**
+ * Tracked locals are read inline in every kind but assembly and driver, where a
+ * local function stays a definition: a test file is the outside kind that
+ * inlines them, cut with the same tech.
+ */
+const TRACKING = { layer: "test" } as const
+
 /** Test factory: a fixture read as the given kind with the given tech. */
 const read = (
   name: string,
@@ -323,6 +330,8 @@ describe("readModule", () => {
         [31, "instance", "instance"],
         [32, "parameter", "unknown"],
         [33, "parameter", "unknown"],
+        // a `catch`: a branch on a failure, no test to read
+        [41, "other", "literal"],
         // `[1, 2].map(…)`: a map over a proven array — a literal — is a loop
         [57, "other", "literal"],
       ])
@@ -709,7 +718,7 @@ describe("readModule", () => {
       expect(callee(73)).toMatchObject({ kind: "use-case", member: "Klass" })
     })
 
-    test("test origins: a bound construction on an instance, a model call's member, a model call, a parameter compared, a loop with no test", () => {
+    test("test origins: a bound construction on an instance, a model call's member, a model call, a parameter compared, a loop with no test, a catch", () => {
       expect(
         controls(main.body)
           .filter(
@@ -722,6 +731,7 @@ describe("readModule", () => {
         [76, "other"],
         [77, "parameter"],
         [78, "other"],
+        [84, "other"],
       ])
     })
 
@@ -861,7 +871,7 @@ describe("readModule", () => {
   })
 
   describe("tracked locals — a non-exported function only ever called directly is read at its sites, as the site's own code", () => {
-    const reading = read("tracked-locals.ts")
+    const reading = read("tracked-locals.ts", TRACKING)
     const main = reading.functions.find((fn) => fn.name === "main")
     if (!main) throw new Error("main not read")
     const calls = callsOf(main.body)
@@ -991,7 +1001,7 @@ describe("readModule", () => {
   })
 
   describe("tracked locals — what counts as a reference to the name", () => {
-    const reading = read("tracked-locals-refs.ts")
+    const reading = read("tracked-locals-refs.ts", TRACKING)
     const main = reading.functions.find((fn) => fn.name === "main")
     if (!main) throw new Error("main not read")
 
@@ -1015,7 +1025,7 @@ describe("readModule", () => {
   })
 
   describe("tracked locals — an inlined body reads the scope it was written in", () => {
-    const reading = read("tracked-local-scope.ts")
+    const reading = read("tracked-local-scope.ts", TRACKING)
     /**
      * The callee the reader reports, flattened to one line — its `kind` and the
      * fields that identify the target. No interpretation: `local` says a local

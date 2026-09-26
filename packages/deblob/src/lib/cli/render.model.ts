@@ -21,6 +21,7 @@ import { isRuleId, ruleOrder } from "../check/rule.model.ts"
 import type {
   AssemblyViolation,
   DagViolation,
+  DriverViolation,
   LayersViolation,
   ModulesViolation,
   PortsViolation,
@@ -246,6 +247,97 @@ const messageOf = (violation: FileViolation, prefix: string): string => {
     }
     case "assembly":
       return assemblyMessage(violation)
+    case "driver":
+      return driverMessage(violation)
+  }
+}
+
+// --- the driver rules' words -------------------------------------------------
+// Each red names its way out: the driver table of the rows-first step.
+
+const CALLS_SERVICES =
+  "a driver calls services, the assembly, sub-driver wiring and its own tech, nothing else"
+
+/** A call a driver may not make, in words, with its way out. */
+const driverCallWords = (callee: CalleeKind): string => {
+  switch (callee.kind) {
+    case "model":
+      return `calls ${callee.name}, a model — ${CALLS_SERVICES}; parsing and rendering are use cases of a service`
+    case "factory":
+      return `calls ${callee.name}, a factory of ${callee.layer} — ${CALLS_SERVICES}; the assembly builds it, a service calls it`
+    case "local":
+      return `calls ${callee.name}, a function of the driver — ${CALLS_SERVICES}; a model function, called by a service`
+    case "unclaimed":
+      return `calls ${callee.package}, a package nothing claims — ${CALLS_SERVICES}; declare it in driverTech, or it is a service's concern`
+    default:
+      return `calls ${calleeName(callee)} — ${CALLS_SERVICES}; a use case of the service does it`
+  }
+}
+
+/** A definition beside the hooks and the wiring function, with its way out. */
+const driverDefinitionWords = (
+  name: string,
+  at: Extract<DriverViolation, { shape: "definition" }>["at"],
+): string => {
+  switch (at) {
+    case "root":
+      return `defines ${name} beside the hooks and the wiring function — a driver defines its hooks and one wiring function; the literal in place, or a model export`
+    case "function":
+      return `defines ${name}, a function beside the wiring function — a driver defines its hooks and one wiring function; a model function called by a service, or a sub-driver's wiring`
+    case "local":
+      return `holds functions in ${name} — a table of lambdas is a service without a contract; each hook handed to the tech in place`
+  }
+}
+
+const driverMessage = (violation: DriverViolation): string => {
+  const line = `line ${violation.line}`
+  switch (violation.shape) {
+    case "call": {
+      const name = calleeName(violation.callee)
+      if (violation.unknown !== null)
+        return `${line} may call what a driver may not — unknown: ${unknownWords(violation.unknown)}; call a service, the assembly or the tech`
+      if (violation.rules.includes("wiring-outside-hooks"))
+        return `${line} runs the use case ${name} outside any hook — outside its hooks, a driver only wires; the call moves into a hook`
+      if (violation.rules.includes("sub-driver-wiring"))
+        return `${line} runs the sub-driver's wiring ${name} in a hook — one hook would chain two calls; call it in the wiring`
+      if (violation.rules.includes("hook-one-call"))
+        return `${line} calls ${name} beside the use case — a hook connects a trigger to one use case; the use case does it through its port`
+      return `${line} ${driverCallWords(violation.callee)}`
+    }
+    case "argument": {
+      const name = calleeName(violation.callee)
+      const value =
+        violation.value === "function"
+          ? "a function"
+          : violation.value === "unknown"
+            ? "what the reader cannot tell"
+            : "a computed value"
+      if (violation.rules.includes("sub-driver-wiring"))
+        return `${line} hands the sub-driver's wiring ${name} a use case's result — never data from the hexagon; pass the instance, its hook calls the use case`
+      if (violation.where === "hook")
+        return `${line} hands the use case ${name} ${value} — a hook translates nothing on the way in; pass the tech values unchanged, the service derives the rest`
+      return `${line} hands ${name} ${value} — wiring hands on tech values, instances and literals; the assembly takes the raw value, its adapter derives it`
+    }
+    case "call-count":
+      return violation.count === 0
+        ? `${line} registers a hook that runs no use case — a hook with no use case is logic with no home; a use case of the service`
+        : `${line} registers a hook that runs ${violation.count} use cases — the sequence between them is a use case nobody owns; a facade use case, the calls its subfunctions`
+    case "branch":
+      if (violation.where === "wiring")
+        return `${line} branches in the wiring — outside its hooks, a driver only wires; the decision is a service's`
+      return violation.conditional
+        ? `${line} calls its use case conditionally — the call is unconditional; the service decides`
+        : `${line} branches in a hook — a hook translates nothing around its call; the service decides`
+    case "result":
+      return `${line} uses a use case's result past handing it on — a hook returns it, or hands it whole to the tech; the use case returns what the tech needs`
+    case "statement":
+      return violation.where === "wiring"
+        ? `${line} writes in the wiring — outside its hooks, a driver only wires; the write is a service's`
+        : `${line} writes in a hook — a hook translates nothing around its call; the use case returns what the tech needs`
+    case "definition":
+      return `${line} ${driverDefinitionWords(violation.name ?? "a value", violation.at)}`
+    case "parameter":
+      return `${line} ${violation.name ?? "the wiring function"} takes a parameter — a root driver's wiring function takes nothing and reads its tech itself; read it inside`
   }
 }
 
@@ -319,7 +411,9 @@ const assemblyMessage = (violation: AssemblyViolation): string => {
           ? "reads a field of"
           : violation.use === "computed"
             ? "computes with"
-            : "reassigns"
+            : violation.use === "assigned"
+              ? "writes into a member"
+              : "reassigns"
       return violation.callee.kind === "factory" &&
         violation.callee.layer === "assembly"
         ? `${line} ${verb} what ${built} built — shared instances flow down, never sideways; the parent builds it and passes it down to both`

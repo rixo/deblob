@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url"
 import { checkAssembly } from "../../lib/check/assembly.model.ts"
 import { checkBarrels } from "../../lib/check/barrels.model.ts"
 import { checkDag } from "../../lib/check/dag.model.ts"
+import { checkDriver } from "../../lib/check/driver.model.ts"
 import { checkLayers } from "../../lib/check/layers.model.ts"
 import { checkModules } from "../../lib/check/modules.model.ts"
 import { checkPorts } from "../../lib/check/ports.model.ts"
@@ -155,6 +156,7 @@ const DETECTORS: Record<
   modules: (graph, config) =>
     checkModules(graph, { mutableModuleState: config.mutableModuleState }),
   assembly: (graph) => checkAssembly(graph),
+  driver: (graph) => checkDriver(graph),
 }
 
 /**

@@ -168,6 +168,24 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // UNSTAMPED — added at the detectors step, checkpoint 6: a write read as
+    // a use of its own (`assigned`), where it read `computed` before.
+    // canon: "what the assembly builds … is passed on or returned" — written
+    // into a member of what it was handed, it is neither. Way out: return it.
+    name: "what the assembly built, written into a member, is red: passed on or returned only",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        export const createNotesAssembly = ({ cwd, registry }: { cwd: string; registry: { store?: unknown } }) => {
+          registry.store = createFsStore(cwd) // red: assembly-builds-only -- what the assembly built, written into a member
+          return { notes: createNotes({ store: createMemoryStore() }) }
+        }
+      `,
+    },
+  },
+  {
     // canon: "No use-case call: a use case whose result feeds a factory is a
     // pipeline hiding in the wiring."
     name: "a use-case call in an assembly is red",

@@ -198,6 +198,13 @@ describe("CHECK_RULES", () => {
       surface: ["layer-in-path", "chain-purity"],
       modules: ["stable-root"],
       assembly: ["assembly-builds-only"],
+      driver: [
+        "wiring-outside-hooks",
+        "hook-one-call",
+        "driver-calls-services",
+        "driver-hooks-only",
+        "sub-driver-wiring",
+      ],
     })
   })
 

@@ -576,6 +576,163 @@ factory, the pure builtin, the proven-array map, a tech call's result handed on
   with, 30 field reads), branches 26, definitions 13, root statements 9; 42
   riders.
 
+### Checkpoint 6, built 2026-09-26
+
+The `driver` check, over the reading of every `driver.spec.ts` row (dumped as at
+checkpoint 4). New `DriverViolation`, one `shape` per clause, with the `subject`
+and `cause` of checkpoint 3, grouped by the same model.
+
+**The clauses, as the rows read them.**
+
+- `wiring-outside-hooks` — in the wiring function, outside its hooks: a call
+  that is not an assembly's factory, the tech, or a sub-driver's wiring; a
+  use-case call is this rule's (D3), every other callee
+  `driver-calls-services`'. An argument whose kind, joined, is not tech,
+  instance or literal (D2: `{ cwd: process.cwd() + "/notes" }` joins to
+  computed; D1's `{ cwd: process.cwd() }` to tech). A branch, an assignment, any
+  other statement. Reading a field off what the assembly returned is wiring
+  (`const { cli } = createCliAssembly(…)`).
+- `hook-one-call` — per hook: use-case calls counted, one exactly (H1 zero, H2
+  two), the subject the hook; the call outside any branch (H3); its arguments
+  whose kind, joined, is tech, instance or literal — a record assembled in the
+  hook is computed (H11), a field of a tech value is tech (H9); its result
+  returned, handed to a tech call, or assigned to tech-held state (H6); any
+  other branch, statement or computed value in the hook is translation (H4, H5,
+  H8). The test tech exempts the count and services-only, as its reading says;
+  the rest applies to test bodies.
+- `driver-calls-services` — any call whose callee is not a use case, an
+  assembly's factory, a sub-driver's wiring or the tech: a model (C2), an
+  adapter's or a service's factory (C1), a local (O1), the language (Ruled), a
+  package nothing claims (C3); unknown when unplaced.
+- `driver-hooks-only` — a definition at root (O6); a local of the wiring
+  function holding functions (O2; one holding tech or an instance is wiring,
+  D5); a function that is not the wiring function (O3, S3's `checkHook`) — the
+  wiring function is the one another driver or a boot calls, else `main`, else
+  the first; a root driver's wiring function (no driver calls it) with a
+  parameter (O4).
+- `sub-driver-wiring` — a wiring call inside a hook (S2); one handed a
+  use-case's result (S4).
+
+**Reader facts the rows need** (dump findings):
+
+| Fact                                                                                                                                            | Today                                                                                                 | Row                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------- |
+| G1. A result assigned to tech-held state is its own use (`assigned`, the target's kind)                                                         | `process.exitCode = await cli.check(opts)` reads the result `computed`                                | H6 (a false red)        |
+| G2. A call on an awaited call's result is a receiver use                                                                                        | `(await import("./cli.assembly.ts")).createCliAssembly(…)` reads `import()`'s result `computed`       | D4 (a false red)        |
+| G3. In a driver, a local function is not inlined: a definition, its call a `local` callee (checkpoint 4's F9, for assemblies, extended)         | `parseFoo(opts.cwd)` is inlined; its body's `s.split(",")` reads a tech call on line 6, the call gone | O1's hook line (a miss) |
+| G4. `try … catch` is a branch: the `catch` (and `finally`) its arms, the `try` block read in place                                              | not a branch: the catch's `process.exitCode = 2` reads as tech-held state, green                      | H8 (a false green)      |
+| G5. A wiring function's parameter no site binds stays unknown — confessed, not lifted: `registerMore(parser: ReturnType<typeof cac>)`, uncalled | `parser.command(…)` an unknown callee                                                                 | O3's second function    |
+
+**To rule:**
+
+- **Q1. One translation, two facts.** H4
+  `cli.check({ cwd: opts.cwd ?? process.cwd() })`: the `??` is a branch in the
+  hook, and the argument it makes is computed. H5
+  `if (!(await cli.check(opts))) process.exit(1)`: the result is computed with
+  (`!`) and branched on. Each row marks one red. **Ruled 2026-09-26: two facts,
+  two diagnostics, two groups** — as `fs.ready ? fs : …` at checkpoint 5: both
+  rows mark `hook-one-call, hook-one-call`.
+- **Q2. A call in a hook is two rules' fact.** H7's `JSON.stringify` is a
+  language call (`driver-calls-services`, ruled 2026-09-25: "H7's line gains a
+  `driver-calls-services` marker") and the transform before handing
+  (`hook-one-call`). C2's `parseOpts(opts)` and O1's `parseFoo(opts.cwd)` the
+  same, marked as two groups today. **Ruled 2026-09-26: two facts, two
+  diagnostics, two groups** — H7, C2 and O1 each
+  `driver-calls-services, hook-one-call`. No riding across rules: a rider is
+  only ever the same rule's; whether that stays is the sweep's.
+- **Q3. An adapter called in a hook leaves the hook with no use case** (C1):
+  `driver-calls-services` on the call, and `hook-one-call`'s zero count on the
+  hook — the row marks the first only.
+- **Q4. A tech call in a hook beside the one call** — D4's lazy `import()` and
+  `process.cwd()` feeding the assembly are wiring in a hook, canon's words; a
+  lone `console.log("checking")` before the call is not in any row. **Ruled
+  2026-09-26: red** — "a driver connects a trigger to a use case; `console.log`
+  is not that". In a hook, a tech call is allowed only as wiring (its result
+  feeds an assembly's factory, D4) or as the tech the result is handed to whole
+  (H6); anything else is `hook-one-call`. A row joins, red.
+- **Q5. Consequences of rulings already made**, to confirm: O5's `type Opts` is
+  green (types are no definitions, checkpoint 4 — the row's marker predates it);
+  S4 `registerCheckCommands(parser, await cli.status({}))` is two groups,
+  `wiring-outside-hooks, sub-driver-wiring`, and C3 `cac(pc.bold("notes"))` two,
+  `driver-calls-services, wiring-outside-hooks` (no riding across rules, Q2);
+  O2's `.action(handlers.check)` a second red on its own line (a member of the
+  table handed on, computed — across lines, no grouping); S3's import of
+  `checkHook` moves to checkpoint 7 with the import cells (an import fact; the
+  reading has no imported names). **Ruled 2026-09-26:** O5 green, O2's second
+  red kept ("well deserved"); S3's import deferred to checkpoint 7, its marker
+  `missed` with that reason.
+- **Q6. `hook-one-call` in a test body.** Canon's letter exempts only "the hook
+  count and services-only"; built to it, deblob's own specs gave 976 reds
+  (branches, results read, computed arguments), and the rule judges a use case's
+  result but not a model function's — a split with no reason in a test. **Ruled
+  2026-09-26: A, provisionally — test bodies are exempt from `hook-one-call`
+  whole; `sub-driver-wiring` still applies.** Uncertain on purpose: the chapter
+  PLAN's `04/05_test-rules` revisits it, with the data and the clause-by-clause
+  reading; the bet is that it tightens (no branch, no writes, as test rules of
+  their own). The exemption is marked provisional in the code, and must not
+  outlive that step.
+
+**Built as drafted and ruled**, with what building it taught:
+
+- **Reader.** G1, G3 and G4 as drafted. G2 cut at falsification: D4 is green
+  without it — the check never judges what a tech call's result is used for,
+  only whether it is dropped. G5 is moot: a function that is not the wiring
+  function is red whole, its body not judged as wiring. Moving the tracked
+  locals out of drivers moved the reader units that read their fixtures as a
+  driver to a test file (the outside kind that still inlines), and a
+  `modules.spec.ts` row's tree from a driver to an adapter (verdict unchanged;
+  re-stamp).
+- **In a hook, a branch owns what its arms hold** — a tech call, a write — but
+  not the use case (that is the branch's `conditional`) nor a call the driver
+  may not make (that rule's). H3, H5 and H8 read one fact each for the branch,
+  as their rows mark. A result written into a member is the assignment's fact,
+  judged as a statement, never twice.
+- **A tech call in a hook** (Q4) is red when its result is dropped and it takes
+  no use case's result: wiring feeds something, handing takes the result.
+- **The wiring function** is the first exported; the preferences drafted (the
+  one another driver calls, then `main`) failed no row switched off and were
+  cut. A sub-driver — a driver another driver or a test imports — may take
+  parameters; a test's call site binds none, so the imports decide.
+- **Q6** (ruled 2026-09-26, above): test bodies exempt from `hook-one-call`,
+  provisionally — `PROVISIONAL` in `driver.model.ts`, revisited by
+  `04/05_test-rules`.
+- **The assembly check reads `assigned` as a use of what it built**, red as the
+  `computed` it replaced; a catch in an assembly is a branch (the self-check's
+  five new `main.ts` reds — its message says "branches on a computed value", a
+  wording for the sweep).
+- **Rows.** Every driver marker stamped at this checkpoint flips; the S3 import
+  stays `missed` (checkpoint 7). Two hooks that run no use case gained their
+  marker (S2's, the sub-driver's `() => cli`). Other specs: the layers rows'
+  `() => undefined` hooks, the modules driver's root binding, and two
+  confessions — the shared matcher driver's `expect.extend({…})`
+  (`false unknown`, `false red`: a test's call site binds no parameter; a record
+  of matchers is not cut as hooks) and `enterTmp`'s `host.chdir`
+  (`false unknown`). New, UNSTAMPED (written after the check): a branch and a
+  write in the wiring; a write beside the call and a branch in a branch in a
+  hook; the result handed whole to a tech call in a block body (green); an
+  assembly writing what it built into a member.
+- **Units** where no row reaches: a driver with no reading, an unknown argument
+  in the wiring and to a hook's use case; every message shape. The CLI golden
+  gains a driver block (`billing.driver.ts`, a log line beside the call).
+- **Falsification:** each clause switched off in turn fails a row — the wiring's
+  use case (2), a callee no driver calls (7), the services-only exemption (4),
+  an assembly factory allowed (62), an argument not handable (6), a received
+  argument (1), a function to the tech a hook (64), a sub-driver handed a result
+  (1), a wiring branch (1), a wiring write (1), a table of lambdas (1), the
+  count (5), the use case's arguments (4), its result past handing (1), the
+  result handed to the tech (1), a sub-driver's wiring in a hook (1), a tech
+  call beside (2), its wiring exemption (4), its handed-the-result exemption
+  (1), a hook branch (2), a branch owning its arms (2), a hook write (1), the
+  result written to tech-held state (1), the test exemption (9), a root
+  definition (2), a second function (3), a wiring function's parameter (1), a
+  sub-driver's parameters (4); in the reader, the assigned use (1), a driver's
+  local not inlined (1), a catch as a branch (2); the assembly's write of what
+  it built (1).
+- **Self-check:** 429 → 436 groups (144 `modules`, 292 `assembly`, no `driver`:
+  deblob's `main.ts` is designated an assembly). The two new `modules` are the
+  new unit file's root constants; the assembly's five catches arrived with the
+  reader change.
+
 ## Docs
 
 `check/README.md`: the three checks and the call clause. `cases/README.md`: the

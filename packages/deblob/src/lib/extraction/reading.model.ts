@@ -758,6 +758,8 @@ type Ctx =
   | { kind: "bound"; binding: Binding }
   /** Called on: the receiver of a call. */
   | { kind: "callee" }
+  /** Written into a member of a value of kind `target`. */
+  | { kind: "assigned"; target: ValueKind }
   /** A member read off it. */
   | { kind: "member" }
 
@@ -782,6 +784,8 @@ const useOf = (ctx: Exclude<Ctx, { kind: "bound" }>, span: Span): ResultUse => {
       return { kind: "member", span }
     case "callee":
       return { kind: "receiver", span }
+    case "assigned":
+      return { kind: "assigned", target: ctx.target, span }
   }
 }
 
@@ -2419,6 +2423,14 @@ export const readModule = ({
           }
         } else if (left.type === "MemberExpression") {
           evaluate(left, { kind: "reassigned" }, emitting)
+          // a value written into a member: handed whole to what holds it — a
+          // tech value's field is tech-held state
+          evaluate(
+            node["right"] as AstNode,
+            { kind: "assigned", target: assignmentTargetKind(left) },
+            emitting,
+          )
+          return computed
         } else {
           for (const { name } of patternNames(left)) {
             const binding = lookup(scope, name)
@@ -2820,6 +2832,7 @@ export const readModule = ({
       case "TryStatement": {
         walkStatement(statement["block"] as AstNode)
         const handler = statement["handler"]
+        // the catch runs on a failure: a branch on it, its body the arm
         if (isNode(handler)) {
           const param = handler["param"]
           const bindings = isNode(param)
@@ -2827,7 +2840,17 @@ export const readModule = ({
                 newBinding(name, "catch", node),
               )
             : []
-          inScope(bindings, () => walkStatement(handler["body"] as AstNode))
+          emitControl(
+            handler,
+            null,
+            [
+              () =>
+                inScope(bindings, () =>
+                  walkStatement(handler["body"] as AstNode),
+                ),
+            ],
+            true,
+          )
         }
         const finalizer = statement["finalizer"]
         if (isNode(finalizer)) walkStatement(finalizer)
@@ -2933,11 +2956,13 @@ export const readModule = ({
   for (const [name, fn] of candidates) {
     const count = references.get(name) as { direct: number; other: number }
     const binding = lookup(scope, name)
-    // an assembly's local function is not its own code read inline: nothing
-    // but assembly functions is defined there, so it stays a definition and
-    // its call a call
+    // an assembly's or a driver's local function is not its own code read
+    // inline: nothing but assembly functions is defined in the one, nothing
+    // but its hooks and one wiring function in the other, so it stays a
+    // definition and its call a call
     if (
       layer !== "assembly" &&
+      layer !== "driver" &&
       count.other === 0 &&
       count.direct > 0 &&
       binding !== null

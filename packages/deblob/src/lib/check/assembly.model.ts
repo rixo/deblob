@@ -198,7 +198,8 @@ const judgeAssembly = (node: ModuleNode): AssemblyViolation[] => {
       if (
         use.kind !== "member" &&
         use.kind !== "computed" &&
-        use.kind !== "reassigned"
+        use.kind !== "reassigned" &&
+        use.kind !== "assigned"
       )
         return []
       return [

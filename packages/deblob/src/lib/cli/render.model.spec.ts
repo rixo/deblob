@@ -5,6 +5,7 @@ import type { RuleId } from "../check/rule.model.ts"
 import type {
   AssemblyViolation,
   BarrelsViolation,
+  DriverViolation,
   DagViolation,
   LayersViolation,
   ModulesViolation,
@@ -1104,6 +1105,7 @@ describe("renderCheckResults", () => {
         ["member", "reads a field of"],
         ["computed", "computes with"],
         ["reassigned", "reassigns"],
+        ["assigned", "writes into a member"],
       ] as const)(
         "a result used as %s says it %s what was built",
         (use, verb) => {
@@ -1173,6 +1175,253 @@ describe("renderCheckResults", () => {
         ],
       ] as const)("%o says: %s", (shape, words) => {
         expect(message(assembly(shape))).toContain(`line 7 ${words}`)
+      })
+    })
+
+    describe("a driver violation", () => {
+      type Shape = DistributiveOmit<
+        DriverViolation,
+        | "check"
+        | "ruleset"
+        | "rules"
+        | "file"
+        | "serviceRoot"
+        | "line"
+        | "unknown"
+        | "subject"
+        | "cause"
+      >
+      const driver = (
+        rule: RuleId,
+        shape: Shape,
+        unknown: DriverViolation["unknown"] = null,
+      ): DriverViolation => ({
+        check: "driver",
+        ruleset: "arch",
+        rules: [rule],
+        file: "src/cli.driver.ts",
+        serviceRoot: null,
+        line: 7,
+        unknown,
+        subject: SUBJECT,
+        cause: null,
+        ...shape,
+      })
+      const CHECK = {
+        kind: "use-case",
+        member: "cli.check",
+        origin: null,
+      } as const
+      const REGISTER = {
+        kind: "wiring",
+        path: "src/cli/check.driver.ts",
+        name: "registerCheckCommands",
+      } as const
+      const CALLS_SERVICES =
+        "a driver calls services, the assembly, sub-driver wiring and its own tech, nothing else"
+
+      test.each([
+        [
+          "wiring-outside-hooks",
+          { shape: "call", callee: CHECK, where: "wiring" },
+          "runs the use case cli.check outside any hook — outside its hooks, a driver only wires; the call moves into a hook",
+        ],
+        [
+          "sub-driver-wiring",
+          { shape: "call", callee: REGISTER, where: "hook" },
+          "runs the sub-driver's wiring registerCheckCommands in a hook — one hook would chain two calls; call it in the wiring",
+        ],
+        [
+          "hook-one-call",
+          {
+            shape: "call",
+            callee: { kind: "tech", package: null },
+            where: "hook",
+          },
+          "calls the host beside the use case — a hook connects a trigger to one use case; the use case does it through its port",
+        ],
+        [
+          "driver-calls-services",
+          {
+            shape: "call",
+            callee: {
+              kind: "model",
+              path: "src/opts.model.ts",
+              name: "parseOpts",
+            },
+            where: "hook",
+          },
+          `calls parseOpts, a model — ${CALLS_SERVICES}; parsing and rendering are use cases of a service`,
+        ],
+        [
+          "driver-calls-services",
+          {
+            shape: "call",
+            callee: {
+              kind: "factory",
+              layer: "adapters",
+              path: "src/fs.adapter.ts",
+              name: "createFsStore",
+            },
+            where: "hook",
+          },
+          `calls createFsStore, a factory of adapters — ${CALLS_SERVICES}; the assembly builds it, a service calls it`,
+        ],
+        [
+          "driver-calls-services",
+          {
+            shape: "call",
+            callee: { kind: "local", name: "parseFoo", factory: false },
+            where: "hook",
+          },
+          `calls parseFoo, a function of the driver — ${CALLS_SERVICES}; a model function, called by a service`,
+        ],
+        [
+          "driver-calls-services",
+          {
+            shape: "call",
+            callee: { kind: "unclaimed", package: "picocolors" },
+            where: "wiring",
+          },
+          `calls picocolors, a package nothing claims — ${CALLS_SERVICES}; declare it in driverTech, or it is a service's concern`,
+        ],
+        [
+          "driver-calls-services",
+          { shape: "call", callee: { kind: "language" }, where: "hook" },
+          `calls the language — ${CALLS_SERVICES}; a use case of the service does it`,
+        ],
+        [
+          "sub-driver-wiring",
+          {
+            shape: "argument",
+            callee: REGISTER,
+            value: "computed",
+            where: "wiring",
+          },
+          "hands the sub-driver's wiring registerCheckCommands a use case's result — never data from the hexagon; pass the instance, its hook calls the use case",
+        ],
+        [
+          "hook-one-call",
+          {
+            shape: "argument",
+            callee: CHECK,
+            value: "computed",
+            where: "hook",
+          },
+          "hands the use case cli.check a computed value — a hook translates nothing on the way in; pass the tech values unchanged, the service derives the rest",
+        ],
+        [
+          "wiring-outside-hooks",
+          {
+            shape: "argument",
+            callee: { kind: "tech", package: "cac" },
+            value: "function",
+            where: "wiring",
+          },
+          "hands cac a function — wiring hands on tech values, instances and literals; the assembly takes the raw value, its adapter derives it",
+        ],
+        [
+          "hook-one-call",
+          { shape: "call-count", count: 0 },
+          "registers a hook that runs no use case — a hook with no use case is logic with no home; a use case of the service",
+        ],
+        [
+          "hook-one-call",
+          { shape: "call-count", count: 2 },
+          "registers a hook that runs 2 use cases — the sequence between them is a use case nobody owns; a facade use case, the calls its subfunctions",
+        ],
+        [
+          "wiring-outside-hooks",
+          { shape: "branch", where: "wiring", conditional: false },
+          "branches in the wiring — outside its hooks, a driver only wires; the decision is a service's",
+        ],
+        [
+          "hook-one-call",
+          { shape: "branch", where: "hook", conditional: true },
+          "calls its use case conditionally — the call is unconditional; the service decides",
+        ],
+        [
+          "hook-one-call",
+          { shape: "branch", where: "hook", conditional: false },
+          "branches in a hook — a hook translates nothing around its call; the service decides",
+        ],
+        [
+          "hook-one-call",
+          { shape: "result", use: "computed" },
+          "uses a use case's result past handing it on — a hook returns it, or hands it whole to the tech; the use case returns what the tech needs",
+        ],
+        [
+          "wiring-outside-hooks",
+          { shape: "statement", where: "wiring" },
+          "writes in the wiring — outside its hooks, a driver only wires; the write is a service's",
+        ],
+        [
+          "hook-one-call",
+          { shape: "statement", where: "hook" },
+          "writes in a hook — a hook translates nothing around its call; the use case returns what the tech needs",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "definition", name: "NAME", at: "root" },
+          "defines NAME beside the hooks and the wiring function — a driver defines its hooks and one wiring function; the literal in place, or a model export",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "definition", name: null, at: "root" },
+          "defines a value beside the hooks and the wiring function — a driver defines its hooks and one wiring function; the literal in place, or a model export",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "definition", name: "parseFoo", at: "function" },
+          "defines parseFoo, a function beside the wiring function — a driver defines its hooks and one wiring function; a model function called by a service, or a sub-driver's wiring",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "definition", name: "handlers", at: "local" },
+          "holds functions in handlers — a table of lambdas is a service without a contract; each hook handed to the tech in place",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "parameter", name: "main" },
+          "main takes a parameter — a root driver's wiring function takes nothing and reads its tech itself; read it inside",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "parameter", name: null },
+          "the wiring function takes a parameter — a root driver's wiring function takes nothing and reads its tech itself; read it inside",
+        ],
+      ] as const)("%s, %o says: %s", (rule, shape, words) => {
+        expect(message(driver(rule, shape as Shape))).toContain(
+          `line 7 ${words}`,
+        )
+      })
+
+      it("says what the reader could not see, in a call and in an argument", () => {
+        expect(
+          message(
+            driver(
+              "driver-calls-services",
+              { shape: "call", callee: { kind: "unknown" }, where: "wiring" },
+              { kind: "callee" },
+            ),
+          ),
+        ).toContain(
+          "line 7 may call what a driver may not — unknown: the reader cannot tell what this call reaches; call a service, the assembly or the tech",
+        )
+        expect(
+          message(
+            driver(
+              "wiring-outside-hooks",
+              {
+                shape: "argument",
+                callee: { kind: "tech", package: "cac" },
+                value: "unknown",
+                where: "wiring",
+              },
+              { kind: "value", form: "argument", name: null },
+            ),
+          ),
+        ).toContain("line 7 hands cac what the reader cannot tell")
       })
     })
 
@@ -1458,7 +1707,7 @@ describe("bare status", () => {
         "",
         "Commands",
         "  deblob check [what...]      run architecture checks",
-        "                              (dag · layers · private · barrels · ports · surface · modules · assembly)",
+        "                              (dag · layers · private · barrels · ports · surface · modules · assembly · driver)",
         "  deblob explain <topic...>   explain rules or checks",
         "  deblob --help               full help",
         "",

@@ -15,14 +15,13 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * its wiring function (`sub-driver-wiring`). The import rule,
  * `driver-not-imported`, lives in `layers.spec.ts`.
  *
- * Red first: no check reports these rules yet, so every red is a `missed red`
- * naming what it waits for. Each red's way out is in the step's SPEC (the
- * driver table); a red with no way out is the finding. A hook is a function
- * handed to a tech callee — here the parser, `cac`, declared as the driver's
- * tech. Every tree is legal under every other rule, or its other red marked.
+ * Written red first; the driver check reports them since the detectors step,
+ * checkpoint 6 — a sub-driver's hook imported waits on checkpoint 7's import
+ * cells. Each red's way out is in the step's SPEC (the driver table); a red
+ * with no way out is the finding. A hook is a function handed to a tech callee
+ * — here the parser, `cac`, declared as the driver's tech. Every tree is legal
+ * under every other rule, or its other red marked.
  */
-
-const WAIT = "the driver check is not built yet"
 
 /** The parser as the driver's tech, declared. */
 const CONFIG = { driverTech: ["cac"] } as const
@@ -111,10 +110,57 @@ const ROWS: readonly Row[] = [
       "src/cli.driver.ts": `
         ${IMPORTS}
         export const main = () => {
-          const { cli } = createCliAssembly({ cwd: process.cwd() + "/notes" }) // missed red: wiring-outside-hooks -- a computed argument; ${WAIT}
+          const { cli } = createCliAssembly({ cwd: process.cwd() + "/notes" }) // red: wiring-outside-hooks -- a computed argument
           const parser = cac("notes")
           parser.command("check").action((opts) => cli.check(opts))
-          cli.status({}) // missed red: wiring-outside-hooks -- a use case outside any hook; ${WAIT}
+          cli.status({}) // red: wiring-outside-hooks -- a use case outside any hook
+          parser.parse(process.argv)
+        }
+      `,
+    },
+  },
+  {
+    // UNSTAMPED — added at the detectors step, checkpoint 6, after the check:
+    // no stamped row had a branch or a write in the wiring.
+    // canon: "outside its hooks, a driver only wires: assembly calls, tech
+    // setup, sub-driver registration" — a registration decided in the wiring
+    // is a decision, and a write is not wiring. Ways out: register
+    // unconditionally, the service decides; the use case returns the code, a
+    // hook hands it to the tech.
+    name: "a branch or a write in the wiring is red: outside its hooks, a driver only wires",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli.driver.ts": `
+        ${IMPORTS}
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("notes")
+          if (process.env["CI"]) parser.command("ci").action((opts) => cli.check(opts)) // red: wiring-outside-hooks -- a registration decided in the wiring
+          process.exitCode = 0 // red: wiring-outside-hooks -- a write in the wiring
+          parser.parse(process.argv)
+        }
+      `,
+    },
+  },
+  {
+    // UNSTAMPED — as the row above: no stamped row had a write beside the
+    // call, or a branch in a branch, in a hook.
+    // canon: the hook "translates nothing around it" — a write that is not the
+    // result handed whole to the tech is translation; a branch in a hook is
+    // one translation, what its arms hold its own. Ways out: the use case
+    // returns the code; the service decides.
+    name: "a write beside the call in a hook is red; a branch in a branch is one red",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli.driver.ts": `
+        ${IMPORTS}
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("notes")
+          parser.command("check").action(async (opts) => { process.exitCode = 0; return cli.check(opts) }) // red: hook-one-call -- a write beside the call
+          parser.command("deep").action((opts) => { if (opts.a) { if (opts.b) return cli.check(opts) } }) // red: hook-one-call -- a conditional call, the inner branch the outer's
           parser.parse(process.argv)
         }
       `,
@@ -155,14 +201,37 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { cli } = createCliAssembly({ cwd: process.cwd() })
           const parser = cac("notes")
-          parser.command("echo").action((opts) => console.log(opts)) // missed red: hook-one-call -- no use case: logic with no home; ${WAIT}
-          parser.command("both").action(async (opts) => { await cli.check(opts); return cli.status(opts) }) // missed red: hook-one-call -- two calls: a use case nobody owns; ${WAIT}
-          parser.command("maybe").action((opts) => { if (opts.run) return cli.check(opts) }) // missed red: hook-one-call -- a conditional call; ${WAIT}
-          parser.command("default").action((opts) => cli.check({ cwd: opts.cwd ?? process.cwd() })) // missed red: hook-one-call -- a default on the way in; ${WAIT}
-          parser.command("exit").action(async (opts) => { if (!(await cli.check(opts))) process.exit(1) }) // missed red: hook-one-call -- a branch on the result; ${WAIT}
-          parser.command("json").action(async (opts) => console.log(JSON.stringify(await cli.status(opts)))) // missed red: hook-one-call -- a transform before handing; ${WAIT}
-          parser.command("safe").action(async (opts) => { try { return await cli.check(opts) } catch { process.exitCode = 2 } }) // missed red: hook-one-call -- an error mapped to an exit code; ${WAIT}
-          parser.command("merged").action((opts) => cli.check({ ...opts, cwd: process.cwd() })) // missed red: hook-one-call -- two tech values merged into one; ${WAIT}
+          parser.command("echo").action((opts) => console.log(opts)) // red: hook-one-call -- no use case: logic with no home
+          parser.command("both").action(async (opts) => { await cli.check(opts); return cli.status(opts) }) // red: hook-one-call -- two calls: a use case nobody owns
+          parser.command("maybe").action((opts) => { if (opts.run) return cli.check(opts) }) // red: hook-one-call -- a conditional call
+          parser.command("default").action((opts) => cli.check({ cwd: opts.cwd ?? process.cwd() })) // red: hook-one-call, hook-one-call -- a default on the way in: a branch in the hook, and the argument it computes
+          parser.command("exit").action(async (opts) => { if (!(await cli.check(opts))) process.exit(1) }) // red: hook-one-call, hook-one-call -- a branch on the result: the result computed with, and branched on
+          parser.command("json").action(async (opts) => console.log(JSON.stringify(await cli.status(opts)))) // red: driver-calls-services, hook-one-call -- JSON.stringify, the language, called; the result transformed before handing
+          parser.command("safe").action(async (opts) => { try { return await cli.check(opts) } catch { process.exitCode = 2 } }) // red: hook-one-call -- an error mapped to an exit code
+          parser.command("merged").action((opts) => cli.check({ ...opts, cwd: process.cwd() })) // red: hook-one-call -- two tech values merged into one
+          parser.parse(process.argv)
+        }
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 6, red first: no row had a tech
+    // call beside the one call.
+    // canon: "each hook … exactly one use-case call … and translates nothing
+    // around it"; a driver connects a trigger to a use case, and a log line is
+    // not that (ruled 2026-09-26). A tech call in a hook is wiring (D4) or the
+    // tech the result is handed to whole (H6), nothing else. Way out: the use
+    // case logs through its port.
+    name: "a tech call beside the one call in a hook is red: a hook connects a trigger to a use case, nothing more",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli.driver.ts": `
+        ${IMPORTS}
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("notes")
+          parser.command("check").action((opts) => { console.log("checking"); return cli.check(opts) }) // red: hook-one-call -- a log line beside the call
           parser.parse(process.argv)
         }
       `,
@@ -186,6 +255,7 @@ const ROWS: readonly Row[] = [
           parser.command("check").action(async (opts) => { process.exitCode = await cli.check(opts) })
           parser.command("files").action((opts) => cli.check(opts.files))
           parser.command("here").action((opts) => cli.check(opts, process.cwd()))
+          parser.command("show").action(async (opts) => { console.log(await cli.status(opts)) }) // UNSTAMPED, added at checkpoint 6: the result handed whole to a tech call, the call's own result dropped
           parser.parse(process.argv)
         }
       `,
@@ -206,7 +276,7 @@ const ROWS: readonly Row[] = [
         import { createFsStore } from "./lib/notes/adapters/fs-store.adapter.ts"
         export const main = () => {
           const parser = cac("notes")
-          parser.command("store").action(() => createFsStore(process.cwd())) // missed red: driver-calls-services -- an adapter called from a hook; ${WAIT}
+          parser.command("store").action(() => createFsStore(process.cwd())) // red: driver-calls-services, hook-one-call -- an adapter called from a hook; the hook runs no use case
           parser.parse(process.argv)
         }
         // red: adapter-assembly-only, runtime-import -- the import of fs-store.adapter from a driver: a type import would pass
@@ -229,7 +299,7 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { cli } = createCliAssembly({ cwd: process.cwd() })
           const parser = cac("notes")
-          parser.command("check").action((opts) => cli.check(parseOpts(opts))) // missed red: driver-calls-services, hook-one-call -- a model called; a parse around the call; ${WAIT}
+          parser.command("check").action((opts) => cli.check(parseOpts(opts))) // red: driver-calls-services, hook-one-call -- a model called; a parse around the call
           parser.parse(process.argv)
         }
       `,
@@ -253,7 +323,7 @@ const ROWS: readonly Row[] = [
         import pc from "picocolors"
         export const main = () => {
           const { cli } = createCliAssembly({ cwd: process.cwd() })
-          const parser = cac(pc.bold("notes")) // missed red: driver-calls-services -- picocolors, declared by nothing; ${WAIT}
+          const parser = cac(pc.bold("notes")) // red: driver-calls-services, wiring-outside-hooks -- picocolors, declared by nothing; its result, computed, handed to the parser
           parser.command("check").action((opts) => cli.check(opts))
           parser.parse(process.argv)
         }
@@ -285,21 +355,22 @@ const ROWS: readonly Row[] = [
   },
   {
     // canon: "the only definitions in a driver are its hooks and at most one
-    // wiring function … a local `parseFoo` is a model without a test"; a type
-    // and a constant are definitions too (A15's ruling).
-    name: "a helper, a type and a constant beside the hooks and the wiring function are red",
+    // wiring function … a local `parseFoo` is a model without a test"; a
+    // constant is a definition too. A type is not (re-ruled at the detectors
+    // step, checkpoint 6: types are no definitions in any layer).
+    name: "a helper and a constant beside the hooks and the wiring function are red; a type is not a definition",
     config: CONFIG,
     files: {
       ...CLI,
       "src/cli.driver.ts": `
         ${IMPORTS}
-        const parseFoo = (s: string) => s.split(",") // missed red: driver-hooks-only -- a model without a test; ${WAIT}
-        type Opts = { cwd: string } // missed red: driver-hooks-only -- a definition; ${WAIT}
-        const NAME = "notes" // missed red: driver-hooks-only -- a definition; ${WAIT}
+        const parseFoo = (s: string) => s.split(",") // red: driver-hooks-only -- a model without a test
+        type Opts = { cwd: string }
+        const NAME = "notes" // red: driver-hooks-only -- a definition
         export const main = () => {
           const { cli } = createCliAssembly({ cwd: process.cwd() })
           const parser = cac(NAME)
-          parser.command("check").action((opts: Opts) => cli.check(parseFoo(opts.cwd))) // missed red: driver-calls-services, hook-one-call -- a local function called; a parse around the call; ${WAIT}
+          parser.command("check").action((opts: Opts) => cli.check(parseFoo(opts.cwd))) // red: driver-calls-services, hook-one-call -- a local function called; a parse around the call
           parser.parse(process.argv)
         }
       `,
@@ -317,8 +388,8 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { cli } = createCliAssembly({ cwd: process.cwd() })
           const parser = cac("notes")
-          const handlers = { check: (opts: unknown) => cli.check(opts) } // missed red: driver-hooks-only -- a table of lambdas; ${WAIT}
-          parser.command("check").action(handlers.check)
+          const handlers = { check: (opts: unknown) => cli.check(opts) } // red: driver-hooks-only -- a table of lambdas
+          parser.command("check").action(handlers.check) // red: wiring-outside-hooks -- a member of the table handed on, computed
           parser.parse(process.argv)
         }
       `,
@@ -333,13 +404,13 @@ const ROWS: readonly Row[] = [
       ...CLI,
       "src/cli.driver.ts": `
         ${IMPORTS}
-        export const main = (argv: string[]) => { // missed red: driver-hooks-only -- main takes nothing and reads its tech itself; ${WAIT}
+        export const main = (argv: string[]) => { // red: driver-hooks-only -- main takes nothing and reads its tech itself
           const { cli } = createCliAssembly({ cwd: process.cwd() })
           const parser = cac("notes")
           parser.command("check").action((opts) => cli.check(opts))
           parser.parse(argv)
         }
-        export const registerMore = (parser: ReturnType<typeof cac>) => { // missed red: driver-hooks-only -- a second wiring function; ${WAIT}
+        export const registerMore = (parser: ReturnType<typeof cac>) => { // red: driver-hooks-only -- a second wiring function
           parser.command("more").action(() => createCliAssembly({ cwd: process.cwd() }).cli.status({}))
         }
       `,
@@ -384,19 +455,19 @@ const ROWS: readonly Row[] = [
       "src/cli/check.driver.ts": `
         import type { cac } from "cac"
         export const registerCheckCommands = (parser: ReturnType<typeof cac>, cli: unknown) => {
-          parser.command("check").action(() => cli)
+          parser.command("check").action(() => cli) // red: hook-one-call -- the hook runs no use case
         }
-        export const checkHook = (opts: unknown) => opts // missed red: driver-hooks-only -- a hook exported beside the wiring function; ${WAIT}
+        export const checkHook = (opts: unknown) => opts // red: driver-hooks-only -- a hook exported beside the wiring function
       `,
       "src/cli.driver.ts": `
         ${IMPORTS}
-        import { checkHook, registerCheckCommands } from "./cli/check.driver.ts" // missed red: sub-driver-wiring -- a hook imported from a sub-driver; ${WAIT}
+        import { checkHook, registerCheckCommands } from "./cli/check.driver.ts" // missed red: sub-driver-wiring -- a hook imported from a sub-driver; the import cells are checkpoint 7's
         export const main = async () => {
           const { cli } = createCliAssembly({ cwd: process.cwd() })
           const parser = cac("notes")
-          parser.command("later").action(() => registerCheckCommands(parser, cli)) // missed red: sub-driver-wiring -- wired from inside a hook; ${WAIT}
-          // missed red: wiring-outside-hooks -- a use case outside any hook; ${WAIT}
-          registerCheckCommands(parser, await cli.status({})) // missed red: sub-driver-wiring -- handed a use-case result; ${WAIT}
+          parser.command("later").action(() => registerCheckCommands(parser, cli)) // red: sub-driver-wiring, hook-one-call -- wired from inside a hook; the hook runs no use case
+          // red: wiring-outside-hooks -- a use case outside any hook
+          registerCheckCommands(parser, await cli.status({})) // red: sub-driver-wiring -- handed a use-case result
           parser.command("hook").action(checkHook)
           parser.parse(process.argv)
         }
