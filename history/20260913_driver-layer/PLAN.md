@@ -534,19 +534,22 @@ may reopen the service example and the config pattern section.
   2026-09-25 in five checkpoints: every rule has its rows, every red its way
   out, and three canon edits came of writing them (a tech value may be read,
   "what the assembly builds", awaiting a call is the call). Next: call reading
-  and the detectors. Then, before type-name depth, `04/04_sweep` (added
-  2026-09-25: the detectors went fast, one commit a checkpoint for days): loose
-  ends caught and bolts tightened before building on them. A review by another
-  model, cold, of everything since `02_rows-first` closed — code, units, rows,
-  READMEs, SPEC notes against what landed; the confessed known failures and
-  every "to be measured" re-read; the two owed cleanups (`it` where the title is
-  a behavior sentence, `test` elsewhere — never a blind rename; the typed
-  builders replacing `render.model.spec.ts`'s `as …Violation` casts); and
-  grouping's worth measured on the self-check (how many groups carry riders)
-  before anything else is built on it. Findings as a table, rixo rules each,
-  fixes one commit per batch.
+  and the detectors — paused after their checkpoint 6 for `04/04_lens` (added
+  2026-09-26: the outside layers are concessions, one thing each; canon
+  rewritten around that test, every stamped row re-read through it; its SPEC
+  carries the rationale), resuming at checkpoint 7 under it. Then, before
+  type-name depth, `04/05_sweep` (added 2026-09-25: the detectors went fast, one
+  commit a checkpoint for days): loose ends caught and bolts tightened before
+  building on them. A review by another model, cold, of everything since
+  `02_rows-first` closed — code, units, rows, READMEs, SPEC notes against what
+  landed; the confessed known failures and every "to be measured" re-read; the
+  two owed cleanups (`it` where the title is a behavior sentence, `test`
+  elsewhere — never a blind rename; the typed builders replacing
+  `render.model.spec.ts`'s `as …Violation` casts); and grouping's worth measured
+  on the self-check (how many groups carry riders) before anything else is built
+  on it. Findings as a table, rixo rules each, fixes one commit per batch.
 
-  Then `04/05_test-rules` (added 2026-09-26, **not to slip**: the ruling it
+  Then `04/06_test-rules` (added 2026-09-26, **not to slip**: the ruling it
   revisits was made provisional on purpose). What a test body may do is
   underspecified. Canon's `test-is-outside` says of a test file's hooks "the
   hook count and services-only do not apply" — by the letter, the rest of
@@ -621,6 +624,21 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
 ## Future
 
 ### Ideas
+
+- **The web app as a program** (2026-09-26, rixo, at the lens review). From the
+  core, a front end is a driver: one job, wire hooks, one use case each. From
+  inside, it is a program in its own right — both views right, the answer
+  relative to where one stands (fractality, in canon since commit 1). The inside
+  view is untouched: which layers a web app has, which are its concessions, what
+  its party is, all through the lens (`04/04_lens`: outside layers allowed one
+  thing each). The material so far, rixo's: front-end frameworks sell front-end
+  features and push more of them than a program needs ("too much is too much;
+  just enough is the right price"); the cleaner the Svelte, the less Svelte in
+  it — the `.svelte.ts` split the last proof; React's seminal premise (UI a
+  function of state, one-way data flow) matches deblob's, and a right premise
+  did not save it from excess. Keep: a front-end question is first asked "from
+  which program?", and a detail the core's canon already answers "no" is not
+  reopened from inside.
 
 - **A tech module passed on is an adapter skipped** (2026-09-25, found drafting
   `04/03_detectors`). The reading classes an import a tech claims as a tech

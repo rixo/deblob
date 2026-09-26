@@ -240,10 +240,10 @@ Outside it, inward to outward:
 - **Drivers** (`.driver.ts`, framework entry points) — the driving side. Hold
   the tech and the hooks it fires; call assembly to get the hexagon, call one
   use case per hook. Started by a boot, imported only by a boot or drivers. One
-  right: fire.
+  right: connect an event to a use case.
 - **Boot** (`.boot.ts`) — the entry. Imports one driver and calls its wiring
   function once, at module root, with no arguments. The one module whose
-  evaluation performs a call. Two rights: import one driver, call it.
+  evaluation performs a call. One right: start, one call to its one driver.
 - **Test** (files matched by the test globs) — assembly and driver in one, by
   the shape of the test tech. Imports anything, blob included; defines anything;
   imported by nothing (`test-is-outside`). Shared test code is not test kind: it
@@ -367,6 +367,47 @@ How the instances assembly returns reach the hooks — a return value on a CLI, 
 context on a component tree — is specific to the driver technology; see the
 implementation guide.
 
+### The outside — concessions, one thing each
+
+A program has to start, its events have to reach its use cases, and its graph
+has to be built. None of that can live in a service under a service's laws, so
+it lives outside, in three layers we need — not that we want them. They are
+concessions, kept as boring as we can: boot, driver and assembly drive the
+guests to the party; the services are the party — the code with contracts, ports
+and tests, where the program's behavior lives and is narrated.
+
+One layer doing all three was tried, and turned bad: the more it did, the harder
+it was to enforce that it did nothing else, and it became the place where logic
+hides. So each concession got its own layer, allowed one thing:
+
+- **boot starts** — one call, to its one driver;
+- **the driver connects** an event to a use case — one call per hook, and
+  nothing between the event and the call;
+- **assembly assembles** — it builds the graph and passes what it built around,
+  and decides what to build under narrow constraints; it never looks into or
+  touches what it built.
+
+Every rule of the three is that sentence made checkable, and every question
+about them reduces to one: is this line doing its layer's one thing? Yes, or no.
+That something would be more convenient here, or that three files for one call
+feel bureaucratic, does not enter; the answer is no to everything but the one
+yes. The payoff is the mental model: a driver's link to a service is all there
+is to know about it — one call, nothing more, nothing more allowed — so the
+outside is reasoned about without opening its code (the map draws it as one
+arrow), and what is worth reasoning about, the services, is where the tests
+start. The outside being the most boring part of the program is not a side
+effect; it is the goal. Anything interesting there is a risk, and one nothing
+mitigates: no contract, no port, no test. No rule here reaches into service
+territory to be lenient: what is not the layer's one thing is refused, and the
+service is where it goes, with full rights.
+
+Where a program meets another program, the answer depends on where one stands. A
+web front end, seen from the program whose services it fires, is a driver like a
+command line: its one job is to connect its events to use cases. Seen from
+inside, it is a program of its own, with its own architecture, concessions and
+party. Both views are right; this document states the first, and the second
+follows the same principles applied from there.
+
 ### Assembly — the composition root
 
 Assembly builds the graph. It imports concrete adapters and services, calls
@@ -379,24 +420,28 @@ it becomes the place where logic hides. So the layer with the widest import
 right carries the narrowest rule. Three terms the assembly and driver rules use
 in a fixed sense. A **tech value** is what the tech hands the program — argv,
 env, a request, an event, a parsed option — or holds for it — a component's
-state, props, context — plus what a declared load returned. A tech value may be
-read — a field, a destructured part — and is still a tech value; a call on one
-is not. A **literal** is a constant written in place. A **definition** is any
-declaration of something that exists at run time — function, class, variable —
-other than the hooks, wiring functions and assembly functions the rules name. A
-type is not one: where a type may travel, the import rules already say. And
-wherever a rule counts or judges calls — the assembly and driver rules,
-`stable-root` too — awaiting a call is the call: `await` changes when its result
-arrives, not what it is. Assembly holds no tech and decides nothing but which
-factory to call (anchors in the [Summary](#summary)):
+state, props, context — plus what a declared load returned. In the wiring and in
+an assembly, a tech value may be read — a field, a destructured part — and is
+still a tech value; a call on one is not. A hook reads nothing: it hands the
+event on as received. A **literal** is a constant written in place. A
+**definition** is any declaration of something that exists at run time —
+function, class, variable — other than the hooks, wiring functions and assembly
+functions the rules name. A type is not one: where a type may travel, the import
+rules already say. And wherever a rule counts or judges calls — the assembly and
+driver rules, `stable-root` too — awaiting a call is the call: `await` changes
+when its result arrives, not what it is. Assembly holds no tech and decides
+nothing but which factory to call (anchors in the [Summary](#summary)):
 
 - **`assembly-builds-only`** — every call in an assembly is there to build: a
   composition unit's factory, another assembly's, or a blob file's when a
   dependency not yet extracted is built here and injected behind the port that
-  awaits it. A model call is allowed on the same terms as any other — its result
-  is passed on or returned, and nothing in the assembly touches it, which is
-  also how a dependency-free instance gets shared between services. Arguments
-  are literals, tech values received as parameters (a working directory, an
+  awaits it. A model factory is one of them — its instance is passed on or
+  returned, and nothing in the assembly touches it, which is how a
+  dependency-free instance gets shared between services. A model function that
+  computes a value is not: an argument derived in the assembly
+  (`join(cwd, "notes")`) is the assembly opening the door itself; the adapter or
+  service that needs the value derives it, under its own rules. Arguments are
+  literals, tech values received as parameters (a working directory, an
   environment, a framework's context handle passed through and never called), or
   instances built or received here. It returns services — one, or a record of
   services and shared model instances — and no adapter unless a test is the
@@ -449,10 +494,9 @@ How the checker reads it: by callee file kind and by result flow. A callee from
 a service, adapter, assembly or blob file is a factory by construction; its
 result may only be passed on or returned, never branched on, computed with, or
 member-accessed — a declared load's result, a tech value, is the one that may be
-read. A model call is read on the same terms — its result is passed on or
-returned, and the assembly does nothing else with it — so whether that model
-export builds an instance or computes a value is a question the checker never
-has to ask, and never asks.
+read. In a model file, the flavor's word tells a factory from a function (the
+stock flavor's `create*`): a model factory is called on those same terms, a
+model function is not called at all.
 
 What the rules do not guarantee: that a stateful service is built once. Two
 drivers calling the same assembly get two instances — valid, visible on the map
@@ -463,10 +507,11 @@ a group assembly is his root, which he says may be split into functions.
 
 ### Driver — the outermost layer
 
-The driver holds the tech and fires the hexagon. It imports its assembly and its
-tech, reads what the tech gives, and hands the instances assembly returned to
-its hooks. It is coupled to the runtime by nature and essentially untestable:
-Meszaros's Humble Object, kept so thin that nothing in it needs a test.
+The driver holds the tech and fires the hexagon: its one thing is to connect an
+event to a use case. It imports its assembly and its tech, reads what the tech
+gives, and hands the instances assembly returned to its hooks. It is coupled to
+the runtime by nature and essentially untestable: Meszaros's Humble Object, kept
+so thin that nothing in it needs a test.
 
 **Only a driver listens to the tech.** The argument parser, the server, the test
 runner's callbacks, the component the framework mounts: the driver is the one
@@ -489,41 +534,55 @@ of the rules: a callback it does not cut — a middleware, a `beforeEach`, an
 effect it does not know — is not a hook and is not judged. Lenient by default,
 on purpose: a tech the checker half knows must not turn a codebase red for what
 it does not understand. What a reading leaves uncut is that tech's open part,
-stated in the reading, not a rule. Plain-TypeScript drivers carry the
-`.driver.ts` suffix; a tech's own files are declared by glob — spec files by the
-test globs, framework entry points by the framework's patterns. Web drivers are
-open, research in progress; the one thing claimed for them is the recognition
-rule: a component matching the declared driver globs may import an assembly, any
-other component doing so is a violation. What the codebase imports lands in the
-graph, whatever its extension: a file of an unruled tech, matching no driver
-glob and read by no reader, is blob until one is bound to it — the suffix rule
-reads `.ts` files, so nothing claims such a file, and unclaimed is what blob
-means. It is seen and counted like any other blob, since the honest report is
-that the tool cannot read it yet, not that it is absent. Matching a coverage
-glob is not itself enough to pull a file in; being imported is.
+stated in the reading, not a rule. The rules themselves assume one shape only —
+a hook is a function the tech is handed and calls back — and the stock
+plain-TypeScript reading cuts exactly that shape, the host's globals (`process`,
+`document`) and the packages declared as tech being the tech. A technology whose
+hooks are not handed callbacks — a route file the framework loads, a handler
+written in markup, a decorated method — is its own reading's to cut, and until
+one exists its drivers are judged only as far as a reading cuts them.
+Plain-TypeScript drivers carry the `.driver.ts` suffix; a tech's own files are
+declared by glob — spec files by the test globs, framework entry points by the
+framework's patterns. Web drivers are open, research in progress; the one thing
+claimed for them is the recognition rule: a component matching the declared
+driver globs may import an assembly, any other component doing so is a
+violation. What the codebase imports lands in the graph, whatever its extension:
+a file of an unruled tech, matching no driver glob and read by no reader, is
+blob until one is bound to it — the suffix rule reads `.ts` files, so nothing
+claims such a file, and unclaimed is what blob means. It is seen and counted
+like any other blob, since the honest report is that the tool cannot read it
+yet, not that it is absent. Matching a coverage glob is not itself enough to
+pull a file in; being imported is.
 
 The driver rules make thin the only legal shape:
 
 - **`wiring-outside-hooks`** — outside its hooks, a driver only wires: assembly
   calls, tech setup (the parser, the server, the mount), sub-driver
-  registration. Arguments are tech values, instances, literals. Wiring may also
-  sit inside a hook — an assembly imported lazily on first event, cached in the
-  wiring function's closure; the rule says what may sit outside them.
-- **`hook-one-call`** — a hook may wire, and it makes exactly one use-case call.
-  Two calls mean the sequence between them is a use case nobody owns: it gets a
-  facade service, with a contract and a test, and the two become its
+  registration. Arguments are tech values, instances, literals. Wiring is done
+  here and nowhere else: a hook does not wire. A lazily loaded feature is an
+  assembly importing another, at startup — laziness is the assembly's, to each
+  its job.
+- **`hook-one-call`** — a hook makes exactly one use-case call, and nothing
+  else. Two calls mean the sequence between them is a use case nobody owns: it
+  gets a facade service, with a contract and a test, and the two become its
   subfunctions. Zero calls is a violation too: a hook with no use case is logic
   with no home. The call is unconditional, and the hook translates nothing
-  around it: arguments are tech values, instances and literals, unchanged; the
-  result is returned, or handed whole to the tech — a tech call, tech-held
-  state. A default on the way in (`opts.cwd ?? process.cwd()`), a branch on the
-  result (`if (result.ok) exit(0)`), a transform before handing
-  (`JSON.stringify(result)`), an error mapped to an exit code: each is
-  translation, and translation is the facade service's use case — the exit code
-  is part of its result, the rendering its job through the io port. This is the
-  rule that closes the loop; the others exist to make it unavoidable. Ruled for
-  plain-TypeScript drivers; a web reading says where the line sits when the view
-  model is the tech's.
+  around it: arguments are what the event handed the hook, as received, the
+  host's values handed whole (`process`, never `process.cwd()`), instances and
+  literals — nothing read off them (`opts`, never `opts.files`); the call's
+  value is returned — the most a hook does with it, for a tech that answers by
+  return value or awaits the promise — or dropped, and never used: not read,
+  written, handed on or logged. A default on the way in
+  (`opts.cwd ?? process.cwd()`), a branch on the result
+  (`if (result.ok) exit(0)`), a transform before handing
+  (`JSON.stringify(result)`), the result printed (`console.log(result)`) or
+  written into the tech's state (`process.exitCode = result`), an error mapped
+  to an exit code: each is translation, and translation is the facade service's
+  use case. The exit code is part of its job: the service sets it through a
+  port, the hook handing `process` down unchanged; the rendering too, through
+  the io port. This is the rule that closes the loop; the others exist to make
+  it unavoidable. Ruled for plain-TypeScript drivers; a web reading says where
+  the line sits when the view model is the tech's.
 - **`driver-calls-services`** — a driver calls use cases, assembly factories,
   sub-driver wiring functions, and its own tech. Never an adapter: an adapter
   call from a hook is an effect no contract covers. Never a model: parsing and
@@ -615,7 +674,8 @@ implementation. Slice it to what the service asks for.
 
 Something must execute when the runtime loads the program. That is the boot
 (`.boot.ts`, or a file declared by glob when a framework owns the name): the one
-module whose evaluation performs a call. Two rights, nothing more:
+module whose evaluation performs a call. One thing, nothing more — it starts the
+program:
 
 - **`boot-one-call`** — a boot imports a single driver and calls its wiring
   function once, at module root, with no arguments. It imports nothing else,
@@ -953,11 +1013,12 @@ needs tooling that knows service boundaries.
   a driver only wires** — assembly calls, tech setup, sub-driver registration;
   arguments are tech values, instances, literals.
 - <a id="hook-one-call"></a>`hook-one-call` — **Each hook makes exactly one
-  use-case call, unconditional, with tech values, instances and literals as
-  arguments and its result returned or handed whole to the tech** — a second
-  call means a facade service is missing; zero means logic with no home; a
-  translation around the call is the facade's use case. Hooks are cut by the
-  tech's reading; the test tech exempts the count.
+  use-case call and nothing else, unconditional, handed the event as received,
+  instances and literals, and its value returned at most** — nothing read off
+  the event, the value never read, written, handed on or logged; wiring is the
+  wiring function's; a second call means a facade service is missing; zero means
+  logic with no home; a translation around the call is the facade's use case.
+  Hooks are cut by the tech's reading; the test tech exempts the count.
 - <a id="driver-calls-services"></a>`driver-calls-services` — **A driver calls
   services, assembly, sub-driver wiring and its own tech, nothing else** — never
   an adapter, never a model.

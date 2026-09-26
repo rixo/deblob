@@ -229,6 +229,9 @@ Checkpoints, one commit each, one go each, riskiest judgments first:
    against its row at handback.
 7. **The `boot` check and the `layers` cells.** The smallest, mostly tables.
 
+Paused after checkpoint 6 (2026-09-26) for `04/04_lens`: the outside layers
+re-read as concessions allowed one thing each; checkpoint 7 resumes under it.
+
 ### Checkpoint 1, built 2026-09-25
 
 `stable-root`'s call clause, as § API drew it, with what building it taught:
@@ -667,7 +670,7 @@ and `cause` of checkpoint 3, grouped by the same model.
   result but not a model function's — a split with no reason in a test. **Ruled
   2026-09-26: A, provisionally — test bodies are exempt from `hook-one-call`
   whole; `sub-driver-wiring` still applies.** Uncertain on purpose: the chapter
-  PLAN's `04/05_test-rules` revisits it, with the data and the clause-by-clause
+  PLAN's `04/06_test-rules` revisits it, with the data and the clause-by-clause
   reading; the bet is that it tightens (no branch, no writes, as test rules of
   their own). The exemption is marked provisional in the code, and must not
   outlive that step.
@@ -695,7 +698,7 @@ and `cause` of checkpoint 3, grouped by the same model.
   parameters; a test's call site binds none, so the imports decide.
 - **Q6** (ruled 2026-09-26, above): test bodies exempt from `hook-one-call`,
   provisionally — `PROVISIONAL` in `driver.model.ts`, revisited by
-  `04/05_test-rules`.
+  `04/06_test-rules`.
 - **The assembly check reads `assigned` as a use of what it built**, red as the
   `computed` it replaced; a catch in an assembly is a branch (the self-check's
   five new `main.ts` reds — its message says "branches on a computed value", a

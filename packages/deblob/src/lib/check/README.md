@@ -101,7 +101,7 @@ One function per check, all over `ImportGraph` from `extraction`:
   imports is a sub-driver). `sub-driver-wiring`: a sub-driver's wiring in a
   hook, or handed a use case's result. Two facts are two violations; none rides
   another. The test tech exempts services-only and — provisionally, until the
-  chapter's `04/05_test-rules` — `hook-one-call` whole.
+  chapter's `04/06_test-rules` — `hook-one-call` whole.
 - `groupByFix(violations)` (`grouping.model.ts`) — one group per fix: a
   violation rides with the violation whose subject its `cause` names, the
   chain's root leading; one without a cause, or whose cause no violation

@@ -207,7 +207,7 @@ const judgeDriver = (
 
   /**
    * PROVISIONAL (ruled 2026-09-26, revisited by the chapter's
-   * `04/05_test-rules` — must not outlive it): the test tech's exemption of the
+   * `04/06_test-rules` — must not outlive it): the test tech's exemption of the
    * hook count is read as `hook-one-call` whole. Canon's letter exempts the
    * count alone; applied to test bodies, the rest judges a use case's result
    * and leaves a model function's free — a split with no reason in a test.
