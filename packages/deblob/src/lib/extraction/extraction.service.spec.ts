@@ -1147,9 +1147,9 @@ describe("the reading on the graph — the reading fixture", () => {
         layer: "assembly",
       },
     })
-    expect(callsOf(main.hooks[0]?.body ?? [])[0]?.result).toEqual([
-      { kind: "returned" },
-    ])
+    expect(
+      callsOf(main.hooks[0]?.body ?? [])[0]?.result.map((use) => use.kind),
+    ).toEqual(["returned"])
     // the second hook translates: a branch on the result, a stringify, a console call
     expect(kindsOf(callsOf(main.hooks[1]?.body ?? []))).toEqual([
       "use-case",
@@ -1157,7 +1157,7 @@ describe("the reading on the graph — the reading fixture", () => {
       "language",
       "tech",
     ])
-    expect(callsOf(main.hooks[1]?.body ?? [])[0]?.result).toEqual([
+    expect(callsOf(main.hooks[1]?.body ?? [])[0]?.result).toMatchObject([
       { kind: "member" },
       { kind: "condition" },
       { kind: "argument", to: { kind: "language" } },
@@ -1167,10 +1167,12 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(kindsOf(callsOf(main.hooks[2]?.hooks[0]?.body ?? []))).toEqual([
       "use-case",
     ])
-    // `.map` and `.then` callbacks: not hooks — read inline where they sit.
-    // The use case hidden in the `.then` is a call of the wiring zone, its
-    // result handed to the language; nothing open
-    expect(at(31)).toEqual([{ kind: "language" }])
+    // `files.map(…)`: nothing proves `files` an array, so the map cannot be
+    // told from a call on the tech — unknown, its callback read inline, the
+    // one open part; a `.then` on the language's promise is the language's,
+    // read inline where it sits. The use case hidden in the `.then` is a call
+    // of the wiring zone, its result handed to the language
+    expect(at(31)).toEqual([{ kind: "unknown" }])
     expect(at(32)).toEqual([
       { kind: "language" },
       {
@@ -1188,9 +1190,9 @@ describe("the reading on the graph — the reading fixture", () => {
       calls.find(
         (call) => call.span.line === 32 && call.callee.kind === "use-case",
       )?.result,
-    ).toEqual([{ kind: "argument", to: { kind: "language" } }])
+    ).toMatchObject([{ kind: "argument", to: { kind: "language" } }])
     expect(readingOf(await extractReading(), "src/cli.driver.ts").open).toEqual(
-      [],
+      [{ span: expect.objectContaining({ line: 31 }), why: "unknown-callee" }],
     )
   })
 
@@ -1237,16 +1239,18 @@ describe("the reading on the graph — the reading fixture", () => {
       file: "src/app/app.service.ts",
       name: "load",
     })
-    expect(calls[2]?.result).toEqual([
-      { kind: "member" },
-      { kind: "condition" },
+    expect(calls[2]?.result.map((use) => use.kind)).toEqual([
+      "member",
+      "condition",
     ])
     expect(
       assembly.body.flatMap((statement) =>
         statement.kind === "control" ? [statement.testOrigin] : [],
       ),
     ).toEqual(["parameter", "load", "instance"])
-    // the group assembly receives an instance and a record of tech values
+    // the group assembly receives an instance, the result of the call bound
+    // on line 9, and a record of tech values, its entry the function's own
+    // parameter: received
     expect(calls[10]?.args).toEqual([
       {
         kind: "instance",
@@ -1256,8 +1260,36 @@ describe("the reading on the graph — the reading fixture", () => {
           layer: "service",
         },
         path: [],
+        entries: null,
+        from: expect.objectContaining({ line: 9 }),
+        received: false,
+        host: false,
+        span: expect.objectContaining({ line: 23, column: 43 }),
       },
-      { kind: "tech", origin: null, path: [] },
+      {
+        kind: "tech",
+        origin: null,
+        path: [],
+        entries: [
+          {
+            key: "cwd",
+            value: {
+              kind: "tech",
+              origin: null,
+              path: [],
+              entries: null,
+              from: null,
+              received: true,
+              host: false,
+              span: expect.objectContaining({ line: 23, column: 50 }),
+            },
+          },
+        ],
+        from: null,
+        received: false,
+        host: false,
+        span: expect.objectContaining({ line: 23, column: 48 }),
+      },
     ])
     // the returned record joins its entries: two instances, two computed values
     expect(assembly.body.at(-1)).toMatchObject({

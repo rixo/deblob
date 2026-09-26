@@ -382,12 +382,13 @@ env, a request, an event, a parsed option — or holds for it — a component's
 state, props, context — plus what a declared load returned. A tech value may be
 read — a field, a destructured part — and is still a tech value; a call on one
 is not. A **literal** is a constant written in place. A **definition** is any
-declaration — function, class, variable, type — other than the hooks, wiring
-functions and assembly functions the rules name. And wherever a rule counts or
-judges calls — the assembly and driver rules, `stable-root` too — awaiting a
-call is the call: `await` changes when its result arrives, not what it is.
-Assembly holds no tech and decides nothing but which factory to call (anchors in
-the [Summary](#summary)):
+declaration of something that exists at run time — function, class, variable —
+other than the hooks, wiring functions and assembly functions the rules name. A
+type is not one: where a type may travel, the import rules already say. And
+wherever a rule counts or judges calls — the assembly and driver rules,
+`stable-root` too — awaiting a call is the call: `await` changes when its result
+arrives, not what it is. Assembly holds no tech and decides nothing but which
+factory to call (anchors in the [Summary](#summary)):
 
 - **`assembly-builds-only`** — every call in an assembly is there to build: a
   composition unit's factory, another assembly's, or a blob file's when a

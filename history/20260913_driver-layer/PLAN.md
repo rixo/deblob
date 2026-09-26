@@ -534,7 +534,63 @@ may reopen the service example and the config pattern section.
   2026-09-25 in five checkpoints: every rule has its rows, every red its way
   out, and three canon edits came of writing them (a tech value may be read,
   "what the assembly builds", awaiting a call is the call). Next: call reading
-  and the detectors.
+  and the detectors. Then, before type-name depth, `04/04_sweep` (added
+  2026-09-25: the detectors went fast, one commit a checkpoint for days): loose
+  ends caught and bolts tightened before building on them. A review by another
+  model, cold, of everything since `02_rows-first` closed — code, units, rows,
+  READMEs, SPEC notes against what landed; the confessed known failures and
+  every "to be measured" re-read; the two owed cleanups (`it` where the title is
+  a behavior sentence, `test` elsewhere — never a blind rename; the typed
+  builders replacing `render.model.spec.ts`'s `as …Violation` casts); and
+  grouping's worth measured on the self-check (how many groups carry riders)
+  before anything else is built on it. Findings as a table, rixo rules each,
+  fixes one commit per batch.
+
+  Then `04/05_test-rules` (added 2026-09-26, **not to slip**: the ruling it
+  revisits was made provisional on purpose). What a test body may do is
+  underspecified. Canon's `test-is-outside` says of a test file's hooks "the
+  hook count and services-only do not apply" — by the letter, the rest of
+  `hook-one-call` applies. The driver check (detectors checkpoint 6) exempts
+  test bodies from `hook-one-call` whole instead: ruled A, provisionally, and
+  uncertain. What this step starts from:
+
+  - **The data.** Built to the letter first, the self-check gave 976
+    `hook-one-call` reds, all in deblob's own spec files: 752 branches (`??`
+    366, `.map` 190, `?:` 72, `for` 44, `if` 43, other 37 — most in
+    `layers.model.spec.ts`, `main.spec.ts`, `surface.model.spec.ts`), 143 use
+    case results read past handing them on (`expect(result.items)`), about 75
+    computed arguments (`extractGraph({ ...input, files })`).
+  - **The rule taken apart**, each clause by what it buys in a test. No branch
+    or loop: real — a test cannot pass without asserting
+    (`for (const n of notes) expect(…)` over `[]` asserts nothing and is green;
+    `if (x) expect(…)` the same); ways out `test.each`, one test per path; cheap
+    (about 87 `for` and `if` sites). No writes in a hook: real — no mutable
+    setup shared across tests, no order dependence
+    (`let fs; beforeEach(() => { fs = … })`, `calls += 1`); way out a setup
+    factory called in each test. Arguments only literal, tech or instance: some
+    — the reader sees what went in; cost, repeated literals or a test factory.
+    The result handed whole to a matcher: weak — `toMatchObject` is partial
+    anyway, it only changes how a peek is spelled.
+  - **Why not the letter as is.** `hook-one-call` was shaped for drivers, where
+    the one call is a use case: in a test it judges results of calls on an
+    instance and leaves a model function's result free (`checkLayers(graph)`,
+    most of deblob's units) — a line with no reason in a test. So "the letter"
+    (B) pins an arbitrary split; its value lives in two clauses that deserve to
+    be test rules of their own.
+  - **rixo's angle.** "Habits are easy when the alternative is the whip — and
+    deblob can provide the alternative": a rule that makes a test hard to write
+    is fine if it makes it meaningful to read; deblob's squeeze is reading and
+    making sense, not writing (canon: optimize for reading). The hunch to test:
+    "one use case per hook" could force tests into something meaningful.
+  - **The bet at ruling time** (agent's, 2026-09-26): C wins — unconditional
+    plus no writes, as test rules of their own — about 60%; tests stay exempt
+    (A) about 25%, if C's rows meet test patterns it cannot express (property
+    tests, step-by-step async observation); `hook-one-call` whole (B) about 15%.
+
+  Rows red first for each candidate clause, over realistic test bodies (unit,
+  cases corpus, CLI golden); the canon sentence rewritten to state what applies
+  to a test; the provisional exemption in `driver.model.ts` replaced.
+
 - `05_alignment-review` — the checks are implemented; one pass over every rule
   canon states for the outside kinds against what `deblob check` enforces, with
   the tests as the proof: per canon statement (each Summary bullet and the

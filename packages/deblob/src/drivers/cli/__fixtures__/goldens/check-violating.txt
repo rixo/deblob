@@ -1,4 +1,12 @@
 src/billing
+  src/billing/billing.assembly.ts
+    assembly line 4 reads a field of what createStripeAdapter built —
+             what the assembly builds is passed on or returned; pass it
+             whole, its consumer reads the field (assembly-builds-only)
+  src/billing/billing.driver.ts
+    driver   line 6 calls the host beside the use case — a hook connects
+             a trigger to one use case; the use case does it through its
+             port (hook-one-call)
   src/billing/stripe.adapter.ts
     private  imports src/invoice/private/totals.model.ts — private/ is
              sealed outside its service (private-sealed)
@@ -30,6 +38,6 @@ blob
            runtime module cycle (no-runtime-cycle) — works in dev,
            silently fails minified
 
-6 violations (2 dag, 1 layers, 1 private, 1 barrels, 1 ports) · 9 files · 1kb · 25% blob
-2 services · 7 imports
-why: deblob explain layer-in-path service-purity runtime-import ports-types-only private-sealed no-service-cycle no-runtime-cycle · or rerun with --explain
+8 violations (2 dag, 1 layers, 1 private, 1 barrels, 1 ports, 1 assembly, 1 driver) · 11 files · 1kb · 18% blob
+2 services · 9 imports
+why: deblob explain layer-in-path service-purity runtime-import ports-types-only private-sealed no-service-cycle no-runtime-cycle assembly-builds-only hook-one-call · or rerun with --explain

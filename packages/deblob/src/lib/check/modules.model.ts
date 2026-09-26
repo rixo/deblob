@@ -162,6 +162,8 @@ const judgeModule = (
     serviceRoot: node.serviceRoot,
     line: statement.span.line,
     via: [],
+    subject: statement.span,
+    cause: null,
   })
   const statements = flattenBranches(node.reading.root)
   // the calls first, in order: the boot's one call is its first to the wiring
@@ -176,15 +178,23 @@ const judgeModule = (
     calls.push({ call, verdict: exempt ? GREEN : judgeCall(call, node.layer) })
   }
   /**
-   * A call's result stored at root adds nothing to the call: when the call a
-   * binding stores is judged red, the binding draws no second verdict.
+   * The red call a subject is the result of, from the call at `span`: that call
+   * when red, else the red call its callee came out of, through the chain —
+   * `connect().then(…)` stored is `connect()`'s result, a green link between —
+   * what the subject's violation derives from, the same fix, grouped
+   * downstream.
    */
-  const storesRedCall = (storedCall: Span | null): boolean =>
-    storedCall !== null &&
-    calls.some(
-      ({ call, verdict }) =>
-        call.span.start === storedCall.start && verdict.verdict === "red",
+  const redCallAt = (span: Span | null): Span | null => {
+    if (span === null) return null
+    const found = calls.find(
+      ({ call }) =>
+        call.span.start === span.start && call.span.end === span.end,
     )
+    if (found === undefined) return null
+    return found.verdict.verdict === "red"
+      ? span
+      : redCallAt(found.call.calleeCall)
+  }
   const callViolations = calls.flatMap(
     ({ call, verdict }): ModulesViolation[] =>
       verdict.verdict === "green"
@@ -192,6 +202,7 @@ const judgeModule = (
         : [
             {
               ...at(call),
+              cause: redCallAt(call.calleeCall),
               via:
                 call.site === null
                   ? []
@@ -229,19 +240,23 @@ const judgeModule = (
         return []
       }
       const { immutability } = statement
-      // what a binding holds, stored from a call judged red, adds nothing to
-      // the call — a read made on the way to the callee included; a `let` or
-      // `var` is state whatever it holds
+      // what a binding holds, stored from a call judged red, is the call's
+      // result: the same fix — a read made on the way to the callee included;
+      // a `let`, a `var` or a writable static is state whatever it holds, a
+      // fix of its own
       const reassignable =
         immutability.proof === "mutable" &&
-        (immutability.form === "let" || immutability.form === "var")
-      if (!reassignable && storesRedCall(statement.storedCall)) return []
+        (immutability.form === "let" ||
+          immutability.form === "var" ||
+          immutability.form === "static")
+      const cause = reassignable ? null : redCallAt(statement.storedCall)
       // a read of the machine first: no annotation proves what it held; a
       // call's result is not one — the call is judged where it sits
       if (statement.storesMachineRead) {
         return [
           {
             ...at(statement),
+            cause,
             shape: "root-binding",
             holds: "machine",
             by: null,
@@ -256,6 +271,7 @@ const judgeModule = (
         : [
             {
               ...at(statement),
+              cause,
               shape: "root-binding",
               holds: "state",
               by:

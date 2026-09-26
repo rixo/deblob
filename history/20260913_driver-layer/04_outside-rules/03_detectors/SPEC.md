@@ -102,7 +102,9 @@ Over every function of an assembly file and its root:
 - an argument of kind `computed` or `function` — red; `literal`, `tech`,
   `instance` green;
 - a result used as `member`, `computed`, `condition`, or `reassigned` — red,
-  unless it is a load's (a tech value);
+  unless it is a load's (a tech value); never `condition`: a condition sits in a
+  `control`'s test, and the control owns it (checkpoint 5: one fact, one
+  clause);
 - a `control` whose `testOrigin` is `instance` or `other` — red; `parameter`,
   `load` green;
 - a definition at root, or a function that is not an assembly function (it
@@ -155,6 +157,36 @@ importing anything but one driver; anything importing a boot); `test-is-outside`
 claims nor `driverTech` declares, or of a pure one (`driver-calls-services`).
 `CHECK_RULES` grows accordingly.
 
+### Atomic violations, grouped by fix
+
+**Drafted 2026-09-26, built at checkpoint 3.** Three concerns, three owners:
+
+- **Detection reports atomic facts.** A check emits one violation per clause a
+  statement breaks, and never withholds one because another covers it. What
+  checkpoints 1 and 2 folded goes back to being facts: a binding storing a red
+  call's result draws its own verdict again (the four `false unknown` of
+  checkpoint 1's rows 1, 2, 11, 12 come back as unknowns), and a decorator
+  factory's application is a call of its own, beside the factory's call.
+- **Grouping is a model, and asserted.** One fix, one group: a violation whose
+  subject is the result of a call judged red rides with that call's violation —
+  removing the call removes it. The call's violation leads. The rule is stated
+  over every violation, not per shape: a violation says what it derives from
+  (`cause`, the span of the red call its subject came out of), and the grouping
+  model, pure, turns violations into groups by it. A violation with no cause
+  leads its own group of one.
+- **Formatting only lays out groups.** The renderer prints a group as its lead
+  with its riders under it; it decides nothing about what belongs together.
+
+**The marker grammar gains `+`**: slugs joined by `+` are one group, the first
+the lead, whose verdict the marker's word states; `,` still separates groups.
+`// red: stable-root + stable-root` is a red call and a violation riding with
+it; `// red: stable-root, stable-root` is two groups, two fixes. The runner
+matches groups, not violations: a group reported with riders the marker does not
+list, or listed as separate groups, fails its row. A group whose members sit on
+different lines is not expressible yet, and no row needs one.
+
+The summary counts groups: one fix, one count (ruled 2026-09-26).
+
 ## Testing
 
 The gate is the rows: a checkpoint is done when the rows it owns show plain
@@ -182,12 +214,20 @@ Checkpoints, one commit each, one go each, riskiest judgments first:
 2. **The reader forms the rows exposed.** A static field initializer and a
    static block run on load; a decorator is a call on class evaluation; an
    IIFE's `via` (rows 3–6b). Each is a reader addition with its row as the gate.
-3. **The `assembly` check.** The tightest rule, and the one the chapter exists
+3. **Atomic violations, grouped by fix** (added 2026-09-26, § API). Before any
+   new detector: every later check would otherwise bake its grouping into
+   detection. The marker grammar, the grouping model, the renderer, and the rows
+   of checkpoints 1 and 2 rewritten to state their groups.
+4. **The reader facts the assembly rows need** (split out 2026-09-26): where a
+   built value is used, a record argument's entries, a ternary's value as its
+   arms', a map whose callback builds, a type declared at root, an assembly's
+   local helper as a callee.
+5. **The `assembly` check.** The tightest rule, and the one the chapter exists
    for.
-4. **The `driver` check.** Where hook cutting meets the rules, and where the
+6. **The `driver` check.** Where hook cutting meets the rules, and where the
    provisional rulings (D5/O2, H9, H10/H11) meet a detector: each is shown
    against its row at handback.
-5. **The `boot` check and the `layers` cells.** The smallest, mostly tables.
+7. **The `boot` check and the `layers` cells.** The smallest, mostly tables.
 
 ### Checkpoint 1, built 2026-09-25
 
@@ -236,6 +276,463 @@ Ruled at this handback (§ Ruled): row 15, globals-mode runners, `node:url`, the
 layers that may touch the tech, and the matcher exemption. Row 15 stays a
 `missed red` for `stable-root`, the reader taking `.catch` for a language call.
 
+### Checkpoint 2, built 2026-09-26
+
+The reader forms the rows exposed, each read where it runs:
+
+- **An immediately invoked function** is inlined like a tracked local, with no
+  binding: its body's calls are root calls, the invoking call their `via`.
+- **`import()`** is a call into the host's module loader, the tech; a binding
+  storing it is a stored call.
+- **A class's evaluation**: its decorators and its members' (one call each —
+  `@Injectable()` is the factory's call, its application the same decorator),
+  its static blocks, its static fields. A static field is a root binding (§
+  Ruled): `readonly` judged by what it holds, a writable one reassignable like a
+  `let` (form `static`). An instance field runs at construction and is not read.
+- **Flipped:** rows 3 (IIFE, with its `via`), 4 (static field), 5 (static
+  block), the tech decorator, and 20 (`import()`). **New rows:** a member's
+  decorator; every static form (a `declare` one is a type, green); `import()`
+  stored in a binding; a red call stored in a `let` or a writable static is two
+  reds (§ Ruled, violations stack).
+- **Coverage drove a refactor, not a row**: `import()` had its own classify-only
+  guard, reachable only by an `import()` in a branch's test. A call is now
+  emitted in one place, ordinary calls and `import()` alike, and the guard is
+  the one realistic rows already cover.
+- **A gap from checkpoint 1**: the stored-result rule's exception — a `let` or
+  `var` is state whatever it holds — had no row; removing it failed nothing, so
+  checkpoint 1's "no clause survives unfailed" was wrong for it. The last new
+  row pins it, and the writable static with it.
+- **Falsification:** each clause switched off in turn — the IIFE (1 row fails),
+  `import()` (1), a class's decorator (1), a member's (1), a static block (1), a
+  static field (2), a `declare` static skipped (1), a stored `import()` (1), the
+  `let`/`var` exception (1), the writable static's (1).
+- **Self-check:** unchanged, 139.
+
+Still `missed`: row 15's `.catch`, the one `stable-root` limit left with a row.
+Known and unrowed: a computed member key and `extends` also run on class
+evaluation and are not read; a named function expression invoked on the spot
+that calls itself reads its own name as a host global.
+
+### Checkpoint 3, built 2026-09-26
+
+Atomic violations, grouped by fix, as § API drew them:
+
+- **Detection is atomic again.** The stored-result rule of checkpoint 1 is gone:
+  a binding storing a red call's result draws its own verdict. A decorator
+  factory is two calls: `@Injectable()` calls the factory, then calls its result
+  on the class.
+- **Every `stable-root` violation names its `subject`** (the span it is about)
+  **and its `cause`**: the red call its subject is the result of — the call a
+  binding stores (not a `let`, a `var` or a writable static: state whatever it
+  holds, a fix of its own), or the call whose result a call calls — followed
+  through a green link: `connect(url).then(…)` stored holds what came out of
+  `connect()`. A call the reader could not place is not a cause: its fix is not
+  removing it.
+- **Reader additions.** `ReadCall.calleeCall`: the call whose result a call
+  calls, the root of its member chain. And two found building, one rule: what an
+  unclaimed package gives is the package's, as the same on the tech is the
+  tech's, an intrinsic prototype method (`.then`) the language's. The reader
+  typed an unclaimed package's call result `computed`, so calling it read as a
+  language call, green — `@Injectable()`'s application, `cac("x").option(…)`.
+  And a member of an unclaimed package's default import, called
+  (`mongoose.connect()`), read green the same way, where the namespace import
+  read red.
+- **`groupByFix`** (`check/grouping.model.ts`), pure: a violation rides with the
+  one whose subject its cause names; a chain leads at its root; a cause no
+  violation answers leads a group of one. The runner and the CLI both group
+  through it.
+- **Markers.** `+` joins a group, `,` separates groups; `via` names no group. A
+  rider on another line than its lead is reported as `stable-root (line 7)`,
+  which no marker writes: such a row fails visibly instead of matching by
+  accident.
+- **The renderer** prints a group's lead, its riders under it marked `+`; the
+  summary counts groups, and counts an unknown by its lead.
+- **Rows now stating their groups** (`modules.spec.ts`): the `new Worker`, the
+  awaited `fetch`, both tech decorators, a spec's blob function stored, the
+  tagged template, `import.meta.resolve` stored, the stored `import()` — each
+  `red: stable-root + stable-root`. The `let` and writable-static row keeps two
+  groups. **New rows:** a method chained on an unclaimed package's call (three
+  in one group); a binding holding `.then` on a red call (one group, through the
+  green link); a default import's method called at root.
+- **Falsification:** each clause switched off in turn — the binding's cause (6
+  rows fail), the `let`/`var`/static exception to it (1), a call's cause (2),
+  the grouping itself (8), the runner matching riders (11), the cause through a
+  green link (1), an unclaimed package's result called (3), its prototype method
+  the language's (1), a default import's member (1). The cause only when the
+  call is red fails no row (an unplaced callee cannot be built from a case), and
+  fails its unit.
+- **Self-check:** 139 groups, unchanged: the returned bindings ride with their
+  calls, 15 riders. A multi-line destructuring stored from a red call is a group
+  across lines: rendered well, not markable yet.
+
+### Checkpoint 4, built 2026-09-26
+
+The reader facts the assembly rows need, found by dumping the reading of every
+`assembly.spec.ts` row. No verdict changes here: every assembly red stays
+`missed` until checkpoint 5; this checkpoint makes each row's verdict readable
+off the reading, and its gate is reading-level units, one per fact, cut against
+coverage when checkpoint 5's rows take over.
+
+| Fact                                                                                                                                                                                                                                                                                                                                                                            | Today                                                                                                                   | Rows that need it                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| F1. Where a built value is used: each `ResultUse` carries its span                                                                                                                                                                                                                                                                                                              | a use has no place: `limits.max` on line 11 is recorded on the call on line 10                                          | a field read on what the assembly built                                   |
+| F2. A field read straight off a call is `member`                                                                                                                                                                                                                                                                                                                                | `createFsStore(cwd).root` reads `computed`                                                                              | the same row                                                              |
+| F3. A built value called on is a `receiver` use: the call on it is judged as a call                                                                                                                                                                                                                                                                                             | `notes.list()` records `member`/`computed` on `createNotes`'s result; `createConfig({ cwd }).load()` records `computed` | the use-case row (a second, wrong red); both load rows (a false red)      |
+| F4. A record argument carries its entries, each an `ArgValue`                                                                                                                                                                                                                                                                                                                   | `createNotes({ store: root, limits: limits.max })` collapses to `instance`                                              | the field-read row's line 11                                              |
+| F5. A conditional's value is the join of its arms                                                                                                                                                                                                                                                                                                                               | `store === "memory" ? createMemoryStore() : createFsStore(cwd)` reads `computed`                                        | branch on a parameter (a false red); branch on an instance (a second red) |
+| F6. A value that is a call's result carries that call (`from`), so a check reads the callee                                                                                                                                                                                                                                                                                     | `join(cwd, "notes")` handed on reads `computed`                                                                         | the pure builtin row (a false red)                                        |
+| F7. `.map(callback)` on an array is a loop: a `control` over the receiver, the callback's body its arm, the callback's parameter an element of the receiver, the map's value the join of what the callback returns; the receiver proven an array by its annotation (`T[]`, `readonly T[]`, `Array<T>`, `ReadonlyArray<T>`), else the control says so and the verdict is unknown | a `language` call handed a `function`                                                                                   | the three map rows                                                        |
+| F9. In an assembly file a local function is not inlined: it is a definition beside the assembly function, and its call a `local` callee                                                                                                                                                                                                                                         | inlined, both invisible                                                                                                 | the helper row                                                            |
+
+`stable-root` reads F9's calls as it reads any local's in a layer that may touch
+the tech: red, where today the inlined body is judged. Self-check effect to be
+measured.
+
+**Built as drafted**, F7 as ruled below, F8 dropped: a type is no definition
+(below). Each fact switched off fails a reader unit (F1 2, F2 1, F3 2, F4 2, F5
+1, F6 2, F9 1, `received` 1; F7: the loop 5, the unknown 1, the element 1, a
+read in the arm counted 1, the value read after the loop 1, a destructured name
+typed by its pattern 3, each array form 2). Found building: a loop's element can
+hold a tech value, so a read in the arm counts toward the binding storing the
+loop, and the returned record's entries are read after its value, so a loop in
+one is read first. Rows: none move — the assembly check is checkpoint 5's.
+Self-check unchanged, 140.
+
+**Ruled at review (2026-09-26):**
+
+- **Q1. A parameter no production site binds** — ruled as recommended: a
+  received argument is green whatever its kind; what is passed in is judged
+  where the function is called (a driver's wiring by `wiring-outside-hooks`, a
+  parent assembly by this rule, a test free by design). `createRootedAssembly`
+  (the load row) is called by nothing; the test-factory row's assembly is called
+  by a spec only, and a test's call site binds nothing (a test hands fakes).
+  Both read their parameter `unknown`, so a factory handed it would be unknown
+  where the rows say green. Recommended: canon's letter, "tech values received
+  as parameters" — an argument that is the function's own parameter, or a part
+  of one, is _received_ (`ArgValue.received`), green whatever its kind; the kind
+  still decides everything else. Alternatives: bind a test's sites when no
+  production site binds (reverses the fakes ruling for test factories), or
+  complete the load row's driver and let the test factory read unknown.
+- **Types, all layers** — a type is no definition: canon's "a definition is any
+  declaration — function, class, variable, type" loses "type"
+  (`docs/architecture.md`). A local type only names what an inline annotation
+  writes, so banning one bans typing; an exported one travels only where the
+  import rules let it — the outside targets types included, `import type` exempt
+  where a contract must cross, the service DAG over every import kind. The
+  assembly type row (02 A15) re-ruled green; F8 dropped, nothing reads it.
+- **F7, unproven** — ruled B: `.map(callback)` on what the reader cannot prove
+  an array reads unknown, in any file; the name only withholds a verdict, never
+  grants one.
+- **Q2. `request.headers.get("x-token")` read as a language call** — the symptom
+  of a wider flaw, fixed before this checkpoint (§ A call on a tech value,
+  below): the line reads a tech call now, and the message says so.
+
+### A call on a tech value, fixed 2026-09-26
+
+Found drafting checkpoint 4: the reader took a call on a tech value for the
+language's when its name was an intrinsic prototype method's (`get`, `push`,
+`then`, `slice`). The name cannot tell a string's `.trim()` from a server's
+`.get()`: an Express `server.get(path, handler)` in a wiring function read as a
+language call, its handler inlined into the wiring function instead of cut as a
+hook (where `server.post` was cut); `window.dataLayer.push(…)` at root read
+green.
+
+- **Ruled:** a call on a tech value, or on what an unclaimed package gave, is
+  the tech's or the package's, whatever its name. Classification follows what
+  the reader proved the receiver to be, never the method's name; a call on a
+  literal or an operator's result stays the language's. Canon's escape hatch
+  stays the only one: the tech's reading declaring a call effect-free.
+- **Consequences:** `process.argv.slice(2)` stored at root reads as a call into
+  the host until a Node reading declares `argv` an array — confessed
+  (`export const ARGS = process.argv.slice(2)`: `false red` on the call's group,
+  `missed red` on the read of the machine); `.map(cb)` on it reads unknown since
+  checkpoint 4 (F7); `connect().then(…)` stored is three members of one group.
+  The name-based set is gone from the reader.
+- **Rows:** new, the `get` route (`driver.spec.ts`, green, a gate for the driver
+  check: nothing reports it today, the reader fixture pins the hook), the data
+  layer push at root, and a binding through a language call on a local's result
+  (the green link the `.then` row used to pin); re-stamp, the `.then` row.
+  Falsification: the host global's call (1 row), a tech value's (reader units),
+  an unclaimed package's (1 row).
+- **Self-check:** 140, one new: `bin.ts`'s `process.argv.slice(2)` at root, a
+  line already red.
+
+### Checkpoint 5, built 2026-09-25
+
+The `assembly` check, as § API drew it, over checkpoint 4's reading. New
+`AssemblyViolation`, one `shape` per clause, each with the `subject` and `cause`
+checkpoint 3 gave `stable-root`'s, so the grouping model groups it unchanged.
+
+**How its violations group — ruled 2026-09-25:**
+
+- **Grouping gains nothing.** A red call leads what its result carries, on its
+  line, as checkpoint 3 built it; this check adds no grouping rule and no marker
+  grammar. Grouping is for the same thing reported many times, not for two facts
+  sharing a line: each is reported, each with its way out, and whoever wrote the
+  line picks the fix. When one fix clears both, they both go.
+- **A computed argument whose value came out of a red call rides with the call**
+  — checkpoint 3's rule as is. The helper row's call line,
+  `createFsStore(rootOf(cwd))`, becomes
+  `red: assembly-builds-only + assembly-builds-only`: `rootOf(…)` leads, the
+  argument it computed rides.
+- **One fact, one clause.** A branch is the `control`'s: its `testOrigin`
+  decides. A result used as a `condition` is red only where no control reports
+  the branch; if building shows every condition use sits under a control, the
+  clause is dropped and says so here.
+- **Two facts on one line are two groups.**
+  `fs.ready ? fs : createMemoryStore()` reads a field of what the assembly built
+  and branches on an instance:
+  `red: assembly-builds-only, assembly-builds-only`.
+- **Across lines, no grammar.** The undeclared load's result handed on
+  (`createNotes({ …, settings })`) is a computed argument, its own red on its
+  own line, beside the load's red; declaring the load clears both (a declared
+  load's result is a tech value). The load row gains that second marker.
+
+**Rows.** Every `missed` marker of `assembly.spec.ts` flips but the `node:fs`
+import (checkpoint 7's matrix cell); the helper row's call line and the load
+row's second line change as above; the two map rows stay `unknown` (F7). Greens
+that must stay green, the gate as much as the reds: the branch on a parameter,
+the declared load (whole, by field, destructured), the blob factory, the test
+factory, the pure builtin, the proven-array map, a tech call's result handed on
+(only the call is red).
+
+**Self-check:** deblob's own assemblies turn red (`main.ts`, `cases.assembly.ts`
+— § Goal, not gated); the count and a breakdown by clause recorded at handback.
+
+**Built as drafted**, the grouping as ruled, with what building it taught:
+
+- **The `condition` clause is dropped.** The reader makes a `condition` use in a
+  branch's test only, so a control always reports it.
+- **Reader additions.** An argument carries where it is written
+  (`ArgValue.span`): an argument's red sits on its own line, and a rider needs a
+  subject. A callback's parameter is handed back by the call the callback was
+  handed to (`from`), which answers for it. A record's spread is one entry,
+  keyed `...`, so it is judged as passed. And one found building: a call into a
+  sibling package's entry that claims service, adapter, assembly or blob read as
+  a package nothing claims — the `aware` fixture's `main.ts`, a false red. It
+  reads as a factory of the layer it claims now ("trust is the dependency
+  model", as the import rules already read it), and binds no world: nothing here
+  reads the package's function. Ruled at review (2026-09-25): a package the
+  project installs is trusted — a deblob claim is the same act of faith as any
+  behavior it claims, verified at home by its own `surface` check; a consumer's
+  `externalLayers` patch is the user's own word, and deblob does not
+  second-guess it.
+- **What rides, exactly.** An argument that came out of a red or unknown call
+  written in the same expression — the spans nest — and a function handed to a
+  red or unknown call. Through a binding, on another statement, it stands alone
+  (the load row). An unknown call leads like a red one here, where checkpoint 3
+  said "a call the reader could not place is not a cause": `stable-root`'s fix
+  is removing the call, this rule's fix for an unknown one is making it
+  readable, and that clears what it handed back. Each unproven-map row is one
+  unknown group of four: the map's call, the callback, the element, the value
+  passed on. **Ruled 2026-09-25**: one limit reported four times is what
+  grouping is for; making a long group a pleasant read is the formatter's
+  business, not detection's.
+- **A result use rides nothing.** Built with a cause, cut at falsification: no
+  row reached it, and its realistic case
+  (`createFsStore(resolveRoot(cwd).path)`) groups only partway — a field read
+  off a call carries no `from`, so the argument would stand alone beside a group
+  of two.
+- **The host, found, is red** (stamped red first at review, 2026-09-25). The
+  argument clause took any tech value; canon's is "tech values received as
+  parameters". `createFsStore(process.env)` read green: the assembly discovering
+  the platform itself, the driver's job. The reader marks a tech value whose
+  root is a free name, directly or through a `const` (`ArgValue.host`); a
+  declared load's result and a loop's element over a received array stay green.
+  An assembly builds blind; a driver touches the platform and never builds — the
+  partition is the rule.
+- **An adapter returned is the adapter whole**: a field of one returned is the
+  field read, one red.
+- **Other specs' trees.** Two stamped rows of other checks had assemblies that
+  build nothing, and gained this rule's markers: `layers.spec.ts`'s assembly
+  handing a driver's function on; `modules.spec.ts`'s assembly built at root
+  (the call and its binding, one group; the function returning it, one).
+- **Rows.** The ten `missed` markers flipped; the branch, helper and load rows
+  changed as ruled; the map rows' marker is the group of four. New, written
+  after the check and stamped after it (2026-09-25), which the corpus says rows
+  should not be: a function handed to a factory; a function handed to a tech
+  call, riding it; a computed record spread in; an assignment at root (and
+  `stable-root`'s); a field of an adapter returned. And, red first: the host
+  read in place, whole, by field and through a `const`.
+- **Units** only where no row reaches: an assembly with no reading, a root
+  callback's local, an unknown argument no call handed back; every message shape
+  in `render.model.spec.ts`. The CLI golden gains an assembly block: the
+  `violating` fixture's `billing.assembly.ts` reads a method off an adapter.
+- **Falsification:** each clause switched off in turn — a call building nothing
+  (4 rows fail), an undeclared use case (2), a declared load green (1), an
+  unknown callee (2), a received argument green (13, across four specs), entries
+  judged one by one (7), a function argument (4), a function riding its call
+  (3), a green call's result passed on (1), a computed argument (2), an argument
+  riding its call (3), riding only within an expression (1), a result used (4),
+  a tech value read (1), a branch (1), a root definition (2), a root statement
+  (2), a function building nothing (3), an adapter returned (1), the adapter
+  whole (1), a test caller exempting (1), the host found (1); in the reader, the
+  host through a `const` (1), a callback's parameter handed back (2), the spread
+  entry (1), a crossed claim (1), a crossed factory binding no world (3).
+- **Self-check:** 140 → 429 groups (142 `modules`, 287 `assembly`), unknowns 51
+  → 94. The two new `modules` are the new unit file's root constants. The
+  assembly ones: `main.ts` 269, `cases.assembly.ts` 14, `bin.ts` 4; by clause,
+  arguments 93 (10 unknown), calls 78 (31 unknown), results used 68 (38 computed
+  with, 30 field reads), branches 26, definitions 13, root statements 9; 42
+  riders.
+
+### Checkpoint 6, built 2026-09-26
+
+The `driver` check, over the reading of every `driver.spec.ts` row (dumped as at
+checkpoint 4). New `DriverViolation`, one `shape` per clause, with the `subject`
+and `cause` of checkpoint 3, grouped by the same model.
+
+**The clauses, as the rows read them.**
+
+- `wiring-outside-hooks` — in the wiring function, outside its hooks: a call
+  that is not an assembly's factory, the tech, or a sub-driver's wiring; a
+  use-case call is this rule's (D3), every other callee
+  `driver-calls-services`'. An argument whose kind, joined, is not tech,
+  instance or literal (D2: `{ cwd: process.cwd() + "/notes" }` joins to
+  computed; D1's `{ cwd: process.cwd() }` to tech). A branch, an assignment, any
+  other statement. Reading a field off what the assembly returned is wiring
+  (`const { cli } = createCliAssembly(…)`).
+- `hook-one-call` — per hook: use-case calls counted, one exactly (H1 zero, H2
+  two), the subject the hook; the call outside any branch (H3); its arguments
+  whose kind, joined, is tech, instance or literal — a record assembled in the
+  hook is computed (H11), a field of a tech value is tech (H9); its result
+  returned, handed to a tech call, or assigned to tech-held state (H6); any
+  other branch, statement or computed value in the hook is translation (H4, H5,
+  H8). The test tech exempts the count and services-only, as its reading says;
+  the rest applies to test bodies.
+- `driver-calls-services` — any call whose callee is not a use case, an
+  assembly's factory, a sub-driver's wiring or the tech: a model (C2), an
+  adapter's or a service's factory (C1), a local (O1), the language (Ruled), a
+  package nothing claims (C3); unknown when unplaced.
+- `driver-hooks-only` — a definition at root (O6); a local of the wiring
+  function holding functions (O2; one holding tech or an instance is wiring,
+  D5); a function that is not the wiring function (O3, S3's `checkHook`) — the
+  wiring function is the one another driver or a boot calls, else `main`, else
+  the first; a root driver's wiring function (no driver calls it) with a
+  parameter (O4).
+- `sub-driver-wiring` — a wiring call inside a hook (S2); one handed a
+  use-case's result (S4).
+
+**Reader facts the rows need** (dump findings):
+
+| Fact                                                                                                                                            | Today                                                                                                 | Row                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------- |
+| G1. A result assigned to tech-held state is its own use (`assigned`, the target's kind)                                                         | `process.exitCode = await cli.check(opts)` reads the result `computed`                                | H6 (a false red)        |
+| G2. A call on an awaited call's result is a receiver use                                                                                        | `(await import("./cli.assembly.ts")).createCliAssembly(…)` reads `import()`'s result `computed`       | D4 (a false red)        |
+| G3. In a driver, a local function is not inlined: a definition, its call a `local` callee (checkpoint 4's F9, for assemblies, extended)         | `parseFoo(opts.cwd)` is inlined; its body's `s.split(",")` reads a tech call on line 6, the call gone | O1's hook line (a miss) |
+| G4. `try … catch` is a branch: the `catch` (and `finally`) its arms, the `try` block read in place                                              | not a branch: the catch's `process.exitCode = 2` reads as tech-held state, green                      | H8 (a false green)      |
+| G5. A wiring function's parameter no site binds stays unknown — confessed, not lifted: `registerMore(parser: ReturnType<typeof cac>)`, uncalled | `parser.command(…)` an unknown callee                                                                 | O3's second function    |
+
+**To rule:**
+
+- **Q1. One translation, two facts.** H4
+  `cli.check({ cwd: opts.cwd ?? process.cwd() })`: the `??` is a branch in the
+  hook, and the argument it makes is computed. H5
+  `if (!(await cli.check(opts))) process.exit(1)`: the result is computed with
+  (`!`) and branched on. Each row marks one red. **Ruled 2026-09-26: two facts,
+  two diagnostics, two groups** — as `fs.ready ? fs : …` at checkpoint 5: both
+  rows mark `hook-one-call, hook-one-call`.
+- **Q2. A call in a hook is two rules' fact.** H7's `JSON.stringify` is a
+  language call (`driver-calls-services`, ruled 2026-09-25: "H7's line gains a
+  `driver-calls-services` marker") and the transform before handing
+  (`hook-one-call`). C2's `parseOpts(opts)` and O1's `parseFoo(opts.cwd)` the
+  same, marked as two groups today. **Ruled 2026-09-26: two facts, two
+  diagnostics, two groups** — H7, C2 and O1 each
+  `driver-calls-services, hook-one-call`. No riding across rules: a rider is
+  only ever the same rule's; whether that stays is the sweep's.
+- **Q3. An adapter called in a hook leaves the hook with no use case** (C1):
+  `driver-calls-services` on the call, and `hook-one-call`'s zero count on the
+  hook — the row marks the first only.
+- **Q4. A tech call in a hook beside the one call** — D4's lazy `import()` and
+  `process.cwd()` feeding the assembly are wiring in a hook, canon's words; a
+  lone `console.log("checking")` before the call is not in any row. **Ruled
+  2026-09-26: red** — "a driver connects a trigger to a use case; `console.log`
+  is not that". In a hook, a tech call is allowed only as wiring (its result
+  feeds an assembly's factory, D4) or as the tech the result is handed to whole
+  (H6); anything else is `hook-one-call`. A row joins, red.
+- **Q5. Consequences of rulings already made**, to confirm: O5's `type Opts` is
+  green (types are no definitions, checkpoint 4 — the row's marker predates it);
+  S4 `registerCheckCommands(parser, await cli.status({}))` is two groups,
+  `wiring-outside-hooks, sub-driver-wiring`, and C3 `cac(pc.bold("notes"))` two,
+  `driver-calls-services, wiring-outside-hooks` (no riding across rules, Q2);
+  O2's `.action(handlers.check)` a second red on its own line (a member of the
+  table handed on, computed — across lines, no grouping); S3's import of
+  `checkHook` moves to checkpoint 7 with the import cells (an import fact; the
+  reading has no imported names). **Ruled 2026-09-26:** O5 green, O2's second
+  red kept ("well deserved"); S3's import deferred to checkpoint 7, its marker
+  `missed` with that reason.
+- **Q6. `hook-one-call` in a test body.** Canon's letter exempts only "the hook
+  count and services-only"; built to it, deblob's own specs gave 976 reds
+  (branches, results read, computed arguments), and the rule judges a use case's
+  result but not a model function's — a split with no reason in a test. **Ruled
+  2026-09-26: A, provisionally — test bodies are exempt from `hook-one-call`
+  whole; `sub-driver-wiring` still applies.** Uncertain on purpose: the chapter
+  PLAN's `04/05_test-rules` revisits it, with the data and the clause-by-clause
+  reading; the bet is that it tightens (no branch, no writes, as test rules of
+  their own). The exemption is marked provisional in the code, and must not
+  outlive that step.
+
+**Built as drafted and ruled**, with what building it taught:
+
+- **Reader.** G1, G3 and G4 as drafted. G2 cut at falsification: D4 is green
+  without it — the check never judges what a tech call's result is used for,
+  only whether it is dropped. G5 is moot: a function that is not the wiring
+  function is red whole, its body not judged as wiring. Moving the tracked
+  locals out of drivers moved the reader units that read their fixtures as a
+  driver to a test file (the outside kind that still inlines), and a
+  `modules.spec.ts` row's tree from a driver to an adapter (verdict unchanged;
+  re-stamp).
+- **In a hook, a branch owns what its arms hold** — a tech call, a write — but
+  not the use case (that is the branch's `conditional`) nor a call the driver
+  may not make (that rule's). H3, H5 and H8 read one fact each for the branch,
+  as their rows mark. A result written into a member is the assignment's fact,
+  judged as a statement, never twice.
+- **A tech call in a hook** (Q4) is red when its result is dropped and it takes
+  no use case's result: wiring feeds something, handing takes the result.
+- **The wiring function** is the first exported; the preferences drafted (the
+  one another driver calls, then `main`) failed no row switched off and were
+  cut. A sub-driver — a driver another driver or a test imports — may take
+  parameters; a test's call site binds none, so the imports decide.
+- **Q6** (ruled 2026-09-26, above): test bodies exempt from `hook-one-call`,
+  provisionally — `PROVISIONAL` in `driver.model.ts`, revisited by
+  `04/05_test-rules`.
+- **The assembly check reads `assigned` as a use of what it built**, red as the
+  `computed` it replaced; a catch in an assembly is a branch (the self-check's
+  five new `main.ts` reds — its message says "branches on a computed value", a
+  wording for the sweep).
+- **Rows.** Every driver marker stamped at this checkpoint flips; the S3 import
+  stays `missed` (checkpoint 7). Two hooks that run no use case gained their
+  marker (S2's, the sub-driver's `() => cli`). Other specs: the layers rows'
+  `() => undefined` hooks, the modules driver's root binding, and two
+  confessions — the shared matcher driver's `expect.extend({…})`
+  (`false unknown`, `false red`: a test's call site binds no parameter; a record
+  of matchers is not cut as hooks) and `enterTmp`'s `host.chdir`
+  (`false unknown`). New, UNSTAMPED (written after the check): a branch and a
+  write in the wiring; a write beside the call and a branch in a branch in a
+  hook; the result handed whole to a tech call in a block body (green); an
+  assembly writing what it built into a member.
+- **Units** where no row reaches: a driver with no reading, an unknown argument
+  in the wiring and to a hook's use case; every message shape. The CLI golden
+  gains a driver block (`billing.driver.ts`, a log line beside the call).
+- **Falsification:** each clause switched off in turn fails a row — the wiring's
+  use case (2), a callee no driver calls (7), the services-only exemption (4),
+  an assembly factory allowed (62), an argument not handable (6), a received
+  argument (1), a function to the tech a hook (64), a sub-driver handed a result
+  (1), a wiring branch (1), a wiring write (1), a table of lambdas (1), the
+  count (5), the use case's arguments (4), its result past handing (1), the
+  result handed to the tech (1), a sub-driver's wiring in a hook (1), a tech
+  call beside (2), its wiring exemption (4), its handed-the-result exemption
+  (1), a hook branch (2), a branch owning its arms (2), a hook write (1), the
+  result written to tech-held state (1), the test exemption (9), a root
+  definition (2), a second function (3), a wiring function's parameter (1), a
+  sub-driver's parameters (4); in the reader, the assigned use (1), a driver's
+  local not inlined (1), a catch as a branch (2); the assembly's write of what
+  it built (1).
+- **Self-check:** 429 → 436 groups (144 `modules`, 292 `assembly`, no `driver`:
+  deblob's `main.ts` is designated an assembly). The two new `modules` are the
+  new unit file's root constants; the assembly's five catches arrived with the
+  reader change.
+
 ## Docs
 
 `check/README.md`: the three checks and the call clause. `cases/README.md`: the
@@ -266,6 +763,15 @@ The chapter PLAN's step queue: this step, then the alignment review.
   - **Every layer but model and service may touch the tech**, so a local
     function called at their root is red: the frame does nothing at root beyond
     its exempt calls.
+- **Violations stack, never merge; one per fix** (ruled 2026-09-26). Two defects
+  on one line, each with its own fix, are two violations, each with its reason
+  and its way out: merged diagnostics multiply their combinations, separate ones
+  stay modular, and under-reporting is the worse failure. A red call stored in a
+  `let` is two reds. Calls one fix removes together are one: `@Injectable()`,
+  the factory's call and its application, is one decorator.
+- **A root class's static field is a root binding** (ruled 2026-09-26). It is
+  made when the class is evaluated, on load: `readonly` is its `const`, a
+  writable static is reassignable state whatever it holds.
 - **The matcher exemption reads the call, not the body** (ruled 2026-09-26). A
   shared driver's wiring function handed only the runner is exempt at a spec's
   root; its body is judged where it is written, by the driver check. Each rule

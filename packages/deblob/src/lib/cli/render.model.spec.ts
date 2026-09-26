@@ -1,13 +1,17 @@
 import { describe, expect, it, test } from "vitest"
 
+import { groupByFix } from "../check/grouping.model.ts"
 import type { RuleId } from "../check/rule.model.ts"
 import type {
+  AssemblyViolation,
   BarrelsViolation,
+  DriverViolation,
   DagViolation,
   LayersViolation,
   ModulesViolation,
   PortsViolation,
   PrivateViolation,
+  Violation,
 } from "../check/violation.model.ts"
 import {
   ANSI_COLORS,
@@ -26,7 +30,19 @@ import {
   sizeStatsOf,
   SURFACE_NOT_CLAIMED,
 } from "./render.model.ts"
-import type { GraphStats } from "./render.model.ts"
+import type { Colors, GraphStats } from "./render.model.ts"
+
+/** Violations rendered as the CLI does: grouped by fix first. */
+const renderViolations = (
+  violations: readonly Violation[],
+  stats: GraphStats,
+  colors: Colors,
+  pathPrefix?: string,
+): string =>
+  renderCheckResults(groupByFix(violations), stats, colors, pathPrefix)
+
+/** Where a statement-level violation's subject sits — a line's span. */
+const SUBJECT = { start: 100, end: 110, line: 7, column: 0 } as const
 
 const layersViolation = (
   overrides: Partial<LayersViolation> = {},
@@ -91,6 +107,11 @@ const portsViolation = (
 
 type RootBinding = Extract<ModulesViolation, { shape: "root-binding" }>
 
+/** `Omit` over each member of a union, its discriminant kept. */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never
+
 type RootCall = Extract<ModulesViolation, { shape: "root-call" }>
 
 const rootBinding = (
@@ -104,6 +125,8 @@ const rootBinding = (
   serviceRoot: "src/billing",
   line: 7,
   via: [],
+  subject: SUBJECT,
+  cause: null,
   shape: "root-binding",
   holds: "state",
   by: null,
@@ -122,7 +145,7 @@ const STATS: GraphStats = {
 
 describe("renderCheckResults", () => {
   it("counts the unknowns apart in the summary: a red the reader could not prove is still a violation, and says so", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [
         rootBinding({ line: 1, by: { form: "let", name: null } }),
         rootBinding({ line: 2, unknown: { kind: "type-name", name: "Table" } }),
@@ -135,8 +158,50 @@ describe("renderCheckResults", () => {
     )
   })
 
+  it("lays a group out as its lead with its riders under it, and counts it once", () => {
+    const lead: RootCall = {
+      check: "modules",
+      ruleset: "arch",
+      rules: ["stable-root"],
+      file: "src/status/adapters/fetch-status.adapter.ts",
+      serviceRoot: "src/status",
+      line: 3,
+      via: [],
+      subject: SUBJECT,
+      cause: null,
+      shape: "root-call",
+      reaches: "tech",
+      name: null,
+      unknown: null,
+    }
+    const rider = rootBinding(
+      { line: 3, unknown: { kind: "type-name", name: "Response" } },
+      lead.file,
+    )
+    expect(
+      renderCheckResults([{ lead, riders: [rider] }], STATS, NO_COLORS),
+    ).toBe(
+      [
+        "src/status",
+        "  src/status/adapters/fetch-status.adapter.ts",
+        "    modules  line 3 runs on import — a call into the host, presumed to",
+        "             act; move it inside a factory or a function (stable-root)",
+        "             + line 3 may bind state at module root — unknown: the",
+        "               reader does not follow the type name Response yet; write",
+        "               the type out in place, or move it inside a factory",
+        "               (stable-root)",
+        "",
+        // one fix, one count; the lead is proven, so no unknown is counted
+        "1 violation (1 modules) · 214 files · 218kb · 25% blob",
+        "12 services · 380 imports",
+        "why: deblob explain stable-root · or rerun with --explain",
+        "",
+      ].join("\n"),
+    )
+  })
+
   it("renders the fiction's grouped listing: service → file → tagged lines", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [layersViolation(), privateViolation()],
       STATS,
       NO_COLORS,
@@ -169,7 +234,7 @@ describe("renderCheckResults", () => {
         type: "module",
         path: `src/invoice/${"x".repeat(pad)}.model.ts`,
       } as const
-      const output = renderCheckResults(
+      const output = renderViolations(
         [
           layersViolation({ rules: ["blob-quarantine"], target }),
           layersViolation({
@@ -194,7 +259,7 @@ describe("renderCheckResults", () => {
   })
 
   test("the footer orders rules as the summary does, not alphabetically", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [
         privateViolation(),
         layersViolation({ rules: ["service-purity", "runtime-import"] }),
@@ -209,7 +274,7 @@ describe("renderCheckResults", () => {
   })
 
   test("pathPrefix lands on every module path, never on package specifiers", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [layersViolation(), privateViolation()],
       STATS,
       NO_COLORS,
@@ -223,23 +288,23 @@ describe("renderCheckResults", () => {
   })
 
   test("a clean run is the summary and coverage lines, no footer", () => {
-    expect(renderCheckResults([], STATS, NO_COLORS)).toBe(
+    expect(renderViolations([], STATS, NO_COLORS)).toBe(
       "0 violations · 214 files · 218kb · 25% blob\n12 services · 380 imports\n",
     )
   })
 
   test("coverage line: the exports segment exists iff a claim was checked, disclosed only when nonzero", () => {
     const claimed = { ...STATS, surface: { checked: 7, disclosed: 2 } }
-    expect(renderCheckResults([], claimed, NO_COLORS)).toContain(
+    expect(renderViolations([], claimed, NO_COLORS)).toContain(
       "\n12 services · 380 imports · exports 7 checked, 2 disclosed\n",
     )
     const undisclosed = { ...STATS, surface: { checked: 1, disclosed: 0 } }
-    expect(renderCheckResults([], undisclosed, NO_COLORS)).toContain(
+    expect(renderViolations([], undisclosed, NO_COLORS)).toContain(
       "\n12 services · 380 imports · exports 1 checked\n",
     )
     // singulars
     expect(
-      renderCheckResults(
+      renderViolations(
         [],
         { ...STATS, services: 1, imports: 1, surface: null },
         NO_COLORS,
@@ -254,13 +319,13 @@ describe("renderCheckResults", () => {
   })
 
   test("singular: 1 violation", () => {
-    const output = renderCheckResults([layersViolation()], STATS, NO_COLORS)
+    const output = renderViolations([layersViolation()], STATS, NO_COLORS)
     expect(output).toContain("1 violation (1 layers)")
     expect(output).not.toContain("1 violations")
   })
 
   it("groups deterministically: services ascending, blob bucket last, files ascending", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [
         layersViolation({
           file: "src/zeta/a.service.ts",
@@ -287,7 +352,7 @@ describe("renderCheckResults", () => {
   })
 
   it("orders violations inside a file by check name", () => {
-    const output = renderCheckResults(
+    const output = renderViolations(
       [
         portsViolation({
           file: "src/invoice/checkout.service.ts",
@@ -316,7 +381,7 @@ describe("renderCheckResults", () => {
       [exportViolation("AAA_FAKE"), exportViolation("ZZZ_FAKE")],
       [exportViolation("ZZZ_FAKE"), exportViolation("AAA_FAKE")],
     ]) {
-      const output = renderCheckResults(input, STATS, NO_COLORS)
+      const output = renderViolations(input, STATS, NO_COLORS)
       expect(output.indexOf("AAA_FAKE")).toBeLessThan(
         output.indexOf("ZZZ_FAKE"),
       )
@@ -325,11 +390,8 @@ describe("renderCheckResults", () => {
 
   describe("messages", () => {
     // collapse the hanging-indent wrap so substrings assert on whole phrases
-    const message = (
-      violation: Parameters<typeof renderCheckResults>[0][0],
-      prefix = "",
-    ) =>
-      renderCheckResults([violation], STATS, NO_COLORS, prefix).replace(
+    const message = (violation: Violation, prefix = "") =>
+      renderViolations([violation], STATS, NO_COLORS, prefix).replace(
         /\n {13}/g,
         " ",
       )
@@ -557,6 +619,8 @@ describe("renderCheckResults", () => {
         serviceRoot: "src/billing",
         line: 7,
         via: [],
+        subject: SUBJECT,
+        cause: null,
         shape: "root-statement",
         unknown: null,
       })
@@ -578,6 +642,8 @@ describe("renderCheckResults", () => {
           { file: "src/billing/refund.model.ts", line: 12 },
           { file: "src/billing/ledger.model.ts", line: 3 },
         ],
+        subject: SUBJECT,
+        cause: null,
         shape: "root-statement",
         unknown: null,
       })
@@ -685,6 +751,19 @@ describe("renderCheckResults", () => {
 
       test.each([
         ["var", null, "ts", "a var can be reassigned"],
+        [
+          "static",
+          "count",
+          "ts",
+          "static count without readonly can be reassigned",
+        ],
+        ["static", "count", "js", "static count can be reassigned"],
+        [
+          "static",
+          null,
+          "ts",
+          "a static field without readonly can be reassigned",
+        ],
         ["ArrayExpression", null, "ts", "an array literal without as const"],
         ["ArrayExpression", null, "js", "an array literal, not frozen"],
         ["TSTypeReference", "Map", "ts", "a Map, which keeps its mutators"],
@@ -778,6 +857,8 @@ describe("renderCheckResults", () => {
           serviceRoot: "src/billing",
           line: 7,
           via: [],
+          subject: SUBJECT,
+          cause: null,
           shape: "root-statement",
           unknown: { kind: "statement", form: "DebuggerStatement" },
         }),
@@ -797,6 +878,8 @@ describe("renderCheckResults", () => {
         serviceRoot: "src/billing",
         line: 7,
         via: [],
+        subject: SUBJECT,
+        cause: null,
         shape: "root-call",
         reaches: "tech",
         name: null,
@@ -849,6 +932,497 @@ describe("renderCheckResults", () => {
         ).toContain(
           "line 7 may run on import — unknown: the reader cannot tell what this call reaches; move it inside a factory or a function",
         )
+      })
+    })
+
+    describe("an assembly violation", () => {
+      type Shape = DistributiveOmit<
+        AssemblyViolation,
+        | "check"
+        | "ruleset"
+        | "rules"
+        | "file"
+        | "serviceRoot"
+        | "line"
+        | "unknown"
+        | "subject"
+        | "cause"
+      >
+      const assembly = (
+        shape: Shape,
+        unknown: AssemblyViolation["unknown"] = null,
+      ): AssemblyViolation => ({
+        check: "assembly",
+        ruleset: "arch",
+        rules: ["assembly-builds-only"],
+        file: "src/notes.assembly.ts",
+        serviceRoot: null,
+        line: 7,
+        unknown,
+        subject: SUBJECT,
+        cause: null,
+        ...shape,
+      })
+      const FS_STORE = {
+        kind: "factory",
+        layer: "adapters",
+        path: "src/notes/adapters/fs-store.adapter.ts",
+        name: "createFsStore",
+      } as const
+
+      test.each([
+        [
+          { kind: "tech", package: "node:fs" },
+          "calls node:fs, the tech — an assembly only builds; hand the tech value to the adapter that uses it",
+        ],
+        [
+          { kind: "tech", package: null },
+          "calls the host, the tech — an assembly only builds; hand the tech value to the adapter that uses it",
+        ],
+        [
+          { kind: "use-case", member: "load", origin: null },
+          "runs the use case load — an assembly only builds; run it in a hook, or declare it in configLoads if the graph depends on it",
+        ],
+        [
+          { kind: "local", name: "rootOf", factory: false },
+          "calls rootOf, which builds nothing — every call in an assembly builds; a model function passed on, or inline",
+        ],
+        [
+          { kind: "wiring", path: "src/cli.driver.ts", name: "main" },
+          "runs the wiring function main — a driver's, never an assembly's; the driver calls the assembly",
+        ],
+        [
+          { kind: "unclaimed", package: "left-pad" },
+          'calls left-pad, a package nothing claims — an assembly only builds; an adapter wraps it, or list it under config key "pure"',
+        ],
+        [
+          { kind: "language" },
+          "calls the language, which builds nothing — computing is not building; a model function passed on, or the adapter derives it",
+        ],
+      ] as const)("a call into %o says: %s", (callee, words) => {
+        expect(message(assembly({ shape: "call", callee }))).toContain(
+          `line 7 ${words} (assembly-builds-only)`,
+        )
+      })
+
+      it("says what the reader could not see in a call, and the ways out", () => {
+        expect(
+          message(
+            assembly(
+              { shape: "call", callee: { kind: "unknown" } },
+              {
+                kind: "callee",
+              },
+            ),
+          ),
+        ).toContain(
+          "line 7 may not build — unknown: the reader cannot tell what this call reaches; a factory call, or type what it is called on",
+        )
+      })
+
+      it("names the argument, what it is, and where it goes", () => {
+        expect(
+          message(
+            assembly({
+              shape: "argument",
+              callee: FS_STORE,
+              key: null,
+              value: "computed",
+            }),
+          ),
+        ).toContain(
+          "line 7 hands createFsStore a computed value as an argument — arguments are literals, tech values received, or instances; a model function passed on, or the adapter derives it",
+        )
+        expect(
+          message(
+            assembly({
+              shape: "argument",
+              callee: FS_STORE,
+              key: "index",
+              value: "function",
+            }),
+          ),
+        ).toContain(
+          "line 7 hands createFsStore a function as the entry index — an assembly defines nothing; the driver registers it, or the adapter owns it",
+        )
+        expect(
+          message(
+            assembly({
+              shape: "argument",
+              callee: FS_STORE,
+              key: null,
+              value: "tech",
+            }),
+          ),
+        ).toContain(
+          "line 7 hands createFsStore the host as an argument, read here — tech values arrive as parameters; the driver hands it in",
+        )
+        expect(
+          message(
+            assembly(
+              {
+                shape: "argument",
+                callee: { kind: "unknown" },
+                key: null,
+                value: "unknown",
+              },
+              { kind: "call-result", callee: null, construct: false },
+            ),
+          ),
+        ).toContain(
+          "line 7 may hand a call the reader cannot place what the reader cannot tell — unknown: a call's result is not known; pass a literal, a tech value received, or an instance",
+        )
+      })
+
+      test.each([
+        [{ kind: "use-case", member: "list", origin: null }, "list"],
+        [{ kind: "unclaimed", package: "left-pad" }, "left-pad"],
+        [
+          {
+            kind: "forbidden-import",
+            layer: "ports",
+            path: "src/notes/ports/store.ts",
+          },
+          "src/notes/ports/store.ts",
+        ],
+        [{ kind: "language" }, "the language"],
+      ] as const)(
+        "names what an argument is handed to: %o is %s",
+        (callee, name) => {
+          expect(
+            message(
+              assembly({
+                shape: "argument",
+                callee,
+                key: null,
+                value: "computed",
+              }),
+            ),
+          ).toContain(`line 7 hands ${name} a computed value`)
+        },
+      )
+
+      test.each([
+        ["member", "reads a field of"],
+        ["computed", "computes with"],
+        ["reassigned", "reassigns"],
+        ["assigned", "writes into a member"],
+      ] as const)(
+        "a result used as %s says it %s what was built",
+        (use, verb) => {
+          expect(
+            message(assembly({ shape: "result-use", use, callee: FS_STORE })),
+          ).toContain(
+            `line 7 ${verb} what createFsStore built — what the assembly builds is passed on or returned; pass it whole, its consumer reads the field`,
+          )
+        },
+      )
+
+      it("sends a field of another assembly's record down, never sideways", () => {
+        expect(
+          message(
+            assembly({
+              shape: "result-use",
+              use: "member",
+              callee: {
+                kind: "factory",
+                layer: "assembly",
+                path: "src/shared.assembly.ts",
+                name: "createSharedAssembly",
+              },
+            }),
+          ),
+        ).toContain(
+          "line 7 reads a field of what createSharedAssembly built — shared instances flow down, never sideways; the parent builds it and passes it down to both",
+        )
+      })
+
+      test.each([
+        [
+          { shape: "branch", testOrigin: "instance" },
+          "branches on an instance — a decision the map cannot show; it moves into the service or adapter that owns it",
+        ],
+        [
+          { shape: "branch", testOrigin: "other" },
+          "branches on a computed value — a branch is wiring on a parameter or a loaded value; the decision moves into the service or adapter that owns it",
+        ],
+        [
+          { shape: "definition", name: "LIMIT", at: "root" },
+          "defines LIMIT at the assembly's root — nothing sits there but imports; the literal in place, or a model export",
+        ],
+        [
+          { shape: "definition", name: null, at: "root" },
+          "defines a value at the assembly's root — nothing sits there but imports; the literal in place, or a model export",
+        ],
+        [
+          { shape: "definition", name: "rootOf", at: "function" },
+          "defines rootOf, which builds nothing — nothing but assembly functions is defined; a model function, or inline",
+        ],
+        [
+          { shape: "root-statement" },
+          "runs at the assembly's root — nothing sits there but imports; move it inside the assembly function",
+        ],
+        [
+          {
+            shape: "adapter-returned",
+            key: "fs",
+            origin: {
+              path: "src/notes/adapters/fs-store.adapter.ts",
+              name: "createFsStore",
+              layer: "adapters",
+            },
+          },
+          "returns the adapter fs to a caller that is not a test — an assembly returns services; return services only, a test factory returns the adapters",
+        ],
+      ] as const)("%o says: %s", (shape, words) => {
+        expect(message(assembly(shape))).toContain(`line 7 ${words}`)
+      })
+    })
+
+    describe("a driver violation", () => {
+      type Shape = DistributiveOmit<
+        DriverViolation,
+        | "check"
+        | "ruleset"
+        | "rules"
+        | "file"
+        | "serviceRoot"
+        | "line"
+        | "unknown"
+        | "subject"
+        | "cause"
+      >
+      const driver = (
+        rule: RuleId,
+        shape: Shape,
+        unknown: DriverViolation["unknown"] = null,
+      ): DriverViolation => ({
+        check: "driver",
+        ruleset: "arch",
+        rules: [rule],
+        file: "src/cli.driver.ts",
+        serviceRoot: null,
+        line: 7,
+        unknown,
+        subject: SUBJECT,
+        cause: null,
+        ...shape,
+      })
+      const CHECK = {
+        kind: "use-case",
+        member: "cli.check",
+        origin: null,
+      } as const
+      const REGISTER = {
+        kind: "wiring",
+        path: "src/cli/check.driver.ts",
+        name: "registerCheckCommands",
+      } as const
+      const CALLS_SERVICES =
+        "a driver calls services, the assembly, sub-driver wiring and its own tech, nothing else"
+
+      test.each([
+        [
+          "wiring-outside-hooks",
+          { shape: "call", callee: CHECK, where: "wiring" },
+          "runs the use case cli.check outside any hook — outside its hooks, a driver only wires; the call moves into a hook",
+        ],
+        [
+          "sub-driver-wiring",
+          { shape: "call", callee: REGISTER, where: "hook" },
+          "runs the sub-driver's wiring registerCheckCommands in a hook — one hook would chain two calls; call it in the wiring",
+        ],
+        [
+          "hook-one-call",
+          {
+            shape: "call",
+            callee: { kind: "tech", package: null },
+            where: "hook",
+          },
+          "calls the host beside the use case — a hook connects a trigger to one use case; the use case does it through its port",
+        ],
+        [
+          "driver-calls-services",
+          {
+            shape: "call",
+            callee: {
+              kind: "model",
+              path: "src/opts.model.ts",
+              name: "parseOpts",
+            },
+            where: "hook",
+          },
+          `calls parseOpts, a model — ${CALLS_SERVICES}; parsing and rendering are use cases of a service`,
+        ],
+        [
+          "driver-calls-services",
+          {
+            shape: "call",
+            callee: {
+              kind: "factory",
+              layer: "adapters",
+              path: "src/fs.adapter.ts",
+              name: "createFsStore",
+            },
+            where: "hook",
+          },
+          `calls createFsStore, a factory of adapters — ${CALLS_SERVICES}; the assembly builds it, a service calls it`,
+        ],
+        [
+          "driver-calls-services",
+          {
+            shape: "call",
+            callee: { kind: "local", name: "parseFoo", factory: false },
+            where: "hook",
+          },
+          `calls parseFoo, a function of the driver — ${CALLS_SERVICES}; a model function, called by a service`,
+        ],
+        [
+          "driver-calls-services",
+          {
+            shape: "call",
+            callee: { kind: "unclaimed", package: "picocolors" },
+            where: "wiring",
+          },
+          `calls picocolors, a package nothing claims — ${CALLS_SERVICES}; declare it in driverTech, or it is a service's concern`,
+        ],
+        [
+          "driver-calls-services",
+          { shape: "call", callee: { kind: "language" }, where: "hook" },
+          `calls the language — ${CALLS_SERVICES}; a use case of the service does it`,
+        ],
+        [
+          "sub-driver-wiring",
+          {
+            shape: "argument",
+            callee: REGISTER,
+            value: "computed",
+            where: "wiring",
+          },
+          "hands the sub-driver's wiring registerCheckCommands a use case's result — never data from the hexagon; pass the instance, its hook calls the use case",
+        ],
+        [
+          "hook-one-call",
+          {
+            shape: "argument",
+            callee: CHECK,
+            value: "computed",
+            where: "hook",
+          },
+          "hands the use case cli.check a computed value — a hook translates nothing on the way in; pass the tech values unchanged, the service derives the rest",
+        ],
+        [
+          "wiring-outside-hooks",
+          {
+            shape: "argument",
+            callee: { kind: "tech", package: "cac" },
+            value: "function",
+            where: "wiring",
+          },
+          "hands cac a function — wiring hands on tech values, instances and literals; the assembly takes the raw value, its adapter derives it",
+        ],
+        [
+          "hook-one-call",
+          { shape: "call-count", count: 0 },
+          "registers a hook that runs no use case — a hook with no use case is logic with no home; a use case of the service",
+        ],
+        [
+          "hook-one-call",
+          { shape: "call-count", count: 2 },
+          "registers a hook that runs 2 use cases — the sequence between them is a use case nobody owns; a facade use case, the calls its subfunctions",
+        ],
+        [
+          "wiring-outside-hooks",
+          { shape: "branch", where: "wiring", conditional: false },
+          "branches in the wiring — outside its hooks, a driver only wires; the decision is a service's",
+        ],
+        [
+          "hook-one-call",
+          { shape: "branch", where: "hook", conditional: true },
+          "calls its use case conditionally — the call is unconditional; the service decides",
+        ],
+        [
+          "hook-one-call",
+          { shape: "branch", where: "hook", conditional: false },
+          "branches in a hook — a hook translates nothing around its call; the service decides",
+        ],
+        [
+          "hook-one-call",
+          { shape: "result", use: "computed" },
+          "uses a use case's result past handing it on — a hook returns it, or hands it whole to the tech; the use case returns what the tech needs",
+        ],
+        [
+          "wiring-outside-hooks",
+          { shape: "statement", where: "wiring" },
+          "writes in the wiring — outside its hooks, a driver only wires; the write is a service's",
+        ],
+        [
+          "hook-one-call",
+          { shape: "statement", where: "hook" },
+          "writes in a hook — a hook translates nothing around its call; the use case returns what the tech needs",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "definition", name: "NAME", at: "root" },
+          "defines NAME beside the hooks and the wiring function — a driver defines its hooks and one wiring function; the literal in place, or a model export",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "definition", name: null, at: "root" },
+          "defines a value beside the hooks and the wiring function — a driver defines its hooks and one wiring function; the literal in place, or a model export",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "definition", name: "parseFoo", at: "function" },
+          "defines parseFoo, a function beside the wiring function — a driver defines its hooks and one wiring function; a model function called by a service, or a sub-driver's wiring",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "definition", name: "handlers", at: "local" },
+          "holds functions in handlers — a table of lambdas is a service without a contract; each hook handed to the tech in place",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "parameter", name: "main" },
+          "main takes a parameter — a root driver's wiring function takes nothing and reads its tech itself; read it inside",
+        ],
+        [
+          "driver-hooks-only",
+          { shape: "parameter", name: null },
+          "the wiring function takes a parameter — a root driver's wiring function takes nothing and reads its tech itself; read it inside",
+        ],
+      ] as const)("%s, %o says: %s", (rule, shape, words) => {
+        expect(message(driver(rule, shape as Shape))).toContain(
+          `line 7 ${words}`,
+        )
+      })
+
+      it("says what the reader could not see, in a call and in an argument", () => {
+        expect(
+          message(
+            driver(
+              "driver-calls-services",
+              { shape: "call", callee: { kind: "unknown" }, where: "wiring" },
+              { kind: "callee" },
+            ),
+          ),
+        ).toContain(
+          "line 7 may call what a driver may not — unknown: the reader cannot tell what this call reaches; call a service, the assembly or the tech",
+        )
+        expect(
+          message(
+            driver(
+              "wiring-outside-hooks",
+              {
+                shape: "argument",
+                callee: { kind: "tech", package: "cac" },
+                value: "unknown",
+                where: "wiring",
+              },
+              { kind: "value", form: "argument", name: null },
+            ),
+          ),
+        ).toContain("line 7 hands cac what the reader cannot tell")
       })
     })
 
@@ -944,7 +1518,7 @@ describe("renderCheckResults", () => {
       }) as DagViolation
 
     it("renders the fiction's cross-service block with quoted carrying edges", () => {
-      const output = renderCheckResults([serviceCycle()], STATS, NO_COLORS)
+      const output = renderViolations([serviceCycle()], STATS, NO_COLORS)
       expect(output).toBe(
         [
           "cross-service",
@@ -965,7 +1539,7 @@ describe("renderCheckResults", () => {
     })
 
     it("orders blocks in a bucket by rule (the summary's order), then membership", () => {
-      const output = renderCheckResults(
+      const output = renderViolations(
         [
           moduleCycle({
             group: { kind: "cross-service" },
@@ -979,7 +1553,7 @@ describe("renderCheckResults", () => {
         output.indexOf("src/lib/api/client.ts ⇄"),
       )
       // either input order — the sort, not the input, decides
-      const reversed = renderCheckResults(
+      const reversed = renderViolations(
         [
           serviceCycle(),
           moduleCycle({
@@ -1001,15 +1575,15 @@ describe("renderCheckResults", () => {
         members: ["src/lib/yyy.ts", "src/lib/zzz.ts"],
         files: ["src/lib/yyy.ts", "src/lib/zzz.ts"],
       } as Partial<DagViolation>)
-      const output = renderCheckResults([late, early], STATS, NO_COLORS)
+      const output = renderViolations([late, early], STATS, NO_COLORS)
       expect(output.indexOf("src/lib/aaa.ts ⇄")).toBeLessThan(
         output.indexOf("src/lib/yyy.ts ⇄"),
       )
-      expect(renderCheckResults([early, late], STATS, NO_COLORS)).toBe(output)
+      expect(renderViolations([early, late], STATS, NO_COLORS)).toBe(output)
     })
 
     it("renders the module cycle in the blob bucket, last", () => {
-      const output = renderCheckResults(
+      const output = renderViolations(
         [moduleCycle(), serviceCycle()],
         STATS,
         NO_COLORS,
@@ -1025,7 +1599,7 @@ describe("renderCheckResults", () => {
     })
 
     it("marks type-only and wiring hops, and extends the remedy for wiring", () => {
-      const output = renderCheckResults(
+      const output = renderViolations(
         [
           serviceCycle({
             hops: [
@@ -1062,7 +1636,7 @@ describe("renderCheckResults", () => {
     })
 
     it("renders a longer witness as an arrow chain and notes entanglement", () => {
-      const output = renderCheckResults(
+      const output = renderViolations(
         [
           serviceCycle({
             // rootless service dirs: the hop label falls back to the whole root
@@ -1159,7 +1733,7 @@ describe("bare status", () => {
         "",
         "Commands",
         "  deblob check [what...]      run architecture checks",
-        "                              (dag · layers · private · barrels · ports · surface · modules)",
+        "                              (dag · layers · private · barrels · ports · surface · modules · assembly · driver)",
         "  deblob explain <topic...>   explain rules or checks",
         "  deblob view                 open the viewer on this project",
         "  deblob --help               full help",

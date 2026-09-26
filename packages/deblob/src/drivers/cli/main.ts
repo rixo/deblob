@@ -12,8 +12,10 @@ import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { checkAssembly } from "../../lib/check/assembly.model.ts"
 import { checkBarrels } from "../../lib/check/barrels.model.ts"
 import { checkDag } from "../../lib/check/dag.model.ts"
+import { checkDriver } from "../../lib/check/driver.model.ts"
 import { checkLayers } from "../../lib/check/layers.model.ts"
 import { checkModules } from "../../lib/check/modules.model.ts"
 import { checkPorts } from "../../lib/check/ports.model.ts"
@@ -24,6 +26,7 @@ import type {
   ResolveSurfaceOptions,
   SurfaceReport,
 } from "../../lib/check/surface.model.ts"
+import { groupByFix } from "../../lib/check/grouping.model.ts"
 import type { RuleId } from "../../lib/check/rule.model.ts"
 import { ruleOrder } from "../../lib/check/rule.model.ts"
 import type { Violation } from "../../lib/check/violation.model.ts"
@@ -170,6 +173,8 @@ const DETECTORS: Record<
   ports: (graph) => checkPorts(graph),
   modules: (graph, config) =>
     checkModules(graph, { mutableModuleState: config.mutableModuleState }),
+  assembly: (graph) => checkAssembly(graph),
+  driver: (graph) => checkDriver(graph),
 }
 
 /**
@@ -492,7 +497,7 @@ const runCheck = async (
   }
 
   const listing = renderCheckResults(
-    violations,
+    groupByFix(violations),
     stats,
     colors,
     pathPrefixOf(io.cwd, config.root),

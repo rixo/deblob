@@ -19,6 +19,8 @@ export const KNOWN_CHECKS = [
   "ports",
   "surface",
   "modules",
+  "assembly",
+  "driver",
 ] as const
 
 export type CheckName = (typeof KNOWN_CHECKS)[number]
@@ -44,6 +46,14 @@ export const CHECK_RULES: Readonly<Record<CheckName, readonly RuleId[]>> = {
   ports: ["ports-types-only"],
   surface: ["layer-in-path", "chain-purity"],
   modules: ["stable-root"],
+  assembly: ["assembly-builds-only"],
+  driver: [
+    "wiring-outside-hooks",
+    "hook-one-call",
+    "driver-calls-services",
+    "driver-hooks-only",
+    "sub-driver-wiring",
+  ],
 }
 
 export type CliAction =

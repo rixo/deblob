@@ -100,18 +100,18 @@ const ROOT_CALLS: readonly Row[] = [
   {
     // canon: "a call that reaches the tech". The body is read at the site, so the
     // tech call is a root call. Flag F6, closed 2026-09-20: one red, at the tech
-    // call's own line, not a second on the local call.
+    // call's own line, not a second on the local call. Moved from a driver to
+    // an adapter at the detectors step, checkpoint 6: a driver's local
+    // function is no longer read inline — it stays a definition.
     name: "a tracked local is read as the root's own body: a tech call inside it is red where the call sits",
     files: {
-      "src/cli.driver.ts": `
+      "src/home/adapters/home.adapter.ts": `
         const readHome = () => {
           const home = process.cwd() // red: stable-root -- the helper's body is the root's, so its tech call is a root call
           return home.length
         }
         export const HOME_LENGTH: number = readHome() // via: stable-root -- the root call that runs readHome's body on import
-        export const main = () => {
-          process.on("ready", () => readHome())
-        }
+        export const createHome = () => ({ read: () => readHome() })
       `,
     },
   },
@@ -161,7 +161,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/cli.driver.ts": `
         import { createCliAssembly } from "./cli.assembly.ts"
         // false unknown: stable-root -- a call's result is not followed yet
-        const services = createCliAssembly() // red: stable-root -- a call result is not provably immutable
+        const services = createCliAssembly() // red: stable-root, driver-hooks-only -- a call result is not provably immutable; and a definition beside the hooks and the wiring function
         services.app.run() // red: stable-root -- a use case runs at import time
         export const main = () => {
           process.on("ready", () => services.app.run())
@@ -223,8 +223,9 @@ const ROOT_CALLS: readonly Row[] = [
       "src/cli.assembly.ts": `
         import { createApp } from "./app.service.ts"
         // false unknown: stable-root -- a call's result is not followed yet
+        // red: assembly-builds-only + assembly-builds-only -- the call at the assembly's root, and the binding holding its result
         const app = createApp() // red: stable-root -- built at import time, and a call result is not provably immutable
-        export const createCliAssembly = () => ({ app })
+        export const createCliAssembly = () => ({ app }) // red: assembly-builds-only -- builds nothing: what it returns was built at root
       `,
       "src/cli.driver.ts": `
         import { createCliAssembly } from "./cli.assembly.ts"
@@ -241,11 +242,12 @@ const ROOT_CALLS: readonly Row[] = [
   },
   {
     // canon: "a call that reaches the tech". A `new` is a call; `Worker` is the
-    // host's. The binding stores the call's result and adds no red.
+    // host's. The binding stores the call's result: its verdict rides with the
+    // call, removing the call removes it — one fix.
     name: "a new of a host class at root is a call reaching the tech",
     files: {
       "src/jobs/adapters/worker-pool.adapter.ts": `
-        export const WORKER = new Worker("./w.js") // red: stable-root -- a new is a call, and Worker is the host's: the tech reached on import
+        export const WORKER = new Worker("./w.js") // red: stable-root + stable-root -- a new is a call, and Worker is the host's: the tech reached on import; the binding holding its result rides with it
       `,
     },
   },
@@ -256,7 +258,7 @@ const ROOT_CALLS: readonly Row[] = [
     files: {
       "src/http/adapters/fetch-status.adapter.ts": `
         const STATUS_URL = "https://example.test/status"
-        export const RES: Response = await fetch(STATUS_URL) // red: stable-root -- fetch reaches the tech on import; await adds nothing
+        export const RES: Response = await fetch(STATUS_URL) // red: stable-root + stable-root -- fetch reaches the tech on import; await adds nothing; the binding holding its result rides with it
       `,
     },
   },
@@ -266,8 +268,8 @@ const ROOT_CALLS: readonly Row[] = [
     name: "an immediately invoked function runs its body at root: a tech call inside it is red where it sits",
     files: {
       "src/log/adapters/console-log.adapter.ts": `
-        export const X: number = (() => { // missed via: stable-root -- the call that runs the body on import; an immediately invoked function is not read yet
-          console.log("x") // missed red: stable-root -- the body runs on load, so its tech call is a root call; an immediately invoked function is not read yet
+        export const X: number = (() => { // via: stable-root -- the call that runs the body on import
+          console.log("x") // red: stable-root -- the body runs on load, so its tech call is a root call
           return 1
         })()
       `,
@@ -282,7 +284,52 @@ const ROOT_CALLS: readonly Row[] = [
     files: {
       "src/clock/adapters/system-clock.adapter.ts": `
         export class Clock {
-          static started = Date.now() // missed red: stable-root -- a read of the clock stored on load, in a writable static; a static field is not read yet
+          static started = Date.now() // red: stable-root -- a read of the clock stored on load, in a writable static
+        }
+      `,
+    },
+  },
+  {
+    // canon: "its evaluation creates no mutable state". A call's result stored
+    // rides with the call, one fix — unless the binding is reassignable: a
+    // `let` or a writable static is state whatever it holds, a fix of its own,
+    // so the line carries two.
+    name: "a red call stored in a let or a writable static is two reds: the call, and the state",
+    files: {
+      "src/paths/adapters/cwd-paths.adapter.ts": `
+        export let CWD = process.cwd() // red: stable-root, stable-root -- the call reaches the tech; a let is state whatever it holds
+        export class Paths {
+          static cwd = process.cwd() // red: stable-root, stable-root -- the same, in a writable static
+        }
+      `,
+    },
+  },
+  {
+    // A static field is a root binding (ruled 2026-09-26).
+    // canon: "its evaluation creates no mutable state". A root class's static
+    // fields are made when the class is evaluated, on load: `readonly` is their
+    // `const`, a writable one is reassignable like a `let`. A method is code.
+    name: "a root class's static fields are root bindings: writable is state, readonly is judged by what it holds",
+    files: {
+      "src/counter.model.ts": `
+        const KEY = "k"
+        export class Counter {
+          static count = 0 // red: stable-root -- a writable static is state on the class, reassignable like a let
+          static #instances = 0 // red: stable-root -- private, still reassignable
+          static "label" = "c" // red: stable-root -- a quoted name, the same field
+          static [KEY] = 1 // red: stable-root -- a computed name, the same field
+          static pending: number // red: stable-root -- no initializer, still writable
+          static readonly MAX = 3
+          static readonly LIMIT: number = 3
+          static readonly EMPTY: string
+          declare static seeded: boolean
+          static readonly NAMES = ["a"] // red: stable-root -- readonly, but an array literal keeps its mutators
+          static create() {
+            return new Counter()
+          }
+        }
+        export const Tally = class {
+          static total = 0 // red: stable-root -- a class expression at root is evaluated on load too
         }
       `,
     },
@@ -295,7 +342,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/log/adapters/console-log.adapter.ts": `
         export class Logger {
           static {
-            console.log("loaded") // missed red: stable-root -- a static block runs on load, its tech call with it; a static block is not read yet
+            console.log("loaded") // red: stable-root -- a static block runs on load, its tech call with it
           }
         }
       `,
@@ -330,8 +377,28 @@ const ROOT_CALLS: readonly Row[] = [
       "node_modules/@nestjs/common/index.js": "module.exports = {}",
       "src/repo/adapters/nest-repo.adapter.ts": `
         import { Injectable } from "@nestjs/common"
-        @Injectable() // missed red: stable-root -- the tech's decorator runs on import and registers the class; a decorator is not read yet
+        @Injectable() // red: stable-root + stable-root -- the tech's decorator runs on import and registers the class: the factory's call, its result applied riding with it
         export class Repo {}
+      `,
+    },
+  },
+  {
+    // canon: "a call that reaches the tech". A member's decorator runs when the
+    // class is evaluated, as the class's does; an instance field's initializer
+    // runs at construction, not on load.
+    name: "a tech package's decorator on a member of a root class is a call reaching the tech",
+    files: {
+      "node_modules/typeorm/package.json": JSON.stringify({
+        name: "typeorm",
+        main: "./index.js",
+      }),
+      "node_modules/typeorm/index.js": "module.exports = {}",
+      "src/users/adapters/user-row.adapter.ts": `
+        import { Column } from "typeorm"
+        export class UserRow {
+          @Column() // red: stable-root + stable-root -- the tech's decorator runs when the class is evaluated, on load: the factory's call, its result applied riding with it
+          name = String(1)
+        }
       `,
     },
   },
@@ -402,7 +469,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/fixtures.spec.ts": `
         import { expect, it } from "vitest"
         import { loadFixture } from "./legacy/fixtures.ts"
-        const DATA = loadFixture() // red: stable-root -- a blob's function run on import; not a registration
+        const DATA = loadFixture() // red: stable-root + stable-root -- a blob's function run on import; not a registration; the binding holding its result rides with it
         it("reads", () => {
           expect(DATA.a).toBe(1)
         })
@@ -420,7 +487,115 @@ const ROOT_CALLS: readonly Row[] = [
       "node_modules/sql-template-tag/index.js": "module.exports = {}",
       "src/users/adapters/sql-users.adapter.ts": `
         import sql from "sql-template-tag"
-        export const ALL_USERS = sql\`select * from users\` // red: stable-root -- a tagged template calls the tag on import
+        export const ALL_USERS = sql\`select * from users\` // red: stable-root + stable-root -- a tagged template calls the tag on import; the binding holding its result rides with it
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 3.
+    // canon: "a call that reaches the tech", and "a package nothing claims is
+    // not proven free". What the package's call returned is the package's: a
+    // method called on it runs the package's code. Removing the first call
+    // removes the chain and the binding: one fix.
+    name: "a method chained on an unclaimed package's call is the package's: one fix, led by the first call",
+    files: {
+      "node_modules/cac/package.json": JSON.stringify({
+        name: "cac",
+        main: "./index.js",
+      }),
+      "node_modules/cac/index.js": "module.exports = {}",
+      "src/cli/adapters/cac-cli.adapter.ts": `
+        import { cac } from "cac"
+        export const CLI = cac("notes").option("--verbose", "log more") // red: stable-root + stable-root + stable-root -- cac runs on import; the method called on what it returned is the package's; the binding holds the result
+      `,
+    },
+  },
+  {
+    // Re-stamped at the detectors step, checkpoint 3: `.then` read the
+    // language's by its name until the ruling below; it is the package's now,
+    // a third member of the group.
+    // canon: "a call that reaches the tech"; "a package nothing claims is not
+    // proven free". A call on what the package gave is the package's whatever
+    // its name (ruled 2026-09-26): the name cannot prove a promise.
+    name: "a promise chained on an unclaimed package's call is the package's: one fix, led by the first call",
+    files: {
+      "node_modules/mongoose/package.json": JSON.stringify({
+        name: "mongoose",
+        main: "./index.js",
+      }),
+      "node_modules/mongoose/index.js": "module.exports = {}",
+      "src/db/adapters/mongo-db.adapter.ts": `
+        import { connect } from "mongoose"
+        const NOTES_DB = "mongodb://localhost/notes"
+        export const READY = connect(NOTES_DB).then(() => true) // red: stable-root + stable-root + stable-root -- connect runs on import; .then is called on what it gave, the package's; the binding holds the result
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 3.
+    // canon: "a call that … goes into a local function of a file whose layer
+    // may touch the tech". `.trim()` on the local's string result is the
+    // language's, green; the binding holds what came out of `nameOf()`,
+    // through it: removing the call removes the binding's red too — one fix.
+    name: "a binding holding a language call chained on a red call rides with the red call",
+    files: {
+      "src/clock/adapters/system-clock.adapter.ts": `
+        export const nameOf = (name: string): string => "clock:" + name
+        export const NAME = nameOf(" system ").trim() // red: stable-root + stable-root -- a local of an adapter, run on import; .trim() is the language's on its string; the binding holds what came out of nameOf()
+        export const createSystemClock = () => ({ now: () => Date.now() })
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 3: the push read as the
+    // language's by its name, green.
+    // canon: "a call that reaches the tech". `window` is the host's, and so is
+    // any call on it: `push` is the analytics queue's, whatever an array's is
+    // called (ruled 2026-09-26).
+    name: "a method on a host global named like an array's is still the host's: a push into the page's data layer at root is red",
+    files: {
+      "src/analytics/adapters/gtm-analytics.adapter.ts": `
+        window.dataLayer.push({ event: "loaded" }) // red: stable-root -- a call into the host on import
+        export const createGtmAnalytics = () => ({ track: (event: string) => window.dataLayer.push({ event }) })
+      `,
+    },
+  },
+
+  {
+    // Added at the detectors step, checkpoint 3: the known cost of today's
+    // name ruling, confessed.
+    // canon: "stores nothing read from the machine". `process.argv` is an
+    // array and `.slice` the language's: the call is free, the binding stores
+    // a read of the machine — one red. The reader cannot prove `argv` an array
+    // until a Node reading declares it, so it takes `.slice` for the host's
+    // call, the binding riding with it.
+    name: "a language method on a host array stored at root is a read of the machine, not a call into the host",
+    files: {
+      "src/cli/adapters/argv-args.adapter.ts": `
+        // false red: stable-root + stable-root -- .slice read as the host's call: the name cannot prove argv an array until a Node reading declares it
+        // missed red: stable-root -- the binding stores a read of the machine; missed while the call is taken for the host's
+        export const ARGS = process.argv.slice(2)
+        export const createArgvArgs = () => ({ list: () => ARGS })
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 3: a default import's member
+    // read as a language call, green.
+    // canon: "a package nothing claims is not proven free". A member of the
+    // package's export, called, is the package's code, however it is
+    // imported.
+    name: "a method of an unclaimed package's default import, called at root, is the package's",
+    files: {
+      "node_modules/mongoose/package.json": JSON.stringify({
+        name: "mongoose",
+        main: "./index.js",
+      }),
+      "node_modules/mongoose/index.js": "module.exports = {}",
+      "src/db/adapters/mongo-db.adapter.ts": `
+        import mongoose from "mongoose"
+        const NOTES_DB = "mongodb://localhost/notes"
+        mongoose.connect(NOTES_DB) // red: stable-root -- a call into mongoose on import, a package nothing claims
       `,
     },
   },
@@ -543,7 +718,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/cwd.spec.ts": `
         import { expect, it } from "vitest"
         process.chdir("/tmp") // red: stable-root -- a call into the host at a spec's root: not the runner
-        const FIXTURE = import.meta.resolve("./fixture.json") // red: stable-root -- the host's resolver, called at a spec's root: not the runner
+        const FIXTURE = import.meta.resolve("./fixture.json") // red: stable-root + stable-root -- the host's resolver, called at a spec's root: not the runner; the binding holding its result rides with it
         it("runs in tmp", () => {
           expect(process.cwd()).toBe("/tmp")
         })
@@ -562,8 +737,9 @@ const ROOT_CALLS: readonly Row[] = [
         export const HEAVY = 1
       `,
       "src/loader.model.ts": `
-        import("./heavy.model.ts") // missed red: stable-root -- a call into the module loader on import; a static import says the same; a dynamic import is not read as a call yet
-        await import("./heavy.model.ts") // missed red: stable-root -- awaited, the same call; a dynamic import is not read as a call yet
+        import("./heavy.model.ts") // red: stable-root -- a call into the module loader on import; a static import says the same
+        await import("./heavy.model.ts") // red: stable-root -- awaited, the same call
+        export const HEAVY_MODULE = await import("./heavy.model.ts") // red: stable-root + stable-root -- stored, the same call; the binding holding its result rides with it
         export const loadHeavy = () => import("./heavy.model.ts")
       `,
     },
@@ -612,6 +788,8 @@ const ROOT_CALLS: readonly Row[] = [
       "node_modules/vitest/index.js": "module.exports = {}",
       "src/test/matchers.driver.ts": `
         export const registerMatchers = (expect: { extend: (matchers: object) => void }) => {
+          // false unknown: driver-calls-services -- the runner, handed in by a spec: a test's call site binds no parameter
+          // false red: wiring-outside-hooks -- matchers in a record handed to the runner: the reader cuts a hook only when handed alone
           expect.extend({
             toBeRed: (received: unknown) => ({ pass: received === "red", message: () => "not red" }),
           })
@@ -640,7 +818,7 @@ const ROOT_CALLS: readonly Row[] = [
       "node_modules/vitest/index.js": "module.exports = {}",
       "src/test/cwd.driver.ts": `
         export const enterTmp = (host: { chdir: (path: string) => void }) => {
-          host.chdir("/tmp")
+          host.chdir("/tmp") // false unknown: driver-calls-services -- the host, handed in by a spec: a test's call site binds no parameter
         }
       `,
       "src/cwd.spec.ts": `

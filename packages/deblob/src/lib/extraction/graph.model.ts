@@ -258,6 +258,31 @@ export type ArgValue = {
   origin: InstanceOrigin | null
   /** Member path from the origin's result (`services.app` passed on). */
   path: readonly string[]
+  /**
+   * A record literal handed: each entry as passed, so a rule judges them one by
+   * one where `kind` joins them; `null` for anything else.
+   */
+  entries: readonly { key: string; value: ArgValue }[] | null
+  /**
+   * The call whose result this is — handed directly, past `await`, or through a
+   * `const` bound to it — so a rule reads what was called; for a callback's
+   * parameter, the call the callback was handed to, which hands it back; `null`
+   * otherwise. A span of the file read.
+   */
+  from: Span | null
+  /**
+   * The function's own parameter, or a part of one: received from the caller,
+   * who is judged where it calls.
+   */
+  received: boolean
+  /**
+   * It reads the host: its root is a free name the language does not define
+   * (`process.env`, `window`), directly or through a `const` bound to one —
+   * found, not received.
+   */
+  host: boolean
+  /** Where it is written, in the file read. */
+  span: Span
 }
 
 /**
@@ -283,8 +308,11 @@ export type CalleeKind =
   | { kind: "use-case"; member: string; origin: InstanceOrigin | null }
   | { kind: "unknown" }
 
-/** One place a call's result reaches. */
-export type ResultUse =
+/**
+ * One place a call's result reaches, and where: the reference that uses it — a
+ * binding's use on a later line is placed there, not at the call.
+ */
+export type ResultUse = (
   | { kind: "argument"; to: CalleeKind }
   | { kind: "returned" }
   | { kind: "condition" }
@@ -293,6 +321,17 @@ export type ResultUse =
   | { kind: "reassigned" }
   | { kind: "computed" }
   | { kind: "discarded" }
+  /**
+   * Called on: a method, a use case, a load run on it — the call on it is
+   * judged as a call, the value only its receiver.
+   */
+  | { kind: "receiver" }
+  /**
+   * Written into a member (`process.exitCode = …`): handed whole to what holds
+   * it, a value of kind `target` — tech-held state when the tech's.
+   */
+  | { kind: "assigned"; target: ValueKind }
+) & { span: Span }
 
 export type ReadCall = {
   span: Span
@@ -324,6 +363,12 @@ export type ReadCall = {
    * `null` for a call written where it runs.
    */
   site: Span | null
+  /**
+   * The call whose result this call calls, when its callee is one — a decorator
+   * factory's result applied to the class, `cac().command("x")`, the root of
+   * the member chain. `null` for a callee that is not a call's result.
+   */
+  calleeCall: Span | null
 }
 
 /**
@@ -418,9 +463,8 @@ export type ReadStatement =
       storesMachineRead: boolean
       /**
        * The call whose result the binding stores, when its initializer is one
-       * (past `await` and the other wrappers); `null` otherwise. A call's
-       * result stored at root adds nothing to the call: a rule judging the call
-       * there judges the binding by it.
+       * (past `await` and the other wrappers); `null` otherwise. The binding's
+       * violation derives from the call's: removing a red call removes both.
        */
       storedCall: Span | null
       /**

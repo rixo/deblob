@@ -1,6 +1,6 @@
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
@@ -50,15 +50,31 @@ const TARGETS: Readonly<Record<string, ImportTargetKind>> = {
     layer: "service",
   },
   "./side.ts": { kind: "module", path: "src/side.ts", layer: "blob" },
-  "some-tech": { kind: "external", package: "some-tech", claim: "tech" },
-  "pure-lib": { kind: "external", package: "pure-lib", claim: "model" },
+  "some-tech": {
+    kind: "external",
+    package: "some-tech",
+    claim: "tech",
+    layer: null,
+  },
+  "pure-lib": {
+    kind: "external",
+    package: "pure-lib",
+    claim: "model",
+    layer: null,
+  },
   "unclaimed-lib": {
     kind: "external",
     package: "unclaimed-lib",
     claim: "unclaimed",
+    layer: null,
   },
   // a resolved file outside coverage: no package name, concrete, the tech's
-  "./outside.ts": { kind: "external", package: null, claim: "tech" },
+  "./outside.ts": {
+    kind: "external",
+    package: null,
+    claim: "tech",
+    layer: null,
+  },
 }
 
 const fs = createNodeFs()
@@ -77,6 +93,13 @@ const extractions = new Map(
     ),
   ),
 )
+
+/**
+ * Tracked locals are read inline in every kind but assembly and driver, where a
+ * local function stays a definition: a test file is the outside kind that
+ * inlines them, cut with the same tech.
+ */
+const TRACKING = { layer: "test" } as const
 
 /** Test factory: a fixture read as the given kind with the given tech. */
 const read = (
@@ -183,11 +206,11 @@ describe("readModule", () => {
       // an unbound tag, `process.on`: the host is the tech
       expect(callee(26)).toEqual({ kind: "tech", package: null })
       expect(callee(56)).toEqual({ kind: "tech", package: null })
-      // a prototype method on a tech value: the language
-      expect(callee(55)).toEqual({ kind: "language" })
-      // a member of a computed value, a call on a literal
+      // a call on a tech value is the tech's, whatever its name
+      // (`process.argv.slice(2)`): the name cannot prove what the value is
+      expect(callee(55)).toEqual({ kind: "tech", package: null })
+      // a member of a computed value
       expect(callee(42)).toEqual({ kind: "language" })
-      expect(callee(57)).toEqual({ kind: "language" })
     })
 
     test("a member called on an instance is a use case, with the factory it came from", () => {
@@ -248,7 +271,8 @@ describe("readModule", () => {
       expect(kinds(23)).toEqual(["literal"])
       expect(kinds(44)).toEqual(["tech", "instance"])
       expect(kinds(56)).toEqual(["literal", "function"])
-      // an instance argument carries where it came from
+      // an instance argument carries where it came from, the call it is the
+      // result of, through the `const` bound to it, and where it is written
       expect(callAt(calls, 44).args[1]).toEqual({
         kind: "instance",
         origin: {
@@ -257,28 +281,40 @@ describe("readModule", () => {
           layer: "service",
         },
         path: [],
+        entries: null,
+        from: expect.objectContaining({ line: 20 }),
+        received: false,
+        host: false,
+        span: expect.objectContaining({ line: 44, column: 14 }),
       })
     })
 
     test("result flow: every context a bound result reaches, in order", () => {
-      // `instance`: destructured record entry, `.run` called, `if (instance)`, handed to wiring
-      expect(callAt(calls, 20).result).toEqual([
-        { kind: "member" },
-        { kind: "computed" },
-        { kind: "condition" },
-        { kind: "argument", to: callee(44) },
+      // each use where it is made: the kind, and the line of the reference
+      const uses = (line: number) =>
+        callAt(calls, line).result.map((use) => [use.kind, use.span.line])
+      // `instance`: `.run` called on it — its receiver, the call judged as a
+      // call — `if (instance)`, handed to wiring
+      expect(uses(20)).toEqual([
+        ["receiver", 21],
+        ["condition", 31],
+        ["argument", 44],
       ])
+      expect(callAt(calls, 20).result[2]).toMatchObject({ to: callee(44) })
       // `bound`: stringified, `.ok` branched on, returned
-      expect(callAt(calls, 21).result).toEqual([
-        { kind: "argument", to: { kind: "language" } },
-        { kind: "member" },
-        { kind: "condition" },
-        { kind: "returned" },
+      expect(callAt(calls, 21).result.map((use) => use.kind)).toEqual([
+        "argument",
+        "member",
+        "condition",
+        "returned",
       ])
+      expect(callAt(calls, 21).result[0]).toMatchObject({
+        to: { kind: "language" },
+      })
       // an unbound call: its own position
-      expect(callAt(calls, 25).result).toEqual([{ kind: "discarded" }])
-      expect(callAt(calls, 28).result).toEqual([{ kind: "member" }])
-      expect(callAt(calls, 53).result).toEqual([{ kind: "computed" }])
+      expect(uses(25)).toEqual([["discarded", 25]])
+      expect(uses(28)).toEqual([["member", 28]])
+      expect(uses(53)).toEqual([["computed", 53]])
     })
 
     test("controls: what the test reads off — a parameter, an instance, a computed value", () => {
@@ -294,6 +330,10 @@ describe("readModule", () => {
         [31, "instance", "instance"],
         [32, "parameter", "unknown"],
         [33, "parameter", "unknown"],
+        // a `catch`: a branch on a failure, no test to read
+        [41, "other", "literal"],
+        // `[1, 2].map(…)`: a map over a proven array — a literal — is a loop
+        [57, "other", "literal"],
       ])
       // arms hold the arms' calls — the conditional and logical expressions too
       expect(
@@ -329,7 +369,10 @@ describe("readModule", () => {
       expect(
         main.hooks.map((hook) => [hook.span.line, hook.registeredBy.callee]),
       ).toEqual([[56, { kind: "tech", package: null }]])
-      expect(callee(57)).toEqual({ kind: "language" })
+      // a map over a literal array: a loop, its callback the one arm
+      expect(
+        controls(main.body).find((control) => control.span.line === 57)?.arms,
+      ).toHaveLength(1)
       expect(reading.open.filter((part) => part.span.line === 57)).toEqual([])
     })
 
@@ -483,7 +526,10 @@ describe("readModule", () => {
     const main = reading.functions.find((fn) => fn.name === "main")
     if (!main) throw new Error("main not read")
     const calls = callsOf(main.body)
-    const callee = (line: number): CalleeKind => callAt(calls, line).callee
+    // the outer call of its line: an `import()` on the way is a call too,
+    // emitted first
+    const callee = (line: number): CalleeKind =>
+      callAt(calls.toReversed(), line).callee
 
     test("an instance called bare is a use case named by its binding; a namespace called bare, a parameter, a tech value, a bare let: by their kinds", () => {
       expect(callee(9)).toEqual({
@@ -617,7 +663,11 @@ describe("readModule", () => {
       ).toContainEqual([100, "other"])
       // `return helper()`: the call's result is an argument to the language
       expect(callAt(calls, 101).result).toEqual([
-        { kind: "argument", to: { kind: "language" } },
+        {
+          kind: "argument",
+          to: { kind: "language" },
+          span: expect.objectContaining({ line: 101 }),
+        },
       ])
       // main's own return is the only one
       expect(
@@ -650,8 +700,8 @@ describe("readModule", () => {
 
     test("bare calls on odd roots: a file outside coverage is the tech; a non-literal import or an expression called is the language; a module namespace called bare stays unknown", () => {
       expect(callee(67)).toEqual({ kind: "tech", package: "./outside.ts" })
-      // a prototype method on a tech-held value
-      expect(callee(68)).toEqual({ kind: "language" })
+      // a call on a tech-held value is the tech's, whatever its name
+      expect(callee(68)).toEqual({ kind: "tech", package: null })
       // the promise of a module the reader cannot name: a computed value
       expect(callee(69)).toEqual({ kind: "language" })
       // a namespace is not callable — no export named, nothing to classify
@@ -668,7 +718,7 @@ describe("readModule", () => {
       expect(callee(73)).toMatchObject({ kind: "use-case", member: "Klass" })
     })
 
-    test("test origins: a bound construction on an instance, a model call's member, a model call, a parameter compared, a loop with no test", () => {
+    test("test origins: a bound construction on an instance, a model call's member, a model call, a parameter compared, a loop with no test, a catch", () => {
       expect(
         controls(main.body)
           .filter(
@@ -681,6 +731,7 @@ describe("readModule", () => {
         [76, "other"],
         [77, "parameter"],
         [78, "other"],
+        [84, "other"],
       ])
     })
 
@@ -701,7 +752,9 @@ describe("readModule", () => {
       const arms = calls.filter((call) => call.span.line === 93)
       expect(arms.map((call) => call.callee.kind)).toEqual(["factory", "model"])
       expect(arms[0]?.result).toBe(arms[1]?.result)
-      expect(arms[0]?.result).toEqual([{ kind: "condition" }])
+      expect(arms[0]?.result).toEqual([
+        { kind: "condition", span: expect.objectContaining({ line: 94 }) },
+      ])
     })
 
     test("root declarations that are not one function each stay root definitions; a function exported by specifier, an anonymous default", () => {
@@ -818,7 +871,7 @@ describe("readModule", () => {
   })
 
   describe("tracked locals — a non-exported function only ever called directly is read at its sites, as the site's own code", () => {
-    const reading = read("tracked-locals.ts")
+    const reading = read("tracked-locals.ts", TRACKING)
     const main = reading.functions.find((fn) => fn.name === "main")
     if (!main) throw new Error("main not read")
     const calls = callsOf(main.body)
@@ -909,21 +962,15 @@ describe("readModule", () => {
     })
 
     test("what the inlined bodies do with an argument is recorded on the caller's binding — the inlined text's flow, never an argument to a second function", () => {
-      expect(callAt(calls, 18).result).toEqual([
-        { kind: "member" }, // register(process, thing): thing.run in the hook
-        { kind: "computed" },
-        { kind: "member" }, // register(thing, process): thing.on
-        { kind: "computed" },
-        { kind: "condition" }, // pick(thing, 1, 2): if (a)
-        { kind: "member" }, // touch(thing): thing.run
-        { kind: "computed" },
-        { kind: "member" }, // setup({ services: thing }): services.run
-        { kind: "computed" },
-        { kind: "entry" }, // ...[thing]
-        { kind: "member" }, // setup(thing): thing.cli.command
-        { kind: "computed" },
-        { kind: "member" }, // thing.services.run
-        { kind: "computed" },
+      expect(callAt(calls, 18).result.map((use) => use.kind)).toEqual([
+        "receiver", // register(process, thing): thing.run in the hook
+        "receiver", // register(thing, process): thing.on
+        "condition", // pick(thing, 1, 2): if (a)
+        "receiver", // touch(thing): thing.run
+        "receiver", // setup({ services: thing }): services.run
+        "entry", // ...[thing]
+        "receiver", // setup(thing): thing.cli.command
+        "receiver", // thing.services.run
       ])
       expect(
         calls.some((call) =>
@@ -954,7 +1001,7 @@ describe("readModule", () => {
   })
 
   describe("tracked locals — what counts as a reference to the name", () => {
-    const reading = read("tracked-locals-refs.ts")
+    const reading = read("tracked-locals-refs.ts", TRACKING)
     const main = reading.functions.find((fn) => fn.name === "main")
     if (!main) throw new Error("main not read")
 
@@ -978,7 +1025,7 @@ describe("readModule", () => {
   })
 
   describe("tracked locals — an inlined body reads the scope it was written in", () => {
-    const reading = read("tracked-local-scope.ts")
+    const reading = read("tracked-local-scope.ts", TRACKING)
     /**
      * The callee the reader reports, flattened to one line — its `kind` and the
      * fields that identify the target. No interpretation: `local` says a local
@@ -1133,6 +1180,105 @@ describe("readModule", () => {
         // `[1].forEach(…)` itself, emitted after the callback it was handed
         "language",
       ])
+    })
+  })
+
+  describe("an assembly's facts — what the assembly check reads", () => {
+    const reading = read("assembly-facts.ts", { layer: "assembly" })
+    const assembly = reading.functions.find(
+      (fn) => fn.name === "createFactsAssembly",
+    )
+    if (!assembly) throw new Error("createFactsAssembly not read")
+    const calls = callsOf(assembly.body)
+
+    test("a local function is not read inline: it stays a function of the file, its call a local callee", () => {
+      expect(reading.functions.map((fn) => fn.name)).toEqual([
+        "rootOf",
+        "createFactsAssembly",
+        "createLoopsAssembly",
+      ])
+      expect(callAt(calls, 11).callee).toEqual({
+        kind: "local",
+        name: "rootOf",
+        factory: false,
+      })
+    })
+
+    test("a field read straight off a call is a member use of its result", () => {
+      const store = calls.find(
+        (call) => call.span.line === 11 && call.callee.kind === "factory",
+      )
+      expect(store?.result.map((use) => use.kind)).toEqual(["member"])
+    })
+
+    test("a conditional's value is its arms' join: one origin when both share it, none when they differ", () => {
+      const record = callAt(calls, 14).args[0]?.entries
+      expect(record?.map(({ key, value }) => [key, value.kind])).toEqual([
+        ["same", "instance"],
+        ["mixed", "instance"],
+      ])
+      expect(record?.[0]?.value.origin).toMatchObject({ name: "createStore" })
+      expect(record?.[1]?.value.origin).toBeNull()
+    })
+
+    describe("a map", () => {
+      const loops = reading.functions.find(
+        (fn) => fn.name === "createLoopsAssembly",
+      )
+      if (!loops) throw new Error("createLoopsAssembly not read")
+      const returned = loops.body.find(
+        (statement) => statement.kind === "return",
+      )
+
+      it("reads a map over an array its annotation proves as a loop on the parameter, the callback's body its arm", () => {
+        expect(
+          controls(loops.body).map((control) => [
+            control.span.line,
+            control.testOrigin,
+            callsOf(control.arms.flat()).map((call) => call.callee.kind),
+          ]),
+        ).toEqual([
+          [23, "parameter", ["factory"]],
+          [23, "parameter", ["factory"]],
+          [24, "parameter", ["factory"]],
+          [27, "parameter", ["factory"]],
+          // a destructured name, typed by its pattern's annotation
+          [28, "parameter", ["factory"]],
+        ])
+      })
+
+      it("takes the loop's value from what the callback returns, an expression's or the one return's", () => {
+        expect(
+          returned?.kind === "return" &&
+            returned.record?.map(({ key, value }) => [key, value.kind]),
+        ).toEqual([
+          ["indexed", "instance"],
+          ["listed", "instance"],
+          ["block", "instance"],
+          ["wrapped", "instance"],
+          ["member", "unknown"],
+          ["present", "instance"],
+        ])
+      })
+
+      it("binds the callback's first parameter to an element of what it iterates, the others as a callback's", () => {
+        const indexed = callAt(
+          callsOf(controls(loops.body)[0]?.arms.flat() ?? []),
+          23,
+        )
+        expect(indexed.args.map((arg) => arg.kind)).toEqual([
+          "unknown",
+          "computed",
+        ])
+      })
+
+      it("reads a map over what no annotation proves an array as unknown, its callback inline", () => {
+        expect(
+          callsOf(loops.body)
+            .filter((call) => call.span.line === 28)
+            .map((call) => call.callee.kind),
+        ).toEqual(["factory", "unknown", "factory"])
+      })
     })
   })
 

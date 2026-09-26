@@ -95,6 +95,13 @@
 
 ### Ideas
 
+- **Functions as variables, an opt-in** (rixo, 2026-09-26) — decided: a function
+  declaration or a method (on a class, on an object) is code, never state,
+  though the runtime lets it be reassigned — using one as a variable is the
+  user's to answer for. A function held in a variable (`let f = () =>`,
+  `static make = () =>`) stays state. Unprioritized: a stricter opt-in judging
+  the declared forms as reassignable too, if a codebase ever needs it; its key
+  cannot follow the loose-mode naming, being the strict side.
 - **A reader per runner** (rixo, 2026-09-26) — each tech has its own reader, the
   one authority on what the tech means in the codebase: its files, its claims,
   its names, its exemptions. A vitest reader reads the vitest config (include

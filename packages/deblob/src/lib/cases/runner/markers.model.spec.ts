@@ -1,9 +1,11 @@
 import { describe, expect, it, test } from "vitest"
 
 import type { RuleId } from "../../check/rule.model.ts"
+import type { ViolationGroup } from "../../check/grouping.model.ts"
 import type { Violation } from "../../check/violation.model.ts"
 import type { Marker, Reported } from "./markers.model.ts"
 import {
+  AS_MARKED,
   markersOf,
   matchVerdicts,
   reportedOf,
@@ -44,6 +46,9 @@ const matchSource = (
     })),
   )
 
+/** A violation leading a group of one. */
+const alone = (lead: Violation): ViolationGroup => ({ lead, riders: [] })
+
 describe("markersOf", () => {
   it("reads `// red: <slug>` at a line's end as a claim on that line, several slugs, an optional why; other comments are not markers", () => {
     const source = [
@@ -62,6 +67,18 @@ describe("markersOf", () => {
     expect(
       markersOf("src/a.ts", "run() // red: stable-root, stable-root"),
     ).toEqual([red(1, "stable-root"), red(1, "stable-root")])
+  })
+
+  it("reads slugs joined by `+` as one group, the first its lead, `,` still separating groups", () => {
+    expect(
+      markersOf(
+        "src/a.ts",
+        "run() // red: stable-root + stable-root + ambient-access, stable-root",
+      ),
+    ).toEqual([
+      { ...red(1, "stable-root"), riders: ["stable-root", "ambient-access"] },
+      red(1, "stable-root"),
+    ])
   })
 
   it("claims the next code line for a marker alone on its line, past blanks and comments, each stacked marker with its own why", () => {
@@ -125,6 +142,8 @@ describe("markersOf", () => {
       "run() // red: inward-deps // red: inward-deps",
     ],
     ["the old trigger form", "run() // via stable-root"],
+    ["a trigger naming a group", "run() // via: stable-root + stable-root"],
+    ["a `+` without its spaces", "run() // red: stable-root+stable-root"],
   ])("throws on a malformed marker, with the line: %s", (_, text) => {
     expect(() => markersOf("src/a.ts", `x()\n${text}`)).toThrow(
       /src\/a\.ts:2: malformed marker/,
@@ -383,7 +402,7 @@ describe("reportedOf", () => {
       rules: ["private-sealed"],
       file: "src/a.ts",
     } as unknown as Violation
-    expect(reportedOf(violation)).toEqual([
+    expect(reportedOf(alone(violation))).toEqual([
       { file: "src/a.ts", line: null, slugs: ["private-sealed"], via: [] },
     ])
   })
@@ -396,7 +415,7 @@ describe("reportedOf", () => {
       line: 2,
       via: [{ file: "src/a.model.ts", line: 5 }],
     } as unknown as Violation
-    expect(reportedOf(violation)).toEqual([
+    expect(reportedOf(alone(violation))).toEqual([
       {
         file: "src/a.model.ts",
         line: 2,
@@ -414,7 +433,7 @@ describe("reportedOf", () => {
       line: 4,
       via: [],
     } as unknown as Violation
-    expect(reportedOf(violation)).toEqual([
+    expect(reportedOf(alone(violation))).toEqual([
       { file: "src/a.model.ts", line: 4, slugs: ["stable-root"], via: [] },
     ])
     expect(
@@ -428,7 +447,7 @@ describe("reportedOf", () => {
             why: null,
           },
         ],
-        reportedOf(violation),
+        reportedOf(alone(violation)),
       ),
     ).toEqual({
       missing: ["src/a.model.ts:3 stable-root"],
@@ -451,7 +470,7 @@ describe("reportedOf", () => {
       unknown: { kind: "type-name", name: "Table" },
     } as unknown as Violation
     const proven = { ...at, unknown: null } as unknown as Violation
-    expect(reportedOf(unknown)).toEqual([
+    expect(reportedOf(alone(unknown))).toEqual([
       {
         file: "src/a.model.ts",
         line: 4,
@@ -460,7 +479,37 @@ describe("reportedOf", () => {
         unknown: true,
       },
     ])
-    expect(reportedOf(proven)[0]).not.toHaveProperty("unknown")
+    expect(reportedOf(alone(proven))[0]).not.toHaveProperty("unknown")
+  })
+
+  it("reports a group as its lead with its riders' slugs, and its members' triggers", () => {
+    const at = {
+      check: "modules",
+      rules: ["stable-root"],
+      file: "src/a.model.ts",
+      line: 4,
+      unknown: null,
+    }
+    const group = {
+      lead: { ...at, via: [{ file: "src/a.model.ts", line: 9 }] },
+      riders: [
+        { ...at, via: [], unknown: { kind: "callee" } },
+        { ...at, line: 5, via: [{ file: "src/b.model.ts", line: 2 }] },
+      ],
+    } as unknown as ViolationGroup
+    expect(reportedOf(group)).toEqual([
+      {
+        file: "src/a.model.ts",
+        line: 4,
+        slugs: ["stable-root"],
+        // a rider on another line is written out, as no marker writes it
+        riders: ["stable-root", "stable-root (line 5)"],
+        via: [
+          { file: "src/a.model.ts", line: 9 },
+          { file: "src/b.model.ts", line: 2 },
+        ],
+      },
+    ])
   })
 
   it("names every file closing a cycle: a service cycle's hops by importer, a module cycle's files", () => {
@@ -473,7 +522,7 @@ describe("reportedOf", () => {
         { via: { from: "src/b/b.ts", to: "src/a/a.ts" } },
       ],
     } as unknown as Violation
-    expect(reportedOf(serviceCycle).map((r) => r.file)).toEqual([
+    expect(reportedOf(alone(serviceCycle)).map((r) => r.file)).toEqual([
       "src/a/a.ts",
       "src/b/b.ts",
     ])
@@ -483,7 +532,7 @@ describe("reportedOf", () => {
       shape: "module-cycle",
       files: ["src/x.ts", "src/y.ts"],
     } as unknown as Violation
-    expect(reportedOf(moduleCycle).map((r) => r.file)).toEqual([
+    expect(reportedOf(alone(moduleCycle)).map((r) => r.file)).toEqual([
       "src/x.ts",
       "src/y.ts",
     ])
@@ -510,6 +559,77 @@ describe("matchVerdicts", () => {
       unexpected: [],
       unexpectedPasses: [],
       expectedFailures: [],
+    })
+  })
+
+  describe("groups", () => {
+    const grouped: Reported = {
+      file: "src/a.ts",
+      line: 1,
+      slugs: ["stable-root"],
+      riders: ["stable-root"],
+      via: [],
+    }
+    const single: Reported = { ...grouped, riders: [] }
+
+    it("matches a group to the marker listing its lead and its riders", () => {
+      expect(
+        matchVerdicts(
+          markersOf("src/a.ts", "run() // red: stable-root + stable-root"),
+          [grouped],
+        ),
+      ).toEqual({ ...AS_MARKED, expectedFailures: [] })
+    })
+
+    it("fails a group marked as separate groups, and separate groups marked as one", () => {
+      expect(
+        matchVerdicts(
+          markersOf("src/a.ts", "run() // red: stable-root, stable-root"),
+          [grouped],
+        ),
+      ).toEqual({
+        missing: ["src/a.ts:1 stable-root", "src/a.ts:1 stable-root"],
+        unexpected: ["src/a.ts:1 stable-root + stable-root"],
+        unexpectedPasses: [],
+        expectedFailures: [],
+      })
+      expect(
+        matchVerdicts(
+          markersOf("src/a.ts", "run() // red: stable-root + stable-root"),
+          [single, single],
+        ),
+      ).toEqual({
+        missing: ["src/a.ts:1 stable-root + stable-root"],
+        unexpected: ["src/a.ts:1 stable-root", "src/a.ts:1 stable-root"],
+        unexpectedPasses: [],
+        expectedFailures: [],
+      })
+    })
+
+    it("reads a group's verdict off its lead: an unknown lead matches an unknown marker", () => {
+      expect(
+        matchVerdicts(
+          markersOf(
+            "src/a.ts",
+            "run() // stubborn unknown: stable-root + stable-root -- a limit kept",
+          ),
+          [{ ...grouped, unknown: true }],
+        ),
+      ).toEqual({ ...AS_MARKED, expectedFailures: [] })
+    })
+
+    it("lists a group's expected failure as its marker reads", () => {
+      expect(
+        matchVerdicts(
+          markersOf(
+            "src/a.ts",
+            "run() // missed red: stable-root + stable-root -- not built yet",
+          ),
+          [],
+        ).expectedFailures,
+      ).toEqual([
+        "src/a.ts:1 missed red stable-root + stable-root -- not built yet",
+      ])
     })
   })
 

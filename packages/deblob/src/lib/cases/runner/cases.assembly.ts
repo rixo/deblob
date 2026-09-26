@@ -10,8 +10,10 @@
 
 import { join } from "node:path"
 
+import { checkAssembly } from "../../check/assembly.model.ts"
 import { checkBarrels } from "../../check/barrels.model.ts"
 import { checkDag } from "../../check/dag.model.ts"
+import { checkDriver } from "../../check/driver.model.ts"
 import { checkLayers } from "../../check/layers.model.ts"
 import { checkModules } from "../../check/modules.model.ts"
 import { checkPorts } from "../../check/ports.model.ts"
@@ -65,6 +67,8 @@ const DETECTORS: Record<
   ports: (graph) => checkPorts(graph),
   modules: (graph, config) =>
     checkModules(graph, { mutableModuleState: config.mutableModuleState }),
+  assembly: (graph) => checkAssembly(graph),
+  driver: (graph) => checkDriver(graph),
 }
 
 const runSurface = (

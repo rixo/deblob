@@ -106,7 +106,9 @@ const worldsOf = (
         (callee.kind === "factory" && callee.layer === "assembly")
           ? { path: callee.path, name: callee.name }
           : null
-      if (target === null || target.path === from) continue
+      // a crossed claim's function sits in a package: nothing here reads it
+      if (target === null || target.path === from || !modules.has(target.path))
+        continue
       const known = worlds.get(target.path) ?? []
       worlds.set(target.path, known)
       if (
@@ -256,6 +258,7 @@ export const createExtraction = ({
       return {
         kind: "external",
         package: target.package,
+        layer: target.layer,
         claim: byReader
           ? "reader"
           : driverTech(specifier)

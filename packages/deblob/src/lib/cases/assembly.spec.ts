@@ -14,16 +14,15 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * value with factory arms; nothing is defined but assembly functions, and
  * nothing sits at root but imports.
  *
- * Red first: no check reports the rule yet, so every red is a `missed red`
- * naming what it waits for. Each red row's way out is in the step's SPEC
+ * Written red first; the assembly check reports them since the detectors step,
+ * checkpoint 5 — the import of concrete tech waits on its `layers` cell. Each
+ * red row's way out is in the step's SPEC
  * (`history/20260913_driver-layer/04_outside-rules/02_rows-first/SPEC.md`, the
  * assembly table); the rules are strict on purpose, and a red with no way out
  * is the finding to raise. The import half, `assembly-driver-only`, lives in
  * `layers.spec.ts`. Every row cites the canon sentence it embodies, and every
  * tree is legal under every other rule.
  */
-
-const WAIT = "the assembly check is not built yet"
 
 /** The `notes` service every row wires: a service, two adapters, a model. */
 const NOTES = {
@@ -110,7 +109,7 @@ const ROWS: readonly Row[] = [
       "src/notes.assembly.ts": `
         ${IMPORTS}
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
-          const fs = createFsStore(cwd + "/notes") // missed red: assembly-builds-only -- a computed argument; ${WAIT}
+          const fs = createFsStore(cwd + "/notes") // red: assembly-builds-only -- a computed argument
           return { notes: createNotes({ store: fs }) }
         }
       `,
@@ -126,9 +125,9 @@ const ROWS: readonly Row[] = [
       "src/notes.assembly.ts": `
         ${IMPORTS}
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
-          const root = createFsStore(cwd).root // missed red: assembly-builds-only -- a field of an adapter instance; ${WAIT}
+          const root = createFsStore(cwd).root // red: assembly-builds-only -- a field of an adapter instance
           const limits = createLimits(10)
-          return { notes: createNotes({ store: root, limits: limits.max }) } // missed red: assembly-builds-only -- a field of a model's result; ${WAIT}
+          return { notes: createNotes({ store: root, limits: limits.max }) } // red: assembly-builds-only -- a field of a model's result
         }
       `,
     },
@@ -162,8 +161,26 @@ const ROWS: readonly Row[] = [
         ${IMPORTS}
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
           const fs = createFsStore(cwd)
-          const store = fs.ready ? fs : createMemoryStore() // missed red: assembly-builds-only -- a condition on an instance; ${WAIT}
+          const store = fs.ready ? fs : createMemoryStore() // red: assembly-builds-only, assembly-builds-only -- a field of an instance read, and a branch on it: two facts, two fixes
           return { notes: createNotes({ store }) }
+        }
+      `,
+    },
+  },
+  {
+    // UNSTAMPED — added at the detectors step, checkpoint 6: a write read as
+    // a use of its own (`assigned`), where it read `computed` before.
+    // canon: "what the assembly builds … is passed on or returned" — written
+    // into a member of what it was handed, it is neither. Way out: return it.
+    name: "what the assembly built, written into a member, is red: passed on or returned only",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        export const createNotesAssembly = ({ cwd, registry }: { cwd: string; registry: { store?: unknown } }) => {
+          registry.store = createFsStore(cwd) // red: assembly-builds-only -- what the assembly built, written into a member
+          return { notes: createNotes({ store: createMemoryStore() }) }
         }
       `,
     },
@@ -179,7 +196,7 @@ const ROWS: readonly Row[] = [
         ${IMPORTS}
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
           const notes = createNotes({ store: createFsStore(cwd) })
-          notes.list() // missed red: assembly-builds-only -- a use case run in the wiring; ${WAIT}
+          notes.list() // red: assembly-builds-only -- a use case run in the wiring
           return { notes }
         }
       `,
@@ -222,8 +239,8 @@ const ROWS: readonly Row[] = [
         ${IMPORTS}
         import { createConfig } from "./config/config.service.ts"
         export const createNotesAssembly = async ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
-          const settings = await createConfig({ cwd }).load() // missed red: assembly-builds-only -- an undeclared load; ${WAIT}
-          return { notes: createNotes({ store: createFsStore(cwd), settings }) }
+          const settings = await createConfig({ cwd }).load() // red: assembly-builds-only -- an undeclared load
+          return { notes: createNotes({ store: createFsStore(cwd), settings }) } // red: assembly-builds-only -- its result handed on, computed: declaring the load clears both
         }
       `,
     },
@@ -258,7 +275,26 @@ const ROWS: readonly Row[] = [
         ${IMPORTS}
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
           const fs = createFsStore(cwd)
-          return { notes: createNotes({ store: fs }), fs } // missed red: assembly-builds-only -- an adapter returned, a driver the caller; ${WAIT}
+          return { notes: createNotes({ store: fs }), fs } // red: assembly-builds-only -- an adapter returned, a driver the caller
+        }
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 5, stamped after the check: no
+    // stamped row returned a part of an adapter.
+    // canon: "what the assembly builds … never … member-accessed" — a field of
+    // an adapter returned is that read, one fact; the adapter itself is not
+    // returned.
+    name: "a field of an adapter returned to a driver is a field read: one red",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          const fs = createFsStore(cwd)
+          return { notes: createNotes({ store: fs }), root: fs.root } // red: assembly-builds-only -- a field of an adapter read
         }
       `,
     },
@@ -296,7 +332,7 @@ const ROWS: readonly Row[] = [
       ...DRIVER,
       "src/notes.assembly.ts": `
         ${IMPORTS}
-        const LIMIT = 10 // missed red: assembly-builds-only -- a binding at root, not an import; ${WAIT}
+        const LIMIT = 10 // red: assembly-builds-only -- a binding at root, not an import
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
           return { notes: createNotes({ store: createFsStore(cwd), limits: createLimits(LIMIT) }) }
         }
@@ -304,16 +340,17 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // canon: "A definition is any declaration — function, class, variable,
-    // type"; "Nothing but assembly functions is defined" (ruled 2026-09-25:
-    // the file that imports everything does not collect shared shapes).
-    name: "a type defined in an assembly file is red: a type goes to the layer that owns the shape",
+    // canon: a definition is a declaration "of something that exists at run
+    // time … A type is not one: where a type may travel, the import rules
+    // already say" (re-ruled 2026-09-26, was red): `assembly-driver-only`
+    // keeps an assembly's types to drivers and assemblies.
+    name: "a type defined in an assembly file is green: a type runs nothing, and the import rules say who may read it",
     files: {
       ...NOTES,
       ...DRIVER,
       "src/notes.assembly.ts": `
         ${IMPORTS}
-        type Deps = { cwd: string; store: "fs" | "memory" } // missed red: assembly-builds-only -- a definition beside the assembly function; ${WAIT}
+        type Deps = { cwd: string; store: "fs" | "memory" }
         export const createNotesAssembly = ({ cwd }: Deps) => {
           return { notes: createNotes({ store: createFsStore(cwd) }) }
         }
@@ -329,9 +366,80 @@ const ROWS: readonly Row[] = [
       ...DRIVER,
       "src/notes.assembly.ts": `
         ${IMPORTS}
-        const rootOf = (cwd: string) => cwd // missed red: assembly-builds-only -- a definition that builds nothing; ${WAIT}
+        const rootOf = (cwd: string) => cwd // red: assembly-builds-only -- a definition that builds nothing
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
-          return { notes: createNotes({ store: createFsStore(rootOf(cwd)) }) } // missed red: assembly-builds-only -- a call that builds nothing; ${WAIT}
+          return { notes: createNotes({ store: createFsStore(rootOf(cwd)) }) } // red: assembly-builds-only + assembly-builds-only -- a call that builds nothing, and the argument it computed
+        }
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 5, stamped after the check: no
+    // stamped row reached a function handed on.
+    // canon: "Nothing but assembly functions is defined" — a function written
+    // as an argument is one. Way out: the service or the adapter owns it.
+    name: "a function handed to a factory is red: an assembly defines nothing",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          return { notes: createNotes({ store: createFsStore(cwd), index: () => [] }) } // red: assembly-builds-only -- a function defined and handed on
+        }
+      `,
+    },
+  },
+  {
+    // Added at checkpoint 5, as the row above.
+    // canon: "every call in an assembly is there to build", and nothing is
+    // defined but assembly functions — a hook registered on the host builds
+    // nothing, and the function is the call's: one fix. Way out: the driver
+    // registers it.
+    name: "a function handed to a tech call rides with the call: one fix",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          process.on("exit", () => undefined) // red: assembly-builds-only + assembly-builds-only -- a call into the host, and the hook handed to it
+          return { notes: createNotes({ store: createFsStore(cwd) }) }
+        }
+      `,
+    },
+  },
+  {
+    // Added at checkpoint 5, as the row above.
+    // canon: "arguments are literals, tech values received as parameters, or
+    // instances" — a record spread into one hands its entries on, each judged
+    // as passed. Way out: as the computed-argument row's.
+    name: "a record spread into an argument is judged as passed: a computed one is red",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          const paths = { root: cwd + "/notes" }
+          return { notes: createNotes({ ...paths, store: createFsStore(cwd) }) } // red: assembly-builds-only -- a computed record spread in
+        }
+      `,
+    },
+  },
+  {
+    // Added at checkpoint 5, as the row above.
+    // canon: "nothing sits at module root but imports"; the assignment runs on
+    // import, `stable-root`'s red as well.
+    name: "an assignment at an assembly's root is red twice: not an import, and a side effect on load",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        process.env["NOTES"] = "on" // red: assembly-builds-only, stable-root -- a statement at root, and it runs on import
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          return { notes: createNotes({ store: createFsStore(cwd) }) }
         }
       `,
     },
@@ -354,6 +462,10 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // Re-stamped at the detectors step, checkpoint 5: one unknown, four
+    // members — the map's call, the callback handed it, the element the
+    // callback reads (handed back by that call), the value passed on; proving
+    // the array clears the four.
     // canon: "a call on one is not" a tech value; "any declares nothing a
     // reader could prove" (step 06). The receiver is not proven an array:
     // `.map` may be anything's (ruled unknown 2026-09-25). Ways out: type it,
@@ -365,12 +477,13 @@ const ROWS: readonly Row[] = [
       "src/notes.assembly.ts": `
         ${IMPORTS}
         export const createNotesAssembly = ({ names }: { names: any }) => {
-          return { notes: createNotes({ store: names.map((name: string) => createFsStore(name)) }) } // missed unknown: assembly-builds-only -- the receiver of map is not proven an array; ${WAIT}
+          return { notes: createNotes({ store: names.map((name: string) => createFsStore(name)) }) } // stubborn unknown: assembly-builds-only + assembly-builds-only + assembly-builds-only + assembly-builds-only -- the receiver of map is not proven an array: the call, the callback handed it, the element, the value passed on
         }
       `,
     },
   },
   {
+    // Re-stamped at checkpoint 5, as the row above.
     // As the row above, in JavaScript: no type proves the receiver (ruled
     // unknown 2026-09-25). Not stuck: `createFsStores(names)` in the adapter
     // is green today, JSDoc once the engine reads it.
@@ -387,7 +500,7 @@ const ROWS: readonly Row[] = [
       "src/notes.assembly.js": `
         ${IMPORTS}
         export const createNotesAssembly = ({ names }) => {
-          return { notes: createNotes({ store: names.map((name) => createFsStore(name)) }) } // missed unknown: assembly-builds-only -- the receiver of map is not proven an array; ${WAIT}
+          return { notes: createNotes({ store: names.map((name) => createFsStore(name)) }) } // stubborn unknown: assembly-builds-only + assembly-builds-only + assembly-builds-only + assembly-builds-only -- the receiver of map is not proven an array: the call, the callback handed it, the element, the value passed on
         }
       `,
     },
@@ -465,8 +578,29 @@ const ROWS: readonly Row[] = [
           return { notes: createNotes({ store: createHeaderAuth({ request }) }) }
         }
         export const createTokenAssembly = ({ request }: { request: Request }) => {
-          const auth = createHeaderAuth({ token: request.headers.get("x-token") }) // missed red: assembly-builds-only -- the handle called; ${WAIT}
+          const auth = createHeaderAuth({ token: request.headers.get("x-token") }) // red: assembly-builds-only -- the handle called
           return { notes: createNotes({ store: auth }) }
+        }
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 5, stamped red first: the
+    // argument clause took any tech value, received or not.
+    // canon: "Never a driver, never concrete tech: tech values arrive as
+    // parameters" — a host global read in the assembly was not received: the
+    // assembly discovers the tech itself. Way out: the driver hands it in,
+    // `createNotesAssembly({ env: process.env })`.
+    name: "the host read in an assembly is red, whole or by field: tech values arrive as parameters",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          const fs = createFsStore(process.env) // red: assembly-builds-only -- the host passed whole, found, not received
+          const env = process.env
+          return { notes: createNotes({ store: fs, settings: process.env.HOME, index: env }) } // red: assembly-builds-only, assembly-builds-only -- the host read by field, and through a const: found, not received
         }
       `,
     },
@@ -480,12 +614,31 @@ const ROWS: readonly Row[] = [
       ...NOTES,
       ...DRIVER,
       "src/notes.assembly.ts": `
+        import { realpathSync } from "node:fs"
+        ${IMPORTS}
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          return { notes: createNotes({ store: createFsStore(realpathSync(cwd)) }) } // red: assembly-builds-only -- a call that builds nothing, the tech's
+        }
+        // missed red: assembly-builds-only -- the import of node:fs: concrete tech in an assembly; the matrix cell is not built yet
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 3: the row above used
+    // node:path, which deblob ships pure.
+    // canon: "A model call is allowed on the same terms as any other — its
+    // result is passed on or returned". A pure builtin is model: `join` is the
+    // model function the computed-argument row's way out names.
+    name: "a pure builtin's function, its result passed on, is a model call: green",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
         import { join } from "node:path"
         ${IMPORTS}
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
-          return { notes: createNotes({ store: createFsStore(join(cwd, "notes")) }) } // missed red: assembly-builds-only -- a tech call in the wiring; ${WAIT}
+          return { notes: createNotes({ store: createFsStore(join(cwd, "notes")) }) }
         }
-        // missed red: assembly-builds-only -- the import of node:path: concrete tech in an assembly; the matrix cell is not built yet
       `,
     },
   },
@@ -511,7 +664,7 @@ const ROWS: readonly Row[] = [
         import { createSearch } from "./search/search.service.ts"
         import { createSharedAssembly } from "./shared.assembly.ts"
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
-          const { notes } = createSharedAssembly({ cwd }) // missed red: assembly-builds-only -- a child assembly's record read for one service; ${WAIT}
+          const { notes } = createSharedAssembly({ cwd }) // red: assembly-builds-only -- a child assembly's record read for one service
           return { notes, search: createSearch({ notes }) }
         }
       `,

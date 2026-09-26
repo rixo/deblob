@@ -96,7 +96,7 @@ export const main = async (param: string, ...rest: unknown[]) => {
   if (picked) helper()
   this.made = 1
   Math.made = 1
-  ;[1].map((n) => {
+  ;[1].forEach((n) => {
     if (n) return
     return helper()
   })

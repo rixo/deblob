@@ -191,12 +191,12 @@ const ROWS: readonly Row[] = [
       ...ASSEMBLY,
       "src/other.driver.ts": `
         export const main = () => {
-          process.on("ready", () => undefined)
+          process.on("ready", () => undefined) // red: hook-one-call -- the hook runs no use case
         }
       `,
       "src/wired.assembly.ts": `
         import { main } from "./other.driver.ts"
-        export const createWiredAssembly = () => ({ start: main })
+        export const createWiredAssembly = () => ({ start: main }) // red: assembly-builds-only -- builds nothing: it hands a driver's function on
         // red: inward-deps -- the import of other.driver: an assembly reaching outward
         // missed red: driver-not-imported -- the import of other.driver from an assembly; the matrix cell is not built yet
       `,
@@ -285,7 +285,7 @@ const ROWS: readonly Row[] = [
       "src/other.driver.ts": `
         import "./cli.boot.ts"
         export const main = () => {
-          process.on("ready", () => undefined)
+          process.on("ready", () => undefined) // red: hook-one-call -- the hook runs no use case
         }
         // red: inward-deps -- the import of cli.boot: a driver reaching outward
         // missed red: boot-one-call -- the import of cli.boot: nothing imports a boot; the matrix cell is not built yet
