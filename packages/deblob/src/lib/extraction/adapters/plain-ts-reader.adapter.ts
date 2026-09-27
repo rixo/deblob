@@ -6,8 +6,9 @@ import type { Reader } from "../ports/reader.port.ts"
  * reads the assembly, driver and boot files among them — the kind comes from
  * the suffix or a designation, the wide binding is harmless elsewhere. Claims
  * no package of its own — concrete builtins and host globals are tech by the
- * reading's table, third-party packages by the project's `driverTech` — and
- * exempts nothing.
+ * reading's table, third-party packages by the project's `driverTech` — exempts
+ * nothing, and maps no role: a driver's hooks are its tech's, whatever that
+ * tech names them.
  */
 export const createPlainTsReader = (): Reader => ({
   name: "plain-ts",
@@ -15,4 +16,5 @@ export const createPlainTsReader = (): Reader => ({
   kinds: ["assembly", "driver", "boot"],
   claims: () => false,
   exempts: [],
+  roleOf: () => null,
 })

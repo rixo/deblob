@@ -4,9 +4,9 @@ src/billing
              what the assembly builds is passed on or returned; pass it
              whole, its consumer reads the field (assembly-builds-only)
   src/billing/billing.driver.ts
-    driver   line 6 calls the host beside the use case — a hook connects
-             a trigger to one use case; the use case does it through its
-             port (hook-one-call)
+    driver   line 6 calls the host in a hook — a hook makes one use-case
+             call and nothing else; the use case does it through its
+             port, the host handed whole (hook-one-call)
   src/billing/stripe.adapter.ts
     private  imports src/invoice/private/totals.model.ts — private/ is
              sealed outside its service (private-sealed)

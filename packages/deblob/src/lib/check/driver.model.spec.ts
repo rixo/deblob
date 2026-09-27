@@ -77,6 +77,7 @@ const mainWith = (wiring: ReadCall, hooked: ReadCall): FileReading => ({
         {
           span: SPAN,
           registeredBy: wiring,
+          role: null,
           body: [{ kind: "call", call: hooked }],
           hooks: [],
         },

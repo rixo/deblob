@@ -3,11 +3,13 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, it, test } from "vitest"
 
 import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
+import { createGoodEnoughTestsReader } from "./adapters/good-enough-tests-reader.adapter.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import type {
   CalleeKind,
   FileReading,
   ReadCall,
+  ReadHook,
   ReadStatement,
 } from "./graph.model.ts"
 import type { ImportTargetKind, ReadInput } from "./reading.model.ts"
@@ -66,6 +68,13 @@ const TARGETS: Readonly<Record<string, ImportTargetKind>> = {
     kind: "external",
     package: "unclaimed-lib",
     claim: "unclaimed",
+    layer: null,
+  },
+  // the test reader's own runner
+  vitest: {
+    kind: "external",
+    package: "vitest",
+    claim: "reader",
     layer: null,
   },
   // a resolved file outside coverage: no package name, concrete, the tech's
@@ -462,6 +471,74 @@ describe("readModule", () => {
       expect(
         callsOf(describeHook?.hooks[0]?.body ?? []).map((c) => c.callee.kind),
       ).toEqual(["factory"])
+    })
+  })
+
+  describe("roles — what a test hook is for, in deblob's words", () => {
+    const TESTS = {
+      name: "good-enough-tests",
+      exempts: ["registration"],
+      roleOf: createGoodEnoughTestsReader().roleOf,
+    } as const
+
+    /** Every hook with its line and role, nested ones after their parent. */
+    const rolesOf = (hooks: readonly ReadHook[]): [number, unknown][] =>
+      hooks.flatMap((hook) => [
+        [hook.span.line, hook.role] as [number, unknown],
+        ...rolesOf(hook.hooks),
+      ])
+
+    it("gives each hook the role its registration's name maps to — through an alias, modifiers and the namespace — and keeps every other hook, with none", () => {
+      const reading = read("roles.ts", { layer: "test", tech: TESTS })
+      expect(rolesOf(reading.hooks)).toEqual([
+        [6, { kind: "mock" }],
+        [7, { kind: "group" }],
+        [8, { kind: "setup", scope: "all" }],
+        [9, { kind: "setup", scope: "each" }],
+        [10, { kind: "behavior" }],
+        [11, { kind: "verification" }],
+        [12, { kind: "teardown", scope: "each" }],
+        [13, { kind: "teardown", scope: "all" }],
+        [15, { kind: "group" }],
+        [16, { kind: "behavior" }],
+        [18, { kind: "behavior" }],
+        [19, null],
+        [20, null],
+        [21, null],
+        [22, null],
+        [23, null],
+        [24, null],
+      ])
+    })
+
+    test.each([
+      ["a runner name the roles do not list", 19],
+      ["a member of a listed name that is not listed itself (`vi.fn`)", 20],
+      ["a name every object inherits (`constructor`)", 21],
+      ["another tech's `it`", 22],
+      ['a computed member (`runner["it"]`), never evaluated', 23],
+      ["a chain that starts from no name (`(await import(…)).it`)", 24],
+    ])("tripwire: %s maps to no role, never a guessed one", (_, line) => {
+      const reading = read("roles.ts", { layer: "test", tech: TESTS })
+      expect(rolesOf(reading.hooks).find(([at]) => at === line)?.[1]).toBeNull()
+    })
+
+    test("tripwire: a free `describe`, a globals-mode runner, maps to no role — the host's, not the reader's", () => {
+      const reading = read("root-forms.ts", { layer: "test", tech: TESTS })
+      expect(rolesOf(reading.hooks).map(([, role]) => role)).toEqual([
+        null,
+        null,
+      ])
+    })
+
+    test("tripwire: a tech with no roles gives none", () => {
+      const reading = read("roles.ts", {
+        layer: "test",
+        tech: { name: "good-enough-tests", exempts: ["registration"] },
+      })
+      expect(rolesOf(reading.hooks).every(([, role]) => role === null)).toBe(
+        true,
+      )
     })
   })
 

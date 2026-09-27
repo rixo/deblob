@@ -301,7 +301,9 @@ const driverMessage = (violation: DriverViolation): string => {
       if (violation.rules.includes("sub-driver-wiring"))
         return `${line} runs the sub-driver's wiring ${name} in a hook — one hook would chain two calls; call it in the wiring`
       if (violation.rules.includes("hook-one-call"))
-        return `${line} calls ${name} beside the use case — a hook connects a trigger to one use case; the use case does it through its port`
+        return violation.callee.kind === "factory"
+          ? `${line} calls the assembly ${name} in a hook — a hook does not wire; the wiring calls it once, at startup`
+          : `${line} calls ${name} in a hook — a hook makes one use-case call and nothing else; the use case does it through its port, the host handed whole`
       return `${line} ${driverCallWords(violation.callee)}`
     }
     case "argument": {
@@ -311,11 +313,13 @@ const driverMessage = (violation: DriverViolation): string => {
           ? "a function"
           : violation.value === "unknown"
             ? "what the reader cannot tell"
-            : "a computed value"
+            : violation.value === "tech"
+              ? "a tech value read or called for"
+              : "a computed value"
       if (violation.rules.includes("sub-driver-wiring"))
         return `${line} hands the sub-driver's wiring ${name} a use case's result — never data from the hexagon; pass the instance, its hook calls the use case`
       if (violation.where === "hook")
-        return `${line} hands the use case ${name} ${value} — a hook translates nothing on the way in; pass the tech values unchanged, the service derives the rest`
+        return `${line} hands the use case ${name} ${value} — a hook hands the event on as received and the host whole; pass them, the service reads what it needs`
       return `${line} hands ${name} ${value} — wiring hands on tech values, instances and literals; the assembly takes the raw value, its adapter derives it`
     }
     case "call-count":
@@ -329,11 +333,11 @@ const driverMessage = (violation: DriverViolation): string => {
         ? `${line} calls its use case conditionally — the call is unconditional; the service decides`
         : `${line} branches in a hook — a hook translates nothing around its call; the service decides`
     case "result":
-      return `${line} uses a use case's result past handing it on — a hook returns it, or hands it whole to the tech; the use case returns what the tech needs`
+      return `${line} uses a use case's result — a hook returns it at most; the use case prints or answers through its port`
     case "statement":
       return violation.where === "wiring"
         ? `${line} writes in the wiring — outside its hooks, a driver only wires; the write is a service's`
-        : `${line} writes in a hook — a hook translates nothing around its call; the use case returns what the tech needs`
+        : `${line} writes in a hook — a hook translates nothing around its call; the use case sets it through its port, the host handed whole`
     case "definition":
       return `${line} ${driverDefinitionWords(violation.name ?? "a value", violation.at)}`
     case "parameter":
@@ -375,13 +379,13 @@ const assemblyCallWords = (callee: CalleeKind): string => {
     case "use-case":
       return `runs the use case ${callee.member} — an assembly only builds; run it in a hook, or declare it in configLoads if the graph depends on it`
     case "local":
-      return `calls ${callee.name}, which builds nothing — every call in an assembly builds; a model function passed on, or inline`
+      return `calls ${callee.name}, which builds nothing — every call in an assembly builds; the adapter or service that needs it derives it`
     case "wiring":
       return `runs the wiring function ${callee.name} — a driver's, never an assembly's; the driver calls the assembly`
     case "unclaimed":
       return `calls ${callee.package}, a package nothing claims — an assembly only builds; an adapter wraps it, or list it under config key "pure"`
     default:
-      return `calls ${calleeName(callee)}, which builds nothing — computing is not building; a model function passed on, or the adapter derives it`
+      return `calls ${calleeName(callee)}, which builds nothing — computing is not building, it is the assembly opening the door itself; the adapter takes the raw value and derives it`
   }
 }
 
@@ -402,7 +406,7 @@ const assemblyMessage = (violation: AssemblyViolation): string => {
         return `${line} hands ${to} the host as ${what}, read here — tech values arrive as parameters; the driver hands it in`
       return violation.value === "function"
         ? `${line} hands ${to} a function as ${what} — an assembly defines nothing; the driver registers it, or the adapter owns it`
-        : `${line} hands ${to} a computed value as ${what} — arguments are literals, tech values received, or instances; a model function passed on, or the adapter derives it`
+        : `${line} hands ${to} a computed value as ${what} — arguments are literals, tech values received, or instances; the adapter takes the raw value and derives it`
     }
     case "result-use": {
       const built = calleeName(violation.callee)
@@ -427,7 +431,7 @@ const assemblyMessage = (violation: AssemblyViolation): string => {
       const name = violation.name ?? "a value"
       return violation.at === "root"
         ? `${line} defines ${name} at the assembly's root — nothing sits there but imports; the literal in place, or a model export`
-        : `${line} defines ${name}, which builds nothing — nothing but assembly functions is defined; a model function, or inline`
+        : `${line} defines ${name}, which builds nothing — nothing but assembly functions is defined; the adapter or service that needs it derives it`
     }
     case "root-statement":
       return `${line} runs at the assembly's root — nothing sits there but imports; move it inside the assembly function`
