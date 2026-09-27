@@ -30,14 +30,16 @@ through a type-only import. JSON throughout.
   is the layer vocabulary, in display order.
 - The protocol over the socket. Server to client: `projects` (the list, each
   root and name), `snapshot`, `error` (project, message). Client to server:
-  `select` (project root). On connect the server sends `projects`, then the
-  first project's `snapshot`; a project whose extraction fails yields `error`
-  and the connection lives on. `projects` is the whole menu: a `select` naming
-  anything else answers `error` too, and is not run. Answers come in order: once
-  a `select` is run, nothing more arrives for the project shown before it (a run
-  still going for that project is dropped), so the last `snapshot` or `error` a
-  client receives is the answer to its last `select` that the server ran. The
-  messages carry no request id because the client does not need one.
+  `select` (project root). On connect the server sends `projects` and nothing
+  else: it runs nothing before the client's first `select` (step 12: the client
+  names the project it opens on). A project whose extraction fails yields
+  `error` and the connection lives on. `projects` is the whole menu: a `select`
+  naming anything else answers `error` too, and is not run. Answers come in
+  order: once a `select` is run, nothing more arrives for the project shown
+  before it (a run still going for that project is dropped), so the last
+  `snapshot` or `error` a client receives is the answer to its last `select`
+  that the server ran. The messages carry no request id because the client does
+  not need one.
 
 `src/lib/snapshot/snapshot-source.port.ts` is the app's side: `SourceState`
 (projects, and loading / loaded / errored — the previous snapshot stays up while
@@ -62,6 +64,13 @@ instead of embedding it; nothing resolves through it yet.
 connects to `/deblob/ws` on its own origin — in dev that is Vite's proxy, under
 `deblob view` it is the server itself — so the entry has no idea which one it is
 talking to.
+
+The app opens on the project shown last in this browser, while the server still
+lists it, else on the first one listed: the server runs nothing until the client
+names a project, and `openOnLastProject` (`src/lib/snapshot/`, a service over
+the snapshot source) names it when the list arrives and keeps each project
+shown, in `localStorage` under `deblob.view.project` — per origin, so two
+servers on two ports keep two.
 
 ## The map
 

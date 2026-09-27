@@ -6,8 +6,17 @@
 
 import type { LastProject } from "../last-project.port.ts"
 
-export function createLocalLastProject(_storage: Storage): LastProject {
-  throw new Error(
-    "createLocalLastProject: not built yet (step 12 cp1, red rows)",
-  )
+const KEY = "deblob.view.project"
+
+export function createLocalLastProject(storage: Storage): LastProject {
+  return {
+    load: () => storage.getItem(KEY),
+    save: (root) => {
+      try {
+        storage.setItem(KEY, root)
+      } catch {
+        // full or blocked: the next load opens on the first project listed
+      }
+    },
+  }
 }

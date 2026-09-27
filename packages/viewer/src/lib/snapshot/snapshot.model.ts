@@ -262,9 +262,10 @@ export type ReadmeItem =
     }
 
 /**
- * The protocol over the socket. On connect the server sends `projects`, then
- * the first project's `snapshot`; `select` asks for another; a project whose
- * extraction fails yields `error` and the connection lives on.
+ * The protocol over the socket. On connect the server sends `projects` and
+ * nothing else: it runs nothing before the client's first `select`, which
+ * answers that project's `snapshot`; each later `select` asks for another; a
+ * project whose extraction fails yields `error` and the connection lives on.
  */
 export type ServerMessage =
   | { readonly type: "projects"; readonly projects: readonly ProjectRef[] }

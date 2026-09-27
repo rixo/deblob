@@ -3,7 +3,9 @@ import { get } from "svelte/store"
 
 import App from "./App.svelte"
 import { createLocalViewStore } from "./lib/map/adapters/local-view-store.adapter.ts"
+import { createLocalLastProject } from "./lib/snapshot/adapters/local-last-project.adapter.ts"
 import { createWsSource } from "./lib/snapshot/adapters/ws-source.adapter.ts"
+import { openOnLastProject } from "./lib/snapshot/last-project.service.ts"
 import type { SourceState } from "./lib/snapshot/snapshot-source.port.ts"
 import { mountMap } from "./spike/map/host/map.js"
 
@@ -15,10 +17,12 @@ if (target === null) throw new Error("viewer: no #app element to mount on")
 // vitest, whose `import.meta.hot` stub carries no `data`
 const restored = (import.meta.hot?.data?.state ?? null) as SourceState | null
 
-// the data server, behind Vite's proxy in dev (vite.config.ts)
-const source = createWsSource(`ws://${location.host}/deblob/ws`, {
-  initial: restored,
-})
+// the data server, behind Vite's proxy in dev (vite.config.ts), opened on the
+// project shown last in this browser
+const source = openOnLastProject(
+  createWsSource(`ws://${location.host}/deblob/ws`, { initial: restored }),
+  createLocalLastProject(localStorage),
+)
 const isDebug = (): boolean => location.hash === "#debug"
 
 /** `#debug`: the outline (steps 01–06); anything else: the design's map. */

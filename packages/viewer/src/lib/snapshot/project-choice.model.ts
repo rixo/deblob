@@ -10,8 +10,9 @@ import type { ProjectRef } from "./snapshot.model.ts"
  * without one).
  */
 export function chooseProject(
-  _projects: readonly ProjectRef[],
-  _last: string | null,
+  projects: readonly ProjectRef[],
+  last: string | null,
 ): string {
-  throw new Error("chooseProject: not built yet (step 12 cp1, red rows)")
+  const listed = projects.find(({ root }) => root === last)
+  return (listed ?? (projects[0] as ProjectRef)).root
 }

@@ -71,7 +71,7 @@ describe("serve", () => {
       })
     })
 
-  test("serves the projects of the cwd's config, then the first snapshot; select answers the other", async () => {
+  test("serves the projects of the cwd's config, then the snapshot of each project a select asks for", async () => {
     const { root, a, b } = await viewerProject()
     let out = ""
     const { port, close } = await serve({
@@ -89,6 +89,10 @@ describe("serve", () => {
         `ws://127.0.0.1:${port}${WS_PATH}`,
         3,
         (ws, received) => {
+          // the server runs nothing before the client names a project
+          if (received.length === 1) {
+            ws.send(JSON.stringify({ type: "select", project: a }))
+          }
           if (received.length === 2) {
             ws.send(JSON.stringify({ type: "select", project: b }))
           }
@@ -135,7 +139,10 @@ describe("serve", () => {
       const [, first, second] = await receive(
         `ws://127.0.0.1:${port}${WS_PATH}`,
         3,
-        (_ws, received) => {
+        (ws, received) => {
+          if (received.length === 1) {
+            ws.send(JSON.stringify({ type: "select", project: a }))
+          }
           if (received.length === 2) {
             void writeFile(
               join(a, "src", "FAKE_NEW.ts"),
@@ -328,7 +335,7 @@ describe("serve", () => {
   }
 
   test("given a bundle, the page and its assets are served beside the channel", async () => {
-    const { root } = await viewerProject()
+    const { root, a } = await viewerProject()
     const bundle = await bundleDir()
     let out = ""
     const { port, close } = await serve({
@@ -362,7 +369,11 @@ describe("serve", () => {
       expect((await fetch(base, { method: "POST" })).status).toBe(404)
 
       // and the data half is untouched
-      const received = await receive(`ws://127.0.0.1:${port}${WS_PATH}`, 2)
+      const received = await receive(
+        `ws://127.0.0.1:${port}${WS_PATH}`,
+        2,
+        (ws) => ws.send(JSON.stringify({ type: "select", project: a })),
+      )
       expect(received[0]).toMatchObject({ type: "projects" })
       expect(received[1]).toMatchObject({ type: "snapshot" })
     } finally {

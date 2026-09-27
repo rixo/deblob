@@ -7,12 +7,34 @@
  * The states pass through unchanged, and so does the page's own `select`.
  */
 
+import { readable } from "svelte/store"
+
 import type { LastProject } from "./last-project.port.ts"
-import type { SnapshotSource } from "./snapshot-source.port.ts"
+import { chooseProject } from "./project-choice.model.ts"
+import type { SnapshotSource, SourceState } from "./snapshot-source.port.ts"
 
 export function openOnLastProject(
-  _source: SnapshotSource,
-  _last: LastProject,
+  source: SnapshotSource,
+  last: LastProject,
 ): SnapshotSource {
-  throw new Error("openOnLastProject: not built yet (step 12 cp1, red rows)")
+  // the start function runs on the first subscriber and sets the source's
+  // current state at once: no subscriber ever sees this placeholder
+  const states = readable<SourceState>(undefined, (set) => {
+    // per subscription, as the socket is: a new one opens a new connection
+    let asked = false
+    return source.subscribe((state) => {
+      if (state.snapshot !== null) {
+        asked = true
+        last.save(state.snapshot.project.root)
+      } else if (state.error !== null) {
+        // it names its project, which the source asks for again
+        asked = true
+      } else if (!asked && state.projects.length > 0) {
+        asked = true
+        source.select(chooseProject(state.projects, last.load()))
+      }
+      set(state)
+    })
+  })
+  return { subscribe: states.subscribe, select: source.select }
 }

@@ -230,6 +230,15 @@ ask.
   class lists its private members too (`#x`, and `private` / `protected` are not
   read).
 
+- **`pure` by subpath** (2026-09-27, rixo: "3 + accept the red pending") — the
+  `pure` key takes package names only (`externalPurityOf` compares the import's
+  package), so `svelte/store` cannot be declared pure without declaring all of
+  `svelte` (`mount`, the DOM runtime). Ruled: `svelte/store` is pure (the
+  snapshot source's own vocabulary, no I/O); the viewer's
+  `last-project.service.ts` imports it and carries the `service-purity`
+  violation until deblob reads subpaths, then the viewer declares it. Deblob
+  side (config, extraction).
+
 - **Tracer: "cannot read" vs "crashed"** (2026-09-25, rixo: "that stinks") — the
   snapshot service turns any throw of `sequenceOf` into `sequence: null` plus
   the message, shown as a calm line. Two different things land there: a tree the

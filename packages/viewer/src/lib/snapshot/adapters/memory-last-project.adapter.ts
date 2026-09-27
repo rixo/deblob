@@ -3,7 +3,11 @@
 import type { LastProject } from "../last-project.port.ts"
 
 export function createMemoryLastProject(): LastProject {
-  throw new Error(
-    "createMemoryLastProject: not built yet (step 12 cp1, red rows)",
-  )
+  let kept: string | null = null
+  return {
+    load: () => kept,
+    save: (root) => {
+      kept = root
+    },
+  }
 }

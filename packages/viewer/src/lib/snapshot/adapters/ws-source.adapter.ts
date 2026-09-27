@@ -6,9 +6,10 @@
  * forgotten. A socket lost while subscribed — the server restarted, or gone —
  * puts the source back in the loading arm, the last snapshot kept, and reopens
  * after `retryMs`, again and again until it opens or the last subscriber
- * leaves. After a reopen the server sends `projects` and its first snapshot as
- * on any connect; a project selected meanwhile is asked for again right after
- * the open.
+ * leaves. After a reopen the server sends `projects`, as on any connect; a
+ * project selected meanwhile is asked for again right after the open. The
+ * server runs nothing before a `select`: which project to ask for first is the
+ * caller's (`openOnLastProject`), not this transport's.
  *
  * Answers are taken as they come: a `snapshot` or `error` ends the current
  * load, whichever request it answers.

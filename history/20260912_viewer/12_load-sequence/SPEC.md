@@ -1,6 +1,6 @@
 # Step 12 — the load sequence
 
-Draft 2026-09-27, for rixo's read. Nothing is built.
+Ruled 2026-09-27 (rixo). Checkpoint 1 landed; checkpoint 2 to go.
 
 Step 11's trace ([research](../11_viewer-by-value/research/load-sequence.md))
 found two defects on our side. Their page is mounted before any data: their
@@ -127,6 +127,25 @@ Checkpoints, each its own commit; red rows first, as their own commit.
    README. The viewer's socket-source rows and the service land in the same
    checkpoint, so no commit has a client waiting for a snapshot that never
    comes.
+
+   Landed: the server sends `projects` alone on connect and runs on the first
+   `select`; the viewer asks for the last project. Probed on `deblob view` from
+   the built bundle: one `select` of ours per load. Until checkpoint 2 their
+   page, still mounted before the first snapshot, sends a `select` of its own
+   (their `firstPick`): a second run, and on a reload their remembered project
+   wins over ours. What it took:
+   - Three rows of deblob's serve driver (`drivers/serve/main.spec.ts`) read a
+     snapshot right after `projects`; the red commit missed them (only the
+     service's rows were run). They now name a project first.
+   - `openOnLastProject` builds its store with `svelte/store`'s `readable`, a
+     `service-purity` violation: the `pure` key takes package names only, and
+     declaring `svelte` would declare its DOM runtime pure too. rixo: the
+     subpath is pure, the violation accepted until deblob reads subpaths (PLAN
+     card "`pure` by subpath").
+   - The entry wraps its source at the module root: four more of the entry's
+     known `assembly-builds-only` violations, left for the dogfood sweep with
+     the rest (rixo).
+
 2. **The mount waits** (viewer host): `map.js` boots on the first snapshot or
    error, our loader until then; the probe runs whole.
 

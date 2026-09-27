@@ -132,21 +132,23 @@ export const createSnapshotService = ({
 }
 
 /**
- * On connect: `projects`, then the first project's `snapshot`, and its watch.
- * On `select`: that project's `snapshot`, the watch moved to it. On change: the
- * current project's `snapshot` again, the watch set refreshed. On close: the
- * watch closed. The watch is up before the answer goes out — the set read ahead
- * of a project's first run, the run's own set before its snapshot — so a change
- * right after a push is a change seen, and so is one during a first run. A set
- * that cannot be read ahead of the run falls back to the root alone: the run
- * fails on the same config and answers for it. Runs for one client never
- * overlap: a change or a select arriving mid-run marks one more run, which
- * follows when this one ends; an answer for a project no longer current is
- * dropped, never sent. The project's own failure — its config — answers `error`
- * for that project, the watch set as it was (the root is in it: fixing the
- * config is a change). Anything else is a bug: reported in full to the driver,
- * and the client hears that the server failed on that project. Either way the
- * connection lives on.
+ * On connect: `projects`, and nothing else — nothing runs and nothing is
+ * watched before the client says which project it wants (step 12: the client
+ * names the project it opens on; a run of the first project would be thrown
+ * away). On `select`: that project's `snapshot`, the watch moved to it. On
+ * change: the current project's `snapshot` again, the watch set refreshed. On
+ * close: the watch closed. The watch is up before the answer goes out — the set
+ * read ahead of a project's first run, the run's own set before its snapshot —
+ * so a change right after a push is a change seen, and so is one during a first
+ * run. A set that cannot be read ahead of the run falls back to the root alone:
+ * the run fails on the same config and answers for it. Runs for one client
+ * never overlap: a change or a select arriving mid-run marks one more run,
+ * which follows when this one ends; an answer for a project no longer current
+ * is dropped, never sent. The project's own failure — its config — answers
+ * `error` for that project, the watch set as it was (the root is in it: fixing
+ * the config is a change). Anything else is a bug: reported in full to the
+ * driver, and the client hears that the server failed on that project. Either
+ * way the connection lives on.
  */
 export const serveSnapshots = ({
   channel,
@@ -163,12 +165,12 @@ export const serveSnapshots = ({
   watcher: Watcher
   report: Report
 }): void => {
-  const first = projects[0]
-  if (first === undefined) {
+  if (projects.length === 0) {
     throw new Error("serveSnapshots: no project to serve")
   }
   channel.onClient(async (client) => {
-    let current = first.root
+    // set by the first select: nothing runs before it
+    let current: string
     let watch: Watch | null = null
     let closed = false
     let running: Promise<void> | null = null
@@ -284,7 +286,5 @@ export const serveSnapshots = ({
       if (watch !== null) await watch.close()
     })
     client.send({ type: "projects", projects })
-    rerun()
-    await running
   })
 }

@@ -31,8 +31,10 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
   ahead of a run — the config and the directories, without the extraction — for
   a caller that must watch before it runs.
 - `serveSnapshots({ channel, projects, runOf, watchSetFor, watcher, report })`:
-  the protocol in one place. On connect: `projects`, then the first project's
-  `snapshot`, its watch set watched. On `select`: that project's `snapshot`, the
+  the protocol in one place. On connect: `projects`, and nothing else — nothing
+  runs and nothing is watched before the client's first `select` (the client
+  names the project it opens on: a run of the first project would be thrown
+  away). On `select`: that project's `snapshot`, its watch set watched, or the
   watch moved to it — the list sent on connect is the whole menu, and a root
   outside it answers `error` and is never run. On a change under the watch: the
   current project's `snapshot` again, unasked, the set refreshed. A project's
