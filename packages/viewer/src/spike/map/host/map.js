@@ -19,7 +19,11 @@ import { bootPage } from "./dc-runtime.svelte.js"
 const STYLE = `
 .dbm-frame{display:flex;flex-direction:column;height:100%}
 /* their page's root is position:fixed, inset:0 — contained, it fills ours */
-.dbm-frame>#dc-root{flex:1 1 0;min-height:0;height:auto;contain:layout}
+.dbm-frame>#dc-root{flex:1 1 0;min-height:0;height:auto;contain:layout;
+  /* their Map canvas (Map.dc.html, copied), on the very box it will fill:
+     the loader is their ground, and their mount moves no dot */
+  background-color:#121316;background-image:radial-gradient(#24262b 1px,transparent 1px);
+  background-size:20px 20px}
 .dbm-strip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px;
   background:#141518;border-bottom:1px solid #2a2b30;color:#c4c2bc;
   font:12px/1.4 'IBM Plex Sans',system-ui,sans-serif}

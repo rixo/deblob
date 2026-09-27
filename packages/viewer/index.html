@@ -4,6 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>deblob viewer</title>
+    <!-- From the first paint, before any script: the map canvas's colour (the
+    design's Map.dc.html, copied: keep in step on a pull); its dot grid comes
+    with the map's frame (map.js), on the box their canvas will fill. Dark
+    scheme: the unstyled #debug outline reads light on it. -->
+    <meta name="color-scheme" content="dark" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      html {
+        background-color: #121316;
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>

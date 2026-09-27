@@ -81,17 +81,20 @@ answers their engine scripts (the `.js` their pages load relative to the page)
 at the app's root, in dev and in the build — only those files, never their data
 or docs. `map.js` mounts their `Viewer.dc.html` once, on the first state it can
 render fully — the chosen project's first snapshot, or its error; until then the
-strip says "loading…" over an empty frame (a temporary loader of ours) — and
-feeds it by value, their data contract: on each state of the snapshot source it
-hands the page new props and the page updates in place, so a save redraws the
-map with its view kept. What a state means for their page is product code, with
-rows: `buildViewerProps` (`src/lib/map/viewer-props.model.ts`) — every project
-for their picker, the current snapshot's graph, call stacks and READMEs, loading
-and the server's error, and one graph object per snapshot, so a flip of loading
-never reads as a new graph. Their picker is the project switch: its `on-project`
-is the source's `select`. Their view of a project (camera, folds, selection:
-theirs, opaque to us) is kept in the browser's `localStorage`, one entry per
-project, `deblob.view.v1:<root>`, through the `ViewStore` port
+strip says "loading…" over the map's own canvas: its colour on the page from the
+first paint (`index.html`), its dot grid on the box their canvas will fill
+(`map.js`), so their mount moves no pixel of it (their colours, copied: keep in
+step on a pull) — a temporary loader of ours — and feeds it by value, their data
+contract: on each state of the snapshot source it hands the page new props and
+the page updates in place, so a save redraws the map with its view kept. What a
+state means for their page is product code, with rows: `buildViewerProps`
+(`src/lib/map/viewer-props.model.ts`) — every project for their picker, the
+current snapshot's graph, call stacks and READMEs, loading and the server's
+error, and one graph object per snapshot, so a flip of loading never reads as a
+new graph. Their picker is the project switch: its `on-project` is the source's
+`select`. Their view of a project (camera, folds, selection: theirs, opaque to
+us) is kept in the browser's `localStorage`, one entry per project,
+`deblob.view.v1:<root>`, through the `ViewStore` port
 (`src/lib/map/view-store.port.ts`); the host hands them `{ load, save }` bound
 to the project shown. Their page draws loading and errors; above it, a strip of
 ours keeps what it has no place for yet: the tracer's reason when a project has
