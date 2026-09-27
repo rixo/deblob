@@ -158,8 +158,9 @@ and open.
   result's, applied), its static blocks, its static fields as definitions
   (`readonly` proven by what it holds, a writable one reassignable, form
   `static`). The cut: a function handed to a tech callee is a hook, nested hooks
-  included; one handed to anything else is read inline where it sits. Takes
-  plain data, never the port: the service chooses the tech.
+  included, each with its role by the tech's roles (`null` where none maps); one
+  handed to anything else is read inline where it sits. Takes plain data, never
+  the port: the service chooses the tech.
 
 ## Ports
 
@@ -183,7 +184,11 @@ and open.
   per tech as the flavor is one per naming convention. A reader is its binding
   (root-relative globs, the builtin one; config binds more, first), the kinds it
   reads among the files it binds (one kind = the binding designates it), the
-  packages it claims as tech, and the driver rules it exempts; the cut is the
+  packages it claims as tech, the driver rules it exempts, and its roles —
+  `roleOf(chain)`, its tech's names translated into deblob's (`Role`: group,
+  behavior, verification, setup and teardown with a scope, mock), given the name
+  a registration calls (the reading finds it: the reader's own import, then the
+  members through calls), `null` for a name it does not map; the cut is the
   reading's, so a tech that needs a cut of its own adds it here with the case
   that needs it — as will the first reader whose files the default engine cannot
   parse, with its engine.
@@ -218,13 +223,18 @@ and open.
 - `adapters/plain-ts-reader.adapter.ts` — the plain-TypeScript reader: binds
   every script file, reads the assembly, driver and boot ones among them; claims
   nothing (builtins and host globals are tech by the reading's table,
-  third-party packages by `driverTech`); exempts nothing.
+  third-party packages by `driverTech`); exempts nothing; maps no role.
 - `adapters/good-enough-tests-reader.adapter.ts` — the good-enough test reader,
   common conventions over every runner it knows: binds the test naming
   (`*.spec.*`, `*.test.*`, `__tests__/`) and reads the test kind only, so its
   binding is what makes a file a test file — canon's "spec files by the test
   globs"; claims the runners it knows (a census, `driverTech` for the next one);
-  exempts registration, the call count, services-only and definitions.
+  exempts registration, the call count, services-only and definitions; maps the
+  runners' shared names to roles (`describe`/`suite` group, `it` behavior,
+  `test` verification, `before*`/`after*` setup and teardown by scope,
+  `vi.mock`/`jest.mock` mock), a chain by the longest listed name it starts with
+  (`it.skip.each` is `it`, `vi.fn` none) — a globals-mode runner's free names
+  map to none.
 - `adapters/package-meta.adapter.ts` — the cross-package reader,
   `createPackageMetaReader({ fs, resolve, anchor, classifyEntry })`: resolves a
   bare specifier to its owning package.json, reads the `deblob` field and the

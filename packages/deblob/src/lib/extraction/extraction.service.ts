@@ -294,7 +294,7 @@ export const createExtraction = ({
         tech:
           tech === null || !OUTSIDE_KINDS.has(layer)
             ? null
-            : { name: tech.name, exempts: tech.exempts },
+            : { name: tech.name, exempts: tech.exempts, roleOf: tech.roleOf },
         importTargetOf: (specifier) =>
           importTargetKindOf(tech, targetOfSpecifier(specifier), specifier),
         // the flavor's word on export names, plain data; a flavor without the

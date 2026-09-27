@@ -32,6 +32,7 @@ const fakeReader = (name: string, files: readonly string[]): Reader => ({
   kinds: ["test"],
   claims: () => false,
   exempts: [],
+  roleOf: () => null,
 })
 
 /** Two stock readers with invented names and bindings. */

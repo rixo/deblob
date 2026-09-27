@@ -488,10 +488,30 @@ export type ReadStatement =
    */
   | { kind: "unread"; form: string; span: Span }
 
+/**
+ * What a hook is for, in deblob's words, never the runner's: the reader
+ * translates its tech's names (`describe`, `it`, `beforeEach`) into these, and
+ * what reads a reading downstream reads roles only. A setup or teardown runs
+ * around each behavior of its group, or once around them all.
+ */
+export type Role =
+  | { kind: "group" }
+  | { kind: "behavior" }
+  | { kind: "verification" }
+  | { kind: "setup"; scope: "each" | "all" }
+  | { kind: "teardown"; scope: "each" | "all" }
+  | { kind: "mock" }
+
 export type ReadHook = {
   span: Span
   /** The tech call this hook was handed to. */
   registeredBy: ReadCall
+  /**
+   * What the hook is for, by the reader's roles over the name its registration
+   * calls (`it.skip.each` reads as `it`); `null` where the reader maps none —
+   * never guessed. Every hook is kept, with a role or without.
+   */
+  role: Role | null
   body: readonly ReadStatement[]
   hooks: readonly ReadHook[]
 }

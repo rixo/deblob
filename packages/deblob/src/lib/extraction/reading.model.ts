@@ -32,6 +32,7 @@ import type {
   ReadHook,
   ReadStatement,
   ResultUse,
+  Role,
   Span,
   UnknownCondition,
   ValueKind,
@@ -63,10 +64,15 @@ export type ReadInput = {
   /** The file's own kind. */
   layer: Layer
   /**
-   * The tech reading the file: its name and exemptions. `null` for an inside
-   * kind — root statements only, no functions cut.
+   * The tech reading the file: its name, exemptions and roles — the name a
+   * registration calls, translated (absent = no hook gets one). `null` for an
+   * inside kind — root statements only, no functions cut.
    */
-  tech: { name: string; exempts: readonly Exemption[] } | null
+  tech: {
+    name: string
+    exempts: readonly Exemption[]
+    roleOf?: (chain: readonly string[]) => Role | null
+  } | null
   importTargetOf: (specifier: string) => ImportTargetKind
   /**
    * The flavor's word on an export name — a factory or not — where the file
@@ -1385,6 +1391,36 @@ export const readModule = ({
     return target.kind === "external" && target.claim === "reader"
   }
 
+  /**
+   * A hook's role: the reader's word on the name its registration calls — the
+   * name imported from the reader's own claim, then the members through calls
+   * (`it.skip.each(rows)` → `it`, `skip`, `each`). `null` when the chain does
+   * not start from the reader's import, or goes through a computed member.
+   */
+  const roleOf = (calleeNode: AstNode): Role | null => {
+    const translate = tech?.roleOf
+    if (translate === undefined) return null
+    const members: string[] = []
+    let current = unwrap(calleeNode)
+    while (
+      current.type === "MemberExpression" ||
+      current.type === "CallExpression"
+    ) {
+      if (current.type === "MemberExpression") {
+        if (current["computed"] === true) return null
+        members.unshift((current["property"] as AstNode)["name"] as string)
+        current = unwrap(current["object"] as AstNode)
+      } else current = unwrap(current["callee"] as AstNode)
+    }
+    if (current.type !== "Identifier") return null
+    const binding = lookup(scope, current["name"] as string)
+    if (binding === null || binding.kind !== "import") return null
+    const { specifier, imported } = binding.import!
+    const target = importTargetOf(specifier)
+    if (target.kind !== "external" || target.claim !== "reader") return null
+    return translate(imported === "*" ? members : [imported, ...members])
+  }
+
   /** Whether the file's own reader exempts registrations into its tech. */
   const registers = tech !== null && tech.exempts.includes("registration")
 
@@ -1552,7 +1588,11 @@ export const readModule = ({
       : null
   }
 
-  const readHook = (fn: AstNode, registeredBy: ReadCall): ReadHook => {
+  const readHook = (
+    fn: AstNode,
+    registeredBy: ReadCall,
+    role: Role | null,
+  ): ReadHook => {
     const params = (fn["params"] as AstNode[]).flatMap((param) =>
       patternNames(param).map(({ name, path, node }) =>
         newBinding(name, "parameter", node, { isHookParam: true, path }),
@@ -1564,6 +1604,7 @@ export const readModule = ({
     return {
       span: spanOf(fn),
       registeredBy,
+      role,
       body: inner.statements,
       hooks: inner.hooks,
     }
@@ -1892,6 +1933,7 @@ export const readModule = ({
     argNodes: readonly AstNode[],
     callee: CalleeKind,
     registeredBy: ReadCall,
+    calleeNode: AstNode,
     emitting: boolean,
   ): ArgValue[] => {
     const args: ArgValue[] = []
@@ -1901,7 +1943,7 @@ export const readModule = ({
         args.push(plainArg("function", arg))
         if (!emitting) continue
         if (callee.kind === "tech" && tech !== null)
-          body.hooks.push(readHook(inner, registeredBy))
+          body.hooks.push(readHook(inner, registeredBy, roleOf(calleeNode)))
         else readInline(inner, callee, registeredBy.span)
         continue
       }
@@ -2117,7 +2159,7 @@ export const readModule = ({
       site: inlineSite,
       calleeCall: calleeCallOf(calleeNode),
     }
-    call.args = readArgs(argNodes, callee, call, emitting)
+    call.args = readArgs(argNodes, callee, call, calleeNode, emitting)
     emitCall(call, spanOf(calleeNode), emitting)
     // a matched load's result counts as a tech value from then on
     return load === null

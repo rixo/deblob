@@ -2,7 +2,7 @@ import { expect, test } from "vitest"
 
 import { createPlainTsReader } from "./plain-ts-reader.adapter.ts"
 
-test("binds every script file, reads the three plain-TypeScript kinds, claims no package, exempts nothing", () => {
+test("binds every script file, reads the three plain-TypeScript kinds, claims no package, exempts nothing, maps no role", () => {
   const reader = createPlainTsReader()
   expect(reader.name).toBe("plain-ts")
   expect(reader.files).toEqual(["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"])
@@ -10,4 +10,5 @@ test("binds every script file, reads the three plain-TypeScript kinds, claims no
   expect(reader.claims("some-made-up-parser")).toBe(false)
   expect(reader.claims("node:fs")).toBe(false)
   expect(reader.exempts).toEqual([])
+  expect(reader.roleOf(["it"])).toBeNull()
 })

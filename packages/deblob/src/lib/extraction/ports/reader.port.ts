@@ -9,11 +9,11 @@
  * is what makes a file a test file — canon: "spec files by the test globs").
  * The cut is one rule for every tech shipped so far (a function handed to a
  * tech callee — the reading's), so a reader is its binding, its kinds, its
- * claims and its exemptions; a tech that needs a cut of its own adds it here,
- * with the case that needs it.
+ * claims, its exemptions and its roles; a tech that needs a cut of its own adds
+ * it here, with the case that needs it.
  */
 
-import type { Exemption, Layer } from "../graph.model.ts"
+import type { Exemption, Layer, Role } from "../graph.model.ts"
 
 export interface Reader {
   readonly name: string
@@ -29,4 +29,11 @@ export interface Reader {
   claims(specifier: string): boolean
   /** Driver rules the tech's shape exempts. */
   readonly exempts: readonly Exemption[]
+  /**
+   * What a hook is for, given the name its registration calls: the export
+   * imported from the tech, then the members, through calls (`it.skip.each` →
+   * `["it", "skip", "each"]`). The tech's names translated into deblob's;
+   * `null` for a name the reader does not map — never guessed.
+   */
+  roleOf(chain: readonly string[]): Role | null
 }

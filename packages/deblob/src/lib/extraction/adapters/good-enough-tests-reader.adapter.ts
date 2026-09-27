@@ -1,4 +1,5 @@
 import { packageNameOf } from "../graph.model.ts"
+import type { Role } from "../graph.model.ts"
 import type { Reader } from "../ports/reader.port.ts"
 
 /**
@@ -21,6 +22,33 @@ const RUNNERS: ReadonlySet<string> = new Set([
   "tap",
 ])
 
+const SETUP_EACH: Role = { kind: "setup", scope: "each" }
+const SETUP_ALL: Role = { kind: "setup", scope: "all" }
+const TEARDOWN_EACH: Role = { kind: "teardown", scope: "each" }
+const TEARDOWN_ALL: Role = { kind: "teardown", scope: "all" }
+
+/**
+ * The runners' names, in deblob's roles — the names the runners above share.
+ * `it` states a behavior, `test` a verification: the house's split, the one the
+ * behavior panel reads. `before` and `after` are the all-scope hooks of
+ * `node:test` and mocha. A mock is a module factory (`vi.mock`, `jest.mock`),
+ * never `vi.fn`'s implementation: a name not listed maps to no role.
+ */
+const ROLES: Readonly<Record<string, Role>> = {
+  describe: { kind: "group" },
+  suite: { kind: "group" },
+  it: { kind: "behavior" },
+  test: { kind: "verification" },
+  beforeEach: SETUP_EACH,
+  beforeAll: SETUP_ALL,
+  before: SETUP_ALL,
+  afterEach: TEARDOWN_EACH,
+  afterAll: TEARDOWN_ALL,
+  after: TEARDOWN_ALL,
+  "vi.mock": { kind: "mock" },
+  "jest.mock": { kind: "mock" },
+}
+
 /**
  * The test naming — canon: test files are recognized by their tech's globs.
  * `*.spec.*` and `*.test.*` over the script extensions, and anything under a
@@ -40,7 +68,7 @@ const TEST_FILES: readonly string[] = [
  * (`test-is-outside`). It reads the test kind only, so its binding is what
  * makes a file a test file. The file registers its hooks by root calls into the
  * runner, imports anything, defines anything, and makes as many calls per hook
- * as it likes — the four exemptions.
+ * as it likes — the four exemptions. Its hooks carry the runners' roles.
  */
 export const createGoodEnoughTestsReader = (): Reader => ({
   name: "good-enough-tests",
@@ -51,4 +79,13 @@ export const createGoodEnoughTestsReader = (): Reader => ({
     return pkg !== null && RUNNERS.has(pkg)
   },
   exempts: ["registration", "call-count", "services-only", "definitions"],
+  // the longest listed name the chain starts with: `it.skip.each` is `it`,
+  // `vi.mock` a mock, `vi.fn` none; own keys only (`constructor` is none)
+  roleOf: (chain) => {
+    for (let length = chain.length; length > 0; length -= 1) {
+      const name = chain.slice(0, length).join(".")
+      if (Object.hasOwn(ROLES, name)) return ROLES[name] as Role
+    }
+    return null
+  },
 })

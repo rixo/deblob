@@ -69,6 +69,7 @@ const fakeReader = (kind: Layer, files: readonly string[]): Reader => ({
   kinds: [kind],
   claims: () => false,
   exempts: [],
+  roleOf: () => null,
 })
 
 const FORMS_FILES = [
