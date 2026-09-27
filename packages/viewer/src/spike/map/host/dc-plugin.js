@@ -40,6 +40,17 @@ export function dc() {
       return code
     },
     configureServer(server) {
+      // A page's compiled module is keyed `x.dc.html.svelte`, a file that is
+      // not on disk: `addWatchFile` alone left a pull stale in a running dev
+      // server (their Session 53 page served a day after its pull). A change
+      // to `x.dc.html` drops its compiled module; their pages keep state Vite
+      // cannot patch, so the page reloads whole.
+      server.watcher.on("change", (file) => {
+        if (!file.endsWith(".dc.html")) return
+        const page = server.moduleGraph.getModuleById(`${file}.svelte`)
+        if (page) server.moduleGraph.invalidateModule(page)
+        server.ws.send({ type: "full-reload" })
+      })
       const scripts = new Set(engineScripts())
       server.middlewares.use((req, res, next) => {
         const name = decodeURIComponent(req.url.split("?")[0]).slice(1)
