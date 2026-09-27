@@ -106,7 +106,10 @@ the record is our memory of the values we ran on. A pull that changes a default
 turns the test red. The pull commit updates the record (`pnpm test -u`) and its
 message names each change (`Map.energy "stress" → "linlog"`). When the map looks
 off after a pull, the record's history gives the past values to try, and the
-evidence to bring them.
+evidence to bring them. A past value is tried by URL, over their default, for
+that page load only: `?knobs=Map.energy:stress,Map.bundling:0.5` (a value reads
+as JSON, else as a string; a malformed pair or an unknown knob warns in the
+console).
 
 ## Testing
 

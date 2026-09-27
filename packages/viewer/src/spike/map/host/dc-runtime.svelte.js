@@ -34,7 +34,41 @@ function evalDcLogic(src) {
   return fn(DCLogic, DCLogic, undefined)
 }
 
+// `?knobs=Map.energy:stress,Map.bundling:0.5`: a knob value tried over the
+// design's default, this page load only (past values: design-knobs.txt's
+// history). A value reads as JSON, else as a string.
+const triedKnobs = readTriedKnobs(
+  typeof location === "undefined" ? "" : location.search,
+)
+
+function readTriedKnobs(search) {
+  const tried = {}
+  const raw = new URLSearchParams(search).get("knobs")
+  if (!raw) return tried
+  for (const pair of raw.split(",")) {
+    const m = pair.match(/^(.+)\.([^.:]+):(.*)$/)
+    if (!m) {
+      console.warn(`[dc] ?knobs: "${pair}" is not Page.knob:value`)
+      continue
+    }
+    let value
+    try {
+      value = JSON.parse(m[3])
+    } catch {
+      value = m[3]
+    }
+    ;(tried[m[1]] ||= {})[m[2]] = value
+  }
+  console.info(
+    `[dc] knobs tried over the design's defaults: ${JSON.stringify(tried)}`,
+  )
+  return tried
+}
+
 export function defineDc({ name, js, props, preview, helmets }) {
+  for (const knob in triedKnobs[name] || {})
+    if (!props?.[knob])
+      console.warn(`[dc] ?knobs: ${name} declares no knob "${knob}"`)
   let Logic = null
   if (js) {
     try {
@@ -64,7 +98,7 @@ export function defineDc({ name, js, props, preview, helmets }) {
       const d = {}
       for (const k in props || {})
         if (props[k]?.default !== undefined) d[k] = props[k].default
-      return d
+      return { ...d, ...triedKnobs[name] }
     },
   }
 }
