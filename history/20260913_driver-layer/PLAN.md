@@ -594,6 +594,30 @@ may reopen the service example and the config pattern section.
   cases corpus, CLI golden); the canon sentence rewritten to state what applies
   to a test; the provisional exemption in `driver.model.ts` replaced.
 
+  **Owed by the lens ruling** (added 2026-09-27; `04/04_lens` SPEC, § "Ruled
+  2026-09-27: a hook hands the event on, untouched — (A)", carries each in
+  full). Each lands at the step named, each with its own go:
+
+  - Error guidance, "Report at the edge. The driver decides presentation"
+    (`docs/implementation-guide.md` § 7, the skill's error-management card): the
+    front service decides; a hook cannot catch. → `07_slugs`.
+  - The folder axis: "…and may file its own assembly and its drivers". To rule;
+    no step yet (the worked example files each sub-driver with its front
+    service).
+  - deblob's own CLI under (A): `lib/cli/cli.service.ts` taking argv with an
+    output port, the sub-driver exposing its registration, the gate through an
+    argv front; `deblob.config.ts` files `src/drivers/**` as assembly today,
+    most of the 292 self assembly violations. → `06_cli-restructure`, with the
+    finished check as its first real run.
+  - The gate's shape (`defineGate`, the fronts table, declines, dead use cases,
+    front-owned rows) is input, not ruled; where its files live is open. →
+    `04/06_test-rules`.
+  - Message sweep: an undeclared driver tech (express missing from `driverTech`)
+    reads as "calls the language" and piles misleading messages; name the
+    undeclared tech instead. → `04/05_sweep`.
+  - The web app as a program (the check reading `.svelte`, the rules inside a
+    front's program, a real browser for its gate). → the Idea below.
+
 - `05_alignment-review` — the checks are implemented; one pass over every rule
   canon states for the outside kinds against what `deblob check` enforces, with
   the tests as the proof: per canon statement (each Summary bullet and the
@@ -637,8 +661,9 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
   it — the `.svelte.ts` split the last proof; React's seminal premise (UI a
   function of state, one-way data flow) matches deblob's, and a right premise
   did not save it from excess. Keep: a front-end question is first asked "from
-  which program?", and a detail the core's canon already answers "no" is not
-  reopened from inside.
+  which program?", and what a hook may not do is not reopened from inside: it
+  goes to a service, the front's own (a front service, `04/04_lens` § Ruled
+  2026-09-27).
 
 - **A tech module passed on is an adapter skipped** (2026-09-25, found drafting
   `04/03_detectors`). The reading classes an import a tech claims as a tech

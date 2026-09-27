@@ -167,10 +167,12 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // canon: "Wiring may also sit inside a hook — an assembly imported lazily
-    // on first event"; a local of the wiring function is wiring, not a
-    // definition (D5, ruled 2026-09-25).
-    name: "wiring inside a hook, an assembly imported lazily, and a parser held in a local of main: green",
+    // Re-read at the lens step (2026-09-26), was green: canon said "wiring
+    // may also sit inside a hook — an assembly imported lazily on first
+    // event". Now: "a hook does not wire … laziness is the assembly's, at
+    // startup". A local of the wiring function is wiring, not a definition
+    // (D5, ruled 2026-09-25) — the parser line stays green.
+    name: "an assembly imported lazily in a hook is red: a hook does not wire; a parser held in a local of main is green",
     config: CONFIG,
     files: {
       ...CLI,
@@ -178,7 +180,7 @@ const ROWS: readonly Row[] = [
         import { cac } from "cac"
         export const main = () => {
           const parser = cac("notes")
-          parser.command("check").action(async (opts) => (await import("./cli.assembly.ts")).createCliAssembly({ cwd: process.cwd() }).cli.check(opts))
+          parser.command("check").action(async (opts) => (await import("./cli.assembly.ts")).createCliAssembly({ cwd: process.cwd() }).cli.check(opts)) // missed red: hook-one-call, hook-one-call, hook-one-call -- a hook does not wire: import(), process.cwd(), the assembly call; the lens, checked at its checkpoint 3
           parser.parse(process.argv)
         }
       `,
@@ -201,13 +203,16 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { cli } = createCliAssembly({ cwd: process.cwd() })
           const parser = cac("notes")
+          // missed red: hook-one-call -- console.log, a call that is not the use case's; the lens, checked at its checkpoint 3
           parser.command("echo").action((opts) => console.log(opts)) // red: hook-one-call -- no use case: logic with no home
           parser.command("both").action(async (opts) => { await cli.check(opts); return cli.status(opts) }) // red: hook-one-call -- two calls: a use case nobody owns
           parser.command("maybe").action((opts) => { if (opts.run) return cli.check(opts) }) // red: hook-one-call -- a conditional call
           parser.command("default").action((opts) => cli.check({ cwd: opts.cwd ?? process.cwd() })) // red: hook-one-call, hook-one-call -- a default on the way in: a branch in the hook, and the argument it computes
           parser.command("exit").action(async (opts) => { if (!(await cli.check(opts))) process.exit(1) }) // red: hook-one-call, hook-one-call -- a branch on the result: the result computed with, and branched on
+          // missed red: hook-one-call -- console.log, a call that is not the use case's; the lens, checked at its checkpoint 3
           parser.command("json").action(async (opts) => console.log(JSON.stringify(await cli.status(opts)))) // red: driver-calls-services, hook-one-call -- JSON.stringify, the language, called; the result transformed before handing
           parser.command("safe").action(async (opts) => { try { return await cli.check(opts) } catch { process.exitCode = 2 } }) // red: hook-one-call -- an error mapped to an exit code
+          // missed red: hook-one-call -- process.cwd(), a call that is not the use case's; the lens, checked at its checkpoint 3
           parser.command("merged").action((opts) => cli.check({ ...opts, cwd: process.cwd() })) // red: hook-one-call -- two tech values merged into one
           parser.parse(process.argv)
         }
@@ -238,12 +243,16 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // canon: "the result is returned, or handed whole to the tech — a tech
-    // call, tech-held state"; "the exit code is part of its result";
-    // arguments "tech values, instances and literals, unchanged"; "a tech
-    // value may be read — a field, a destructured part — and is still a tech
-    // value".
-    name: "one call whose result is handed whole to the tech, a field of a tech value, two tech values unchanged: green",
+    // Re-read at the lens step (2026-09-26), was green: canon said "the
+    // result is returned, or handed whole to the tech — a tech call,
+    // tech-held state" and a tech value "may be read — a field". Now: a hook
+    // hands "the event as received, the host's values handed whole
+    // (`process`, never `process.cwd()`) … nothing read off them (`opts`,
+    // never `opts.files`)", its value "returned — the most a hook does with
+    // it — or dropped, and never used". Ways out: the service sets the exit
+    // code and prints through its ports, `process` handed down; pass `opts`
+    // whole.
+    name: "the value written, printed or read off, the event read by field, the host called in a hook: red",
     config: CONFIG,
     files: {
       ...CLI,
@@ -252,10 +261,10 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { cli } = createCliAssembly({ cwd: process.cwd() })
           const parser = cac("notes")
-          parser.command("check").action(async (opts) => { process.exitCode = await cli.check(opts) })
-          parser.command("files").action((opts) => cli.check(opts.files))
-          parser.command("here").action((opts) => cli.check(opts, process.cwd()))
-          parser.command("show").action(async (opts) => { console.log(await cli.status(opts)) }) // UNSTAMPED, added at checkpoint 6: the result handed whole to a tech call, the call's own result dropped
+          parser.command("check").action(async (opts) => { process.exitCode = await cli.check(opts) }) // missed red: hook-one-call -- the value written into the tech's state; the lens, checked at its checkpoint 3
+          parser.command("files").action((opts) => cli.check(opts.files)) // missed red: hook-one-call -- read off the event; the lens, checked at its checkpoint 3
+          parser.command("here").action((opts) => cli.check(opts, process.cwd())) // missed red: hook-one-call, hook-one-call -- a call that is not the use case's, and a value that is not the event handed on; the lens, checked at its checkpoint 3
+          parser.command("show").action(async (opts) => { console.log(await cli.status(opts)) }) // missed red: hook-one-call, hook-one-call -- the value handed on, and a call that is not the use case's; the lens, checked at its checkpoint 3
           parser.parse(process.argv)
         }
       `,
@@ -276,6 +285,7 @@ const ROWS: readonly Row[] = [
         import { createFsStore } from "./lib/notes/adapters/fs-store.adapter.ts"
         export const main = () => {
           const parser = cac("notes")
+          // missed red: hook-one-call -- process.cwd(), a call that is not the use case's; the lens, checked at its checkpoint 3
           parser.command("store").action(() => createFsStore(process.cwd())) // red: driver-calls-services, hook-one-call -- an adapter called from a hook; the hook runs no use case
           parser.parse(process.argv)
         }
