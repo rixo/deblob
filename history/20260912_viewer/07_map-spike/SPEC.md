@@ -99,6 +99,15 @@ then re-applied in the next commit:
 What we owe them is `git diff <last pull> HEAD -- …/design`, sent back as one
 batch when the time is right.
 
+Their pages' knobs (every prop their editor exposes) are recorded with their
+defaults in `packages/viewer/src/spike/map/design-knobs.txt`, and
+`design-knobs.spec.ts` holds the files to it. We keep applying their defaults:
+the record is our memory of the values we ran on. A pull that changes a default
+turns the test red. The pull commit updates the record (`pnpm test -u`) and its
+message names each change (`Map.energy "stress" → "linlog"`). When the map looks
+off after a pull, the record's history gives the past values to try, and the
+evidence to bring them.
+
 ## Testing
 
 No test rows: that is the exemption. Every commit says what was probed and on
