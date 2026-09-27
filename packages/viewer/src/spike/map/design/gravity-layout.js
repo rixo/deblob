@@ -143,7 +143,7 @@
     // to the nearest non-overlapping picture. A pair gets a constraint once
     // it overlaps; its axis and order come from the target, never from the
     // current picture, so the constraint set is convex and deterministic.
-    function project(X0, Y0, Wd, Hd, n, Gp) {
+    function project(X0, Y0, Wd, Hd, n, Gp, rounds = 30) {
       const X = Float64Array.from(X0), Y = Float64Array.from(Y0), C = [], seen = new Set();
       const add = () => {
         let k = 0;
@@ -158,7 +158,7 @@
         }
         return k;
       };
-      for (let round = 0; round < 30 && add(); round++) {
+      for (let round = 0; round < rounds && add(); round++) {
         X.set(X0); Y.set(Y0); for (const c of C) { c.pi = 0; c.pj = 0; }
         for (let sweep = 0; sweep < 600; sweep++) {
           let moved = 0;
@@ -170,7 +170,7 @@
           if (moved < 0.01) break;
         }
       }
-      separate(X, Y, Wd, Hd, n, 800, Gp);   // residue: rounds cap before every pair is found
+      separate(X, Y, Wd, Hd, n, rounds < 30 ? 20 : 800, Gp);   // residue: rounds cap before every pair is found
       return { X, Y };
     }
     function separate(X, Y, Wd, Hd, n, passes, Gp) {
@@ -187,8 +187,41 @@
         if (!any) return;
       }
     }
+    // One group push (48l): groups = a node with everything it holds in the
+    // solve; sibling groups (same holder, or both top) keep `pad` clear
+    // between their hulls; a push moves the whole group. Inner levels first.
+    // `leafHull(i)` gives a node's own hull; a group's hull is the union,
+    // extended by `grow(i, hull)` when given (head, padding). skipSingles:
+    // two single boxes are the projection's job.
+    function pushGroups(ids, up, X, Y, leafHull, pad, passes, skipSingles, grow) {
+      const n = ids.length, kids = ids.map(() => []), top = [];
+      for (let i = 0; i < n; i++) (up[i] < 0 ? top : kids[up[i]]).push(i);
+      const grp = i => { const o2 = [i]; for (const c of kids[i]) o2.push(...grp(c)); return o2; };
+      const hull = i => { let h = leafHull(i); for (const c of kids[i]) { const k = hull(c); h = { x0: Math.min(h.x0, k.x0), y0: Math.min(h.y0, k.y0), x1: Math.max(h.x1, k.x1), y1: Math.max(h.y1, k.y1) }; } return grow ? grow(i, h) : h; };
+      const levels = []; const lw = (sibs, dep) => { if (sibs.length > 1) (levels[dep] = levels[dep] || []).push(sibs); for (const c of sibs) lw(kids[c], dep + 1); };
+      lw(top, 0);
+      for (let dep = levels.length - 1; dep >= 0; dep--) for (const sibs of levels[dep] || []) {
+        const G = sibs.map(grp);
+        for (let pass = 0; pass < passes; pass++) {
+          const H = sibs.map(hull); let any = false;
+          // Every overlapping pair once per pass (not one pair then rescan):
+          // the same work in far fewer passes, order still fixed.
+          for (let a = 0; a < sibs.length; a++) for (let b = a + 1; b < sibs.length; b++) {
+            if (skipSingles && G[a].length < 2 && G[b].length < 2) continue;
+            const A = H[a], Bh = H[b], ox = Math.min(A.x1, Bh.x1) - Math.max(A.x0, Bh.x0) + pad, oy = Math.min(A.y1, Bh.y1) - Math.max(A.y0, Bh.y0) + pad;
+            if (ox <= 0 || oy <= 0) continue;
+            any = true;
+            const sx = (Bh.x0 + Bh.x1) >= (A.x0 + A.x1) ? 1 : -1, sy = (Bh.y0 + Bh.y1) >= (A.y0 + A.y1) ? 1 : -1;
+            if (ox <= oy) { for (const i of G[a]) X[i] -= sx * ox / 2; for (const i of G[b]) X[i] += sx * ox / 2; H[a] = { ...A, x0: A.x0 - sx * ox / 2, x1: A.x1 - sx * ox / 2 }; H[b] = { ...Bh, x0: Bh.x0 + sx * ox / 2, x1: Bh.x1 + sx * ox / 2 }; }
+            else { for (const i of G[a]) Y[i] -= sy * oy / 2; for (const i of G[b]) Y[i] += sy * oy / 2; H[a] = { ...A, y0: A.y0 - sy * oy / 2, y1: A.y1 - sy * oy / 2 }; H[b] = { ...Bh, y0: Bh.y0 + sy * oy / 2, y1: Bh.y1 + sy * oy / 2 }; }
+          }
+          if (!any) break;
+        }
+      }
+      return hull;
+    }
     // One level: centres of `ids` (sizes B) in the frame whose origin is fb.
-    function solve(ids, B, fb) {
+    function solve(ids, B, fb, preProject) {
       const n = ids.length, X = new Float64Array(n), Y = new Float64Array(n), bx = new Float64Array(n), by = new Float64Array(n);
       const Wd = new Float64Array(n), Hd = new Float64Array(n), R = new Float64Array(n), rr = new Float64Array(n);
       // Every node's reference radius is its contents' (a star: its whole
@@ -248,6 +281,11 @@
       // energy — how much a directory holds a member against its own imports.
       const imp = new Float64Array(n).fill(0);
       // Container and content: centre offset, only the inner radius counts.
+      // Tie radius (48l): a holder's own reference radius is its whole
+      // system, so adding it to a holder ↔ member spring asks the member to
+      // sit a system-radius from the centre it defines (a ring, not a
+      // cluster). Default 'member': the inner radius only. 'holder' = old.
+      const TIE = o.tieRadius === 'holder' ? R : null;
       const radTerm = (i, j, inA, inB) => inA ? R[j] : inB ? R[i] : R[i] + R[j] + g;
       for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
         const a = ids[i], b = ids[j], inA = anc(b).includes(a), inB = anc(a).includes(b);
@@ -282,7 +320,7 @@
       }
       if (EN === 'linlog') for (const e of E) {   // springs only; used by the base-scale fit below and by κ
         const p = e.i * n + e.j, inA = anc(ids[e.j]).includes(ids[e.i]), inB = anc(ids[e.i]).includes(ids[e.j]);
-        D[p] = D[e.j * n + e.i] = e.len + radTerm(e.i, e.j, inA, inB); Wt[p] = Wt[e.j * n + e.i] += e.w;
+        D[p] = D[e.j * n + e.i] = e.len + (e.tree && TIE ? R[e.i] + R[e.j] : radTerm(e.i, e.j, inA, inB)); Wt[p] = Wt[e.j * n + e.i] += e.w;
       }
       // Membership (Session 47r): a member stays within its holder's disk,
       // sized to hold all its members (radius √(Σ member areas / π), minus its
@@ -340,7 +378,7 @@
         let fcx = 0, fcy = 0;
         if (FOC) { let c = 0; for (let i = 0; i < n; i++) if (FOC[i] === 0) { fcx += X[i]; fcy += Y[i]; c++; } if (c) { fcx /= c; fcy /= c; } }
         for (let i = 0; i < n; i++) {
-          if (ALPHA > 0) { const mu = Math.min(ALPHA * rate(i), 1); X[i] += mu * (bx[i] - X[i]); Y[i] += mu * (by[i] - Y[i]); }
+          if (ALPHA > 0 && rate(i) > 0) { const mu = Math.min(ALPHA * rate(i), 1); X[i] += mu * (bx[i] - X[i]); Y[i] += mu * (by[i] - Y[i]); }
           if (FOC && rr[i] >= 0) { const dx = X[i] - fcx, dy = Y[i] - fcy, l = Math.hypot(dx, dy) || 1e-6, tgt = l > rr[i] ? rr[i] : l < rrIn[i] ? rrIn[i] : l; if (tgt !== l) { const mu = Math.min(BETA * rate(i), 1), m = mu * (l - tgt) / l; X[i] -= m * dx; Y[i] -= m * dy; } }
         }
       };
@@ -377,6 +415,12 @@
         let num = 0, den = 0; for (const e of E) { num += e.w * Math.pow(D[e.i * n + e.j], A + 1); den += q[e.i] * q[e.j]; }
         const kap = den > 0 ? num / den : s, FX = new Float64Array(n), FY = new Float64Array(n);
         const T2 = o.llIters ?? 200, lam2 = Math.log(1 / EPS) / (T2 - 1);
+        // Interleave (48l, opt-in o.interleave = every k epochs, 0 = off):
+        // constrained descent (Dwyer): after the step, project the picture
+        // onto the non-overlap constraints at the drawn sizes, so the energy
+        // sees the room the projection makes and vice versa. Dicey: sizes
+        // enter every epoch; a fold then changes the whole descent.
+        const IL = o.interleave | 0;
         for (let t = 0; t < T2; t++) {
           const cap = s * Math.exp(-lam2 * t);
           FX.fill(0); FY.fill(0);
@@ -389,7 +433,8 @@
           for (const e of E) { const dx = X[e.j] - X[e.i], dy = Y[e.j] - Y[e.i], l = Math.hypot(dx, dy) || 1e-6, f = e.w * Math.pow(l, A) / l;   // attraction w·l^a along the unit vector
             FX[e.i] += f * dx; FY[e.i] += f * dy; FX[e.j] -= f * dx; FY[e.j] -= f * dy; }
           for (let i = 0; i < n; i++) { const m = Math.hypot(FX[i], FY[i]) / q[i]; if (m > 0) { const st = Math.min(m, 1) * cap / (m * q[i]); X[i] += FX[i] * st; Y[i] += FY[i] * st; } }
-          tail(() => cap / s);
+          tail(() => o.llStability ? cap / s : 0);   // 48l: α is a stress-picture pull; under linlog the base is only the warm start unless llStability
+          if (IL && t % IL === IL - 1 && t < T2 - 1) { const pr = project(X, Y, Wd, Hd, n, Gp, 4); X.set(pr.X); Y.set(pr.Y); }
         }
         // No intrinsic scale in this energy (κ only sets the balance): fit
         // the picture to the springs' lengths + radii, least squares, as the
@@ -419,36 +464,14 @@
       // solve; hulls from reference radii, so folds never move groups. Sibling groups (same holder, or both top) keep λ·g clear
       // between their hulls; a push moves the whole group. Inner levels
       // first, then outer.
-      if (LAM > 0) {
-        const kids = ids.map(() => []), tops0 = [];
-        for (let i = 0; i < n; i++) (up[i] < 0 ? tops0 : kids[up[i]]).push(i);
-        const grp = i => { const out = [i]; for (const c of kids[i]) out.push(...grp(c)); return out; };
-        const levels = []; const walk = (sibs, dep) => { if (sibs.length > 1) (levels[dep] = levels[dep] || []).push(sibs); for (const c of sibs) walk(kids[c], dep + 1); };
-        walk(tops0, 0);
-        const pad = LAM * g;
-        for (let dep = levels.length - 1; dep >= 0; dep--) for (const sibs of levels[dep] || []) {
-          const G = sibs.map(grp);
-          for (let pass = 0; pass < 60; pass++) {
-            const H = G.map(m => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const i of m) { const hw = R[i], hh = R[i]; x0 = Math.min(x0, X[i] - hw); x1 = Math.max(x1, X[i] + hw); y0 = Math.min(y0, Y[i] - hh); y1 = Math.max(y1, Y[i] + hh); } return { x0, y0, x1, y1 }; });
-            let any = false;
-            scan: for (let a = 0; a < G.length; a++) for (let b = a + 1; b < G.length; b++) {
-              if (G[a].length < 2 && G[b].length < 2) continue;   // two single boxes: the projection's job
-              const A = H[a], Bh = H[b];
-              const ox = Math.min(A.x1, Bh.x1) - Math.max(A.x0, Bh.x0) + pad, oy = Math.min(A.y1, Bh.y1) - Math.max(A.y0, Bh.y0) + pad;
-              if (ox <= 0 || oy <= 0) continue;
-              any = true;
-              const ax = (A.x0 + A.x1) / 2, bxc = (Bh.x0 + Bh.x1) / 2, ay = (A.y0 + A.y1) / 2, byc = (Bh.y0 + Bh.y1) / 2;
-              if (ox <= oy) { const sg = bxc >= ax ? 1 : -1; for (const i of G[a]) X[i] -= sg * ox / 2; for (const i of G[b]) X[i] += sg * ox / 2; }
-              else { const sg = byc >= ay ? 1 : -1; for (const i of G[a]) Y[i] -= sg * oy / 2; for (const i of G[b]) Y[i] += sg * oy / 2; }
-              break scan;   // hulls changed: recompute next pass
-            }
-            if (!any) break;
-          }
-        }
-      }
-      centre();
+      const groupPush = () => { if (LAM > 0) pushGroups(ids, up, X, Y, i => ({ x0: X[i] - R[i], x1: X[i] + R[i], y0: Y[i] - R[i], y1: Y[i] + R[i] }), LAM * g, 60, true); centre(); };
+      groupPush();
       // The target reads no actual size (reference radii only), so a fold
       // changes only the projection's input sizes (and group hulls).
+      // Enclosure before the projection (48l): with dir boxes on the holder
+      // hulls (head, padding) are pushed apart first, so the projection sees
+      // where the groups end up and no member overlap is introduced after it.
+      if (preProject) preProject(X, Y);
       const out = project(X, Y, Wd, Hd, n, Gp);
       // Projection displacement (readout): mean move of a drawn box by the
       // non-overlap projection = the room the energy did not claim.
@@ -519,46 +542,24 @@
       if (isU(n) && !folded.has(id)) n.kids.forEach(k => { if (isU(M.nodes.get(k))) walk(k); });
     };
     M.roots.forEach(walk);
-    const B = tops.map(id => { if (!clNode(id)) return lay(id); const z = ENC ? { w: 0, h: 0 } : clSz(M.nodes.get(id)); return { id, w: z.w, h: z.h, open: false, virt: ENC || !SHOW, cl: true }; }), P = solve(tops, B, { x: 0, y: 0 });
-    if (ENC) enclose(tops, B, P);
+    const B = tops.map(id => { if (!clNode(id)) return lay(id); const z = ENC ? { w: 0, h: 0 } : clSz(M.nodes.get(id)); return { id, w: z.w, h: z.h, open: false, virt: ENC || !SHOW, cl: true }; });
+    const P = solve(tops, B, { x: 0, y: 0 }, ENC ? (X, Y) => enclose(tops, B, { X, Y }, true) : null);
+    if (ENC) enclose(tops, B, P, false);
     B.forEach((b, i) => { if (!b.virt) place(b, P.X[i], P.Y[i]); });
     return out;
 
     // Enclosure: a directory box is the hull of its members plus its head
     // and padding. Sibling hulls (same holder, or both top) keep g apart;
     // a push moves the whole group. Inner levels first.
-    function enclose(ids, B, P) {
+    // `push` true: before the projection, pushes sibling hulls g apart (the
+    // members move with their group). false: after it, hull readout only.
+    function enclose(ids, B, P, push) {
       const n = ids.length, X = P.X, Y = P.Y;
       const up = ids.map((id, i) => { let best = -1, bl = -1; const A = anc(id); for (let j = 0; j < n; j++) { if (j === i) continue; const k = A.indexOf(ids[j]); if (k >= 0 && k > bl) { bl = k; best = j; } } return best; });
-      const kids = ids.map(() => []), top = [];
-      for (let i = 0; i < n; i++) (up[i] < 0 ? top : kids[up[i]]).push(i);
-      const grp = i => { const o2 = [i]; for (const c of kids[i]) o2.push(...grp(c)); return o2; };
-      const hull = i => {
-        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-        if (!B[i].cl) { x0 = X[i] - B[i].w / 2; x1 = X[i] + B[i].w / 2; y0 = Y[i] - B[i].h / 2; y1 = Y[i] + B[i].h / 2; }
-        for (const c of kids[i]) { const h = hull(c); x0 = Math.min(x0, h.x0); y0 = Math.min(y0, h.y0); x1 = Math.max(x1, h.x1); y1 = Math.max(y1, h.y1); }
-        if (B[i].cl) { const nd = M.nodes.get(ids[i]), hd = headOf(nd), fw = foldSz(nd).w; x0 -= hd.padX; x1 += hd.padX; y0 -= hd.head; y1 += hd.padB; if (x1 - x0 < fw) { const c = (x0 + x1) / 2; x0 = c - fw / 2; x1 = c + fw / 2; } }
-        return { x0, y0, x1, y1 };
-      };
-      const levels = []; const lw = (sibs, dep) => { if (sibs.length > 1) (levels[dep] = levels[dep] || []).push(sibs); for (const c of sibs) lw(kids[c], dep + 1); };
-      lw(top, 0);
-      for (let dep = levels.length - 1; dep >= 0; dep--) for (const sibs of levels[dep] || []) {
-        const G = sibs.map(grp);
-        for (let pass = 0; pass < 200; pass++) {
-          const H = sibs.map(hull); let any = false;
-          scan: for (let a = 0; a < sibs.length; a++) for (let b = a + 1; b < sibs.length; b++) {
-            const A = H[a], Bh = H[b], ox = Math.min(A.x1, Bh.x1) - Math.max(A.x0, Bh.x0) + g, oy = Math.min(A.y1, Bh.y1) - Math.max(A.y0, Bh.y0) + g;
-            if (ox <= 0 || oy <= 0) continue;
-            any = true;
-            const sx = (Bh.x0 + Bh.x1) >= (A.x0 + A.x1) ? 1 : -1, sy = (Bh.y0 + Bh.y1) >= (A.y0 + A.y1) ? 1 : -1;
-            if (ox <= oy) { for (const i of G[a]) X[i] -= sx * ox / 2; for (const i of G[b]) X[i] += sx * ox / 2; }
-            else { for (const i of G[a]) Y[i] -= sy * oy / 2; for (const i of G[b]) Y[i] += sy * oy / 2; }
-            break scan;
-          }
-          if (!any) break;
-        }
-      }
-      for (let i = 0; i < n; i++) if (B[i].cl) { const h = hull(i); out.set(ids[i], { x: h.x0, y: h.y0, w: h.x1 - h.x0, h: h.y1 - h.y0, open: true }); }
+      const leafHull = i => B[i].cl ? { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity } : { x0: X[i] - B[i].w / 2, x1: X[i] + B[i].w / 2, y0: Y[i] - B[i].h / 2, y1: Y[i] + B[i].h / 2 };
+      const grow = (i, h) => { if (!B[i].cl) return h; const nd = M.nodes.get(ids[i]), hd = headOf(nd), fw = foldSz(nd).w; let { x0, y0, x1, y1 } = h; x0 -= hd.padX; x1 += hd.padX; y0 -= hd.head; y1 += hd.padB; if (x1 - x0 < fw) { const c = (x0 + x1) / 2; x0 = c - fw / 2; x1 = c + fw / 2; } return { x0, y0, x1, y1 }; };
+      const hull = pushGroups(ids, up, X, Y, leafHull, g, push ? 200 : 0, false, grow);
+      if (!push) for (let i = 0; i < n; i++) if (B[i].cl) { const h = hull(i); out.set(ids[i], { x: h.x0, y: h.y0, w: h.x1 - h.x0, h: h.y1 - h.y0, open: true }); }
     }
   }
 

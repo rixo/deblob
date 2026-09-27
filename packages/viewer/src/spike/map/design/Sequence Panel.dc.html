@@ -233,7 +233,7 @@ class Component extends DCLogic {
   componentDidUpdate(pp) {
     pp = pp || this._pp || this.props; this._pp = this.props;
     this.emitCalls();
-    if (pp.snapshot !== this.props.snapshot) this.loadSnap();
+    if (pp.snapshot !== this.props.snapshot || pp.snapshotData !== this.props.snapshotData) this.loadSnap();
     if (pp.clearSel !== this.props.clearSel && this.state.sel) this.setState({ sel: null });
     if (this.props.pickCall !== pp.pickCall) this.applyPick();
     if (this._S && (pp.hook !== this.props.hook || pp.fn !== this.props.fn || String(pp.hooks) !== String(this.props.hooks))) { const w = this.wanted(); if (w && w !== this.state.hook) this.pickHook(w); }
@@ -255,11 +255,15 @@ class Component extends DCLogic {
     this.loadSnap();
     this.bindKeys();
   }
-  // Snapshot path: the host's (project picker), else the default data path.
+  // Snapshot: by value (`snapshot-data`, the .2 object, data contract), else
+  // the host's path (project picker), else the default data path. Fed by
+  // value (`by-value`) with no data = no snapshot: nothing is fetched
+  // (FROM-DEBLOB 2026-09-27 evening §2).
   loadSnap() {
-    const url = this.props.snapshot || 'data/deblob.sequence.snapshot.2.json';
-    this._snapUrl = url;
-    const go = () => window.DeblobSequence.load(url).then(S => { if (url !== this._snapUrl) return; this._S = S; this._D = null; this._picked = null; this.setState({ hooks: window.DeblobSequence.hooks(S) }, () => { this.pickHook(this.wanted() || this.state.hook); this.applyPick(); }); }).catch(e => console.error('sequence load', String(e && e.stack || e)));
+    const D = this.props.snapshotData || null, url = D || this.props.byValue ? null : (this.props.snapshot || 'data/deblob.sequence.snapshot.2.json');
+    this._snapUrl = url; this._snapD = D;
+    if (!D && !url) { this._S = null; this._D = null; this._picked = null; this.setState({ hooks: [] }); return; }
+    const go = () => (D ? Promise.resolve(D) : window.DeblobSequence.load(url)).then(S => { if (url !== this._snapUrl || D !== this._snapD) return; this._S = S; this._D = null; this._picked = null; this.setState({ hooks: window.DeblobSequence.hooks(S) }, () => { this.pickHook(this.wanted() || this.state.hook); this.applyPick(); }); }).catch(e => console.error('sequence load', String(e && e.stack || e)));
     if (window.DeblobSequence) go(); else { const iv = setInterval(() => { if (window.DeblobSequence) { clearInterval(iv); go(); } }, 50); }
   }
   bindKeys() {

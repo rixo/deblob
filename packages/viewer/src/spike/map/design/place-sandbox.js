@@ -53,7 +53,7 @@
       if (a == null || b == null || a === b) continue;
       const k = a < b ? a + ',' + b : b + ',' + a;
       w.set(k, (w.get(k) || 0) + 1);
-      dir.push([a, b]);
+      dir.push([a, b, e.type]);   // type rides along for the arrow families (Session 51)
     }
     const adj = leaves.map(() => []);
     for (const k of w.keys()) { const [a, b] = k.split(',').map(Number); adj[a].push(b); adj[b].push(a); }

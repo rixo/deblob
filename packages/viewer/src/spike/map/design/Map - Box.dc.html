@@ -31,10 +31,10 @@
     </sc-for>
   </sc-if>
   <sc-for list="{{ boxes }}" as="b" hint-placeholder-count="1">
-    <div data-node="{{ b.id }}" onMouseEnter="{{ b.onBody }}" onMouseLeave="{{ b.onOut }}" onClick="{{ b.onPrimary }}" style="position:absolute;left:{{ b.x }}px;top:{{ b.y }}px;width:{{ b.wc }};height:{{ b.hc }};box-sizing:border-box;border:{{ b.bw }}px solid {{ b.bc }};border-radius:{{ b.r }}px;background:{{ b.bg }};box-shadow:{{ b.sh }};opacity:{{ b.op }};overflow:{{ b.ovf }};cursor:{{ b.cur }}">
-      <div style="position:absolute;left:0;right:0;top:0;height:{{ b.band }}px;display:flex;align-items:stretch;padding:0 {{ b.padR }}px 0 0">
-        <span data-sel="1" onMouseEnter="{{ b.onTitle }}" onMouseLeave="{{ b.onBody }}" onClick="{{ b.onSelect }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding-left:{{ b.padX }}px;cursor:pointer">
-        <span style="flex:none;min-width:0;display:flex;align-items:baseline;gap:6px">
+    <div data-node="{{ b.id }}" onMouseEnter="{{ b.onOut }}" onMouseLeave="{{ b.onOut }}" style="position:absolute;left:{{ b.x }}px;top:{{ b.y }}px;width:{{ b.wc }};height:{{ b.hc }};box-sizing:border-box;border:{{ b.bw }}px solid {{ b.bc }};border-radius:{{ b.r }}px;background:{{ b.bg }};box-shadow:{{ b.sh }};opacity:{{ b.op }};overflow:{{ b.ovf }}">
+      <div onMouseEnter="{{ b.onBody }}" onMouseLeave="{{ b.onOut }}" onClick="{{ b.onPrimary }}" style="position:absolute;left:0;right:0;top:0;height:{{ b.band }}px;display:flex;align-items:stretch;padding:0 {{ b.padR }}px 0 0;cursor:{{ b.cur }}">
+        <span style="flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding-left:{{ b.padX }}px">
+        <span data-sel="1" onMouseEnter="{{ b.onTitle }}" onMouseLeave="{{ b.onBody }}" onClick="{{ b.onSelect }}" style="flex:none;min-width:0;display:flex;align-items:baseline;gap:6px;cursor:pointer">
           <sc-for list="{{ b.pre }}" as="p" hint-placeholder-count="0"><span style="flex:none;font:{{ p.font }};text-box:trim-both {{ p.edge }} alphabetic;letter-spacing:{{ p.ls }};text-transform:{{ p.tt }};color:{{ p.c }};white-space:nowrap">{{ p.t }}<span style="color:{{ p.sc }}">{{ p.slash }}</span></span></sc-for>
           <sc-if value="{{ b.dot }}" hint-placeholder-val="{{ false }}"><span style="flex:none;align-self:center;height:0;display:flex;align-items:center;overflow:visible"><span style="flex:none;width:5px;height:5px;border-radius:50%;background:{{ b.dotC }}"></span></span></sc-if>
           <sc-if value="{{ b.icon }}" hint-placeholder-val="{{ false }}"><span style="flex:none;align-self:center;height:0;display:flex;align-items:center;overflow:visible"><svg width="12" height="12" viewBox="{{ b.iconVb }}" style="flex:none"><path d="{{ b.iconD }}" fill="none" stroke="{{ b.iconC }}" stroke-width="1.2" stroke-dasharray="{{ b.iconDash }}" stroke-linecap="round" stroke-linejoin="round"></path></svg></span></sc-if>
@@ -51,8 +51,8 @@
       <sc-if value="{{ b.rule }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:{{ b.padX }}px;right:{{ b.padX }}px;top:{{ b.band }}px;height:1px;background:{{ b.ruleC }}"></div></sc-if>
       <sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="0">
         <div data-sel="1" onClick="{{ r.onClick }}" onMouseEnter="{{ r.onEnter }}" onMouseLeave="{{ r.onLeave }}" style="position:absolute;left:{{ r.x }}px;right:{{ r.x }}px;top:{{ r.y }}px;height:{{ b.rowH }}px;padding:0 4px;border-radius:4px;display:flex;align-items:center;gap:6px;background:{{ r.bg }};box-shadow:{{ r.sh }};cursor:pointer">
-          <span style="flex:none;width:5px;height:5px;border-radius:50%;background:{{ r.dotC }}"></span>
-          <span style="font:400 11.5px 'IBM Plex Mono',monospace;text-box:trim-both ex alphabetic;color:{{ r.c }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.t }}</span>
+          <span style="flex:none;width:5px;height:5px;border-radius:50%;background:{{ r.dotC }};transform:translateY(0.5px)"></span>
+          <span style="font:400 11.5px 'IBM Plex Mono',monospace;text-box:trim-both cap alphabetic;color:{{ r.c }};white-space:nowrap;overflow-x:clip;overflow-y:visible;text-overflow:ellipsis">{{ r.t }}</span>
         </div>
       </sc-for>
     </div>
@@ -117,11 +117,13 @@ class Component extends DCLogic {
       actions: sp.actions.map(a => ({ ...a, onEnter: () => this.setZone(key, 'act:' + a.id), onLeave: () => this.setZone(key, 'body'), onClick: stop(act(a.id)) })),
       // Hover reported to the page (arrows) from the select zones only: the
       // label zone and member rows, never the body (Session 46w).
+      // Zones (user, Session 51): the label selects; the rest of the header
+      // folds (lights the chevron); the body below the header is inert.
       onBody: () => { this.setZone(key, 'body'); if (live && P.onHover) P.onHover(false); },
       onTitle: () => { this.setZone(key, 'title'); if (live && P.onHover) P.onHover(true); },
       onOut: () => { this.setZone(key, null); if (live && P.onHover) P.onHover(false); },
       onSelect: stop(sel),
-      onPrimary: acts[0] ? stop(act(acts[0].id)) : stop(sel),
+      onPrimary: acts[0] ? stop(act(acts[0].id)) : stop(null),
     };
   }
 

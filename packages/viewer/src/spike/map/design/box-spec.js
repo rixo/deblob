@@ -15,7 +15,9 @@
     // and the path; no frame, no body.
     // Readable over arrows: brighter ink than a path prefix, and a knockout
     // (canvas colour) so lines passing under it do not cross the text.
-    star:  { font: "500 12.5px 'IBM Plex Mono',monospace", path: true, knock: 'rgba(18,19,22,.92)', ink: 'ink2', line: 16, frame: false, dotRow: true, r: 6, padX: 7, pad: 0, headY: 4 },
+    // Session 48r: a star is the dir head said quietly, not a member. Title
+    // ink and weight, the dir's mono path, no mark (user: drop the bullet).
+    star:  { font: "600 13px 'IBM Plex Mono',monospace", path: true, knock: 'rgba(18,19,22,.92)', ink: 'ink', line: 16, frame: false, r: 6, padX: 7, pad: 0, headY: 4 },
     group: { font: "600 11.5px 'IBM Plex Sans',sans-serif", line: 16, frame: true, labelKind: true, r: 7, padX: 10, pad: 10 },
     // A band is a box whose frame is hidden at rest (ghost): participant shows
     // the frame at the rest strength of a framed box, selected the full frame

@@ -14,15 +14,15 @@ return (async () => {
   const clusters = new Set(); for (const n of M.nodes.values()) if (n.type === 'dir' && (M.leafIdx.get(n.id) || []).length < M.leaves.length) clusters.add(n.id);
   const anc = id => { const a = []; for (let p = id; p && M.nodes.has(p); p = M.nodes.get(p).parent) a.push(p); return a; };
   const out = {};
-  for (const [energy, K, dg, lam, mass] of [['stress', 1], ['metric', 1], ['linlog', 1, 'all', 1, 0], ['linlog', 1, 'all', 1, 0.5], ['linlog', 1, 'all', 1, 1], ['linlog', 1, 'all', 0.5, 1]]) {
+  for (const [energy, K, dg, lam, mass, extra] of [['stress', 1], ['linlog', 1, 'all', 1, 0.6], ['linlog', 1, 'all', 1, 0.6, { llStability: true }], ['linlog', 1, 'all', 1, 0.6, { tieRadius: 'holder' }], ['linlog', 1, 'all', 1, 0.6, { interleave: 20 }], ['linlog', 1, 'all', 1, 0.6, { interleave: 5 }]]) {
     let rep; const t0 = performance.now();
-    const L = root.GravityLayout.layout(M, T, folded, { ...opts, dirs: false, clusters, showStars: true, galaxy: K, groupGap: lam ?? 1, energy, llDegree: dg, llMass: mass ?? 0, report: r => rep = r });
+    const L = root.GravityLayout.layout(M, T, folded, { ...opts, dirs: false, clusters, showStars: true, galaxy: K, groupGap: lam ?? 1, energy, llDegree: dg, llMass: mass ?? 0, ...(extra || {}), report: r => rep = r });
     const ms = performance.now() - t0;
     const ids = [...L.keys()], R = ids.map(id => L.get(id)); let ov = 0;
     for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) { const a = R[i], b = R[j]; if (anc(ids[i]).includes(ids[j]) || anc(ids[j]).includes(ids[i])) continue; if (a.w && b.w && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) ov++; }
     const xs = R.map(r => r.x), ys = R.map(r => r.y), xe = R.map(r => r.x + r.w), ye = R.map(r => r.y + r.h);
-    log(`${energy} K=${K} ${dg || ''} λ=${lam ?? 1} mass=${mass ?? 0}: ${Math.round(ms)} ms, ${R.length} nodes, ${ov} overlaps, extent ${Math.round(Math.max(...xe) - Math.min(...xs))}x${Math.round(Math.max(...ye) - Math.min(...ys))}, ratio mean ${rep.mean.toFixed(2)}, proj move ${Math.round(rep.proj)} px · ` + rep.rows.map(x => `${x.id.split('/').pop()} ${x.ratio.toFixed(2)} (${x.n}, own ${Math.round(x.own)}, foreign ${Math.round(x.foreign)})`).join(' · '));
-    out[energy + K + (dg || '') + (mass ?? 0)] = L;
+    log(`${energy} ${JSON.stringify(extra || {})} mass=${mass ?? 0}: ${Math.round(ms)} ms, ${R.length} nodes, ${ov} overlaps, extent ${Math.round(Math.max(...xe) - Math.min(...xs))}x${Math.round(Math.max(...ye) - Math.min(...ys))}, ratio mean ${rep.mean.toFixed(2)}, proj move ${Math.round(rep.proj)} px · ` + rep.rows.map(x => `${x.id.split('/').pop()} ${x.ratio.toFixed(2)} (${x.n}, own ${Math.round(x.own)}, foreign ${Math.round(x.foreign)})`).join(' · '));
+    out[energy + JSON.stringify(extra || {})] = L;
   }
   return out;
 })();

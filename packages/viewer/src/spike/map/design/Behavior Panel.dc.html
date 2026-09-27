@@ -8,7 +8,6 @@
 <body>
 <x-dc>
 <helmet>
-<script src="data/behavior-lorem.js"></script>
 </helmet>
 <div ref="{{ rootRef }}" style="position:absolute;inset:0;pointer-events:none;overflow:hidden;font-family:'IBM Plex Sans',system-ui,sans-serif">
   <div data-ui="pill" style="position:absolute;top:12px;right:{{ pillR }}px;height:32px;padding:0 3px;display:flex;align-items:center;gap:2px;border-radius:9px;background:#16171a;border:1px solid #26282d;transition:right 260ms cubic-bezier(.2,.7,.2,1), opacity .2s;pointer-events:auto;z-index:1;opacity:{{ chromeOp }}">
@@ -189,11 +188,14 @@ function codeFor(F, name, id) {
 const gapCode = (F) => F.gap.lines.map(l => ({ t: `${l.n}  ${l.t}`, c: l.u ? INK : DIM, bg: l.u ? 'rgba(255,192,67,.12)' : 'transparent' }));
 function outline(F) {
   const out = [];
-  const walk = (nodes, depth, under) => nodes.forEach(n => {
-    if (n.k === 'describe') { const clause = CLAUSE.test(n.t); out.push({ id: n.id, type: clause ? 'clause' : 'topic', depth, node: n }); walk(n.kids || [], depth + 1, clause); }
-    else out.push({ id: n.id, type: n.k, depth, node: n, under });
+  // `spec` (FROM-DEBLOB 2026-09-27 §3): the file a behavior comes from, on any
+  // node; a node without one inherits its nearest ancestor's.
+  const walk = (nodes, depth, under, spec) => nodes.forEach(n => {
+    const sp = n.spec || spec;
+    if (n.k === 'describe') { const clause = CLAUSE.test(n.t); out.push({ id: n.id, type: clause ? 'clause' : 'topic', depth, node: n, spec: sp }); walk(n.kids || [], depth + 1, clause, sp); }
+    else out.push({ id: n.id, type: n.k, depth, node: n, under, spec: sp });
   });
-  walk(F.tree, 0, false);
+  walk(F.tree, 0, false, F.spec || null);
   return out;
 }
 function sentence(r) {
@@ -215,10 +217,22 @@ class Component extends DCLogic {
   // (JSON { readmes, fns, docs }) when projects.json names one, loaded on a
   // project switch; else the seeded lorem. With real data nothing is
   // invented: a missing function entry is "not known yet".
+  // Our room's placeholder (data/behavior-lorem.js) is loaded on demand, only
+  // when the panel has neither a `behavior` url nor a value and is not fed by
+  // value (FROM-DEBLOB 2026-09-27 evening §3): under deblob nothing of ours is fetched.
+  lorem() {
+    if (window.BehaviorLorem) return window.BehaviorLorem;
+    if (!this._loremP) { this._loremP = true; const s = document.createElement('script'); s.src = 'data/behavior-lorem.js'; s.onload = () => this.forceUpdate(); document.head.appendChild(s); }
+    return null;
+  }
   source() {
-    const url = this.props.behavior || null, BL = window.BehaviorLorem;
-    if (!url) return BL ? { fnFor: BL.fnFor, readmeFor: BL.readmeFor, docFor: BL.docFor, authored: (id, n) => !!BL.fns[id + '#' + n] } : null;
-    if (this._url !== url) {
+    const url = this.props.behavior || null;
+    // By value (data contract): `behavior-data` is the object itself, wins over
+    // the url; `by-value` with no data means none (§2: null is "none", not "the default").
+    if (this.props.behaviorData) { this._url = null; this._data = this.props.behaviorData; }
+    else if (this.props.byValue) { this._url = null; this._data = {}; }
+    else if (!url) { const BL = this.lorem(); return BL ? { fnFor: BL.fnFor, readmeFor: BL.readmeFor, docFor: BL.docFor, authored: (id, n) => !!BL.fns[id + '#' + n] } : null; }
+    if (!this.props.behaviorData && !this.props.byValue && this._url !== url) {
       this._url = url; this._data = null;
       fetch(url).then(r => r.ok ? r.json() : null).catch(() => null).then(j => { if (this._url === url) { this._data = j || {}; this.forceUpdate(); } });
     }
@@ -277,7 +291,7 @@ class Component extends DCLogic {
           onEnter: () => set({ aHov: k }), onLeave: () => { if (this.state.aHov === k) set({ aHov: null }); },
           hasNote: fail, note: fail ? segsOf(r.node.fail.note, RED2, false) : [],
           hasCode: on && leaf, code: on && leaf ? codeFor(F, name, r.id) : [],
-          hasGot: on && fail, got: fail ? r.node.fail.got : '', where: `${look.spec}:${r.node.line || ''}` };
+          hasGot: on && fail, got: fail ? r.node.fail.got : '', where: `${r.spec || look.spec}:${r.node.line || ''}` };
       });
       if (F.gap) {
         const k = key(gid + ':gap'), on = S.aOpen === k, hov = S.aHov === k;
@@ -290,6 +304,7 @@ class Component extends DCLogic {
       const failing = anyFail(F.tree);
       return { rows, failing, gap: !!F.gap };
     };
+    // Made up from the module's name only when the data names no spec (§3).
     const specOf = (it) => String(it.file || it.id).split('/').pop().replace(/(\.[a-z]+)$/, '.spec$1');
     const fnDoc = (it, s) => { const F = BL.fnFor(it.id, s.name); return BL.authored(it.id, s.name) ? F.doc || s.doc : s.doc || F.doc; };
 
