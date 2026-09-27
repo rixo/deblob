@@ -85,6 +85,7 @@ const mainWith = (wiring: ReadCall, hooked: ReadCall): FileReading => ({
     },
   ],
   open: [],
+  driverValues: [],
 })
 
 describe("checkDriver", () => {

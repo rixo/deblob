@@ -12,6 +12,7 @@ import { join } from "node:path"
 
 import { checkAssembly } from "../../check/assembly.model.ts"
 import { checkBarrels } from "../../check/barrels.model.ts"
+import { checkBoot } from "../../check/boot.model.ts"
 import { checkDag } from "../../check/dag.model.ts"
 import { checkDriver } from "../../check/driver.model.ts"
 import { checkLayers } from "../../check/layers.model.ts"
@@ -61,6 +62,7 @@ const DETECTORS: Record<
     checkLayers(graph, {
       pure: config.pure,
       typeOnlyExempt: config.typeOnlyExempt,
+      driverTech: config.driverTech,
     }),
   private: (graph) => checkPrivate(graph),
   barrels: (graph) => checkBarrels(graph),
@@ -69,6 +71,7 @@ const DETECTORS: Record<
     checkModules(graph, { mutableModuleState: config.mutableModuleState }),
   assembly: (graph) => checkAssembly(graph),
   driver: (graph) => checkDriver(graph),
+  boot: (graph) => checkBoot(graph),
 }
 
 const runSurface = (

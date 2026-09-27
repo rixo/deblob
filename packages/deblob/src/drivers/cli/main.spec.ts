@@ -244,8 +244,11 @@ describe("deblob check", () => {
     expect(out.replace(/\n +/g, " ")).toContain(
       "imports @fixture/billing/run — adapters may not import assembly (inward-deps)",
     )
+    expect(out.replace(/\n +/g, " ")).toContain(
+      "imports @fixture/billing/run — an assembly is imported by drivers and assemblies only, type imports included; the driver calls it and hands down what it built (assembly-driver-only)",
+    )
     expect(out).not.toContain("src/main.ts")
-    expect(out).toContain("2 violations (2 layers)")
+    expect(out).toContain("3 violations (3 layers)")
   })
 
   test("declared-assembly entry at home: the re-exporting root is a carve-out — nothing to verify, green", async () => {
@@ -267,7 +270,7 @@ describe("deblob check", () => {
     expect(out.replace(/\n +/g, " ")).toContain(
       "imports @fixture/billing/totals.model — unclassified third-party in a pure layer",
     )
-    expect(out).toContain("3 violations (3 layers)")
+    expect(out).toContain("4 violations (4 layers)")
   })
 
   test("disclosing package at home: the laundering root listed in blob goes green — confessed, not hidden", async () => {

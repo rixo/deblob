@@ -13,12 +13,10 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * hold everywhere else. The import cells — a boot importing anything but its
  * driver, anything importing a boot — live in `layers.spec.ts`.
  *
- * Red first: no check reports the rule yet, so every red is a `missed red`
- * naming what it waits for. Each red's way out is in the step's SPEC (the boot
- * and test table).
+ * Written red first; the boot check reports them since the detectors step,
+ * checkpoint 7. Each red's way out is in the step's SPEC (the boot and test
+ * table).
  */
-
-const WAIT = "the boot check is not built yet"
 
 /** The CLI the boot starts: its service, assembly, parser and driver. */
 const CLI = {
@@ -82,7 +80,7 @@ const ROWS: readonly Row[] = [
         import "dotenv/config"
         import { main } from "./cli.driver.ts"
         main()
-        // missed red: boot-one-call -- the import of dotenv/config: a boot imports nothing else; the matrix cell is not built yet
+        // red: boot-one-call -- the import of dotenv/config: a boot imports nothing else
       `,
     },
   },
@@ -95,7 +93,7 @@ const ROWS: readonly Row[] = [
       ...CLI,
       "src/cli.boot.ts": `
         import { main } from "./cli.driver.ts"
-        main(process.argv) // missed red: boot-one-call -- an argument, and the tech touched; ${WAIT}
+        main(process.argv) // red: boot-one-call -- an argument, and the tech touched
       `,
     },
   },
@@ -107,13 +105,14 @@ const ROWS: readonly Row[] = [
       ...CLI,
       "src/cli.boot.ts": `
         import { main } from "./cli.driver.ts"
-        const start = () => main() // missed red: boot-one-call -- a definition; ${WAIT}
-        start() // missed red: boot-one-call -- a call that is not the driver's wiring function; ${WAIT}
+        const start = () => main() // red: boot-one-call -- a definition
+        // red: stable-root -- a call into a local at root: the exemption is the one call to the wiring function
+        start() // red: boot-one-call -- a call that is not the driver's wiring function
       `,
       "src/worker.boot.ts": `
         import { main } from "./cli.driver.ts"
         // false unknown: stable-root -- a call's result is not followed yet
-        const app = main() // missed red: boot-one-call -- the call's result held; ${WAIT}
+        const app = main() // red: boot-one-call -- the call's result held
       `,
     },
   },
@@ -129,12 +128,12 @@ const ROWS: readonly Row[] = [
       "src/cli.boot.ts": `
         import { main } from "./cli.driver.ts"
         main()
-        // missed red: boot-one-call -- a second call; ${WAIT}
+        // red: boot-one-call -- a second call
         main() // red: stable-root -- a second call; the exemption is the one call
       `,
       "src/worker.boot.ts": `
         import { main } from "./cli.driver.ts"
-        // missed red: boot-one-call -- the driver imported, its wiring function never called; ${WAIT}
+        // red: boot-one-call -- the driver imported, its wiring function never called
       `,
     },
   },
@@ -147,9 +146,50 @@ const ROWS: readonly Row[] = [
       ...CLI,
       "src/cli.boot.ts": `
         import { main } from "./cli.driver.ts"
-        // missed red: boot-one-call -- the tech touched; ${WAIT}
+        // red: boot-one-call -- the tech touched
         process.title = "notes" // red: stable-root -- an assignment at root
         main()
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 7 (stamped 2026-09-27): canon's
+    // Boot row, "One driver". The second import is a driver never started.
+    // Way out: a boot per driver, or the root driver wires the other as its
+    // sub-driver.
+    name: "a boot importing two drivers, calling one, is red: one driver",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/worker.driver.ts": `
+        import { createCliAssembly } from "./cli.assembly.ts"
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          process.on("message", (message) => cli.check(message))
+        }
+      `,
+      "src/cli.boot.ts": `
+        import { main } from "./cli.driver.ts"
+        import { main as work } from "./worker.driver.ts"
+        main()
+        // red: boot-one-call -- the import of worker.driver: a second driver, never started
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 7 (stamped 2026-09-27): no row
+    // had a constant or a branch at a boot's root. canon: "defines nothing" — a
+    // literal too; "calls its wiring function once, at module root" — the
+    // call under a condition is a decision, the driver's to make. Ways out:
+    // the literal in the driver; the condition in the driver's wiring.
+    name: "a constant, or the call under a condition, is red",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli.boot.ts": `
+        import { main } from "./cli.driver.ts"
+        const NAME = "notes" // red: boot-one-call -- a definition, a literal all the same
+        if (process.argv.length > 2) main() // red: boot-one-call -- a branch: the call made on a condition
       `,
     },
   },

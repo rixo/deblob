@@ -131,7 +131,7 @@ const ROWS: readonly Row[] = [
         import { createNotesAssembly } from "../notes.assembly.ts"
         export const createSearch = ({ cwd }: { cwd: string }) => ({ find: () => createNotesAssembly({ cwd }) })
         // red: inward-deps -- the import of notes.assembly: a service reaching outward
-        // missed red: assembly-driver-only -- the import of notes.assembly: only drivers and assemblies; the matrix cell is not built yet
+        // red: assembly-driver-only -- the import of notes.assembly: only drivers and assemblies
       `,
     },
   },
@@ -145,7 +145,7 @@ const ROWS: readonly Row[] = [
         import type { createNotesAssembly } from "../notes.assembly.ts"
         export const createSearch = (deps: { notes: ReturnType<typeof createNotesAssembly>["notes"] }) => ({ find: () => deps.notes.list() })
         // red: inward-deps -- the type import of notes.assembly: outward, and the type exemption covers service and adapter targets only
-        // missed red: assembly-driver-only -- the type import of notes.assembly: type imports included; the matrix cell is not built yet
+        // red: assembly-driver-only -- the type import of notes.assembly: type imports included
       `,
     },
   },
@@ -158,7 +158,7 @@ const ROWS: readonly Row[] = [
       "src/legacy/start-notes.ts": `
         import { createNotesAssembly } from "../notes.assembly.ts"
         export const startNotes = () => createNotesAssembly({ cwd: "/" }).notes.list()
-        // missed red: assembly-driver-only -- the import of notes.assembly from blob; the matrix cell is not built yet
+        // red: assembly-driver-only -- the import of notes.assembly from blob
       `,
     },
   },
@@ -198,7 +198,7 @@ const ROWS: readonly Row[] = [
         import { main } from "./other.driver.ts"
         export const createWiredAssembly = () => ({ start: main }) // red: assembly-builds-only -- builds nothing: it hands a driver's function on
         // red: inward-deps -- the import of other.driver: an assembly reaching outward
-        // missed red: driver-not-imported -- the import of other.driver from an assembly; the matrix cell is not built yet
+        // red: driver-not-imported -- the import of other.driver from an assembly
       `,
     },
   },
@@ -220,7 +220,7 @@ const ROWS: readonly Row[] = [
         import type { main } from "../cli.driver.ts"
         export const createSearch = (deps: { start: typeof main }) => ({ find: () => deps.start })
         // red: inward-deps -- the type import of cli.driver: a service reaching outward
-        // missed red: driver-not-imported -- the type import of cli.driver: type imports included; the matrix cell is not built yet
+        // red: driver-not-imported -- the type import of cli.driver: type imports included
       `,
     },
   },
@@ -239,7 +239,7 @@ const ROWS: readonly Row[] = [
       "src/legacy/start.ts": `
         import { main } from "../cli.driver.ts"
         export const start = () => main()
-        // missed red: driver-not-imported -- the import of cli.driver from blob; the matrix cell is not built yet
+        // red: driver-not-imported -- the import of cli.driver from blob
       `,
     },
   },
@@ -261,7 +261,7 @@ const ROWS: readonly Row[] = [
         import { main } from "./cli.driver.ts"
         main()
         // red: service-assembly-only, runtime-import -- the import of notes.service: only an assembly imports a service
-        // missed red: boot-one-call -- the import of notes.service: a boot imports nothing but its driver; the matrix cell is not built yet
+        // red: boot-one-call -- the import of notes.service: a boot imports nothing but its driver
       `,
     },
   },
@@ -288,7 +288,7 @@ const ROWS: readonly Row[] = [
           process.on("ready", () => undefined) // red: hook-one-call -- the hook runs no use case
         }
         // red: inward-deps -- the import of cli.boot: a driver reaching outward
-        // missed red: boot-one-call -- the import of cli.boot: nothing imports a boot; the matrix cell is not built yet
+        // red: boot-one-call -- the import of cli.boot: nothing imports a boot
       `,
     },
   },
@@ -339,7 +339,7 @@ const ROWS: readonly Row[] = [
         import { ROOT } from "./notes.spec.ts"
         export const titleOf = (name: string) => ROOT + name
         // red: inward-deps -- the import of notes.spec: a model reaching outward
-        // missed red: test-is-outside -- the import of notes.spec: nothing imports a spec; the matrix cell is not built yet
+        // red: test-is-outside -- the import of notes.spec: nothing imports a spec
       `,
       "src/notes/other.spec.ts": `
         import { expect, it } from "vitest"
@@ -347,7 +347,110 @@ const ROWS: readonly Row[] = [
         it("shares a root", () => {
           expect(ROOT).toBe("/tmp")
         })
-        // missed red: test-is-outside -- the import of notes.spec from another spec; the matrix cell is not built yet
+        // red: test-is-outside -- the import of notes.spec from another spec
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 7 (stamped 2026-09-27): canon's
+    // Test row says "anything", the boot's "nothing imports a boot"; a boot
+    // runs on import, so the spec would start the program. The boot's
+    // sentence is the specific one. Way out: the spec calls the driver's
+    // wiring function, or the assembly.
+    name: "a spec file importing a boot is red: nothing imports a boot",
+    files: {
+      ...ASSEMBLY,
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/cli.driver.ts": `
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        export const main = () => {
+          const services = createNotesAssembly({ cwd: process.cwd() })
+          process.on("ready", () => services.notes.list())
+        }
+      `,
+      "src/cli.boot.ts": `
+        import { main } from "./cli.driver.ts"
+        main()
+      `,
+      "src/cli.spec.ts": `
+        import { expect, it } from "vitest"
+        import "./cli.boot.ts"
+        it("starts", () => {
+          expect(process.listenerCount("ready")).toBe(1)
+        })
+        // red: boot-one-call -- the import of cli.boot from a spec: a boot runs on import
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 7 (stamped 2026-09-27): canon's
+    // Assembly row, "Cannot import … concrete"; a package nobody classified
+    // (no `deblob` field, not in `pure`) is unknown purity until declared,
+    // as a service's `unclassified-lib`. Way out: `pure` in config, or an
+    // adapter wraps it.
+    name: "an assembly importing a package nobody classified is red: an assembly imports no concrete tech",
+    files: {
+      ...ASSEMBLY,
+      "node_modules/made-up-pkg/package.json": JSON.stringify({
+        name: "made-up-pkg",
+        main: "./index.js",
+      }),
+      "node_modules/made-up-pkg/index.js": "module.exports = {}",
+      "src/app.assembly.ts": `
+        import "made-up-pkg"
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        export const createAppAssembly = ({ cwd }: { cwd: string }) => createNotesAssembly({ cwd })
+        // red: assembly-builds-only -- the import of made-up-pkg: unclassified, and an assembly imports no concrete tech
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 7 (stamped 2026-09-27): canon's
+    // Drivers row, "Cannot import … model"; "pure, deterministic third-party
+    // libraries count as model". Way out: the service that needs it.
+    name: "a driver importing a pure package is red: a driver imports no model",
+    files: {
+      ...ASSEMBLY,
+      "src/cli.driver.ts": `
+        import { join } from "node:path"
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        export const main = () => {
+          const services = createNotesAssembly({ cwd: process.cwd() })
+          process.on("ready", () => services.notes.list())
+        }
+        // red: driver-calls-services -- the import of node:path: pure, a model
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 7 (stamped 2026-09-27): canon,
+    // "a driver or an assembly may type-import from any layer, since a hook's
+    // options or a wiring function's signature name shapes and call nothing".
+    name: "a driver and an assembly type-importing a model, node:fs and node:path are green",
+    files: {
+      ...ASSEMBLY,
+      "src/notes/note.model.ts": `
+        export type Note = { readonly title: string }
+      `,
+      "src/cli.driver.ts": `
+        import type { Stats } from "node:fs"
+        import type { ParsedPath } from "node:path"
+        import type { Note } from "./notes/note.model.ts"
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        export const main = () => {
+          const services = createNotesAssembly({ cwd: process.cwd() })
+          process.on("ready", (note: Note, stats: Stats, parsed: ParsedPath) => services.notes.list())
+        }
+      `,
+      "src/app.assembly.ts": `
+        import type { Stats } from "node:fs"
+        import type { Note } from "./notes/note.model.ts"
+        import { createNotesAssembly } from "./notes.assembly.ts"
+        export const createAppAssembly = ({ cwd }: { cwd: string; first?: Note; stats?: Stats }) => createNotesAssembly({ cwd })
       `,
     },
   },

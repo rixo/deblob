@@ -1346,6 +1346,31 @@ export const readModule = ({
     binding.results.push(useOf(ctx, span))
   }
 
+  /**
+   * A name imported from a driver, used as a value rather than called — handed,
+   * stored, read off: a sub-driver is imported only for its wiring function,
+   * called. Through a namespace, the member is the name.
+   */
+  const driverValues: { name: string; path: string; span: Span }[] = []
+  const recordDriverValue = (
+    binding: Binding,
+    members: readonly string[],
+    at: AstNode,
+    emitting: boolean,
+  ): void => {
+    if (!emitting || binding.kind !== "import" || binding.import!.typeOnly)
+      return
+    const target = importTargetOf(binding.import!.specifier)
+    if (target.kind !== "module" || target.layer !== "driver") return
+    const { imported } = binding.import!
+    driverValues.push({
+      // a namespace handed whole goes by its local name
+      name: imported === "*" ? (members[0] ?? binding.name) : imported,
+      path: target.path,
+      span: spanOf(at),
+    })
+  }
+
   /** A reference chain: its root and the member names read off it. */
   const chainOf = (
     node: AstNode,
@@ -2298,6 +2323,7 @@ export const readModule = ({
           return { kind: "tech", origin: null, path: [] }
         }
         if (emitting) recordUse(binding, ctx, [], node)
+        recordDriverValue(binding, [], node, emitting)
         const resolved = resolveBinding(binding)
         if (resolved.kind === "tech" && holdsRead(binding)) countRead(emitting)
         return resolved
@@ -2317,7 +2343,17 @@ export const readModule = ({
             if (rootValue.kind === "tech") countRead(emitting)
           } else {
             if (emitting) recordUse(binding, ctx, members, node)
+            recordDriverValue(binding, members, node, emitting)
             rootValue = resolveBinding(binding)
+            // a namespace's member is the export itself: what a named import
+            // of it reads as
+            if (
+              binding.kind === "import" &&
+              binding.import!.imported === "*" &&
+              members.length === 1 &&
+              rootValue.kind !== "tech"
+            )
+              return rootValue
             if (rootValue.kind === "tech" && holdsRead(binding))
               countRead(emitting)
           }
@@ -3006,13 +3042,14 @@ export const readModule = ({
   for (const [name, fn] of candidates) {
     const count = references.get(name) as { direct: number; other: number }
     const binding = lookup(scope, name)
-    // an assembly's or a driver's local function is not its own code read
-    // inline: nothing but assembly functions is defined in the one, nothing
-    // but its hooks and one wiring function in the other, so it stays a
-    // definition and its call a call
+    // an assembly's, a driver's or a boot's local function is not its own
+    // code read inline: nothing but assembly functions is defined in the one,
+    // nothing but its hooks and one wiring function in the other, nothing at
+    // all in a boot, so it stays a definition and its call a call
     if (
       layer !== "assembly" &&
       layer !== "driver" &&
+      layer !== "boot" &&
       count.other === 0 &&
       count.direct > 0 &&
       binding !== null
@@ -3148,6 +3185,7 @@ export const readModule = ({
     hooks: body.hooks,
     functions,
     open,
+    driverValues,
   }
 }
 

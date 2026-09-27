@@ -117,7 +117,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    test("fires 1 when model imports service, adapters, assembly, or ports", () => {
+    test("fires 1 when model imports service, adapters, assembly, or ports — the assembly also `assembly-driver-only`", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -146,6 +146,10 @@ describe("checkLayers", () => {
         }),
         expect.objectContaining({
           rules: ["inward-deps"],
+          targetClass: "assembly",
+        }),
+        expect.objectContaining({
+          rules: ["assembly-driver-only"],
           targetClass: "assembly",
         }),
         expect.objectContaining({
@@ -248,7 +252,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    test("fires 1 when service or adapters import assembly", () => {
+    test("fires `inward-deps` and `assembly-driver-only` when service or adapters import assembly", () => {
       const g = graph(
         {
           "a/a.service.ts": { layer: "service", serviceRoot: "a" },
@@ -260,15 +264,18 @@ describe("checkLayers", () => {
           { from: "a/fs.adapter.ts", to: mod("wire.spec.ts") },
         ],
       )
-      const found = checkLayers(g)
-      expect(found).toHaveLength(2)
-      for (const violation of found) {
-        expect(violation).toMatchObject({
-          rules: ["inward-deps"],
-          shape: "matrix-cell",
-          targetClass: "assembly",
-        })
-      }
+      expect(
+        checkLayers(g).map((v) => [
+          v.file,
+          v.rules,
+          v.shape === "matrix-cell" ? v.targetClass : null,
+        ]),
+      ).toEqual([
+        ["a/a.service.ts", ["inward-deps"], "assembly"],
+        ["a/a.service.ts", ["assembly-driver-only"], "assembly"],
+        ["a/fs.adapter.ts", ["inward-deps"], "assembly"],
+        ["a/fs.adapter.ts", ["assembly-driver-only"], "assembly"],
+      ])
     })
   })
 
@@ -485,7 +492,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    test("stays green from adapters, blob, and assembly", () => {
+    test("stays green from adapters and blob; from an assembly it is concrete tech, `assembly-builds-only`", () => {
       const g = graph(
         {
           "a/x.adapter.ts": { layer: "adapters", serviceRoot: "a" },
@@ -498,7 +505,13 @@ describe("checkLayers", () => {
           { from: "main.ts", to: leaf },
         ],
       )
-      expect(checkLayers(g)).toEqual([])
+      expect(checkLayers(g)).toEqual([
+        expect.objectContaining({
+          file: "main.ts",
+          rules: ["assembly-builds-only"],
+          targetClass: "concrete",
+        }),
+      ])
     })
 
     test("stays green when the matched pattern is a `pure` entry — verbatim, like a package name", () => {
@@ -600,7 +613,7 @@ describe("checkLayers", () => {
     })
 
     test.each(["model", "ports", "service", "adapters"] as const)(
-      "fires 1 when %s imports a crossed assembly entry",
+      "fires `inward-deps` and `assembly-driver-only` when %s imports a crossed assembly entry",
       (importerLayer) => {
         const g = graph(
           { "a/x.ts": { layer: importerLayer, serviceRoot: "a" } },
@@ -613,15 +626,27 @@ describe("checkLayers", () => {
             shape: "matrix-cell",
             targetClass: "assembly",
           }),
+          expect.objectContaining({
+            rules: ["assembly-driver-only"],
+            importerLayer,
+            shape: "matrix-cell",
+            targetClass: "assembly",
+          }),
         ])
       },
     )
 
-    test("blob importing a crossed assembly entry stays green — bound by the composition seals only, as in-set", () => {
+    test("blob importing a crossed assembly entry fires `assembly-driver-only` only — no seal binds blob, as in-set", () => {
       const g = graph({ "lib/x.ts": { layer: "blob" } }, [
         { from: "lib/x.ts", to: crossed("@made-up/b/main", "assembly") },
       ])
-      expect(checkLayers(g)).toEqual([])
+      expect(checkLayers(g)).toEqual([
+        expect.objectContaining({
+          rules: ["assembly-driver-only"],
+          importerLayer: "blob",
+          targetClass: "assembly",
+        }),
+      ])
     })
 
     test("a crossed model claim is pure for the importer — the trust pin: `service-purity` satisfied, no `pure` line", () => {
@@ -700,6 +725,10 @@ describe("checkLayers", () => {
       expect(checkLayers(g(assembly))).toEqual([
         expect.objectContaining({
           rules: ["inward-deps"],
+          targetClass: "assembly",
+        }),
+        expect.objectContaining({
+          rules: ["assembly-driver-only"],
           targetClass: "assembly",
         }),
       ])
@@ -810,7 +839,7 @@ describe("checkLayers", () => {
       },
     )
 
-    test("fires 1 when model type-imports assembly — wiring exports no contract", () => {
+    test("fires `inward-deps` and `assembly-driver-only` when model type-imports assembly — wiring exports no contract", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -821,6 +850,10 @@ describe("checkLayers", () => {
       expect(checkLayers(g)).toEqual([
         expect.objectContaining({
           rules: ["inward-deps"],
+          targetClass: "assembly",
+        }),
+        expect.objectContaining({
+          rules: ["assembly-driver-only"],
           targetClass: "assembly",
         }),
       ])
@@ -1036,7 +1069,7 @@ describe("checkLayers", () => {
       ).toEqual([])
     })
 
-    test("outward from the outside kinds fires `inward-deps` — assembly to driver, driver to boot", () => {
+    test("outward from the outside kinds fires `inward-deps`, and the target kind's own import rule — assembly to driver, driver to boot", () => {
       const violations = outside([
         { from: "src/cli.assembly.ts", to: mod("src/cli.driver.ts") },
         { from: "src/cli.assembly.ts", to: mod("src/cli.boot.ts") },
@@ -1049,13 +1082,17 @@ describe("checkLayers", () => {
       ])
       expect(violations.map((v) => [v.file, v.rules])).toEqual([
         ["src/cli.assembly.ts", ["inward-deps"]],
+        ["src/cli.assembly.ts", ["driver-not-imported"]],
         ["src/cli.assembly.ts", ["inward-deps"]],
+        ["src/cli.assembly.ts", ["boot-one-call"]],
         ["src/cli.driver.ts", ["inward-deps"]],
+        ["src/cli.driver.ts", ["boot-one-call"]],
         ["src/cli.assembly.ts", ["inward-deps"]],
+        ["src/cli.assembly.ts", ["driver-not-imported"]],
       ])
     })
 
-    test("the inside importing an outside kind fires `inward-deps` — a driver, a boot, a test", () => {
+    test("the inside importing an outside kind fires `inward-deps`, and the target kind's own import rule — a driver, a boot, a test", () => {
       const violations = outside([
         { from: "src/a/a.model.ts", to: mod("src/cli.driver.ts") },
         { from: "src/a/a.service.ts", to: mod("src/cli.boot.ts") },
@@ -1064,13 +1101,17 @@ describe("checkLayers", () => {
       ])
       expect(violations.map((v) => v.rules)).toEqual([
         ["inward-deps"],
+        ["driver-not-imported"],
         ["inward-deps"],
+        ["boot-one-call"],
         ["inward-deps"],
+        ["test-is-outside"],
         ["inward-deps"],
+        ["driver-not-imported"],
       ])
     })
 
-    test("a boot importing a composition unit or blob fires the seal or the quarantine; its driver is green", () => {
+    test("a boot importing a composition unit or blob fires the seal or the quarantine, and `boot-one-call`; its driver is green", () => {
       const violations = outside([
         { from: "src/cli.boot.ts", to: mod("src/cli.driver.ts") },
         { from: "src/cli.boot.ts", to: mod("src/a/a.service.ts") },
@@ -1079,9 +1120,24 @@ describe("checkLayers", () => {
       ])
       expect(violations.map((v) => v.rules)).toEqual([
         ["service-assembly-only", "runtime-import"],
+        ["boot-one-call"],
         ["adapter-assembly-only", "runtime-import"],
+        ["boot-one-call"],
         ["blob-quarantine"],
+        ["boot-one-call"],
       ])
+    })
+
+    test("a boot's type import binds too: a boot imports its one driver and nothing else", () => {
+      expect(
+        outside([
+          {
+            from: "src/cli.boot.ts",
+            to: mod("src/a/a.service.ts"),
+            kind: "type",
+          },
+        ]).map((v) => v.rules),
+      ).toEqual([["boot-one-call"]])
     })
 
     test("a test file imports anything, blob included", () => {
@@ -1097,23 +1153,66 @@ describe("checkLayers", () => {
       ).toEqual([])
     })
 
-    test("what no cell judges yet reads legal — a driver importing model, a boot importing model, a driver importing a test (step 04)", () => {
+    test("each outside kind's own import rule — a driver importing model or a test, a boot importing model, blob importing a driver", () => {
       expect(
         outside([
           { from: "src/cli.driver.ts", to: mod("src/a/a.model.ts") },
           { from: "src/cli.boot.ts", to: mod("src/a/a.model.ts") },
           { from: "src/cli.driver.ts", to: mod("src/cli.spec.ts") },
           { from: "src/legacy.ts", to: mod("src/cli.driver.ts") },
+        ]).map((v) => [v.file, v.rules]),
+      ).toEqual([
+        ["src/cli.driver.ts", ["driver-calls-services"]],
+        ["src/cli.boot.ts", ["boot-one-call"]],
+        ["src/cli.driver.ts", ["test-is-outside"]],
+        ["src/legacy.ts", ["driver-not-imported"]],
+      ])
+    })
+
+    test("a driver's or an assembly's type imports are free: a signature names shapes and calls nothing", () => {
+      expect(
+        outside([
+          {
+            from: "src/cli.driver.ts",
+            to: mod("src/a/a.model.ts"),
+            kind: "type",
+          },
+          { from: "src/cli.driver.ts", to: lib("zod"), kind: "type" },
+          { from: "src/cli.assembly.ts", to: lib("node:fs"), kind: "type" },
         ]),
       ).toEqual([])
     })
 
-    test("externals from a driver or a boot are not this check's — the driver's tech is read elsewhere", () => {
+    test("externals: a driver's package nothing declares or a pure one, a boot's any, an assembly's concrete or unclassified", () => {
       expect(
         outside([
           { from: "src/cli.driver.ts", to: lib("some-made-up-parser") },
+          { from: "src/cli.driver.ts", to: lib("node:path") },
+          { from: "src/cli.driver.ts", to: lib("node:fs") },
           { from: "src/cli.boot.ts", to: lib("node:process") },
+          { from: "src/cli.assembly.ts", to: lib("node:fs") },
+          { from: "src/cli.assembly.ts", to: lib("some-made-up-lib") },
+          { from: "src/cli.assembly.ts", to: lib("node:path") },
+        ]).map((v) => [
+          v.file,
+          v.rules,
+          v.shape === "matrix-cell" ? v.targetClass : null,
         ]),
+      ).toEqual([
+        ["src/cli.driver.ts", ["driver-calls-services"], "unclassified"],
+        ["src/cli.driver.ts", ["driver-calls-services"], "pure"],
+        ["src/cli.boot.ts", ["boot-one-call"], "concrete"],
+        ["src/cli.assembly.ts", ["assembly-builds-only"], "concrete"],
+        ["src/cli.assembly.ts", ["assembly-builds-only"], "unclassified"],
+      ])
+    })
+
+    test("a package `driverTech` declares is the driver's tech", () => {
+      const g = graph({ "src/cli.driver.ts": { layer: "driver" } }, [
+        { from: "src/cli.driver.ts", to: lib("some-made-up-parser") },
+      ])
+      expect(
+        checkLayers(g, { driverTech: (s) => s === "some-made-up-parser" }),
       ).toEqual([])
     })
   })
@@ -1178,7 +1277,7 @@ describe("checkLayers", () => {
       },
     )
 
-    test("assembly importing anything — bottom row of the matrix", () => {
+    test("assembly importing anything inside, blob included — bottom row of the matrix; a pure package too", () => {
       const g = graph(
         {
           "main.spec.ts": { layer: "assembly" },
@@ -1190,8 +1289,7 @@ describe("checkLayers", () => {
           { from: "main.spec.ts", to: mod("a/a.service.ts") },
           { from: "main.spec.ts", to: mod("a/fs.adapter.ts") },
           { from: "main.spec.ts", to: mod("lib/helpers.ts") },
-          { from: "main.spec.ts", to: lib("node:fs") },
-          { from: "main.spec.ts", to: lib("axios") },
+          { from: "main.spec.ts", to: lib("node:path") },
         ],
       )
       expect(checkLayers(g)).toEqual([])

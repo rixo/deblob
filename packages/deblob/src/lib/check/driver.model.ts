@@ -19,6 +19,7 @@ import type {
   ArgValue,
   CalleeKind,
   Exemption,
+  FileReading,
   ImportGraph,
   ModuleNode,
   ReadCall,
@@ -82,13 +83,47 @@ const isHandableInHook = (value: ArgValue): boolean =>
     ? value.path.length === 0 && value.from === null
     : isHandable(value)
 
+/** Every call a reading makes: at root, in its functions, in every hook. */
+const readingCalls = (reading: FileReading): ReadCall[] => {
+  const ofHooks = (hooks: readonly ReadHook[]): ReadCall[] =>
+    hooks.flatMap((hook) => [...callsIn(hook.body), ...ofHooks(hook.hooks)])
+  return [
+    ...callsIn(reading.root),
+    ...ofHooks(reading.hooks),
+    ...reading.functions.flatMap((fn) => [
+      ...callsIn(fn.body),
+      ...ofHooks(fn.hooks),
+    ]),
+  ]
+}
+
 /**
- * The wiring function: the first exported — what is not exported, nothing
- * outside calls. Every other function is a definition beside it.
+ * The wiring function: the one its importers call — the boot's `main()`, a
+ * parent driver's `registerCheckCommands(…)`, read as wiring calls; for a
+ * driver nothing calls, the first exported one that registers hooks, then the
+ * first exported. Every other function is a definition beside it, its hooks
+ * judged all the same: no export order hides a hook.
  */
 const wiringFunctionOf = (
+  node: ModuleNode,
   functions: readonly ReadFunction[],
-): ReadFunction | undefined => functions.find((fn) => fn.exported)
+  graph: ImportGraph,
+): ReadFunction | undefined => {
+  const called = new Set<string>()
+  for (const edge of graph.edges) {
+    if (edge.to.type !== "module" || edge.to.path !== node.path) continue
+    // an importer is read: an unparsed file carries no edges
+    const importer = graph.modules.get(edge.from)?.reading as FileReading
+    for (const call of readingCalls(importer))
+      if (call.callee.kind === "wiring" && call.callee.path === node.path)
+        called.add(call.callee.name)
+  }
+  return (
+    functions.find((fn) => fn.exported && called.has(fn.name ?? "default")) ??
+    functions.find((fn) => fn.exported && fn.hooks.length > 0) ??
+    functions.find((fn) => fn.exported)
+  )
+}
 
 const judgeDriver = (
   node: ModuleNode,
@@ -331,6 +366,11 @@ const judgeDriver = (
   reading.hooks.forEach(judgeHook)
   if (node.layer === "test") return violations
 
+  // a sub-driver is imported only to call its wiring function: a name of it
+  // used as a value — handed as a hook, stored, read off — is red where used
+  for (const used of reading.driverValues)
+    report("sub-driver-wiring", used.span, { shape: "value", name: used.name })
+
   // the only definitions: its hooks and one wiring function
   for (const statement of reading.root)
     if (statement.kind === "definition" && !statement.inlined)
@@ -339,7 +379,7 @@ const judgeDriver = (
         name: statement.name,
         at: "root",
       })
-  const wiring = wiringFunctionOf(reading.functions)
+  const wiring = wiringFunctionOf(node, reading.functions, graph)
   for (const fn of reading.functions) {
     if (fn !== wiring) {
       report("driver-hooks-only", fn.span, {
@@ -347,6 +387,7 @@ const judgeDriver = (
         name: fn.name,
         at: "function",
       })
+      fn.hooks.forEach(judgeHook)
       continue
     }
     // a root driver's `main()` takes nothing and reads its tech itself; a

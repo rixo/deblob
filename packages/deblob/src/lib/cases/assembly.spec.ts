@@ -623,7 +623,7 @@ const ROWS: readonly Row[] = [
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
           return { notes: createNotes({ store: createFsStore(realpathSync(cwd)) }) } // red: assembly-builds-only -- a call that builds nothing, the tech's
         }
-        // missed red: assembly-builds-only -- the import of node:fs: concrete tech in an assembly; the matrix cell is not built yet
+        // red: assembly-builds-only -- the import of node:fs: concrete tech in an assembly
       `,
     },
   },

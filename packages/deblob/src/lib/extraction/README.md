@@ -37,14 +37,19 @@ non-exported function only ever called directly in its file is a tracked local:
 not a function of the file but read at each site as the site's own text, the
 site's arguments its parameters, its hooks the site's, its return the call's —
 its body's own names still resolve where it was written, so a local or a
-parameter at the site never takes one over) and the open part: what the reader
-genuinely could not place (a callee of kind unknown — an import the resolver
-could not land, `this`, a binding through itself — and a parameter no production
-site binds), never a fence over a tree it has. A callback handed to anything but
-a tech callee is read inline where it sits, its calls the enclosing body's, its
-returns the callee's; a call's result called inline is classified by its value.
-An outside-kind file no tech covers, or an unparsed one, has none: recognized
-and open.
+parameter at the site never takes one over; in an assembly, a driver or a boot,
+which define nothing of their own, it stays a function and its call a call) and
+the open part: what the reader genuinely could not place (a callee of kind
+unknown — an import the resolver could not land, `this`, a binding through
+itself — and a parameter no production site binds), never a fence over a tree it
+has; and each use of a name imported from a driver file as a value rather than a
+call, with the name (a namespace's member, or its local name handed whole) and
+the file's path (`driverValues`: a sub-driver is imported only to call its
+wiring function). A namespace's member reads as the named import of it would. A
+callback handed to anything but a tech callee is read inline where it sits, its
+calls the enclosing body's, its returns the callee's; a call's result called
+inline is classified by its value. An outside-kind file no tech covers, or an
+unparsed one, has none: recognized and open.
 
 ## API
 

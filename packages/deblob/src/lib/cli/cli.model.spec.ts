@@ -191,6 +191,12 @@ describe("CHECK_RULES", () => {
         "adapter-assembly-only",
         "runtime-import",
         "public-unit",
+        "assembly-driver-only",
+        "driver-not-imported",
+        "boot-one-call",
+        "test-is-outside",
+        "driver-calls-services",
+        "assembly-builds-only",
       ],
       private: ["private-sealed"],
       barrels: ["layer-in-path"],
@@ -205,6 +211,7 @@ describe("CHECK_RULES", () => {
         "driver-hooks-only",
         "sub-driver-wiring",
       ],
+      boot: ["boot-one-call"],
     })
   })
 

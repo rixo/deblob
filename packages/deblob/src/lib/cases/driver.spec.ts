@@ -360,6 +360,7 @@ const ROWS: readonly Row[] = [
           parser.command("check").action((opts) => cli.check(parseOpts(opts))) // red: driver-calls-services, hook-one-call -- a model called; a parse around the call
           parser.parse(process.argv)
         }
+        // red: driver-calls-services -- the import of opts.model: a driver imports no model
       `,
     },
   },
@@ -385,6 +386,7 @@ const ROWS: readonly Row[] = [
           parser.command("check").action((opts) => cli.check(opts))
           parser.parse(process.argv)
         }
+        // red: driver-calls-services -- the import of picocolors: declared by nothing
       `,
     },
   },
@@ -502,6 +504,76 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // Added at the detectors step, checkpoint 7, red first (stamped
+    // 2026-09-27): the wiring function was the first exported, and a function beside it was
+    // skipped whole — a helper exported before `main` hid `main`'s hooks.
+    // Now: the one its importers call (the boot's `main()`); for a driver
+    // nothing imports, the first exported that registers hooks. Every
+    // function's hooks are judged either way.
+    name: "a helper exported before the wiring function hides nothing: the wiring function is the one called, or the one registering hooks",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli.driver.ts": `
+        ${IMPORTS}
+        export const registerDebug = () => { // red: driver-hooks-only -- a function beside the wiring function: the boot calls main
+          process.on("SIGUSR2", () => undefined) // red: hook-one-call -- the hook runs no use case: a hook beside the wiring function is judged all the same
+        }
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("notes")
+          parser.command("check").action((opts) => cli.check(opts.files)) // red: hook-one-call -- read off the event
+          parser.parse(process.argv)
+        }
+      `,
+      "src/cli.boot.ts": `
+        import { main } from "./cli.driver.ts"
+        main()
+      `,
+      "src/worker.driver.ts": `
+        ${IMPORTS}
+        export const describeWorker = () => "worker" // red: driver-hooks-only -- a function beside the wiring function
+        export const start = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("worker")
+          parser.command("check").action((opts) => cli.check(opts.files)) // red: hook-one-call -- read off the event
+          parser.parse(process.argv)
+        }
+      `,
+    },
+  },
+  {
+    // Added at the detectors step, checkpoint 7 (stamped 2026-09-27): no row
+    // imported a sub-driver as a namespace. canon: "a driver imports another driver only
+    // to call its wiring function" — a namespace names nothing; each member is
+    // judged where it is used: called, green; handed on, red.
+    name: "a sub-driver imported as a namespace: its wiring function called is green, a member handed on as a hook is red",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli/check.driver.ts": `
+        import type { cac } from "cac"
+        import type { createCli } from "../lib/cli/cli.service.ts"
+        export const registerCheckCommands = (parser: ReturnType<typeof cac>, cli: ReturnType<typeof createCli>) => {
+          parser.command("check").action((opts) => cli.check(opts))
+        }
+        export const checkHook = (opts: unknown) => opts // red: driver-hooks-only -- a hook exported beside the wiring function
+      `,
+      "src/cli.driver.ts": `
+        ${IMPORTS}
+        import * as check from "./cli/check.driver.ts"
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("notes")
+          check.registerCheckCommands(parser, cli)
+          parser.command("hook").action(check.checkHook) // red: sub-driver-wiring -- a sub-driver's hook handed on as a value, through the namespace
+          console.log(check) // red: sub-driver-wiring -- the namespace handed on whole
+          parser.parse(process.argv)
+        }
+      `,
+    },
+  },
+  {
     // canon: "Calling a sub-driver from inside a hook, or handing it a
     // use-case result, would let one hook chain two calls"; "Never a hook,
     // never data from the hexagon"; "The sub-driver exports that one wiring
@@ -519,14 +591,14 @@ const ROWS: readonly Row[] = [
       `,
       "src/cli.driver.ts": `
         ${IMPORTS}
-        import { checkHook, registerCheckCommands } from "./cli/check.driver.ts" // missed red: sub-driver-wiring -- a hook imported from a sub-driver; the import cells are checkpoint 7's
+        import { checkHook, registerCheckCommands } from "./cli/check.driver.ts"
         export const main = async () => {
           const { cli } = createCliAssembly({ cwd: process.cwd() })
           const parser = cac("notes")
           parser.command("later").action(() => registerCheckCommands(parser, cli)) // red: sub-driver-wiring, hook-one-call -- wired from inside a hook; the hook runs no use case
           // red: wiring-outside-hooks -- a use case outside any hook
           registerCheckCommands(parser, await cli.status({})) // red: sub-driver-wiring -- handed a use-case result
-          parser.command("hook").action(checkHook)
+          parser.command("hook").action(checkHook) // red: sub-driver-wiring -- a sub-driver's hook handed on as a value: it is imported only to call its wiring function
           parser.parse(process.argv)
         }
       `,

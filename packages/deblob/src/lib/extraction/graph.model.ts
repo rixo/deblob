@@ -552,6 +552,13 @@ export type FileReading = {
   functions: readonly ReadFunction[]
   /** What the reader could not place — never a fact a rule fires on. */
   open: readonly OpenPart[]
+  /**
+   * Each use of a name imported from a driver file as a value rather than a
+   * call — handed, stored, read off — with the name (a namespace's member) and
+   * the file's path: a sub-driver is imported only to call its wiring
+   * function.
+   */
+  driverValues: readonly { name: string; path: string; span: Span }[]
 }
 
 /**

@@ -736,6 +736,145 @@ and `cause` of checkpoint 3, grouped by the same model.
   new unit file's root constants; the assembly's five catches arrived with the
   reader change.
 
+### Checkpoint 7, drafted 2026-09-27
+
+Resumed after `04/04_lens`. The lens changes nothing here: the boot was already
+one thing (one call, to its one driver), and the matrix rows state imports,
+which the lens left alone. What this checkpoint flips: every `missed` marker
+that names the boot check or a matrix cell — 21 markers: 8 in `boot.spec.ts`, 10
+in `layers.spec.ts`, one each in `assembly.spec.ts`, `driver.spec.ts` and
+`modules.spec.ts`.
+
+**The `boot` check** joins `KNOWN_CHECKS` (`boot-one-call`). A boot's root holds
+exactly one call, to a driver's wiring function, with no argument, its result
+dropped, awaited or voided. Each of these is red, one fact each:
+
+- a call other than the wiring function's (`start()`, a second `main()`, the
+  `.catch` chained on the one call — a call on the result is the red, the result
+  used as its receiver is not a second one);
+- an argument to the wiring call (`main(process.argv)`);
+- the result held (`const app = main()`);
+- a definition, an assignment, any other statement (`process.title = …`);
+- no call at all: the file is red, its driver imported and never started;
+- a driver imported whose wiring function the boot does not call (a second
+  driver).
+
+**The `layers` cells**, each a violation of its own beside what the edge already
+cites (two facts, two reds — the rows already say so):
+
+| Edge                                                                       | Rule                    | Type imports |
+| -------------------------------------------------------------------------- | ----------------------- | ------------ |
+| into an assembly, from anything but a driver, assembly or test             | `assembly-driver-only`  | included     |
+| into a driver, from anything but a boot, driver or test                    | `driver-not-imported`   | included     |
+| into a boot, from anything                                                 | `boot-one-call`         | included     |
+| out of a boot, into anything but a driver                                  | `boot-one-call`         | included     |
+| into a test file, from anything                                            | `test-is-outside`       | included     |
+| out of a driver, into model (in-set, crossed, or a pure package)           | `driver-calls-services` | free         |
+| out of a driver, into a package neither its reader nor `driverTech` claims | `driver-calls-services` | free         |
+| out of an assembly, into concrete tech                                     | `assembly-builds-only`  | free         |
+
+Type imports: canon exempts them out of a driver or an assembly ("a hook's
+options or a wiring function's signature name shapes and call nothing"), and
+names them included into the outside kinds. A concrete builtin is a driver's
+tech by the reading's table, as today.
+
+**The one reader addition: a hook imported from a sub-driver**
+(`driver.spec.ts`:
+`import { checkHook, registerCheckCommands } from "./cli/check.driver.ts"`). No
+edge carries the names imported. The reading of a driver records, for each name
+it imports from another driver, the name and the target's path; the driver check
+reads the target's wiring function (its first exported function) and reds any
+other name, `sub-driver-wiring`.
+
+**Stamped rows that gain a red.** Two driver rows already red at the call gain
+the import, as the adapter row has both ("a driver calling an adapter is red,
+and so is its import"): the model imported
+(`import { parseOpts } from "./lib/cli/opts.model.ts"`) and the package nothing
+declares (`import pc from "picocolors"`), each `driver-calls-services` on the
+import.
+
+**To rule — five rows**, red first with the rest, stamped before the check
+moves:
+
+| Row                                                                               | Proposed | Why                                                                                                                                                                     |
+| --------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a spec file importing a boot                                                      | red      | canon's Test row says "anything", the boot's "nothing imports a boot". A boot runs on import: the test would start the program. The boot's sentence is the specific one |
+| an assembly importing a package nobody classified (no `deblob` field, not `pure`) | red      | as a service's `unclassified-lib`: its purity is unknown until declared, and an assembly may not import concrete. Way out: `pure` in config, or an adapter wraps it     |
+| a boot importing two drivers, calling one                                         | red      | "one driver": the import not started                                                                                                                                    |
+| a driver importing a pure package (`node:path`)                                   | red      | "never a model"; pure libraries count as model. Way out: the service that needs it                                                                                      |
+| a driver and an assembly type-importing a model, `node:fs`                        | green    | the type exemption out of the two, canon's letter; the green that keeps the cells from reading type edges                                                               |
+
+**Messages**, each new shape with its way out: the boot's (the call, the
+argument, the result, the statement, the missing call, the second driver), and
+the cells' (the importer and target named, the rule's one line). `explain boot`
+resolves.
+
+**Gates.** The rows; coverage 100; one mutation per clause (each cell disabled,
+each boot clause removed; the type-import greens catch a cell that reads type
+edges out of a driver or an assembly). deblob on itself: the count recorded, the
+new reds named by file — `src/drivers/**`, filed as assembly, imports drivers'
+tech and models (`06_cli-restructure`'s ground).
+
+**Built 2026-09-27.** The five rows stamped as drafted; every marker the
+checkpoint owned is plain, none left `missed`.
+
+- **The cells.** In `checkLayers`, each outside kind's import fact is a
+  violation of its own, after the cell's citation. A driver's externals are
+  judged by purity and `driverTech` (a new option): a reader's own claims never
+  reach the edge, and no reader binding driver files claims a package today —
+  the day one does, its claim must reach this cell.
+- **Reader additions.** A boot's local function stays a definition, its call a
+  call, as an assembly's and a driver's already did: read inline, the definition
+  row had nothing to fire on. `FileReading.driverValues`: each use of a name
+  imported from a driver as a value rather than a call. A namespace's member
+  reads as its named import would (it read as computed, a second red on the same
+  misuse).
+- **The wiring function, re-decided at review.** It was the first exported, and
+  every other function was skipped whole: a helper exported before `main` hid
+  `main`'s hooks from every check, and the import rule would have blamed the
+  wrong name. Now: the one its importers call (read from their wiring calls);
+  for a driver nothing imports, the first exported that registers hooks, then
+  the first exported. A function beside it has its hooks judged all the same;
+  only the wiring function's body is judged as wiring. And a sub-driver's names
+  are judged by use, not by export order: called, green; handed on, stored or
+  read off, red where used (`.action(checkHook)`, and through a namespace
+  `.action(check.checkHook)`).
+- **The boot check.** As drafted, with one refinement: "starts nothing" looks
+  into a branch's arms — a call made under a condition is the branch's red, not
+  a missing call.
+- **Rows.** Besides the five: the stamped boot definition row gains a
+  `stable-root` red on `start()` (with the local kept a call, it is a second
+  root call, past the exemption); the `checkHook` red moves from the import to
+  `.action(checkHook)`, where the misuse is. Added: a boot's constant and
+  conditional call (red, red), a sub-driver imported as a namespace (its wiring
+  called green, a member handed on red, the namespace handed whole red) and a
+  helper exported before the wiring function (red first: its hooks and `main`'s
+  judged, the right one named beside).
+- **Units.** Sixteen `checkLayers` units pinned the old matrix ("fires 1", "what
+  no cell judges yet reads legal"): realigned and renamed to the cells, plus
+  type-import and `driverTech` cases. The `CHECK_RULES` pin and the check list
+  gain `boot`. Render units for every new message; one unit for the guard no
+  tree reaches (a boot with no reading).
+- **Gates.** Coverage 100; 32 mutations, one per clause, each caught by its rows
+  (the first run found the driver's external type imports unpinned: the
+  type-import row gained `node:path`).
+- **deblob on itself: 471 → 479.** Three `assembly-builds-only` on `node:url`,
+  `node:process`, `node:fs` imported under `src/drivers/**`, which the config
+  files as assembly (`06_cli-restructure`). Five `stable-root` unknowns come
+  from the roles commit, not this checkpoint: the test reader's `Role`
+  constants, whose type name the reader does not follow yet. This checkpoint's
+  own code was first flagged too (two lookup tables at root), and was made
+  `as const`.
+- **The plumbing example: 0 → 4.** Its gate helpers (`src/gate/gate.ts`,
+  `src/gate/fronts.ts`) carry no suffix, so they are blob, and blob imports
+  neither a driver nor an assembly. The check is right; where test-support files
+  live is the open question `04/06_test-rules` owns. The example is left as it
+  was built.
+- **Known limits.** A `void` on the boot's one call reads as a computed use, and
+  the boot check does not judge uses: `main() + 1` would pass it too. In a hook,
+  the same reading makes `void cli.check(opts)` red as a result used, where
+  canon lets a hook drop the value — a reader question for the sweep.
+
 ## Docs
 
 `check/README.md`: the three checks and the call clause. `cases/README.md`: the

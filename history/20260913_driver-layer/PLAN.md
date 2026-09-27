@@ -540,17 +540,24 @@ may reopen the service example and the config pattern section.
   carries the rationale), resuming at checkpoint 7 under it. `04/04_lens` closed
   2026-09-27 in four checkpoints: canon, the rows re-read (and the hook ruled:
   the event handed on untouched), the checks aligned, memory and the assert
-  sweep. Then, before type-name depth, `04/05_sweep` (added 2026-09-25: the
-  detectors went fast, one commit a checkpoint for days): loose ends caught and
-  bolts tightened before building on them. A review by another model, cold, of
-  everything since `02_rows-first` closed — code, units, rows, READMEs, SPEC
-  notes against what landed; the confessed known failures and every "to be
-  measured" re-read; the two owed cleanups (`it` where the title is a behavior
-  sentence, `test` elsewhere — never a blind rename; the typed builders
-  replacing `render.model.spec.ts`'s `as …Violation` casts); and grouping's
-  worth measured on the self-check (how many groups carry riders) before
-  anything else is built on it. Findings as a table, rixo rules each, fixes one
-  commit per batch.
+  sweep. `04/03_detectors` closed 2026-09-27 with its checkpoint 7 (the boot
+  check, the import cells). Then, before type-name depth, `04/05_sweep` (added
+  2026-09-25: the detectors went fast, one commit a checkpoint for days): loose
+  ends caught and bolts tightened before building on them. A review by another
+  model, cold, of everything since `02_rows-first` closed — code, units, rows,
+  READMEs, SPEC notes against what landed; the confessed known failures and
+  every "to be measured" re-read; the two owed cleanups (`it` where the title is
+  a behavior sentence, `test` elsewhere — never a blind rename; the typed
+  builders replacing `render.model.spec.ts`'s `as …Violation` casts); and
+  grouping's worth measured on the self-check (how many groups carry riders)
+  before anything else is built on it. Findings as a table, rixo rules each,
+  fixes one commit per batch. Parked for it at detectors checkpoint 7
+  (2026-09-27): `void x` reads as a computed use, so a hook dropping its promise
+  (`void cli.check(opts)`) is red where canon lets a hook drop the value, and a
+  boot's `void main()` goes unjudged — a reader question; the fix flips the
+  plumbing SPEC's mutation-table line that counts that red as a catch. And five
+  `stable-root` unknowns from the roles commit: the test reader's `Role`
+  constants, `as const` their way out.
 
   Then `04/06_test-rules` (added 2026-09-26, **not to slip**: the ruling it
   revisits was made provisional on purpose). What a test body may do is

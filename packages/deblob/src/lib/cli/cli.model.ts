@@ -21,6 +21,7 @@ export const KNOWN_CHECKS = [
   "modules",
   "assembly",
   "driver",
+  "boot",
 ] as const
 
 export type CheckName = (typeof KNOWN_CHECKS)[number]
@@ -40,6 +41,12 @@ export const CHECK_RULES: Readonly<Record<CheckName, readonly RuleId[]>> = {
     "adapter-assembly-only",
     "runtime-import",
     "public-unit",
+    "assembly-driver-only",
+    "driver-not-imported",
+    "boot-one-call",
+    "test-is-outside",
+    "driver-calls-services",
+    "assembly-builds-only",
   ],
   private: ["private-sealed"],
   barrels: ["layer-in-path"],
@@ -54,6 +61,7 @@ export const CHECK_RULES: Readonly<Record<CheckName, readonly RuleId[]>> = {
     "driver-hooks-only",
     "sub-driver-wiring",
   ],
+  boot: ["boot-one-call"],
 }
 
 export type CliAction =

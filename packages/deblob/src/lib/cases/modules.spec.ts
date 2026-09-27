@@ -641,7 +641,7 @@ const ROOT_CALLS: readonly Row[] = [
       `,
       "src/cli.boot.ts": `
         import { main } from "./cli.driver.ts"
-        // missed red: boot-one-call -- "nothing else … called": a second call beside the one; the boot check is not built yet
+        // red: boot-one-call -- "nothing else … called": a second call beside the one
         // missed red: stable-root -- a second call on import, the tech's; the exemption is the one call, bare; the reader takes .catch for a language call
         main().catch(console.error)
       `,

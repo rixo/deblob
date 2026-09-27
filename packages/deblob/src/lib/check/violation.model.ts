@@ -23,7 +23,12 @@ import type { RuleId } from "./rule.model.ts"
 export type Ruleset = "arch"
 
 /** What a violating import target resolves to, matrix-side. */
-export type TargetClass = Layer | "concrete"
+/**
+ * What an edge reaches: an in-set or crossed layer, or an external leaf by its
+ * purity — `pure` counts as model, `unclassified` is a package nobody
+ * declared.
+ */
+export type TargetClass = Layer | "concrete" | "pure" | "unclassified"
 
 export type LayersViolation = {
   check: "layers"
@@ -413,6 +418,14 @@ export type DriverViolation = {
       where: "wiring" | "hook"
     }
   | {
+      /**
+       * A name imported from a sub-driver used as a value — handed as a hook,
+       * stored, read off — rather than called.
+       */
+      shape: "value"
+      name: string
+    }
+  | {
       /** A hook's use-case calls, when not exactly one. */
       shape: "call-count"
       count: number
@@ -454,6 +467,57 @@ export type DriverViolation = {
 )
 
 /** The union grows one member per detector step. */
+/**
+ * A boot's statement past its one call, or a start missing. File-level (`line:
+ * null`) when it is about the file: no call at all, a driver imported and never
+ * started. No boot violation rides another.
+ */
+export type BootViolation = {
+  check: "boot"
+  ruleset: Ruleset
+  rules: readonly RuleId[]
+  file: string
+  /** Grouping key; `null` = the `blob` bucket. */
+  serviceRoot: string | null
+  /** 1-indexed line of the statement; `null` for the file. */
+  line: number | null
+} & (
+  | {
+      /** A call other than the one: another callee, or the wiring again. */
+      shape: "call"
+      callee: CalleeKind
+    }
+  | {
+      /** The one call handed an argument: the tech is the driver's to read. */
+      shape: "argument"
+      call: CalleeKind
+    }
+  | {
+      /** The one call's result stored in a binding. */
+      shape: "held"
+      name: string | null
+    }
+  | {
+      /** A definition: a boot defines nothing. */
+      shape: "definition"
+      name: string | null
+    }
+  | {
+      /** Any other statement: a branch, a write, a throw, one unread. */
+      shape: "statement"
+      form: string
+    }
+  | {
+      /** No call at all: the boot starts nothing. */
+      shape: "no-call"
+    }
+  | {
+      /** A driver imported whose wiring function the boot never calls. */
+      shape: "unstarted"
+      driver: string
+    }
+)
+
 export type Violation =
   | LayersViolation
   | PrivateViolation
@@ -464,3 +528,4 @@ export type Violation =
   | ModulesViolation
   | AssemblyViolation
   | DriverViolation
+  | BootViolation

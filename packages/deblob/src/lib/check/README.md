@@ -12,21 +12,24 @@ One function per check, all over `ImportGraph` from `extraction`:
   over every import kind, module cycles over runtime edges only. One finding per
   strongly connected component, with the membership and a shortest witness
   cycle.
-- `checkLayers(graph, { pure?, typeOnlyExempt? })` — the dependency matrix:
-  `inward-deps`, `service-purity`, `blob-quarantine`, `service-assembly-only`,
-  `adapter-assembly-only`, `runtime-import`, `public-unit`. Per-cell
-  `runtime-import`: a type-only edge is exempt where the target owns a contract
-  shape. An external leaf carrying a layer enters the matrix as a target of that
-  layer; an unlabeled external falls to the purity trichotomy (pure / concrete /
-  unclassified) that `pure` decides. The matrix is total over the nine kinds:
-  the driver, boot and test rows cite what a detector judges today (the
-  composition seals, `blob-quarantine`, and `inward-deps` for an import that
-  points outward — assembly to driver, driver to boot, the inside to any of
-  them); a driver importing model, or a boot importing anything but its driver,
-  is canon's letter whose slug is registered and whose cell is not built, and
-  reads legal until the outside rules land (driver-layer chapter, step 04).
-  Externals from a driver or a boot are not this check's: the driver's tech is
-  read elsewhere.
+- `checkLayers(graph, { pure?, typeOnlyExempt?, driverTech? })` — the dependency
+  matrix: `inward-deps`, `service-purity`, `blob-quarantine`,
+  `service-assembly-only`, `adapter-assembly-only`, `runtime-import`,
+  `public-unit`. Per-cell `runtime-import`: a type-only edge is exempt where the
+  target owns a contract shape. An external leaf carrying a layer enters the
+  matrix as a target of that layer; an unlabeled external falls to the purity
+  trichotomy (pure / concrete / unclassified) that `pure` decides. The outside
+  kinds' own import facts, each a violation of its own beside what the cell
+  cites: an assembly imported by anything but a driver, an assembly or a test
+  (`assembly-driver-only`), a driver by anything but a boot, a driver or a test
+  (`driver-not-imported`), a boot by anything, or a boot importing anything but
+  a driver (`boot-one-call`), a test file by anything (`test-is-outside`) — type
+  imports included; a driver importing model, a pure package or one `driverTech`
+  does not declare (`driver-calls-services`), an assembly importing concrete or
+  unclassified tech (`assembly-builds-only`) — type imports free, a signature
+  names shapes. A concrete builtin, a declared external, a file outside coverage
+  is a driver's tech by the reading's table. A reader's own claims are not
+  consulted: no reader binding driver files claims a package today.
 - `checkPrivate(graph)` — `private-sealed`. Every `private` path segment is one
   boundary; every edge kind and form binds.
 - `checkBarrels(graph, { tolerateBlobReexport? })` — `layer-in-path`. An index
@@ -98,12 +101,26 @@ One function per check, all over `ImportGraph` from `extraction`:
   a branch's arms (a hook does not wire). `driver-calls-services`: a callee that
   is not a use case, an assembly's factory, a sub-driver's wiring or the tech
   (`unknown` when unplaced). `driver-hooks-only`: a definition at root, a
-  function beside the wiring function (the first exported), a local of it
-  holding functions, a root driver's wiring function taking a parameter (a
-  driver another driver or a test imports is a sub-driver). `sub-driver-wiring`:
-  a sub-driver's wiring in a hook, or handed a use case's result. Two facts are
-  two violations; none rides another. The test tech exempts services-only and —
-  provisionally, until the chapter's `04/06_test-rules` — `hook-one-call` whole.
+  function beside the wiring function — the one its importers call (the boot's
+  `main()`, a parent driver's), for a driver nothing calls the first exported
+  that registers hooks, then the first exported; a function beside it has its
+  hooks judged all the same —, a local of it holding functions, a root driver's
+  wiring function taking a parameter (a driver another driver or a test imports
+  is a sub-driver). `sub-driver-wiring`: a sub-driver's wiring in a hook, or
+  handed a use case's result, or a name imported from it used as a value rather
+  than called — handed as a hook, stored, read off; through a namespace, its
+  member. Two facts are two violations; none rides another. The test tech
+  exempts services-only and — provisionally, until the chapter's
+  `04/06_test-rules` — `hook-one-call` whole.
+- `checkBoot(graph)` — `boot-one-call`, over every boot's root: one call, to a
+  driver's wiring function, bare; red, each on its own: any other call (a call
+  on the one call's result included), an argument to it, its result held, a
+  definition (a function too — a boot's local function stays a definition), any
+  other statement, a branch included; on the file: no call at all (a call under
+  a branch is the branch's red), a driver imported and never started. The
+  structure is the rule: a statement the reader cannot read is a second
+  statement all the same. A `void` on the one call reads as a computed use and
+  is not judged.
 - `groupByFix(violations)` (`grouping.model.ts`) — one group per fix: a
   violation rides with the violation whose subject its `cause` names, the
   chain's root leading; one without a cause, or whose cause no violation

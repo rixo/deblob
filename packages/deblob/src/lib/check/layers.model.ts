@@ -32,6 +32,12 @@ export type CheckLayersOptions = {
    * binding every kind — knobs only tighten canon.
    */
   typeOnlyExempt?: boolean
+  /**
+   * The project's `driverTech` matcher: the packages a driver imports as its
+   * tech. Absent = none. A reader's own claims are not consulted: no reader
+   * binding driver files claims a package today.
+   */
+  driverTech?: (specifier: string) => boolean
 }
 
 /**
@@ -123,6 +129,48 @@ const moduleCellRules = (
 }
 
 /**
+ * Each outside kind, imported: the importers canon names ("imported only by
+ * …"), and the rule any other importer breaks.
+ */
+const IMPORTED = {
+  assembly: {
+    by: ["driver", "assembly", "test"],
+    rule: "assembly-driver-only",
+  },
+  driver: { by: ["boot", "driver", "test"], rule: "driver-not-imported" },
+  boot: { by: [], rule: "boot-one-call" },
+  test: { by: [], rule: "test-is-outside" },
+} as const satisfies Partial<
+  Record<Layer, { by: readonly Layer[]; rule: RuleId }>
+>
+
+/**
+ * The outside kinds' own import facts on an in-set or crossed edge, each a
+ * violation of its own beside what the cell cites: an assembly, a driver, a
+ * boot, a test file imported by what canon does not name — type imports
+ * included, an outside kind has no contract; a boot importing anything but a
+ * driver; a driver importing model at runtime — a signature naming its shapes
+ * is free.
+ */
+const outsideImportRules = (
+  importer: Layer,
+  target: Layer,
+  typeEdge: boolean,
+): readonly RuleId[] => {
+  const rules: RuleId[] = []
+  if (target in IMPORTED) {
+    const imported: { by: readonly Layer[]; rule: RuleId } =
+      IMPORTED[target as keyof typeof IMPORTED]
+    if (!imported.by.includes(importer)) rules.push(imported.rule)
+  }
+  if (importer === "boot" && target !== "driver" && target !== "boot")
+    rules.push("boot-one-call")
+  if (importer === "driver" && target === "model" && !typeEdge)
+    rules.push("driver-calls-services")
+  return rules
+}
+
+/**
  * `public-unit`: service/adapters import freely from their own service's
  * `private/`.
  */
@@ -170,6 +218,7 @@ export const checkLayers = (
 ): LayersViolation[] => {
   const pure = new Set(options.pure ?? [])
   const typeOnlyExempt = options.typeOnlyExempt ?? true
+  const driverTech = options.driverTech ?? (() => false)
   const violations: LayersViolation[] = []
 
   for (const edge of graph.edges) {
@@ -177,13 +226,18 @@ export const checkLayers = (
 
     const importer = moduleOf(graph, edge.from)
     const importerLayer = importer.layer
+    const outsideCells = (targetClass: TargetClass, target: Layer): void => {
+      for (const rule of outsideImportRules(importerLayer, target, typeEdge))
+        violations.push(matrixCell(importer, edge, targetClass, [rule]))
+    }
 
     if (edge.to.type === "module") {
       const target = moduleOf(graph, edge.to.path)
       const cellExempt = typeOnlyExempt && TYPE_EXEMPT_TARGETS.has(target.layer)
-      if (typeEdge && cellExempt) continue
-      if (isOwnPrivate(importer, target)) continue
-      const rules = moduleCellRules(importerLayer, target.layer)
+      const rules =
+        (typeEdge && cellExempt) || isOwnPrivate(importer, target)
+          ? null
+          : moduleCellRules(importerLayer, target.layer)
       if (rules) {
         // the `runtime-import` hint: "only import type is allowed" — only where
         // the cell's type variant is exempt
@@ -192,6 +246,7 @@ export const checkLayers = (
           : rules
         violations.push(matrixCell(importer, edge, target.layer, cited))
       }
+      outsideCells(target.layer, target.layer)
       continue
     }
 
@@ -205,14 +260,47 @@ export const checkLayers = (
     const crossed = edge.to.layer
     if (crossed !== null && crossed !== "blob") {
       const cellExempt = typeOnlyExempt && TYPE_EXEMPT_TARGETS.has(crossed)
-      if (typeEdge && cellExempt) continue
-      const rules = moduleCellRules(importerLayer, crossed)
+      const rules =
+        typeEdge && cellExempt ? null : moduleCellRules(importerLayer, crossed)
       if (rules) {
         const cited: readonly RuleId[] = cellExempt
           ? [...rules, "runtime-import"]
           : rules
         violations.push(matrixCell(importer, edge, crossed, cited))
       }
+      outsideCells(crossed, crossed)
+      continue
+    }
+
+    const externalClass = externalPurityOf(edge.to, pure)
+    // a boot imports its one driver, nothing of the tech
+    if (importerLayer === "boot") {
+      violations.push(
+        matrixCell(importer, edge, externalClass, ["boot-one-call"]),
+      )
+      continue
+    }
+    // a driver's tech is what its reading claims or `driverTech` declares; a
+    // builtin or a file outside coverage is concrete, the tech by the
+    // reading's table; a pure package is model. Its types are free.
+    if (importerLayer === "driver") {
+      if (
+        !typeEdge &&
+        externalClass !== "concrete" &&
+        !driverTech(edge.to.specifier)
+      )
+        violations.push(
+          matrixCell(importer, edge, externalClass, ["driver-calls-services"]),
+        )
+      continue
+    }
+    // an assembly imports no concrete tech — nor what nobody classified —
+    // at runtime; its types are free
+    if (importerLayer === "assembly") {
+      if (!typeEdge && externalClass !== "pure")
+        violations.push(
+          matrixCell(importer, edge, externalClass, ["assembly-builds-only"]),
+        )
       continue
     }
 
@@ -228,7 +316,6 @@ export const checkLayers = (
     // file outside the coverage set (package null) publishes nothing and binds
     const externalExempt = typeOnlyExempt && edge.to.package !== null
     if (typeEdge && externalExempt) continue
-    const externalClass = externalPurityOf(edge.to, pure)
     if (externalClass === "pure") continue
     if (externalClass === "unclassified") {
       violations.push({

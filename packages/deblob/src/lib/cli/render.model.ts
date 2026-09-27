@@ -20,6 +20,7 @@ import type { RuleId } from "../check/rule.model.ts"
 import { isRuleId, ruleOrder } from "../check/rule.model.ts"
 import type {
   AssemblyViolation,
+  BootViolation,
   DagViolation,
   DriverViolation,
   LayersViolation,
@@ -136,12 +137,47 @@ const ruleCite = (rules: readonly RuleId[]): string => rules.join(", ")
 const byRuleOrder = (a: RuleId, b: RuleId): number =>
   ruleOrder(a) - ruleOrder(b)
 
+/**
+ * An outside kind's own import fact, in words, with its way out; `null` for the
+ * other cells.
+ */
+const outsideImportWords = (
+  violation: Extract<LayersViolation, { shape: "matrix-cell" }>,
+): string | null => {
+  const { rules, importerLayer, targetClass } = violation
+  const [rule] = rules
+  switch (rule) {
+    case "assembly-driver-only":
+      return "an assembly is imported by drivers and assemblies only, type imports included; the driver calls it and hands down what it built"
+    case "driver-not-imported":
+      return "a driver is imported by a boot or another driver only, type imports included; a boot starts it, a driver wires it as its sub-driver"
+    case "test-is-outside":
+      return "nothing imports a test file; what it shares moves out of it"
+    case "boot-one-call":
+      return importerLayer === "boot"
+        ? "a boot imports its one driver and nothing else; the driver imports what it needs"
+        : "nothing imports a boot: importing it starts the program; import its driver instead"
+    case "driver-calls-services":
+      return targetClass === "unclassified"
+        ? `a package nothing declares as a driver's tech; declare it in "driverTech", or a service uses it through a port`
+        : "a driver imports no model; the service that needs it imports it"
+    case "assembly-builds-only":
+      return targetClass === "unclassified"
+        ? `unclassified, and an assembly imports no concrete tech; list it under "pure" if it qualifies, or an adapter wraps it`
+        : "an assembly imports no concrete tech; the adapter that uses it imports it, the driver hands tech values in"
+    default:
+      return null
+  }
+}
+
 const layersMessage = (violation: LayersViolation, prefix: string): string => {
   const target = targetLabel(violation.target, prefix)
   if (violation.shape === "unclassified-lib") {
     return `imports ${target} — unclassified third-party in a pure layer; list it under config key "pure" if it qualifies`
   }
   const { rules, importerLayer } = violation
+  const outside = outsideImportWords(violation)
+  if (outside !== null) return `imports ${target} — ${outside}`
   // runtime-import in the citation = this cell's type variant is exempt
   // (06 ruling)
   const hint = rules.includes("runtime-import")
@@ -249,6 +285,43 @@ const messageOf = (violation: FileViolation, prefix: string): string => {
       return assemblyMessage(violation)
     case "driver":
       return driverMessage(violation)
+    case "boot":
+      return bootMessage(violation, prefix)
+  }
+}
+
+// --- the boot rule's words ---------------------------------------------------
+// Each red names its way out: the boot table of the rows-first step.
+
+const BOOT_ONE_CALL =
+  "a boot makes one call, to its driver's wiring function, and nothing else"
+
+/** A root statement's kind, in words. */
+const STATEMENT_WORDS: Readonly<Record<string, string>> = {
+  control: "a branch",
+  return: "a return",
+  assignment: "a write",
+  throw: "a throw",
+  other: "a write",
+}
+
+const bootMessage = (violation: BootViolation, prefix: string): string => {
+  const line = `line ${violation.line}`
+  switch (violation.shape) {
+    case "call":
+      return `${line} calls ${calleeName(violation.callee)} — ${BOOT_ONE_CALL}; the driver does it`
+    case "argument":
+      return `${line} hands ${calleeName(violation.call)} an argument — the tech is the driver's to read; call it with nothing`
+    case "held":
+      return `${line} holds the wiring call's result in ${violation.name ?? "a binding"} — a boot holds nothing; call it bare, awaited or voided`
+    case "definition":
+      return `${line} defines ${violation.name ?? "a value"} — a boot defines nothing; the driver defines what it needs`
+    case "statement":
+      return `${line} runs ${STATEMENT_WORDS[violation.form] ?? "a statement"} at the boot's root — ${BOOT_ONE_CALL}; the driver does it`
+    case "no-call":
+      return `starts nothing — a boot calls its driver's wiring function exactly once`
+    case "unstarted":
+      return `imports ${prefix}${violation.driver} and never starts it — one driver per boot; a boot per driver, or the root driver wires it as its sub-driver`
   }
 }
 
@@ -322,6 +395,8 @@ const driverMessage = (violation: DriverViolation): string => {
         return `${line} hands the use case ${name} ${value} — a hook hands the event on as received and the host whole; pass them, the service reads what it needs`
       return `${line} hands ${name} ${value} — wiring hands on tech values, instances and literals; the assembly takes the raw value, its adapter derives it`
     }
+    case "value":
+      return `${line} hands ${violation.name}, a sub-driver's, on as a value — a driver imports another only to call its wiring function; the sub-driver registers its own hooks`
     case "call-count":
       return violation.count === 0
         ? `${line} registers a hook that runs no use case — a hook with no use case is logic with no home; a use case of the service`

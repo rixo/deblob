@@ -88,6 +88,7 @@ describe("checkModules", () => {
           hooks: [],
           functions: [],
           open: [],
+          driverValues: [],
         },
       },
     ])

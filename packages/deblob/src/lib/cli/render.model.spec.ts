@@ -5,6 +5,7 @@ import type { RuleId } from "../check/rule.model.ts"
 import type {
   AssemblyViolation,
   BarrelsViolation,
+  BootViolation,
   DriverViolation,
   DagViolation,
   LayersViolation,
@@ -1447,6 +1448,177 @@ describe("renderCheckResults", () => {
           ),
         ).toContain("line 7 hands cac what the reader cannot tell")
       })
+
+      it("names a sub-driver's function handed on as a value, with its wiring function as the way", () => {
+        expect(
+          message(
+            driver("sub-driver-wiring", { shape: "value", name: "checkHook" }),
+          ),
+        ).toContain(
+          "line 7 hands checkHook, a sub-driver's, on as a value — a driver imports another only to call its wiring function; the sub-driver registers its own hooks",
+        )
+      })
+    })
+
+    describe("a boot violation", () => {
+      type Shape = DistributiveOmit<
+        BootViolation,
+        "check" | "ruleset" | "rules" | "file" | "serviceRoot" | "line"
+      >
+      const boot = (shape: Shape, line: number | null = 3): BootViolation => ({
+        check: "boot",
+        ruleset: "arch",
+        rules: ["boot-one-call"],
+        file: "src/cli.boot.ts",
+        serviceRoot: null,
+        line,
+        ...shape,
+      })
+      const MAIN = {
+        kind: "wiring",
+        path: "src/cli.driver.ts",
+        name: "main",
+      } as const
+      const ONE_CALL =
+        "a boot makes one call, to its driver's wiring function, and nothing else"
+
+      test.each([
+        [
+          {
+            shape: "call",
+            callee: { kind: "local", name: "start", factory: false },
+          },
+          `line 3 calls start — ${ONE_CALL}; the driver does it`,
+        ],
+        [
+          { shape: "argument", call: MAIN },
+          "line 3 hands main an argument — the tech is the driver's to read; call it with nothing",
+        ],
+        [
+          { shape: "held", name: "app" },
+          "line 3 holds the wiring call's result in app — a boot holds nothing; call it bare, awaited or voided",
+        ],
+        [
+          { shape: "held", name: null },
+          "line 3 holds the wiring call's result in a binding",
+        ],
+        [
+          { shape: "definition", name: "NAME" },
+          "line 3 defines NAME — a boot defines nothing; the driver defines what it needs",
+        ],
+        [{ shape: "definition", name: null }, "line 3 defines a value"],
+        [
+          { shape: "statement", form: "control" },
+          `line 3 runs a branch at the boot's root — ${ONE_CALL}; the driver does it`,
+        ],
+        [
+          { shape: "statement", form: "unread" },
+          "line 3 runs a statement at the boot's root",
+        ],
+      ] as const)("%j", (shape, expected) => {
+        expect(message(boot(shape as Shape))).toContain(expected)
+      })
+
+      it("says a file-level fact without a line: nothing started, a driver never started", () => {
+        expect(message(boot({ shape: "no-call" }, null))).toContain(
+          "starts nothing — a boot calls its driver's wiring function exactly once",
+        )
+        expect(
+          message(
+            boot({ shape: "unstarted", driver: "src/worker.driver.ts" }, null),
+          ),
+        ).toContain(
+          "imports src/worker.driver.ts and never starts it — one driver per boot; a boot per driver, or the root driver wires it as its sub-driver",
+        )
+      })
+    })
+
+    describe("an outside kind's own import", () => {
+      const cell = (
+        rules: RuleId[],
+        importerLayer: LayersViolation["importerLayer"],
+        targetClass:
+          | "assembly"
+          | "driver"
+          | "boot"
+          | "test"
+          | "model"
+          | "concrete"
+          | "pure"
+          | "unclassified",
+      ) =>
+        message(
+          layersViolation({
+            rules,
+            importerLayer,
+            target: { type: "module", path: "src/x.ts" },
+            targetClass,
+          }),
+        )
+
+      test.each([
+        [
+          ["assembly-driver-only"],
+          "blob",
+          "assembly",
+          "an assembly is imported by drivers and assemblies only, type imports included; the driver calls it and hands down what it built",
+        ],
+        [
+          ["driver-not-imported"],
+          "blob",
+          "driver",
+          "a driver is imported by a boot or another driver only, type imports included; a boot starts it, a driver wires it as its sub-driver",
+        ],
+        [
+          ["test-is-outside"],
+          "model",
+          "test",
+          "nothing imports a test file; what it shares moves out of it",
+        ],
+        [
+          ["boot-one-call"],
+          "boot",
+          "model",
+          "a boot imports its one driver and nothing else; the driver imports what it needs",
+        ],
+        [
+          ["boot-one-call"],
+          "test",
+          "boot",
+          "nothing imports a boot: importing it starts the program; import its driver instead",
+        ],
+        [
+          ["driver-calls-services"],
+          "driver",
+          "unclassified",
+          'a package nothing declares as a driver\'s tech; declare it in "driverTech", or a service uses it through a port',
+        ],
+        [
+          ["driver-calls-services"],
+          "driver",
+          "pure",
+          "a driver imports no model; the service that needs it imports it",
+        ],
+        [
+          ["assembly-builds-only"],
+          "assembly",
+          "unclassified",
+          'unclassified, and an assembly imports no concrete tech; list it under "pure" if it qualifies, or an adapter wraps it',
+        ],
+        [
+          ["assembly-builds-only"],
+          "assembly",
+          "concrete",
+          "an assembly imports no concrete tech; the adapter that uses it imports it, the driver hands tech values in",
+        ],
+      ] as const)(
+        "%j from %s to %s",
+        (rules, importerLayer, targetClass, expected) => {
+          expect(cell([...rules], importerLayer, targetClass)).toContain(
+            `imports src/x.ts — ${expected}`,
+          )
+        },
+      )
     })
 
     test("ports shapes: export, contains, runtime edges both directions", () => {
@@ -1731,7 +1903,7 @@ describe("bare status", () => {
         "",
         "Commands",
         "  deblob check [what...]      run architecture checks",
-        "                              (dag · layers · private · barrels · ports · surface · modules · assembly · driver)",
+        "                              (dag · layers · private · barrels · ports · surface · modules · assembly · driver · boot)",
         "  deblob explain <topic...>   explain rules or checks",
         "  deblob --help               full help",
         "",
