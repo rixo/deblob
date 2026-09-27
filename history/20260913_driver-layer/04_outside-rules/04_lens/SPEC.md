@@ -305,10 +305,15 @@ accepts them. Hand-picked mutations, each caught by the gate or by the check:
 | the driver forgets `express.json()`              | red ×2, the web's        | green |
 | a front service drops its `catch`                | red, that front's row    | green |
 | the component wires the filter to the wrong call | red, the UI's row        | —     |
-| a hook drops the promise (`void cli.add(…)`)     | green: the store is fast | red   |
+| a hook drops the promise (`void cli.add(…)`)     | green: the store is fast | green |
 | a hook branches to answer 400 itself             | green                    | red   |
 
 What the gate cannot see, the hook rule catches, and the reverse.
+
+Corrected at the sweep (04/05): the dropped promise's check column read red, and
+that red was false — the reader took `void` as computing with the value, where
+canon lets a hook drop it. Read right, it passes both nets: dropping is legal to
+the check, and the fast store hides it from the gate.
 
 **What the example does not prove.** It is a toy: one entity, three use cases,
 written by the agent who picked the mutations — selection, not a mutation run.

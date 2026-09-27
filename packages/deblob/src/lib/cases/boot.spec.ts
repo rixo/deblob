@@ -64,6 +64,20 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // Added at the sweep (04/05, checkpoint 2), green before the fix, kept as
+    // its tripwire: the reader now reads `void` as dropping the value, and
+    // the boot's one call dropped is still the one call.
+    name: "the one call dropped with void is the one call",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli.boot.ts": `
+        import { main } from "./cli.driver.ts"
+        void main()
+      `,
+    },
+  },
+  {
     // canon: "It imports nothing else" — a side-effect import too (ruled
     // 2026-09-25: its way out is the driver's import, evaluated before `main`
     // runs).

@@ -267,6 +267,28 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // Added at the sweep (04/05, checkpoint 2): `void` was read as computing
+    // with the value. canon: the value is "returned … or dropped, and never
+    // used" — `void` is how a statement says it drops it, the bare call the
+    // other way.
+    name: "the use case's value dropped with void, in a block or as the arrow's body, is green like the bare call",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli.driver.ts": `
+        ${IMPORTS}
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("notes")
+          parser.command("check").action((opts) => { void cli.check(opts) })
+          parser.command("status").action((opts) => void cli.status(opts))
+          parser.command("again").action((opts) => { cli.check(opts) })
+          parser.parse(process.argv)
+        }
+      `,
+    },
+  },
+  {
     // Added at the lens step, checkpoint 3 (stamped 2026-09-27). canon: "the
     // host's values handed whole (`process`, never `process.cwd()`) …
     // nothing read off them (`opts`, never `opts.files`)". A part destructured

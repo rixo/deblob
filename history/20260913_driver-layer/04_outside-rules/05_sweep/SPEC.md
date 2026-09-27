@@ -84,7 +84,9 @@ Checkpoints, one commit each, one go each:
    - `void x` read as a use: the reader reads `void` as dropping the value; a
      hook's `void cli.check(opts)` goes green (canon lets a hook drop it), a
      boot's `void main()` is judged as the one call; the plumbing SPEC's
-     mutation-table line that counted the old red is corrected.
+     mutation-table line that counted the old red is corrected. Found while
+     fixing: the boot already read `void main()` as its one call, a second one
+     red — a row now pins it; only the hook was wrong.
    - The test reader's `Role` constants, `as const`: deblob's own check loses
      its five `stable-root` unknowns.
    - `it` where the title is a behavior sentence, `test` elsewhere — row by row,
