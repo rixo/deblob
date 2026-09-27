@@ -73,7 +73,15 @@ export function defineDc({ name, js, props, preview, helmets }) {
 export function dcInstance(def, getProps) {
   let version = $state(0)
   for (const h of def.helmets) mountHelmet(h)
-  const snapshot = () => ({ ...getProps() })
+  // every page, embedded ones too, starts from its data-props defaults, the
+  // props its parent passes over them: what the design room renders (rixo:
+  // their stars, `dirLabels` default `galaxy`, show there under the Viewer)
+  const snapshot = () => {
+    const given = getProps()
+    const p = def.defaults()
+    for (const key in given) if (given[key] !== undefined) p[key] = given[key]
+    return p
+  }
   let logic
   try {
     logic = new def.Logic(untrack(snapshot))
