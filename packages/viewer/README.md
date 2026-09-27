@@ -65,22 +65,22 @@ talking to.
 
 ## The map
 
-Spike code, under `src/spike/map/`, outside `check` and coverage (step 09).
+Spike code, under `src/spike/map/`, outside `check` and coverage (steps 09, 11).
 `design/` holds the design room's files as they send them; `host/` runs them:
 `dc-plugin.js` compiles their `.dc.html` pages to Svelte on our DC runtime and
 answers their engine scripts (the `.js` their pages load relative to the page)
 at the app's root, in dev and in the build — only those files, never their data
-or docs. `map.js` is the bridge: their page reads its data from URLs, so it
-answers `./data/projects.json` with every project, so their picker is the
-project switch, and hands the current one's graph, call stacks and READMEs over
-as `blob:` URLs made from the snapshot's `map`. Any other project's graph is an
-empty module whose import tells the bridge it was picked — their pick imports
-the graph, its only word today — and the bridge asks the server for it. Each new
-snapshot remounts their page: they keep a view (pan, zoom, selection) per graph
-URL, and a new URL has none, so a redraw starts from their default view — until
-they take data by value and update in place (our ask). Above the page, a strip
-of ours: loading, the server's error, the tracer's reason when a project has no
-call stacks, and the "experimental map" tag. Their page's root is
+or docs. `map.js` mounts their `Viewer.dc.html` once and feeds it by value,
+their data contract: on each state of the snapshot source it hands the page new
+props and the page updates in place, so a save redraws the map with its view
+kept. What a state means for their page is product code, with rows:
+`buildViewerProps` (`src/lib/map/viewer-props.model.ts`) — every project for
+their picker, the current snapshot's graph, call stacks and READMEs, loading and
+the server's error, and one graph object per snapshot, so a flip of loading
+never reads as a new graph. Their picker is the project switch: its `on-project`
+is the source's `select`. Their page draws loading and errors; above it, a strip
+of ours keeps what it has no place for yet: the tracer's reason when a project
+has no call stacks, and the "experimental map" tag. Their page's root is
 `position: fixed`; our `#dc-root` contains it (`contain: layout`) so it fills
 the space under the strip.
 

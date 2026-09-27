@@ -288,14 +288,30 @@ function mountHelmet({ atomics, kids }) {
 }
 
 // support.js boot: full-page CSS unless the page declares a $preview, root props = data-props defaults.
-export function bootPage(Component, def, target, mount) {
+// `given`: the host's props over the defaults; `update(patch)` hands the page
+// new values for those keys. One getter per key over a raw state, never a deep
+// proxy: their values (a whole graph) keep their identity, which their pages
+// compare to tell a new value from the same one.
+export function bootPage(Component, def, target, mount, given = {}) {
   if (!def.preview) {
     const s = document.createElement("style")
     s.textContent =
       "html,body{height:100%;margin:0}#dc-root,#dc-root>.sc-host{height:100%}"
     document.head.appendChild(s)
   }
-  return mount(Component, { target, props: def.defaults() })
+  let current = $state.raw({ ...def.defaults(), ...given })
+  const props = {}
+  for (const key of Object.keys(current))
+    Object.defineProperty(props, key, {
+      enumerable: true,
+      get: () => current[key],
+    })
+  return {
+    page: mount(Component, { target, props }),
+    update: (patch) => {
+      current = { ...current, ...patch }
+    },
+  }
 }
 
 export { flushSync }

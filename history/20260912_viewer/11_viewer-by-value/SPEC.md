@@ -1,6 +1,6 @@
 # Step 11 — the design's Viewer, fed by value
 
-Draft 2026-09-27, for rixo's read. Nothing is built.
+Ruled 2026-09-27 (rixo). Checkpoint 1 landed; checkpoint 2 to go.
 
 Step 09 put the design's map in the product through a bridge: every snapshot
 became `blob:` URLs, their page fetched and imported them, and the page was
@@ -135,6 +135,19 @@ Checkpoints, each its own commit; red rows first, as their own commit.
      feeds it; the bridge's URL code, the fetch hook and `__deblobMapPick` go;
      the strip keeps its two notices. Until checkpoint 2, their page keeps its
      view in their own `localStorage` keys (no `view-store` given).
+
+   Landed: probed headless on `pnpm dev` — the map draws; a save on disk brings
+   a new snapshot to the same page, camera and selection kept; a pick through
+   their Viewer switches project; no request for `blob:` or `data/`. What it
+   took:
+   - The model reads a shape of its own, `ViewerInput`, which the source's state
+     fits: importing `SourceState` from the source's port broke `inward-deps` (a
+     model imports models only).
+   - `bootPage` takes the host's props and hands back an `update`: one getter
+     per key over a raw state, never a deep proxy, so a graph keeps its identity
+     — their pages compare values to tell a new one from the same.
+   - Their old Host and the frozen Gravity Map are deleted with the switch.
+
 2. **The view store.** The port, both adapters with their rows, the host binds
    it per project. The probe runs whole on the built package.
 

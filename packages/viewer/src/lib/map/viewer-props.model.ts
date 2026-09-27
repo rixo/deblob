@@ -69,9 +69,56 @@ export type BuildGraph = (
  * must not read, on their side, as a new graph to lay out.
  */
 export function buildViewerProps(
-  _state: ViewerInput,
-  _previous: BuiltProps | null,
-  _buildGraph: BuildGraph,
+  state: ViewerInput,
+  previous: BuiltProps | null,
+  buildGraph: BuildGraph,
 ): BuiltProps {
-  throw new Error("buildViewerProps: not built yet (step 11 cp1, red rows)")
+  const { snapshot } = state
+  const common = {
+    projects: state.projects.map(({ root, name }): DesignProject => ({
+      id: root,
+      label: name ?? root,
+      graph: null,
+      sequence: null,
+      behavior: null,
+    })),
+    loading: state.loading,
+    error: state.error?.message ?? null,
+  }
+  if (snapshot === null)
+    return {
+      snapshot,
+      props: {
+        ...common,
+        project: null,
+        graphData: null,
+        sequence: null,
+        behavior: null,
+      },
+    }
+  const design = composeDesignSnapshot(snapshot)
+  const graphData =
+    previous?.snapshot === snapshot
+      ? previous.props.graphData
+      : buildGraph(design, { hooks: true })
+  return {
+    snapshot,
+    props: {
+      ...common,
+      project: snapshot.project.root,
+      graphData,
+      sequence: snapshot.map.sequence === null ? null : design,
+      behavior: { readmes: snapshot.map.readmes },
+    },
+  }
 }
+
+const composeDesignSnapshot = ({
+  map,
+  ...snapshot
+}: Snapshot): DesignSnapshot => ({
+  ...snapshot,
+  modules: map.modules,
+  edges: map.edges,
+  ...map.sequence,
+})

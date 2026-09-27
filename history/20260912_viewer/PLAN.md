@@ -129,7 +129,8 @@
     once, fed by value (their replies of 2026-09-27): a save redraws in place,
     their picker is the switch, the view survives a reload per project; step
     09's URL bridge and remount go. Drafted 2026-09-27; runs before step 10,
-    which waits on driver-layer's roles.
+    which waits on driver-layer's roles. Checkpoint 1 landed (Viewer mounted
+    once, fed by value, the bridge gone).
 
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
@@ -155,8 +156,8 @@ through Vitest browser mode enters there).
   2026-09-16 at step 05, see § Decisions.
 - **Release gate: the map fully connected** (rixo, 2026-09-25, step 09). A 0.0.x
   may ship the experimental map with its gaps (no call stacks on a tree the
-  tracer cannot read, or without `typescript` installed; the view reset on each
-  save). A real release may not.
+  tracer cannot read, or without `typescript` installed). A real release may
+  not. (The view reset on each save closed at step 11.)
 - **The view side under driver-layer's rules** (merged 2026-09-26).
   `assembly-builds-only` now reaches what only this branch has: 77 violations in
   the view drivers (`serve/main.ts` 42, `snapshot/main.ts` 14, `serve/bin.ts`
