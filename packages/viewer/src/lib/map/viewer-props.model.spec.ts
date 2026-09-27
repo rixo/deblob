@@ -98,6 +98,22 @@ describe("buildViewerProps", () => {
     expect(buildGraph).not.toHaveBeenCalled()
   })
 
+  it("names the project an error is about when it comes before any snapshot", () => {
+    const error = { project: "/work/lib", message: "the config is broken" }
+
+    const { props } = buildViewerProps(
+      stateOf(null, { loading: false, error }),
+      null,
+      graphBuilder(),
+    )
+
+    expect(props).toMatchObject({
+      project: "/work/lib",
+      graphData: null,
+      error: "the config is broken",
+    })
+  })
+
   it("feeds the snapshot's project: its graph, its call stacks and its READMEs", () => {
     const snapshot = snapshotOf("2026-09-27T20:00:00.000Z")
     const buildGraph = graphBuilder()

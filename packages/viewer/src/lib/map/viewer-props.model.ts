@@ -53,7 +53,10 @@ export type BuiltProps = {
 export type ViewerInput = {
   readonly projects: readonly ProjectRef[]
   readonly loading: boolean
-  readonly error: { readonly message: string } | null
+  readonly error: {
+    readonly project: string
+    readonly message: string
+  } | null
   readonly snapshot: Snapshot | null
 }
 
@@ -90,7 +93,9 @@ export function buildViewerProps(
       snapshot,
       props: {
         ...common,
-        project: null,
+        // an error before any snapshot is still about a project: their page
+        // is never handed `project: null` to pick one of its own (step 12)
+        project: state.error?.project ?? null,
         graphData: null,
         sequence: null,
         behavior: null,

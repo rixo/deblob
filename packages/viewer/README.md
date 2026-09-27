@@ -79,13 +79,15 @@ Spike code, under `src/spike/map/`, outside `check` and coverage (steps 09, 11).
 `dc-plugin.js` compiles their `.dc.html` pages to Svelte on our DC runtime and
 answers their engine scripts (the `.js` their pages load relative to the page)
 at the app's root, in dev and in the build — only those files, never their data
-or docs. `map.js` mounts their `Viewer.dc.html` once and feeds it by value,
-their data contract: on each state of the snapshot source it hands the page new
-props and the page updates in place, so a save redraws the map with its view
-kept. What a state means for their page is product code, with rows:
-`buildViewerProps` (`src/lib/map/viewer-props.model.ts`) — every project for
-their picker, the current snapshot's graph, call stacks and READMEs, loading and
-the server's error, and one graph object per snapshot, so a flip of loading
+or docs. `map.js` mounts their `Viewer.dc.html` once, on the first state it can
+render fully — the chosen project's first snapshot, or its error; until then the
+strip says "loading…" over an empty frame (a temporary loader of ours) — and
+feeds it by value, their data contract: on each state of the snapshot source it
+hands the page new props and the page updates in place, so a save redraws the
+map with its view kept. What a state means for their page is product code, with
+rows: `buildViewerProps` (`src/lib/map/viewer-props.model.ts`) — every project
+for their picker, the current snapshot's graph, call stacks and READMEs, loading
+and the server's error, and one graph object per snapshot, so a flip of loading
 never reads as a new graph. Their picker is the project switch: its `on-project`
 is the source's `select`. Their view of a project (camera, folds, selection:
 theirs, opaque to us) is kept in the browser's `localStorage`, one entry per

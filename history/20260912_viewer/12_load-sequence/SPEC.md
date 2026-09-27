@@ -1,6 +1,6 @@
 # Step 12 — the load sequence
 
-Ruled 2026-09-27 (rixo). Checkpoint 1 landed; checkpoint 2 to go.
+Ruled 2026-09-27 (rixo). Both checkpoints landed.
 
 Step 11's trace ([research](../11_viewer-by-value/research/load-sequence.md))
 found two defects on our side. Their page is mounted before any data: their
@@ -148,6 +148,21 @@ Checkpoints, each its own commit; red rows first, as their own commit.
 
 2. **The mount waits** (viewer host): `map.js` boots on the first snapshot or
    error, our loader until then; the probe runs whole.
+
+   Landed: probed headless on `deblob view` from the built bundle, three
+   projects. Every load: `projects`, one `select`, one snapshot — their page
+   sends none of its own. `#dc-root` stays empty under our "loading…" until the
+   first snapshot (about 0.1 s on the viewer, 0.8 s on deblob), then their page
+   mounts. A reload comes back on the last project (deblob), whatever their own
+   key says; a kept project no longer listed opens the first; the camera is back
+   after a reload (k 1.729 before and after). What it took:
+   - An error before any snapshot must still name its project, or their page
+     mounts on `project: null` and picks one of its own: `buildViewerProps`
+     takes the error's project then (one row, seen red first).
+   - Their page's module is imported at once and mounted when both it and the
+     first state are in: the module loads while the server runs. Not ours, still
+     there (posted to the design): the fit tween from their default camera on a
+     first load, and the switch carrying the old camera.
 
 ## Docs
 

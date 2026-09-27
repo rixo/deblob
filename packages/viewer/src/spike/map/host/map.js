@@ -1,12 +1,13 @@
-// SPIKE (steps 09, 11) — delete with src/spike. The product's map: the design's
-// Viewer, their page as sent, mounted once in our app and fed by value from the
-// snapshot source (their data contract; step 11 SPEC). What each state means
-// for their page is `buildViewerProps`, product code; this host only mounts
-// the page, hands it each new value, turns their picker's pick into the
-// source's select, and hands them the view store bound to the project shown.
-// Their page draws the server's loading and errors. Above it,
-// a strip of ours keeps what their page has no place for yet: the tracer's
-// miss, and the map's status: experimental.
+// SPIKE (steps 09, 11, 12) — delete with src/spike. The product's map: the
+// design's Viewer, their page as sent, mounted once in our app, on the first
+// state it can render fully (step 12; our loader until then), and fed by value
+// from the snapshot source (their data contract; step 11 SPEC). What each
+// state means for their page is `buildViewerProps`, product code; this host
+// only mounts the page, hands it each new value, turns their picker's pick
+// into the source's select, and hands them the view store bound to the
+// project shown. Their page draws the server's loading and errors. Above it, a
+// strip of ours keeps what their page has no place for yet: the tracer's miss,
+// and the map's status: experimental.
 
 import { mount, unmount } from "svelte"
 
@@ -32,9 +33,11 @@ const el = (tag, props = {}, ...kids) => {
   return node
 }
 
-// the strip, drawn again from each state: a handful of nodes
-const drawStrip = (strip, state) => {
+// the strip, drawn again from each state: a handful of nodes. Before their
+// page is up it is our loader (temporary, step 12: its look is a polish phase)
+const drawStrip = (strip, state, waiting) => {
   strip.replaceChildren(
+    ...(waiting ? [el("span", { className: "dbm-note" }, "loading…")] : []),
     ...(state.snapshot?.map.sequence === null
       ? [
           el(
@@ -84,20 +87,36 @@ export function mountMap(target, source, viewStore) {
     return bound.store
   }
 
-  const unsubscribe = source.subscribe((state) => {
-    drawStrip(strip, state)
-    built = buildViewerProps(state, built, globalThis.GenGraph.buildGraph)
-    viewer?.update({ ...built.props, viewStore: bind(built.props.project) })
-  })
+  let page = null // their page's module, once imported
+  let first = false // the first snapshot or error is in: they can mount
 
-  // their page, mounted once, on the props built so far
-  void import("../design/Viewer.dc.html").then((mod) => {
-    if (gone) return
-    viewer = bootPage(mod.default, mod.dcDef, root, mount, {
+  // their page, mounted once, when both its module and the first state it can
+  // render fully are in — never before (step 12): a mount on no data draws
+  // their empty shell and lets their page pick a project of its own
+  const boot = () => {
+    if (gone || viewer !== null || page === null || !first) return
+    viewer = bootPage(page.default, page.dcDef, root, mount, {
       ...built.props,
       viewStore: bind(built.props.project),
       onProject: (project) => source.select(project),
     })
+    drawStrip(strip, shown, false)
+  }
+
+  let shown = null // the last state, for the strip once their page is up
+  const unsubscribe = source.subscribe((state) => {
+    shown = state
+    built = buildViewerProps(state, built, globalThis.GenGraph.buildGraph)
+    first ||= state.snapshot !== null || state.error !== null
+    drawStrip(strip, state, viewer === null)
+    if (viewer === null) boot()
+    else viewer.update({ ...built.props, viewStore: bind(built.props.project) })
+  })
+
+  // imported at once: the module loads while the server runs
+  void import("../design/Viewer.dc.html").then((mod) => {
+    page = mod
+    boot()
   })
 
   return () => {

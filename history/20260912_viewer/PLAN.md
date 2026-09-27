@@ -137,7 +137,8 @@
     the client has spoken, their page is mounted once with every prop, a loader
     of ours until then. Ruled a step of its own (rixo, 2026-09-27); the trace is
     step 11's research. Their part was posted to the design on 2026-09-27.
-    Drafted 2026-09-27.
+    Landed 2026-09-27: one run per load, the last project kept, their page
+    mounted on the first snapshot.
 
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
