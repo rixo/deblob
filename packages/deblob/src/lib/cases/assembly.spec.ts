@@ -15,8 +15,8 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * nothing sits at root but imports.
  *
  * Written red first; the assembly check reports them since the detectors step,
- * checkpoint 5 — the import of concrete tech waits on its `layers` cell. Each
- * red row's way out is in the step's SPEC
+ * checkpoint 5, the import of concrete tech since checkpoint 7. Each red row's
+ * way out is in the step's SPEC
  * (`history/20260913_driver-layer/04_outside-rules/02_rows-first/SPEC.md`, the
  * assembly table); the rules are strict on purpose, and a red with no way out
  * is the finding to raise. The import half, `assembly-driver-only`, lives in
@@ -82,10 +82,10 @@ const VITEST = {
 
 const ROWS: readonly Row[] = [
   {
-    // canon: "every call in an assembly is there to build … A model call is
-    // allowed on the same terms as any other — its result is passed on or
-    // returned". Arguments: a tech value received, a literal, instances.
-    name: "factories called in order, a tech value, a literal and instances as arguments, a model call passed on: the assembly builds",
+    // canon: "every call in an assembly is there to build … A model factory is
+    // one of them — its instance is passed on or returned". Arguments: a tech
+    // value received, a literal, instances.
+    name: "factories called in order, a tech value, a literal and instances as arguments, a model factory's instance passed on: the assembly builds",
     files: {
       ...NOTES,
       ...DRIVER,

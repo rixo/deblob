@@ -6,12 +6,13 @@ import { AS_MARKED } from "./runner/markers.model.ts"
 
 /**
  * `boot-one-call`, by what canon says the boot is: "the one module whose
- * evaluation performs a call. Two rights, nothing more" — it imports a single
- * driver and calls its wiring function exactly once, at module root, with no
- * arguments; it imports nothing else, defines nothing, holds nothing, touches
- * no tech. The boot's one call is also the exemption `stable-root` needs to
- * hold everywhere else. The import cells — a boot importing anything but its
- * driver, anything importing a boot — live in `layers.spec.ts`.
+ * evaluation performs a call. One thing, nothing more — it starts the program":
+ * it imports a single driver and calls its wiring function exactly once, at
+ * module root, with no arguments; it imports nothing else, defines nothing,
+ * holds nothing, touches no tech. The boot's one call is also the exemption
+ * `stable-root` needs to hold everywhere else. The import cells — a boot
+ * importing anything but its driver, anything importing a boot — live in
+ * `layers.spec.ts`.
  *
  * Written red first; the boot check reports them since the detectors step,
  * checkpoint 7. Each red's way out is in the step's SPEC (the boot and test

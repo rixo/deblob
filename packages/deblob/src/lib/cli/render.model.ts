@@ -354,7 +354,7 @@ const driverDefinitionWords = (
 ): string => {
   switch (at) {
     case "root":
-      return `defines ${name} beside the hooks and the wiring function — a driver defines its hooks and one wiring function; the literal in place, or a model export`
+      return `defines ${name} beside the hooks and the wiring function — a driver defines its hooks and one wiring function; the literal in place, or the service that needs it owns it`
     case "function":
       return `defines ${name}, a function beside the wiring function — a driver defines its hooks and one wiring function; a model function called by a service, or a sub-driver's wiring`
     case "local":

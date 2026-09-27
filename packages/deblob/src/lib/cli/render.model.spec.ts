@@ -1388,12 +1388,12 @@ describe("renderCheckResults", () => {
         [
           "driver-hooks-only",
           { shape: "definition", name: "NAME", at: "root" },
-          "defines NAME beside the hooks and the wiring function — a driver defines its hooks and one wiring function; the literal in place, or a model export",
+          "defines NAME beside the hooks and the wiring function — a driver defines its hooks and one wiring function; the literal in place, or the service that needs it owns it",
         ],
         [
           "driver-hooks-only",
           { shape: "definition", name: null, at: "root" },
-          "defines a value beside the hooks and the wiring function — a driver defines its hooks and one wiring function; the literal in place, or a model export",
+          "defines a value beside the hooks and the wiring function — a driver defines its hooks and one wiring function; the literal in place, or the service that needs it owns it",
         ],
         [
           "driver-hooks-only",

@@ -16,11 +16,11 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * `driver-not-imported`, lives in `layers.spec.ts`.
  *
  * Written red first; the driver check reports them since the detectors step,
- * checkpoint 6 — a sub-driver's hook imported waits on checkpoint 7's import
- * cells. Each red's way out is in the step's SPEC (the driver table); a red
- * with no way out is the finding. A hook is a function handed to a tech callee
- * — here the parser, `cac`, declared as the driver's tech. Every tree is legal
- * under every other rule, or its other red marked.
+ * checkpoint 6, a sub-driver's hook imported since checkpoint 7. Each red's way
+ * out is in the step's SPEC (the driver table); a red with no way out is the
+ * finding. A hook is a function handed to a tech callee — here the parser,
+ * `cac`, declared as the driver's tech. Every tree is legal under every other
+ * rule, or its other red marked.
  */
 
 /** The parser as the driver's tech, declared. */
@@ -142,8 +142,8 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // canon: the hook "translates nothing around it" — a write that is not the
-    // result handed whole to the tech is translation; a branch in a hook is
+    // canon: the hook "translates nothing around it" — a write in a hook is
+    // translation; a branch in a hook is
     // one translation, what its arms hold its own. Ways out: the use case
     // returns the code; the service decides.
     name: "a write beside the call in a hook is red; a branch in a branch is one red",
@@ -413,7 +413,7 @@ const ROWS: readonly Row[] = [
     // canon: "the only definitions in a driver are its hooks and at most one
     // wiring function … a local `parseFoo` is a model without a test"; a
     // constant is a definition too. A type is not (re-ruled at the detectors
-    // step, checkpoint 6: types are no definitions in any layer).
+    // step, checkpoint 4: types are no definitions in any layer).
     name: "a helper and a constant beside the hooks and the wiring function are red; a type is not a definition",
     config: CONFIG,
     files: {

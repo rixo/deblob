@@ -143,29 +143,29 @@ unparsed one, has none: recognized and open.
   array (`T[]`, `readonly T[]`, `Array<T>`, `ReadonlyArray<T>`, an array
   literal) is a loop: a `control` over the receiver, the callback's body its
   arm, its first parameter an element; over anything else it is unknown — a loop
-  cannot be told from a call on the tech. In an assembly or a driver a local
-  function is not read inline, it stays a function of the file and its call a
-  `local` callee. A use case that matches a declared load by member name — and
-  by file when the instance is traced to a factory that is not an assembly's
-  record — is marked, its result a tech value. A call into the runner the file's
-  own reader claims, where that reader exempts registration, is marked a
-  `registration`; a call read inside a tracked local's body carries the root
-  call that ran it (`site`); a definition whose initializer is a call carries
-  that call (`storedCall`), past `await` and the other wrappers; a call whose
-  callee is a call's result carries that call (`calleeCall`), the root of its
-  member chain. What an unclaimed package gives — an export's member, a call's
-  result — called, is that package's. The external import's claim says who made
-  it: `reader` (the file's own), `tech` (`driverTech`, a concrete builtin),
-  `model` (pure). What runs where it is written is read there: an immediately
-  invoked function's body, inline at its call (its `site`); `import()`, a call
-  into the host's module loader; a class's evaluation — its decorators and its
-  members' (a factory's, `@Injectable()`, two calls: the factory's and its
-  result's, applied), its static blocks, its static fields as definitions
-  (`readonly` proven by what it holds, a writable one reassignable, form
-  `static`). The cut: a function handed to a tech callee is a hook, nested hooks
-  included, each with its role by the tech's roles (`null` where none maps); one
-  handed to anything else is read inline where it sits. Takes plain data, never
-  the port: the service chooses the tech.
+  cannot be told from a call on the tech. In an assembly, a driver or a boot a
+  local function is not read inline, it stays a function of the file and its
+  call a `local` callee. A use case that matches a declared load by member name
+  — and by file when the instance is traced to a factory that is not an
+  assembly's record — is marked, its result a tech value. A call into the runner
+  the file's own reader claims, where that reader exempts registration, is
+  marked a `registration`; a call read inside a tracked local's body carries the
+  root call that ran it (`site`); a definition whose initializer is a call
+  carries that call (`storedCall`), past `await` and the other wrappers; a call
+  whose callee is a call's result carries that call (`calleeCall`), the root of
+  its member chain. What an unclaimed package gives — an export's member, a
+  call's result — called, is that package's. The external import's claim says
+  who made it: `reader` (the file's own), `tech` (`driverTech`, a concrete
+  builtin), `model` (pure). What runs where it is written is read there: an
+  immediately invoked function's body, inline at its call (its `site`);
+  `import()`, a call into the host's module loader; a class's evaluation — its
+  decorators and its members' (a factory's, `@Injectable()`, two calls: the
+  factory's and its result's, applied), its static blocks, its static fields as
+  definitions (`readonly` proven by what it holds, a writable one reassignable,
+  form `static`). The cut: a function handed to a tech callee is a hook, nested
+  hooks included, each with its role by the tech's roles (`null` where none
+  maps); one handed to anything else is read inline where it sits. Takes plain
+  data, never the port: the service chooses the tech.
 
 ## Ports
 

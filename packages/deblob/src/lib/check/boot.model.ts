@@ -1,13 +1,14 @@
 /**
  * `check boot` — `boot-one-call`, its statements; its imports are the `layers`
  * cells. Canon: the boot is "the one module whose evaluation performs a call.
- * Two rights, nothing more" — it imports a single driver and calls its wiring
- * function exactly once, at module root, with no arguments; it defines nothing,
- * holds nothing, touches no tech. Every other fact is a violation of its own:
- * any statement but the one call, an argument handed to it, a driver imported
- * and never started, no call at all. The structure is the rule, so nothing here
- * waits on what a statement does: a statement the reader cannot read is still a
- * second statement. Pure: classified graph in, violation set out.
+ * One thing, nothing more — it starts the program": it imports a single driver
+ * and calls its wiring function exactly once, at module root, with no
+ * arguments; it defines nothing, holds nothing, touches no tech. Every other
+ * fact is a violation of its own: any statement but the one call, an argument
+ * handed to it, a driver imported and never started, no call at all. The
+ * structure is the rule, so nothing here waits on what a statement does: a
+ * statement the reader cannot read is still a second statement. Pure:
+ * classified graph in, violation set out.
  */
 
 import type {

@@ -388,8 +388,8 @@ coverage when checkpoint 5's rows take over.
 | F9. In an assembly file a local function is not inlined: it is a definition beside the assembly function, and its call a `local` callee                                                                                                                                                                                                                                         | inlined, both invisible                                                                                                 | the helper row                                                            |
 
 `stable-root` reads F9's calls as it reads any local's in a layer that may touch
-the tech: red, where today the inlined body is judged. Self-check effect to be
-measured.
+the tech: red, where today the inlined body is judged. Self-check effect
+measured at build: none (140 → 140, below).
 
 **Built as drafted**, F7 as ruled below, F8 dropped: a type is no definition
 (below). Each fact switched off fails a reader unit (F1 2, F2 1, F3 2, F4 2, F5
