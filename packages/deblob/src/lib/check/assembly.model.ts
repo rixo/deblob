@@ -56,8 +56,6 @@ const nests = (a: Span, b: Span): boolean =>
 const judgeCall = (call: ReadCall): Verdict => {
   switch (call.callee.kind) {
     case "factory":
-    // the import rules judge these edges; the call adds nothing to them
-    case "forbidden-import":
       return "green"
     case "use-case":
       return call.load === null ? "red" : "green"

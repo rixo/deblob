@@ -60,13 +60,13 @@ const callsIn = (statements: readonly ReadStatement[]): ReadCall[] =>
 
 /**
  * The callees a driver may call anywhere: a use case, an assembly's factory, a
- * sub-driver's wiring, its own tech — and an import the layer rules judge.
+ * sub-driver's wiring, its own tech. An import the layer rules forbid is not
+ * one: its call is a fact beside the import's.
  */
 const isDriversCall = (callee: CalleeKind): boolean =>
   callee.kind === "use-case" ||
   callee.kind === "wiring" ||
   callee.kind === "tech" ||
-  callee.kind === "forbidden-import" ||
   (callee.kind === "factory" && callee.layer === "assembly")
 
 /** A value a driver may hand on: a tech value, an instance, a literal. */
@@ -364,12 +364,13 @@ const judgeDriver = (
   }
 
   reading.hooks.forEach(judgeHook)
-  if (node.layer === "test") return violations
 
   // a sub-driver is imported only to call its wiring function: a name of it
   // used as a value — handed as a hook, stored, read off — is red where used
   for (const used of reading.driverValues)
     report("sub-driver-wiring", used.span, { shape: "value", name: used.name })
+
+  if (exempts.has("definitions")) return violations
 
   // the only definitions: its hooks and one wiring function
   for (const statement of reading.root)
@@ -392,9 +393,10 @@ const judgeDriver = (
     }
     // a root driver's `main()` takes nothing and reads its tech itself; a
     // sub-driver's wiring function — a driver another driver or a test
-    // imports — is handed tech and instances
+    // imports, at runtime: a type calls nothing — is handed tech and instances
     const isSubDriver = graph.edges.some(
       (edge) =>
+        edge.kind !== "type" &&
         edge.to.type === "module" &&
         edge.to.path === node.path &&
         (graph.modules.get(edge.from)?.layer === "driver" ||

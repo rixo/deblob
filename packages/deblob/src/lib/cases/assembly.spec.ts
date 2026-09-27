@@ -675,6 +675,48 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
+  {
+    // Added at the sweep (04/05, checkpoint 2): no row handed on a field read
+    // off what the assembly built. canon: "what the assembly builds …
+    // is passed on or returned" — the read is the red; the argument it made
+    // answers to that read, not a second red. Way out: pass it whole, its
+    // consumer reads the field.
+    name: "a field of an instance handed on is one red, the read: the argument answers to it",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          return { notes: createNotes({ store: createFsStore(cwd).root }) } // red: assembly-builds-only -- a field of what the assembly built, read
+        }
+      `,
+    },
+  },
+  {
+    // Added at the sweep (04/05, checkpoint 2): a call to an import the layer
+    // rules forbid was passed as theirs. canon: "every call in an assembly is
+    // there to build" — a test file's export builds nothing, and the import is
+    // a fact of its own. Way out: what the spec shares moves out of it; a
+    // literal, or the service derives the value.
+    name: "an assembly calling a test file's export is red, and so is its import: two facts",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/fixtures.spec.ts": `
+        export const rootOf = (cwd: string) => cwd
+      `,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        import { rootOf } from "./fixtures.spec.ts"
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          const store = createFsStore(rootOf(cwd)) // red: assembly-builds-only + assembly-builds-only -- a test file's export called, and the argument it computed
+          return { notes: createNotes({ store }) }
+        }
+        // red: test-is-outside -- the import of fixtures.spec: nothing imports a test file
+      `,
+    },
+  },
 ]
 
 describe("assembly", () => {

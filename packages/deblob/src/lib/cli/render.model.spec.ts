@@ -996,6 +996,14 @@ describe("renderCheckResults", () => {
           'calls left-pad, a package nothing claims — an assembly only builds; an adapter wraps it, or list it under config key "pure"',
         ],
         [
+          {
+            kind: "forbidden-import",
+            layer: "test",
+            path: "src/fixtures.spec.ts",
+          },
+          "calls an export of src/fixtures.spec.ts, a test file — an assembly only builds; what it shares moves out of it",
+        ],
+        [
           { kind: "language" },
           "calls the language, which builds nothing — computing is not building, it is the assembly opening the door itself; the adapter takes the raw value and derives it",
         ],
@@ -1290,6 +1298,19 @@ describe("renderCheckResults", () => {
             where: "hook",
           },
           `calls parseFoo, a function of the driver — ${CALLS_SERVICES}; a model function, called by a service`,
+        ],
+        [
+          "driver-calls-services",
+          {
+            shape: "call",
+            callee: {
+              kind: "forbidden-import",
+              layer: "boot",
+              path: "src/cli.boot.ts",
+            },
+            where: "hook",
+          },
+          `calls an export of src/cli.boot.ts, a boot — ${CALLS_SERVICES}; what it shares moves out of it, and a use case of the service does it`,
         ],
         [
           "driver-calls-services",

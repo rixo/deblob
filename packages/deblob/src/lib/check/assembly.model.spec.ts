@@ -17,11 +17,10 @@ import { checkAssembly } from "./assembly.model.ts"
  * run at an assembly's root: the call running it is the root's red, its locals
  * each run's. And an argument the reader cannot tell that no call handed back:
  * a parameter no site binds is received, an import that did not land makes a
- * case refuse its tree — no tree reaches one. And a call the import rules
- * judge, its result handed on: a tree reaches it only through an import already
- * red under another check (a boot, a test file, a port's runtime export), so no
- * row carries it; since the lens step it is the one green call whose result is
- * computed.
+ * case refuse its tree — no tree reaches one. And a computed argument out of a
+ * green call: the reader hands a factory's result on as an instance and a
+ * declared load's as a tech value, never computed — no tree reaches it since a
+ * forbidden import's call went red (the sweep step).
  */
 
 const SPAN = { start: 40, end: 50, line: 3, column: 8 } as const
@@ -134,69 +133,52 @@ describe("checkAssembly", () => {
     ])
   })
 
-  it("leaves a forbidden import's call, its result handed on, to the import rules", () => {
-    const FROM_BOOT = { start: 60, end: 70, line: 3, column: 30 } as const
+  it("leaves a computed argument out of a green call to that call", () => {
+    const BUILT = { start: 60, end: 70, line: 3, column: 30 } as const
+    const call = (
+      span: typeof SPAN | typeof BUILT,
+      name: string,
+      args: readonly unknown[],
+      result: readonly unknown[],
+    ) => ({
+      kind: "call",
+      call: {
+        span,
+        callee: {
+          kind: "factory",
+          layer: "adapters",
+          path: "src/notes/adapters/fs-store.adapter.ts",
+          name,
+        },
+        args,
+        result,
+        load: null,
+        registration: false,
+        handsRunner: false,
+        site: null,
+        calleeCall: null,
+      },
+    })
     const reading = assemblyFunction([
-      {
-        kind: "call",
-        call: {
-          span: FROM_BOOT,
-          callee: {
-            kind: "forbidden-import",
-            layer: "boot",
-            path: "src/cli.boot.ts",
+      call(BUILT, "createFsStore", [], [{ kind: "argument", span: BUILT }]),
+      call(
+        SPAN,
+        "createCachedStore",
+        [
+          {
+            kind: "computed",
+            origin: null,
+            path: [],
+            entries: null,
+            from: BUILT,
+            received: false,
+            host: false,
+            span: BUILT,
           },
-          args: [],
-          result: [
-            {
-              kind: "argument",
-              to: {
-                kind: "factory",
-                layer: "adapters",
-                path: "src/notes/adapters/fs-store.adapter.ts",
-                name: "createFsStore",
-              },
-              span: FROM_BOOT,
-            },
-          ],
-          load: null,
-          registration: false,
-          handsRunner: false,
-          site: null,
-          calleeCall: null,
-        },
-      },
-      {
-        kind: "call",
-        call: {
-          span: SPAN,
-          callee: {
-            kind: "factory",
-            layer: "adapters",
-            path: "src/notes/adapters/fs-store.adapter.ts",
-            name: "createFsStore",
-          },
-          args: [
-            {
-              kind: "computed",
-              origin: null,
-              path: [],
-              entries: null,
-              from: FROM_BOOT,
-              received: false,
-              host: false,
-              span: FROM_BOOT,
-            },
-          ],
-          result: [{ kind: "returned", span: SPAN }],
-          load: null,
-          registration: false,
-          handsRunner: false,
-          site: null,
-          calleeCall: null,
-        },
-      },
-    ])
+        ],
+        [{ kind: "returned", span: SPAN }],
+      ),
+    ] as unknown as ReadStatement[])
     expect(checkAssembly(graphOf(reading))).toEqual([])
   })
 })

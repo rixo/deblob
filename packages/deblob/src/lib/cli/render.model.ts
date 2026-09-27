@@ -342,6 +342,8 @@ const driverCallWords = (callee: CalleeKind): string => {
       return `calls ${callee.name}, a function of the driver — ${CALLS_SERVICES}; a model function, called by a service`
     case "unclaimed":
       return `calls ${callee.package}, a package nothing claims — ${CALLS_SERVICES}; declare it in driverTech, or it is a service's concern`
+    case "forbidden-import":
+      return `calls ${forbiddenImportName(callee)} — ${CALLS_SERVICES}; what it shares moves out of it, and a use case of the service does it`
     default:
       return `calls ${calleeName(callee)} — ${CALLS_SERVICES}; a use case of the service does it`
   }
@@ -446,6 +448,14 @@ const calleeName = (callee: CalleeKind): string => {
   }
 }
 
+/** An import the layer rules forbid, called: what it is, by its file's kind. */
+const forbiddenImportName = (
+  callee: Extract<CalleeKind, { kind: "forbidden-import" }>,
+): string => {
+  const kind = { test: "a test file", boot: "a boot", ports: "a port" }
+  return `an export of ${callee.path}, ${kind[callee.layer]}`
+}
+
 /** A call that builds nothing, in words, with its way out. */
 const assemblyCallWords = (callee: CalleeKind): string => {
   switch (callee.kind) {
@@ -459,6 +469,8 @@ const assemblyCallWords = (callee: CalleeKind): string => {
       return `runs the wiring function ${callee.name} — a driver's, never an assembly's; the driver calls the assembly`
     case "unclaimed":
       return `calls ${callee.package}, a package nothing claims — an assembly only builds; an adapter wraps it, or list it under config key "pure"`
+    case "forbidden-import":
+      return `calls ${forbiddenImportName(callee)} — an assembly only builds; what it shares moves out of it`
     default:
       return `calls ${calleeName(callee)}, which builds nothing — computing is not building, it is the assembly opening the door itself; the adapter takes the raw value and derives it`
   }

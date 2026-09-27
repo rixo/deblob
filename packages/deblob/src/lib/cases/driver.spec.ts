@@ -601,6 +601,58 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // Added at the sweep (04/05, checkpoint 2): a type import read as an
+    // import, so a driver whose `main` another driver only names as a type
+    // counted as a sub-driver, and its parameter passed. canon: "a driver
+    // imports another driver only to call its wiring function" — a type calls
+    // nothing. Way out: `main` reads its tech itself.
+    name: "a driver named by type only is still a root driver: its main takes nothing",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli.driver.ts": `
+        ${IMPORTS}
+        export const main = (argv: string[]) => { // red: driver-hooks-only -- main takes nothing and reads its tech itself
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("notes")
+          parser.command("check").action((opts) => cli.check(opts))
+          parser.parse(argv)
+        }
+      `,
+      "src/cli/entry.driver.ts": `
+        import type { main } from "../cli.driver.ts"
+        export type Main = typeof main
+      `,
+    },
+  },
+  {
+    // Added at the sweep (04/05, checkpoint 2): a call to an import the layer
+    // rules forbid was passed as theirs. canon: `driver-calls-services`, "a
+    // driver calls use cases, assembly factories, sub-driver wiring
+    // functions, and its own tech" — a test file's export is none of them,
+    // and the import is a fact of its own. Ways out: what the spec shares
+    // moves out of it, and a use case does it.
+    name: "a hook calling a test file's export is red, and so is its import: two facts",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/helpers.spec.ts": `
+        export const normalize = (opts: unknown) => opts
+      `,
+      "src/cli.driver.ts": `
+        ${IMPORTS}
+        import { normalize } from "./helpers.spec.ts"
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("notes")
+          parser.command("check").action((opts) => { normalize(opts); return cli.check(opts) }) // red: driver-calls-services -- a test file's export called
+          parser.parse(process.argv)
+        }
+        // red: test-is-outside -- the import of helpers.spec: nothing imports a test file
+      `,
+    },
+  },
+  {
     // Added at the lens step, checkpoint 3 (stamped 2026-09-27): no row
     // handed a sub-driver a computed value that came from no call.
     // canon: `wiring-outside-hooks`, "arguments are tech values, instances,
@@ -654,6 +706,45 @@ const ROWS: readonly Row[] = [
           expect(await cli.status({})).toBe(0)
           expect(createFsStore("/tmp").root).toBe("/tmp")
         })
+      `,
+    },
+  },
+  {
+    // Added at the sweep (04/05, checkpoint 2): the test exemptions skipped
+    // the sub-driver rule with the rest. canon: `sub-driver-wiring` binds a
+    // spec too ("a spec file calling a shared `registerMatchers(expect)`"),
+    // and the test tech exempts the count and services-only, not it. Way
+    // out: the spec calls the wiring function, handing it its tech.
+    name: "a test handing a sub-driver's wiring function on as a body is red: a sub-driver is imported only to be called",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/cli/check.driver.ts": `
+        import type { cac } from "cac"
+        import type { createCli } from "../lib/cli/cli.service.ts"
+        export const registerCheckCommands = (parser: ReturnType<typeof cac>, cli: ReturnType<typeof createCli>) => {
+          parser.command("check").action((opts) => cli.check(opts))
+        }
+      `,
+      "src/cli.driver.ts": `
+        ${IMPORTS}
+        import { registerCheckCommands } from "./cli/check.driver.ts"
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("notes")
+          registerCheckCommands(parser, cli)
+          parser.parse(process.argv)
+        }
+      `,
+      "src/cli.spec.ts": `
+        import { it } from "vitest"
+        import { registerCheckCommands } from "./cli/check.driver.ts"
+        it("registers the check commands", registerCheckCommands) // red: sub-driver-wiring -- a sub-driver's wiring function handed on as a value
       `,
     },
   },
