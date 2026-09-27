@@ -120,8 +120,6 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // UNSTAMPED — added at the detectors step, checkpoint 6, after the check:
-    // no stamped row had a branch or a write in the wiring.
     // canon: "outside its hooks, a driver only wires: assembly calls, tech
     // setup, sub-driver registration" — a registration decided in the wiring
     // is a decision, and a write is not wiring. Ways out: register
@@ -144,8 +142,6 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // UNSTAMPED — as the row above: no stamped row had a write beside the
-    // call, or a branch in a branch, in a hook.
     // canon: the hook "translates nothing around it" — a write that is not the
     // result handed whole to the tech is translation; a branch in a hook is
     // one translation, what its arms hold its own. Ways out: the use case

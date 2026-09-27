@@ -168,8 +168,6 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // UNSTAMPED — added at the detectors step, checkpoint 6: a write read as
-    // a use of its own (`assigned`), where it read `computed` before.
     // canon: "what the assembly builds … is passed on or returned" — written
     // into a member of what it was handed, it is neither. Way out: return it.
     name: "what the assembly built, written into a member, is red: passed on or returned only",
