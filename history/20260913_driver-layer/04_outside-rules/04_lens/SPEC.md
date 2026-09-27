@@ -355,6 +355,102 @@ discipline.
 service, not the fronts — defensible (setup is not under test), to decide on
 purpose; the gate's assembly takes no per-row adapter yet.
 
+### Checkpoint 3, drafted 2026-09-27
+
+The checks catch up with the stamped rows: every `missed red` of checkpoint 2
+becomes a plain `red`, and nothing else moves. What the reader gives today was
+probed on the ten rows' shapes before drafting: every fact is there but one.
+
+**The driver check, `hook-one-call`.** In a hook, outside a branch's arms:
+
+- **Every call that is not the use case's is red**: the tech's and an assembly's
+  factory alike, whatever its result does. Today a tech call is let through when
+  its result feeds something (`process.cwd()` as an argument) or when it takes
+  the use case's result (`console.log(result)`); both exemptions go. A call the
+  driver may not make at all (the language, a model, an adapter) stays
+  `driver-calls-services`' alone, as now. A sub-driver's wiring stays
+  `sub-driver-wiring`'s.
+- **The use case's value is returned or dropped.** Handed to anything — the tech
+  included — is red; the `argument`-to-the-tech exemption goes. Written into the
+  tech's state is red once, on the write (`process.exitCode = …`): the
+  `assigned` exemption goes. A `const` holding it before the `return` stays free
+  (ruled at checkpoint 1).
+- **The use case's arguments**: the event as received, the host whole,
+  instances, literals. Red: anything read off the event or the host
+  (`opts.files`, `({ files }) =>`, `process.env`), and a call's result
+  (`process.cwd()`), which is also red as a call — two facts, two reds (row
+  H10).
+
+**The one reader addition.** Today `opts.files` reads exactly like `opts`: a
+received tech value, nothing more. The reader records the member path read off a
+received parameter or the host, a destructured parameter's part included, as it
+already does for an instance (`services.app`). Nothing else reads that path for
+a tech value today; the wiring and the assembly keep reading tech values freely
+(canon: "in the wiring and in an assembly, a tech value may be read").
+
+**The assembly check, `assembly-builds-only`.** A call to a model function is
+red, as a call that builds nothing; a model factory still builds. Today both
+pass, "on the same terms".
+
+**Messages.** Every way out that points at what the lens closed is rewritten:
+the driver's "calls X beside the use case" (no use case to be beside, row C1),
+"hands it whole to the tech", "pass the tech values unchanged"; the assembly's
+"a model function passed on" (four messages). `check/README.md`'s driver and
+assembly clauses follow.
+
+**To rule — three new rows**, red first with the rest, stamped before the check
+moves:
+
+| Row                                         | Proposed | Why                                                                                                                     |
+| ------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `({ files }) => cli.check(files)` in a hook | red      | read off the event, in the signature: the same fact as `opts.files`. Way out: `(opts) => cli.check(opts)`               |
+| `(opts) => cli.check(opts, process.env)`    | red      | read off the host: canon's "the host's values handed whole (`process`, never `process.cwd()`)". Way out: hand `process` |
+| `(opts) => cli.check(opts, process)`        | green    | the host whole                                                                                                          |
+
+**Units.** A unit that fails because it pins a pre-lens verdict is updated in
+this checkpoint, each listed at the handback. Units that still pass while
+asserting pre-lens reasoning are checkpoint 4's sweep.
+
+**Gates.** The rows; coverage 100; one mutation per changed clause (each
+exemption put back turns its row red again). Then the worked example,
+`research/plumbing-2026-09-27`, re-checked: built to (A), it must stay at 0
+violations. Any new red there is either a wrong check or a wrong example, and
+gets named.
+
+**Built 2026-09-27.** The three rows stamped as drafted. Every `missed red` of
+checkpoint 2 is a plain `red`. A22's marker took the rider form the helper row
+already has (`red: assembly-builds-only + assembly-builds-only`): the call to
+`join` leads, the argument it computed rides with it. Messages: the rewritten
+way outs, plus a hook calling an assembly ("a hook does not wire; the wiring
+calls it once, at startup") and a tech value read or called for. Units: the
+render expectations of the rewritten messages, two new ones for the new
+wordings, and one assembly unit for a forbidden import's call whose result is
+handed on (the one green call left whose result is computed; only trees red
+under another check reach it). Gates: coverage 100; nine mutations, each caught
+by its rows (the host-whole row among them); the plumbing example stays at 0.
+deblob on itself: 436 → 471 violations, all 35 new ones `assembly-builds-only`
+on model calls in `src/drivers/**`, which `deblob.config.ts` files as assembly
+(`06_cli-restructure`'s ground).
+
+**Added at review, 2026-09-27:** two rows. The host read or called in the
+wiring, then handed on by a hook (`const env = process.env`,
+`const root = process.cwd()`): red, a verdict the argument clause implied that
+no row pinned. A sub-driver handed a value the wiring computed:
+`wiring-outside-hooks`, not `sub-driver-wiring`. That row also pins the explicit
+null check in `useCaseAt` that an earlier draft had folded away to reach
+coverage.
+
+**Found building, ruled 2026-09-27:** the assembly row "a framework's handle
+passed through is green" builds its assembly per event, in a hook
+(`process.on("request", (request) => createAuthAssembly({ request }).notes.list())`).
+Checkpoint 2's re-read missed it: its subject is the assembly. Ruled (a): both
+hooks red, `hook-one-call`, "a hook does not wire"; the assembly half stands. An
+assembly built per request is gone: the request goes to the use case (or its
+front service). Canon's "a framework's context handle passed through" meets only
+handles that exist at wiring time, such as a component's context at mount.
+Rejected: rewriting the driver (no per-request handle exists at wiring time in
+Node), reopening D4 for request-scoped assemblies.
+
 ## Docs
 
 Canon is this step's deliverable. `check/README.md` where a check's clause

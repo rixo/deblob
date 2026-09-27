@@ -1128,11 +1128,10 @@ export const readModule = ({
           }
         }
         case "parameter":
-          return {
-            kind: binding.isHookParam ? "tech" : "unknown",
-            origin: null,
-            path: [],
-          }
+          // a hook's parameter destructured: the part read off the event
+          return binding.isHookParam
+            ? { kind: "tech", origin: null, path: binding.path }
+            : { kind: "unknown", origin: null, path: [] }
         case "catch":
         case "callback":
           return { kind: "computed", origin: null, path: [] }
@@ -1152,8 +1151,13 @@ export const readModule = ({
                 path: [...value.path, ...binding.path],
               }
             case "tech":
+              return {
+                kind: "tech",
+                origin: null,
+                path: [...value.path, ...binding.path],
+              }
             case "literal":
-              return { kind: value.kind, origin: null, path: [] }
+              return { kind: "literal", origin: null, path: [] }
             default:
               return { kind: "computed", origin: null, path: [] }
           }
@@ -1550,8 +1554,8 @@ export const readModule = ({
 
   const readHook = (fn: AstNode, registeredBy: ReadCall): ReadHook => {
     const params = (fn["params"] as AstNode[]).flatMap((param) =>
-      patternNames(param).map(({ name, node }) =>
-        newBinding(name, "parameter", node, { isHookParam: true }),
+      patternNames(param).map(({ name, path, node }) =>
+        newBinding(name, "parameter", node, { isHookParam: true, path }),
       ),
     )
     const inner = inScope(params, () =>
@@ -2293,7 +2297,11 @@ export const readModule = ({
         }
         switch (rootValue.kind) {
           case "tech":
-            return { kind: "tech", origin: null, path: [] }
+            return {
+              kind: "tech",
+              origin: null,
+              path: [...rootValue.path, ...members],
+            }
           case "instance":
             return {
               kind: "instance",

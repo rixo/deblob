@@ -557,8 +557,12 @@ const ROWS: readonly Row[] = [
   },
   {
     // canon: tech values include "a framework's context handle passed through
-    // and never called"; "a call on one is not" a tech value.
-    name: "a framework's handle passed through is green; called in the assembly, it is red",
+    // and never called"; "a call on one is not" a tech value. Re-read at the
+    // lens step, checkpoint 3 (ruled 2026-09-27): the driver builds the
+    // assembly per event, in a hook — "a hook does not wire", both hooks red.
+    // A handle reaches an assembly only at wiring time (a component's context
+    // at mount); a per-request one goes to the use case.
+    name: "a framework's handle passed through is green; called in the assembly, it is red; built per event in a hook, the assembly is red",
     files: {
       ...NOTES,
       "src/auth/adapters/header-auth.adapter.ts": `
@@ -567,8 +571,8 @@ const ROWS: readonly Row[] = [
       "src/auth.driver.ts": `
         import { createAuthAssembly, createTokenAssembly } from "./auth.assembly.ts"
         export const main = () => {
-          process.on("request", (request: Request) => createAuthAssembly({ request }).notes.list())
-          process.on("token", (request: Request) => createTokenAssembly({ request }).notes.list())
+          process.on("request", (request: Request) => createAuthAssembly({ request }).notes.list()) // red: hook-one-call -- a hook does not wire: the assembly built per event; the request goes to the use case
+          process.on("token", (request: Request) => createTokenAssembly({ request }).notes.list()) // red: hook-one-call -- a hook does not wire: the assembly built per event; the request goes to the use case
         }
       `,
       "src/auth.assembly.ts": `
@@ -640,7 +644,7 @@ const ROWS: readonly Row[] = [
         import { join } from "node:path"
         ${IMPORTS}
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
-          return { notes: createNotes({ store: createFsStore(join(cwd, "notes")) }) } // missed red: assembly-builds-only -- a model function computing an argument: the assembly opening the door; the lens, checked at its checkpoint 3
+          return { notes: createNotes({ store: createFsStore(join(cwd, "notes")) }) } // red: assembly-builds-only + assembly-builds-only -- a model function computing: the assembly opening the door; the argument it computed rides with it
         }
       `,
     },

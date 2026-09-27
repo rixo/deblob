@@ -227,7 +227,11 @@ export type FactoryLayer =
 export type ArgValue = {
   kind: ValueKind
   origin: InstanceOrigin | null
-  /** Member path from the origin's result (`services.app` passed on). */
+  /**
+   * Member path read off the value's root: an instance's, from its origin's
+   * result (`services.app` passed on); a tech value's, from the event, the host
+   * or a tech call's result (`opts.files`, `({ files }) =>`, `process.env`).
+   */
   path: readonly string[]
   /**
    * A record literal handed: each entry as passed, so a rule judges them one by

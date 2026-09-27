@@ -49,14 +49,13 @@ const nests = (a: Span, b: Span): boolean =>
 
 /**
  * A call, judged by what it reaches. A factory call builds, any layer's — an
- * assembly's included; a model call builds on the same terms, its result judged
- * by where it goes; a declared load is the one use case allowed. Everything
- * else is there to do something other than build.
+ * assembly's included; a declared load is the one use case allowed. Everything
+ * else is there to do something other than build — a model function computes
+ * (`join(cwd, "notes")`): the assembly opening the door itself.
  */
 const judgeCall = (call: ReadCall): Verdict => {
   switch (call.callee.kind) {
     case "factory":
-    case "model":
     // the import rules judge these edges; the call adds nothing to them
     case "forbidden-import":
       return "green"

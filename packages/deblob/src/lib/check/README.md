@@ -71,37 +71,39 @@ One function per check, all over `ImportGraph` from `extraction`:
   line gets no verdict; the graph's `broken` carries it.
 - `checkAssembly(graph)` — `assembly-builds-only`, over every assembly file's
   functions and root: a call that builds nothing (the tech's, the language's, a
-  local function's, a use case but a declared load, a wiring function, a package
-  nothing claims — `unknown` for one the reader cannot place); an argument, or a
-  record argument's entry, that is computed, a function, unknown, or the host
-  read in place (tech values arrive as parameters) — a received one is green
-  whatever its kind, and one that came out of a call is that call's to answer
-  for (a model call's result passed on is green); what the assembly built used
-  as a member, computed with or reassigned — a load's or the tech's result is a
-  tech value, and may be read; a branch or loop on an instance or a computed
-  value (the branch owns its test: a `condition` use is never reported apart); a
-  definition at root or a function that builds nothing; any other statement at
-  root; an adapter, whole, in the returned record of a function a non-test file
-  calls. An argument that came out of a red or unknown call written in the same
-  expression — or a function handed to one — names it as its `cause`; through a
-  binding, on another statement, it stands alone.
+  model function's, a local function's, a use case but a declared load, a wiring
+  function, a package nothing claims — `unknown` for one the reader cannot
+  place); an argument, or a record argument's entry, that is computed, a
+  function, unknown, or the host read in place (tech values arrive as
+  parameters) — a received one is green whatever its kind, and one that came out
+  of a call is that call's to answer for (it rides with the red call); what the
+  assembly built used as a member, computed with or reassigned — a load's or the
+  tech's result is a tech value, and may be read; a branch or loop on an
+  instance or a computed value (the branch owns its test: a `condition` use is
+  never reported apart); a definition at root or a function that builds nothing;
+  any other statement at root; an adapter, whole, in the returned record of a
+  function a non-test file calls. An argument that came out of a red or unknown
+  call written in the same expression — or a function handed to one — names it
+  as its `cause`; through a binding, on another statement, it stands alone.
 - `checkDriver(graph)` — the five driver rules, over every driver file and a
   test file's hooks. `wiring-outside-hooks`: in the wiring function, a use-case
   call, an argument that is not a tech value, an instance or a literal (a
   function handed to the tech is a hook), a branch, a write. `hook-one-call`,
-  per hook: use-case calls not exactly one; an argument of the call not a tech
-  value, an instance or a literal; its result used past returning it or handing
-  it whole to the tech (a tech call, tech-held state); a branch — what its arms
-  hold is its own; a write; a tech call beside the call that neither wires nor
-  takes the result. `driver-calls-services`: a callee that is not a use case, an
-  assembly's factory, a sub-driver's wiring or the tech (`unknown` when
-  unplaced). `driver-hooks-only`: a definition at root, a function beside the
-  wiring function (the first exported), a local of it holding functions, a root
-  driver's wiring function taking a parameter (a driver another driver or a test
-  imports is a sub-driver). `sub-driver-wiring`: a sub-driver's wiring in a
-  hook, or handed a use case's result. Two facts are two violations; none rides
-  another. The test tech exempts services-only and — provisionally, until the
-  chapter's `04/06_test-rules` — `hook-one-call` whole.
+  per hook: use-case calls not exactly one; an argument of the call not the
+  event as received, the host whole, an instance or a literal (anything read off
+  a tech value — `opts.files`, `({ files }) =>`, `process.env` — or a tech
+  call's result); its result used past returning it (handed on, to the tech
+  included; written into its state, reported on the write); a branch — what its
+  arms hold is its own; a write; any call of the tech's or an assembly's outside
+  a branch's arms (a hook does not wire). `driver-calls-services`: a callee that
+  is not a use case, an assembly's factory, a sub-driver's wiring or the tech
+  (`unknown` when unplaced). `driver-hooks-only`: a definition at root, a
+  function beside the wiring function (the first exported), a local of it
+  holding functions, a root driver's wiring function taking a parameter (a
+  driver another driver or a test imports is a sub-driver). `sub-driver-wiring`:
+  a sub-driver's wiring in a hook, or handed a use case's result. Two facts are
+  two violations; none rides another. The test tech exempts services-only and —
+  provisionally, until the chapter's `04/06_test-rules` — `hook-one-call` whole.
 - `groupByFix(violations)` (`grouping.model.ts`) — one group per fix: a
   violation rides with the violation whose subject its `cause` names, the
   chain's root leading; one without a cause, or whose cause no violation

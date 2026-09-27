@@ -984,7 +984,7 @@ describe("renderCheckResults", () => {
         ],
         [
           { kind: "local", name: "rootOf", factory: false },
-          "calls rootOf, which builds nothing — every call in an assembly builds; a model function passed on, or inline",
+          "calls rootOf, which builds nothing — every call in an assembly builds; the adapter or service that needs it derives it",
         ],
         [
           { kind: "wiring", path: "src/cli.driver.ts", name: "main" },
@@ -996,7 +996,7 @@ describe("renderCheckResults", () => {
         ],
         [
           { kind: "language" },
-          "calls the language, which builds nothing — computing is not building; a model function passed on, or the adapter derives it",
+          "calls the language, which builds nothing — computing is not building, it is the assembly opening the door itself; the adapter takes the raw value and derives it",
         ],
       ] as const)("a call into %o says: %s", (callee, words) => {
         expect(message(assembly({ shape: "call", callee }))).toContain(
@@ -1030,7 +1030,7 @@ describe("renderCheckResults", () => {
             }),
           ),
         ).toContain(
-          "line 7 hands createFsStore a computed value as an argument — arguments are literals, tech values received, or instances; a model function passed on, or the adapter derives it",
+          "line 7 hands createFsStore a computed value as an argument — arguments are literals, tech values received, or instances; the adapter takes the raw value and derives it",
         )
         expect(
           message(
@@ -1155,7 +1155,7 @@ describe("renderCheckResults", () => {
         ],
         [
           { shape: "definition", name: "rootOf", at: "function" },
-          "defines rootOf, which builds nothing — nothing but assembly functions is defined; a model function, or inline",
+          "defines rootOf, which builds nothing — nothing but assembly functions is defined; the adapter or service that needs it derives it",
         ],
         [
           { shape: "root-statement" },
@@ -1238,7 +1238,21 @@ describe("renderCheckResults", () => {
             callee: { kind: "tech", package: null },
             where: "hook",
           },
-          "calls the host beside the use case — a hook connects a trigger to one use case; the use case does it through its port",
+          "calls the host in a hook — a hook makes one use-case call and nothing else; the use case does it through its port, the host handed whole",
+        ],
+        [
+          "hook-one-call",
+          {
+            shape: "call",
+            callee: {
+              kind: "factory",
+              layer: "assembly",
+              path: "src/cli.assembly.ts",
+              name: "createCliAssembly",
+            },
+            where: "hook",
+          },
+          "calls the assembly createCliAssembly in a hook — a hook does not wire; the wiring calls it once, at startup",
         ],
         [
           "driver-calls-services",
@@ -1308,7 +1322,17 @@ describe("renderCheckResults", () => {
             value: "computed",
             where: "hook",
           },
-          "hands the use case cli.check a computed value — a hook translates nothing on the way in; pass the tech values unchanged, the service derives the rest",
+          "hands the use case cli.check a computed value — a hook hands the event on as received and the host whole; pass them, the service reads what it needs",
+        ],
+        [
+          "hook-one-call",
+          {
+            shape: "argument",
+            callee: CHECK,
+            value: "tech",
+            where: "hook",
+          },
+          "hands the use case cli.check a tech value read or called for — a hook hands the event on as received and the host whole; pass them, the service reads what it needs",
         ],
         [
           "wiring-outside-hooks",
@@ -1348,7 +1372,7 @@ describe("renderCheckResults", () => {
         [
           "hook-one-call",
           { shape: "result", use: "computed" },
-          "uses a use case's result past handing it on — a hook returns it, or hands it whole to the tech; the use case returns what the tech needs",
+          "uses a use case's result — a hook returns it at most; the use case prints or answers through its port",
         ],
         [
           "wiring-outside-hooks",
@@ -1358,7 +1382,7 @@ describe("renderCheckResults", () => {
         [
           "hook-one-call",
           { shape: "statement", where: "hook" },
-          "writes in a hook — a hook translates nothing around its call; the use case returns what the tech needs",
+          "writes in a hook — a hook translates nothing around its call; the use case sets it through its port, the host handed whole",
         ],
         [
           "driver-hooks-only",

@@ -17,7 +17,11 @@ import { checkAssembly } from "./assembly.model.ts"
  * run at an assembly's root: the call running it is the root's red, its locals
  * each run's. And an argument the reader cannot tell that no call handed back:
  * a parameter no site binds is received, an import that did not land makes a
- * case refuse its tree — no tree reaches one.
+ * case refuse its tree — no tree reaches one. And a call the import rules
+ * judge, its result handed on: a tree reaches it only through an import already
+ * red under another check (a boot, a test file, a port's runtime export), so no
+ * row carries it; since the lens step it is the one green call whose result is
+ * computed.
  */
 
 const SPAN = { start: 40, end: 50, line: 3, column: 8 } as const
@@ -127,5 +131,71 @@ describe("checkAssembly", () => {
         cause: null,
       }),
     ])
+  })
+
+  it("leaves a forbidden import's call, its result handed on, to the import rules", () => {
+    const FROM_BOOT = { start: 60, end: 70, line: 3, column: 30 } as const
+    const reading = assemblyFunction([
+      {
+        kind: "call",
+        call: {
+          span: FROM_BOOT,
+          callee: {
+            kind: "forbidden-import",
+            layer: "boot",
+            path: "src/cli.boot.ts",
+          },
+          args: [],
+          result: [
+            {
+              kind: "argument",
+              to: {
+                kind: "factory",
+                layer: "adapters",
+                path: "src/notes/adapters/fs-store.adapter.ts",
+                name: "createFsStore",
+              },
+              span: FROM_BOOT,
+            },
+          ],
+          load: null,
+          registration: false,
+          handsRunner: false,
+          site: null,
+          calleeCall: null,
+        },
+      },
+      {
+        kind: "call",
+        call: {
+          span: SPAN,
+          callee: {
+            kind: "factory",
+            layer: "adapters",
+            path: "src/notes/adapters/fs-store.adapter.ts",
+            name: "createFsStore",
+          },
+          args: [
+            {
+              kind: "computed",
+              origin: null,
+              path: [],
+              entries: null,
+              from: FROM_BOOT,
+              received: false,
+              host: false,
+              span: FROM_BOOT,
+            },
+          ],
+          result: [{ kind: "returned", span: SPAN }],
+          load: null,
+          registration: false,
+          handsRunner: false,
+          site: null,
+          calleeCall: null,
+        },
+      },
+    ])
+    expect(checkAssembly(graphOf(reading))).toEqual([])
   })
 })

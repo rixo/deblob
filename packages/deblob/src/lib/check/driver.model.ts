@@ -57,9 +57,6 @@ const callsIn = (statements: readonly ReadStatement[]): ReadCall[] =>
         : [],
   )
 
-const within = (inner: Span, outer: Span): boolean =>
-  outer.start <= inner.start && inner.end <= outer.end
-
 /**
  * The callees a driver may call anywhere: a use case, an assembly's factory, a
  * sub-driver's wiring, its own tech — and an import the layer rules judge.
@@ -74,6 +71,16 @@ const isDriversCall = (callee: CalleeKind): boolean =>
 /** A value a driver may hand on: a tech value, an instance, a literal. */
 const isHandable = (value: ArgValue): boolean =>
   value.kind === "tech" || value.kind === "instance" || value.kind === "literal"
+
+/**
+ * A value a hook may hand its use case: the event as received, the host whole,
+ * an instance, a literal — nothing read off a tech value (`opts.files`,
+ * `process.env`), no tech call's result (`process.cwd()`).
+ */
+const isHandableInHook = (value: ArgValue): boolean =>
+  value.kind === "tech"
+    ? value.path.length === 0 && value.from === null
+    : isHandable(value)
 
 /**
  * The wiring function: the first exported — what is not exported, nothing
@@ -222,9 +229,10 @@ const judgeDriver = (
   }
 
   /**
-   * A hook: one use-case call, unconditional, translating nothing around it.
-   * What a branch in the hook holds is the branch's translation, the use case
-   * aside; a call the driver may not make is still that rule's.
+   * A hook: one use-case call, unconditional, handed the event as received, its
+   * value returned at most, and nothing else. What a branch in the hook holds
+   * is the branch's translation, the use case aside; a call the driver may not
+   * make is still that rule's.
    */
   const judgeHook = (hook: ReadHook): void => {
     const calls = callsIn(hook.body)
@@ -234,15 +242,9 @@ const judgeDriver = (
         shape: "call-count",
         count: useCases.length,
       })
-    // where the use cases' results are written into tech-held state
-    const assigned = useCases.flatMap((call) =>
-      call.result.flatMap((use) =>
-        use.kind === "assigned" && use.target === "tech" ? [use.span] : [],
-      ),
-    )
     const judgeUseCase = (call: ReadCall): void => {
       for (const arg of call.args) {
-        if (isHandable(arg)) continue
+        if (isHandableInHook(arg)) continue
         reportHook(
           arg.span,
           {
@@ -262,10 +264,6 @@ const judgeDriver = (
           case "discarded":
           // tested by a branch: the branch's
           case "condition":
-            continue
-          case "argument":
-            if (use.to.kind === "tech") continue
-            break
           // written into a member: the assignment's, judged as a statement
           case "assigned":
             continue
@@ -289,13 +287,13 @@ const judgeDriver = (
                 callee: call.callee,
                 where: "hook",
               })
+            // the tech's or an assembly's: a call the driver makes in its
+            // wiring, not in a hook
             else if (
-              call.callee.kind === "tech" &&
               !inBranch &&
-              // wiring in the hook: its result feeds what the hook builds
-              call.result.every((use) => use.kind === "discarded") &&
-              // the tech the use case's result is handed to
-              !call.args.some((arg) => useCaseAt(arg.from, calls))
+              (call.callee.kind === "tech" ||
+                (call.callee.kind === "factory" &&
+                  call.callee.layer === "assembly"))
             )
               reportHook(call.span, {
                 shape: "call",
@@ -317,14 +315,7 @@ const judgeDriver = (
             break
           case "assignment":
           case "other":
-            // the result written whole into tech-held state is handing it on
-            if (
-              inBranch ||
-              (statement.kind === "assignment" &&
-                statement.target === "tech" &&
-                assigned.some((span) => within(span, statement.span)))
-            )
-              break
+            if (inBranch) break
             reportHook(statement.span, {
               shape: "statement",
               where: "hook",
