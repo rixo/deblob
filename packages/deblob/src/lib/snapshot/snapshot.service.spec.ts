@@ -318,8 +318,8 @@ describe("serveSnapshots", () => {
     }
   }
 
-  /** A client connected to a server over the fake projects. */
-  const connectServed = async () => {
+  /** A client connected to a server over the fake projects, silent so far. */
+  const connectSilent = async () => {
     const { channel, connect } = createMemoryChannel()
     const { report, reported } = createMemoryReport()
     const { watcher, change, watching, hold } = createMemoryWatcher()
@@ -351,15 +351,39 @@ describe("serveSnapshots", () => {
     }
   }
 
-  test("on connect: projects, then the first project's snapshot, its set watched", async () => {
-    const { sent, watching, rootOf } = await connectServed()
+  /** A client connected, that asked for /FAKE_A: where most rows start. */
+  const connectServed = async () => {
+    const served = await connectSilent()
+    await served.send({ type: "select", project: "/FAKE_A" })
+    return served
+  }
+
+  test("on connect: projects alone — nothing run, nothing watched — until the client asks", async () => {
+    const { sent, watching, settle } = await connectSilent()
+    await settle()
+    expect(sent).toEqual([{ type: "projects", projects: FAKE_PROJECTS }])
+    expect(watching()).toEqual([])
+  })
+
+  test("the first select: that project's snapshot, its set watched, one run", async () => {
+    const { sent, send, watching, rootOf, generatedAtOf } =
+      await connectSilent()
+    await send({ type: "select", project: "/FAKE_A" })
     expect(sent.map((message) => message.type)).toEqual([
       "projects",
       "snapshot",
     ])
-    expect(sent[0]).toEqual({ type: "projects", projects: FAKE_PROJECTS })
     expect(rootOf(1)).toBe("/FAKE_A")
+    expect(generatedAtOf(1)).toBe("FAKE_RUN_1")
     expect(watching()).toEqual([["/FAKE_A", "/FAKE_A/src"]])
+  })
+
+  test("a client gone before its first select: nothing was watched, nothing to close", async () => {
+    const { sent, close, settle, watching } = await connectSilent()
+    await close()
+    await settle()
+    expect(sent).toHaveLength(1)
+    expect(watching()).toEqual([])
   })
 
   test("a change under the watch runs the project again and pushes the snapshot; the set is refreshed", async () => {

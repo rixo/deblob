@@ -148,7 +148,7 @@ test("an initial state carrying an error: it stays up, and the project it names 
   unsubscribe()
 })
 
-test("an initial state with nothing loaded yet: nothing is asked for, the server's own first snapshot answers", async () => {
+test("an initial state with nothing loaded yet: the source asks for nothing, its caller chooses", async () => {
   const { url, connection } = await serverUp()
   const source = createWsSource(url, {
     initial: {

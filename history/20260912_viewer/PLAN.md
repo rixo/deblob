@@ -132,12 +132,12 @@
     which waits on driver-layer's roles. Landed: Viewer mounted once, fed by
     value, the bridge gone; the view kept per project in the browser's storage.
 
-12. The load sequence (not yet specified) — nothing of their page before the
-    full first rendering: the host names the project on connect, the server runs
-    nothing before the client has spoken, their page is mounted once with every
-    prop. Ruled a step of its own (rixo, 2026-09-27); the trace and the sequence
-    that works are in `11_viewer-by-value/research/load-sequence.md`. Their part
-    goes to the design as a post.
+12. `12_load-sequence/` — nothing of their page before the full first rendering:
+    the host remembers the project and names it, the server runs nothing before
+    the client has spoken, their page is mounted once with every prop, a loader
+    of ours until then. Ruled a step of its own (rixo, 2026-09-27); the trace is
+    step 11's research. Their part was posted to the design on 2026-09-27.
+    Drafted 2026-09-27.
 
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
@@ -219,6 +219,16 @@ ask.
 ## Future
 
 ### Ideas
+
+- **Members of aliased types** (2026-09-27, rixo: ok card) — the symbol level
+  lists members for interfaces, object types, classes and enums, and `null` for
+  any other type alias: an intersection (`SourceState`, `{ projects } & (…)`) or
+  a generic with an object type beside it (`SnapshotSource`,
+  `Readable<SourceState> & { select }`) has members the reader does not list, so
+  a port shows fewer members than it has. Found when asking the design to draw a
+  port's members. Deblob side (extraction). Related, same file: an exported
+  class lists its private members too (`#x`, and `private` / `protected` are not
+  read).
 
 - **Tracer: "cannot read" vs "crashed"** (2026-09-25, rixo: "that stinks") — the
   snapshot service turns any throw of `sequenceOf` into `sequence: null` plus
