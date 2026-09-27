@@ -125,6 +125,12 @@
     captured, ranges into file texts instead of copied lines, presentation
     questions left to the design.
 
+11. `11_viewer-by-value/` — the product mounts the design's `Viewer.dc.html`
+    once, fed by value (their replies of 2026-09-27): a save redraws in place,
+    their picker is the switch, the view survives a reload per project; step
+    09's URL bridge and remount go. Drafted 2026-09-27; runs before step 10,
+    which waits on driver-layer's roles.
+
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
 through Vitest browser mode enters there).
