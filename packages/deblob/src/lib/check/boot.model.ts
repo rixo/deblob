@@ -53,17 +53,17 @@ const judgeBoot = (node: ModuleNode, graph: ImportGraph): BootViolation[] => {
   }
 
   let oneCall: ReadCall | null = null
-  let started: string | null = null
+  const started = new Set<string>()
   for (const statement of reading.root) {
     if (statement.kind === "call") {
       const { call } = statement
+      if (call.callee.kind === "wiring") started.add(call.callee.path)
       if (
         oneCall === null &&
         call.callee.kind === "wiring" &&
         call.site === null
       ) {
         oneCall = call
-        started = call.callee.path
         const [first] = call.args
         if (first !== undefined)
           report(first.span.line, { shape: "argument", call: call.callee })
@@ -95,11 +95,12 @@ const judgeBoot = (node: ModuleNode, graph: ImportGraph): BootViolation[] => {
   // no call at all, a branch's arms included; a wrong one is already that
   // call's red, a conditional one the branch's
   if (!hasCall(reading.root)) report(null, { shape: "no-call" })
-  // a driver imported and never started: the one driver is the started one
+  // a driver imported and never started: no root call reaches its wiring; a
+  // second driver started is already its call's red
   for (const edge of graph.edges) {
     if (edge.from !== node.path || edge.to.type !== "module") continue
     if (graph.modules.get(edge.to.path)?.layer !== "driver") continue
-    if (started !== null && edge.to.path !== started)
+    if (started.size > 0 && !started.has(edge.to.path))
       report(null, { shape: "unstarted", driver: edge.to.path })
   }
   return violations

@@ -178,6 +178,45 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // Added at the sweep (04/05, checkpoint 2): the second driver called, not
+    // left idle. Its call is the red — "calls its wiring function once" — and
+    // its import is not "never started": the boot starts it.
+    name: "a boot calling two drivers is red on the second call alone: that driver is started",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/worker.driver.ts": `
+        import { createCliAssembly } from "./cli.assembly.ts"
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          process.on("message", (message) => cli.check(message))
+        }
+      `,
+      "src/cli.boot.ts": `
+        import { main } from "./cli.driver.ts"
+        import { main as work } from "./worker.driver.ts"
+        main()
+        // red: boot-one-call -- a second call
+        work() // red: stable-root -- a second call; the exemption is the one call
+      `,
+    },
+  },
+  {
+    // Added at the sweep (04/05, checkpoint 2): canon, "nothing else
+    // imported, defined, held or called" — the call's result computed with is
+    // a use the boot check does not read; it judges statements, not uses. Way
+    // out: the bare call.
+    name: "the one call's result computed with is red: a boot holds nothing",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli.boot.ts": `
+        import { main } from "./cli.driver.ts"
+        main() + 1 // missed red: boot-one-call -- the result computed with; the boot check reads no use
+      `,
+    },
+  },
+  {
     // Added at the detectors step, checkpoint 7 (stamped 2026-09-27): no row
     // had a constant or a branch at a boot's root. canon: "defines nothing" — a
     // literal too; "calls its wiring function once, at module root" — the
