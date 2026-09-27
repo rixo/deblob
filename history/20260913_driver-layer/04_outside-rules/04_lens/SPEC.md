@@ -451,6 +451,29 @@ handles that exist at wiring time, such as a component's context at mount.
 Rejected: rewriting the driver (no per-request handle exists at wiring time in
 Node), reopening D4 for request-scoped assemblies.
 
+### Checkpoint 4, built 2026-09-27
+
+**Memory.** Two of the agent's memory rules still weighed what the lens now
+decides, and were realigned. The rule on the three outside layers said a `const`
+before the `return` was undecided (ruled free at checkpoint 1), stated the front
+service's filing and the gate through the fronts as ruled (input only), and did
+not yet say that a hook makes no call but the use case's, reads nothing off its
+event, or that an assembly never calls a model function. The assembly-laundering
+review routine named a driver's allowed line "translate a trigger"; under the
+lens a driver connects, and translation is the front service's.
+
+**The assert sweep.** No unit asserts a verdict the lens reversed. The ones that
+did (the render expectations of the rewritten way outs) moved at checkpoint 3.
+What still reads pre-lens in the units describes the reader's facts, not
+verdicts: "a call on a tech-held value is the tech's", "the hook's parameter and
+the host global are both tech-held", "a model call's member". Those stay: the
+reader still reads them so; only the rules changed.
+
+**Skills, for step 07** (no piecemeal skill edits before it): the hexagon card
+says drivers "translate an external trigger … into calls on the hexagon's public
+API". Under the lens a driver connects, and translation is a front service's.
+Placed on the PLAN's `07_slugs` line, beside the error guidance already owed.
+
 ## Docs
 
 Canon is this step's deliverable. `check/README.md` where a check's clause

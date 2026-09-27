@@ -537,17 +537,20 @@ may reopen the service example and the config pattern section.
   and the detectors — paused after their checkpoint 6 for `04/04_lens` (added
   2026-09-26: the outside layers are concessions, one thing each; canon
   rewritten around that test, every stamped row re-read through it; its SPEC
-  carries the rationale), resuming at checkpoint 7 under it. Then, before
-  type-name depth, `04/05_sweep` (added 2026-09-25: the detectors went fast, one
-  commit a checkpoint for days): loose ends caught and bolts tightened before
-  building on them. A review by another model, cold, of everything since
-  `02_rows-first` closed — code, units, rows, READMEs, SPEC notes against what
-  landed; the confessed known failures and every "to be measured" re-read; the
-  two owed cleanups (`it` where the title is a behavior sentence, `test`
-  elsewhere — never a blind rename; the typed builders replacing
-  `render.model.spec.ts`'s `as …Violation` casts); and grouping's worth measured
-  on the self-check (how many groups carry riders) before anything else is built
-  on it. Findings as a table, rixo rules each, fixes one commit per batch.
+  carries the rationale), resuming at checkpoint 7 under it. `04/04_lens` closed
+  2026-09-27 in four checkpoints: canon, the rows re-read (and the hook ruled:
+  the event handed on untouched), the checks aligned, memory and the assert
+  sweep. Then, before type-name depth, `04/05_sweep` (added 2026-09-25: the
+  detectors went fast, one commit a checkpoint for days): loose ends caught and
+  bolts tightened before building on them. A review by another model, cold, of
+  everything since `02_rows-first` closed — code, units, rows, READMEs, SPEC
+  notes against what landed; the confessed known failures and every "to be
+  measured" re-read; the two owed cleanups (`it` where the title is a behavior
+  sentence, `test` elsewhere — never a blind rename; the typed builders
+  replacing `render.model.spec.ts`'s `as …Violation` casts); and grouping's
+  worth measured on the self-check (how many groups carry riders) before
+  anything else is built on it. Findings as a table, rixo rules each, fixes one
+  commit per batch.
 
   Then `04/06_test-rules` (added 2026-09-26, **not to slip**: the ruling it
   revisits was made provisional on purpose). What a test body may do is
@@ -636,7 +639,9 @@ may reopen the service example and the config pattern section.
   Implementation guide's config pattern (lazy `getConfig()` in the root)
   rewritten as the declared load. Knowledge files realigned with this board's
   rulings in the same pass — Sharing step 5 in `knowledge/sharing.md` first; no
-  piecemeal skill edits before then.
+  piecemeal skill edits before then. From the lens (`04/04_lens`, checkpoint 4):
+  `knowledge/hexagon.md`'s "Drivers … translate an external trigger" — a driver
+  connects, translation is a front service's.
 - `08_container-whitelist` — config key for a runtime container library, when
   someone needs it.
 - `09_placement-debt-recut` — placement-debt steps 02, 04 and 05 re-cut under
