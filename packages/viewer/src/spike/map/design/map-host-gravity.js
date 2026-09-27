@@ -24,7 +24,7 @@
       if (Object.keys(p).length) this.setState(p);
     },
     // The zoom readout follows the part's camera (direct DOM write, as applyCam does).
-    onGCamera(k) { const z = document.querySelector('[data-map="zoompct"]'); if (z) { const w = document.createTreeWalker(z, NodeFilter.SHOW_TEXT).nextNode(); if (w) w.nodeValue = Math.round(k * 100) + '%'; } },
+    onGCamera(k) { this._gK = k; const z = document.querySelector('[data-map="zoompct"]'); if (z) { const w = document.createTreeWalker(z, NodeFilter.SHOW_TEXT).nextNode(); if (w) w.nodeValue = Math.round(k * 100) + '%'; } },
     // View store for the part (FROM-DEBLOB 2026-09-26 §2): the host names the
     // state by the project shown (else the graph path); the part shapes it.
     gStore() {
@@ -40,7 +40,7 @@
       const on = this.gravityOn();
       return {
         gravityOn: on, nestedDisp: on ? 'none' : 'block', nestedOnlyOff: on,
-        gSrc: this.graphSrc(), gSel: this.selGroup(s), gDepth: s.depth, gFocus: !!s.zoomSel, gCentre: !!s.centre, gChain: !!s.chain, gDirs: this.dirsOn(), gFlow: !!s.gflow,
+        gSrc: this.graphSrc(), gProject: this.curProject() ?? null, gSel: this.selGroup(s), gDepth: s.depth, gFocus: !!s.zoomSel, gCentre: !!s.centre, gChain: !!s.chain, gDirs: this.dirsOn(), gFlow: !!s.gflow,
         gArrows: ['none', 'under', 'auto', 'over'][s.arrowZ ?? 2], gKinds: s.kinds || null, gTypes: s.types || null, gCmd: s.gCmd || null, gStore: this.gStore(),
         onGSelect: a => this.onGSelect(a), onGControls: o => this.onGControls(o), onGCamera: k => this.onGCamera(k),
         setNested: () => this.setEngine('nested'), setGravity: () => this.setEngine('gravity'),

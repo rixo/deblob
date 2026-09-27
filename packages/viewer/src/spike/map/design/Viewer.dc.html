@@ -249,7 +249,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 
       <sc-if value="{{ gravityOn }}" hint-placeholder-val="{{ false }}">
         <div style="position:absolute;inset:0;z-index:0">
-          <dc-import name="Map" embedded="{{ true }}" src="{{ gSrc }}" graph-data="{{ gData }}" error="{{ gError }}" loading="{{ gLoading }}" sel="{{ gSel }}" depth="{{ gDepth }}" focus="{{ gFocus }}" wheel-zoom="{{ gWheel }}" centre="{{ gCentre }}" chain="{{ gChain }}" dirs="{{ gDirs }}" flow="{{ gFlow }}" arrows="{{ gArrows }}" kinds="{{ gKinds }}" types="{{ gTypes }}" cmd="{{ gCmd }}" view-store="{{ gStore }}" on-select="{{ onGSelect }}" on-controls="{{ onGControls }}" on-camera="{{ onGCamera }}" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+          <dc-import name="Map" embedded="{{ true }}" src="{{ gSrc }}" project="{{ gProject }}" graph-data="{{ gData }}" error="{{ gError }}" loading="{{ gLoading }}" sel="{{ gSel }}" depth="{{ gDepth }}" focus="{{ gFocus }}" wheel-zoom="{{ gWheel }}" centre="{{ gCentre }}" chain="{{ gChain }}" dirs="{{ gDirs }}" flow="{{ gFlow }}" arrows="{{ gArrows }}" kinds="{{ gKinds }}" types="{{ gTypes }}" cmd="{{ gCmd }}" view-store="{{ gStore }}" on-select="{{ onGSelect }}" on-controls="{{ onGControls }}" on-camera="{{ onGCamera }}" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
         </div>
       </sc-if>
       <div style="position:absolute;left:14px;right:calc({{ bpW }}px + 84px);top:12px;width:fit-content;margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:10px 14px;padding:7px 12px;border-radius:9px;background:#16171a;border:1px solid #26282d;font-size:11.5px;color:#8d8b85;opacity:{{ chromeOp }};transition:opacity .2s,right 260ms cubic-bezier(.2,.7,.2,1)">
@@ -588,7 +588,7 @@ class Component extends DCLogic {
   firstPick(list) {
     // `?project=` is an entry point, not a standing order (FROM-DEBLOB §3): read once, then dropped from the URL so a remount does not beat the pick.
     let want = null; try { const u = new URL(location.href); want = u.searchParams.get('project'); if (want) { u.searchParams.delete('project'); history.replaceState(null, '', u); } want = want || localStorage.getItem(PROJECT_KEY); } catch (e) {}
-    return (list.find(p => p.id === want) || list[0]).id;
+    const p = list.find(p => p.id === want) || list[0]; return p ? p.id : null;
   }
   // The state a project switch resets (selection, hover, the dock's picks, call data).
   resetProject(id) { this.callData = null; this._stk = null; return { project: id, projOpen: false, sel: null, hover: null, seqPick: null, seqHov: null, seqSel: null, callHov: null }; }
@@ -667,7 +667,12 @@ class Component extends DCLogic {
       this.setState({ ready: true, busy: false, collapsed: this.foldSetAt(2), depth: 2, sel: null, hover: null, zoomSel: true, flow: 'right', k: ZOOM_BASE, pan: { x: 40, y: 24 }, engine: 'gravity', centre: false, gflow: false, ...loadPrefs(), ...(restore || {}) }, () => {
         this.relayout(null, true);
         const el = this.canvas();
-        if (first && el) el.addEventListener('wheel', this.onWheel, { passive: false });
+        // Bound once, whenever the canvas first exists (by value the graph may
+        // arrive after mount, so `first` is not the moment; FROM-DEBLOB late).
+        if (el && !this._wheelBound) { this._wheelBound = true; el.addEventListener('wheel', this.onWheel, { passive: false }); }
+        // Under gravity the camera is the Map's (rule 2): no fit, no restore
+        // check from the shell. The nested world keeps its own placement.
+        if (this.gravityOn()) return;
         // A view saved in a larger window can land off the pane: refit then.
         // Checked once the page settles (call data in, dock open): componentDidUpdate.
         if (restore) { this._restoreCam = { pan: v.pan, k: v.k, pw: v.paneW, ph: v.paneH }; this._checkLost = true; this._restoreAt = performance.now(); return; }
@@ -730,6 +735,7 @@ class Component extends DCLogic {
   // setState, so saving and the restore settle run on a 1 s tick instead.
   viewTick() {
     if (this._checkLost) {
+      if (this.gravityOn()) { this._checkLost = false; this._restoreCam = null; return; }   // rule 2: never under gravity
       if (this.tweening || (this.state.pinned && !this.callData) || performance.now() - (this._restoreAt || 0) < 900) return;
       // Later relayouts (call data, dock) may re-anchor the pan: put the saved
       // camera back once they stop. Saved in a pane of another size → refit.
@@ -1916,7 +1922,7 @@ class Component extends DCLogic {
         deepRot: this.deepAllFolded(foldId) ? 0 : 90,
         // Layers' deep chevron wears the layer's colour (dimmed at rest, full on hover).
         deepC: deepAff === foldId ? (layerC || SC.ink) : layerC ? TH.mix(layerC, 70, SC.bg) : SC.mute,
-        deepSh: deepAff === foldId ? `drop-shadow(0 0 3px ${TH.mix(layerC || SC.ink2, 80, 'transparent')}) drop-shadow(0 0 7px ${TH.mix(layerC || SC.ink2, 40, 'transparent')})` : 'none',
+        deepSh: deepAff === foldId ? `drop-shadow(0 0 6px ${TH.mix(layerC || SC.ink2, 70, 'transparent')}) drop-shadow(0 0 14px ${TH.mix(layerC || SC.ink2, 35, 'transparent')})` : 'none',
         chevMl: (isLayer ? deepOn && deepLayersOn : deepOn) && canFold && !(p.type === 'fold' || p.folded) && this.foldKids(foldId).length > 0 ? 0 : 9,
         deepTitle: this.deepNext(foldId) === 'expand' ? 'Open all children' : 'Fold all children',
         // The card toggles; a card with nothing to fold falls back to selecting.
@@ -1960,7 +1966,7 @@ class Component extends DCLogic {
         // Driver cards: the sequence glyph toggles call mode, drawn and wired like
         // the chevron (title selects, the rest of the card toggles and lights it).
         const pin = hk ? { canPin: true, onPin: this.pinHook(id), onCard: this.pinHook(id), headAll: null, pinTitle: pinOn ? 'Leave call mode' : 'Call mode: draw this hook\'s calls', pinFill: pinOn ? 'currentColor' : 'none',
-          ...(pinOn ? { chevC: SC.ink, csh: `drop-shadow(0 0 3px ${TH.mix(SC.ink2, 80, 'transparent')}) drop-shadow(0 0 7px ${TH.mix(SC.ink2, 40, 'transparent')})` } : {}) } : { canPin: false };
+          ...(pinOn ? { chevC: SC.ink, csh: `drop-shadow(0 0 6px ${TH.mix(SC.ink2, 70, 'transparent')}) drop-shadow(0 0 14px ${TH.mix(SC.ink2, 35, 'transparent')})` } : {}) } : { canPin: false };
         if (p.group === 'blob') textNodes.push({ ...base, ...hit, label: p.label, ...this.themed(T0), lc: selSet.has(id) ? SC.ink : on ? SC.ink2 : SC.mute });
         else if ((p.group === 'ports' || p.group === 'model' || p.group === 'externals') && !p.hasMembers) chipNodes.push({ ...base, ...hit, ...shared });
         else boxNodes.push({ ...base, ...hit, ...chev, ...shared, ...pin, rows: rp.rows.map((r, i) => {
@@ -2557,7 +2563,7 @@ class Component extends DCLogic {
         };
       })(),
       toggleWheelZoom: this.toggleWheelZoom, wheelZoomBg: s.wheelZoom ? '#2b2d33' : 'transparent', wheelZoomFg: s.wheelZoom ? '#f4f2ec' : '#c4c2bc',
-      zoomPct: Math.round(s.k / ZOOM_BASE * 100) + '%',
+      zoomPct: this.gravityOn() ? Math.round((this._gK || 1) * 100) + '%' : Math.round(s.k / ZOOM_BASE * 100) + '%',
       onOver: this.onOver, onOut: this.onOut,
       detail: Math.min(s.detail ?? 3, LEVELS.length - 1), detailMax: LEVELS.length - 1, setDetail: this.setDetail,
       detailLabel: LEVEL_LABEL[LEVELS[Math.min(s.detail ?? 3, LEVELS.length - 1)]],

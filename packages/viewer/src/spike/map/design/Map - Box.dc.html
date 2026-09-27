@@ -32,9 +32,11 @@
   </sc-if>
   <sc-for list="{{ boxes }}" as="b" hint-placeholder-count="1">
     <div data-node="{{ b.id }}" onMouseEnter="{{ b.onOut }}" onMouseLeave="{{ b.onOut }}" style="position:absolute;left:{{ b.x }}px;top:{{ b.y }}px;width:{{ b.wc }};height:{{ b.hc }};box-sizing:border-box;border:{{ b.bw }}px solid {{ b.bc }};border-radius:{{ b.r }}px;background:{{ b.bg }};box-shadow:{{ b.sh }};opacity:{{ b.op }};overflow:{{ b.ovf }}">
-      <div onMouseEnter="{{ b.onBody }}" onMouseLeave="{{ b.onOut }}" onClick="{{ b.onPrimary }}" style="position:absolute;left:0;right:0;top:0;height:{{ b.band }}px;display:flex;align-items:stretch;padding:0 {{ b.padR }}px 0 0;cursor:{{ b.cur }}">
-        <span style="flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding-left:{{ b.padX }}px">
-        <span data-sel="1" onMouseEnter="{{ b.onTitle }}" onMouseLeave="{{ b.onBody }}" onClick="{{ b.onSelect }}" style="flex:none;min-width:0;display:flex;align-items:baseline;gap:6px;cursor:pointer">
+      <sc-if value="{{ b.boundary }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:0;right:0;top:{{ b.frameTop }}px;bottom:0;border:1px solid {{ b.fbc }};border-radius:{{ b.r }}px;pointer-events:none"></div></sc-if>
+      <div style="position:absolute;left:0;right:0;top:0;height:{{ b.band }}px;display:flex;align-items:stretch;padding:0 {{ b.padR }}px 0 {{ b.rowL }}px">
+        <span style="flex:{{ b.hflex }};min-width:0;display:flex;align-items:stretch;gap:{{ b.hgap }}px;padding:0 {{ b.cutR }}px 0 {{ b.cutL }}px;background:{{ b.hbg }}">
+        <span data-sel="1" onMouseEnter="{{ b.onTitle }}" onMouseLeave="{{ b.onOut }}" onClick="{{ b.onSelect }}" style="flex:none;min-width:0;display:flex;align-items:center;cursor:pointer">
+        <span style="display:flex;align-items:baseline;gap:6px;min-width:0">
           <sc-for list="{{ b.pre }}" as="p" hint-placeholder-count="0"><span style="flex:none;font:{{ p.font }};text-box:trim-both {{ p.edge }} alphabetic;letter-spacing:{{ p.ls }};text-transform:{{ p.tt }};color:{{ p.c }};white-space:nowrap">{{ p.t }}<span style="color:{{ p.sc }}">{{ p.slash }}</span></span></sc-for>
           <sc-if value="{{ b.dot }}" hint-placeholder-val="{{ false }}"><span style="flex:none;align-self:center;height:0;display:flex;align-items:center;overflow:visible"><span style="flex:none;width:5px;height:5px;border-radius:50%;background:{{ b.dotC }}"></span></span></sc-if>
           <sc-if value="{{ b.icon }}" hint-placeholder-val="{{ false }}"><span style="flex:none;align-self:center;height:0;display:flex;align-items:center;overflow:visible"><svg width="12" height="12" viewBox="{{ b.iconVb }}" style="flex:none"><path d="{{ b.iconD }}" fill="none" stroke="{{ b.iconC }}" stroke-width="1.2" stroke-dasharray="{{ b.iconDash }}" stroke-linecap="round" stroke-linejoin="round"></path></svg></span></sc-if>
@@ -42,11 +44,15 @@
         <sc-if value="{{ b.hasSub }}" hint-placeholder-val="{{ false }}"><span style="flex:none;text-box:trim-both cap alphabetic;font:600 9.5px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;color:{{ b.subC }};white-space:nowrap">{{ b.sub }}</span></sc-if>
           </span>
         </span>
-        <sc-for list="{{ b.actions }}" as="a" hint-placeholder-count="1">
-          <span data-act="{{ a.id }}" title="{{ a.title }}" onMouseEnter="{{ a.onEnter }}" onMouseLeave="{{ a.onLeave }}" onClick="{{ a.onClick }}" style="flex:none;width:22px;display:flex;align-items:center;justify-content:center;cursor:pointer"><span style="width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;background:{{ a.bg }}">
-            <svg width="11" height="11" viewBox="0 0 24 24" style="transform:rotate({{ a.rot }}deg);filter:{{ a.sh }};transition:transform 160ms"><path d="{{ a.d }}" fill="{{ a.fill }}" stroke="{{ a.stroke }}" stroke-width="{{ a.sw }}" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+          <span data-fold="1" onMouseEnter="{{ b.onBody }}" onMouseLeave="{{ b.onOut }}" onClick="{{ b.onPrimary }}" style="flex:1 1 0;display:{{ b.spacer }};cursor:{{ b.cur }}"></span>
+          <span style="flex:none;display:flex;align-items:stretch">
+          <sc-for list="{{ b.actions }}" as="a" hint-placeholder-count="1">
+            <span data-act="{{ a.id }}" title="{{ a.title }}" onMouseEnter="{{ a.onEnter }}" onMouseLeave="{{ a.onLeave }}" onClick="{{ a.onClick }}" style="flex:none;width:{{ a.w }}px;display:flex;align-items:center;justify-content:center;cursor:pointer"><span style="width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;background:{{ a.bg }}">
+              <svg width="11" height="11" viewBox="0 0 24 24" style="transform:rotate({{ a.rot }}deg);filter:{{ a.sh }};transition:transform 160ms"><path d="{{ a.d }}" fill="{{ a.fill }}" stroke="{{ a.stroke }}" stroke-width="{{ a.sw }}" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+            </span>
+          </sc-for>
           </span>
-        </sc-for>
+        </span>
       </div>
       <sc-if value="{{ b.rule }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:{{ b.padX }}px;right:{{ b.padX }}px;top:{{ b.band }}px;height:1px;background:{{ b.ruleC }}"></div></sc-if>
       <sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="0">
@@ -67,6 +73,9 @@ const CHEV = on => ({ id: 'fold', glyph: 'chev', on, title: on ? 'Fold' : 'Open'
 const EXAMPLES = [
   { t: 'unit', n: 'open · rule', o: { tier: 'unit', title: 'snapshot', open: true, bodyH: 40, actions: [CHEV(true)] } },
   { t: 'unit', n: 'folded · fused label', o: { tier: 'unit', title: 'cli', sub: 'assembly', kind: 'assembly', actions: [CHEV(false)] } },
+  { t: 'directory', n: 'open · path, no rule', o: { tier: 'dir', title: 'drivers', open: true, bodyH: 40, actions: [CHEV(true)] } },
+  { t: 'directory', n: 'folded', o: { tier: 'dir', title: 'lib', actions: [CHEV(false)] } },
+  { t: 'star', n: 'directory, galaxy', o: { tier: 'star', title: 'cases' } },
   { t: 'driver', n: 'folded · call mode', o: { tier: 'unit', title: 'cli', kind: 'driver', sub: 'driver', actions: [{ id: 'call', glyph: 'bolt', on: false, title: 'Call mode' }, CHEV(false)] } },
   { t: 'hexagon', n: 'own colour', o: { tier: 'group', title: 'hexagon', kind: 'hex', icon: 'hex', open: true, bodyH: 30, actions: [{ id: 'deep', glyph: 'deep', on: true, title: 'Fold children' }, CHEV(true)] } },
   { t: 'band', n: 'a box, no frame at rest', o: { tier: 'band', title: 'ports', kind: 'ports', icon: 'ports', open: true, bodyH: 30, actions: [CHEV(true)] } },
@@ -88,7 +97,10 @@ class Component extends DCLogic {
 
   box(key, o, x, y, w, h, live) {
     const BS = window.BoxSpec, P = this.props, z = this.zoneOf(key), acts = o.actions || [];
-    const aff = z && z.startsWith('act:') ? z.slice(4) : z === 'body' && acts[0] ? acts[0].id : null;
+    // A boundary's actions sit beside the label (Session 54): the strip is
+    // not a fold zone; only the icon itself lights and folds.
+    const bnd = !!(BS.TIERS[o.tier] && BS.TIERS[o.tier].boundary);
+    const aff = z && z.startsWith('act:') ? z.slice(4) : z === 'body' && acts[0] && !bnd ? acts[0].id : null;
     const sp = BS.spec({ ...o, hov: o.hov || z === 'title', aff, scheme: o.scheme || P.scheme });
     const W = w ?? sp.w, H = h ?? sp.h;
     const stop = fn => ev => { if (ev && ev.stopPropagation) ev.stopPropagation(); fn && fn(ev); };
@@ -98,32 +110,48 @@ class Component extends DCLogic {
     return {
       // Frameless tiers (band, row) draw their selection as a ring round the
       // label: not clipped, and padded so it reads as a box, not as parens.
-      ovf: sp.frame ? 'hidden' : 'visible', tpad: sp.frame ? '4px' : '6px', tmar: sp.frame ? '-4px' : '-6px',
-      id: o.id || key, x, y, w: W, h: H, wc: typeof W === 'number' ? W + 'px' : W, hc: typeof H === 'number' ? H + 'px' : H, bw: sp.frame ? 1 : 0, bc: sp.bc, r: sp.r, bg: sp.bg, sh: sp.sh, op: sp.op,
-      cur: acts.length ? 'pointer' : 'default', band: sp.band, padX: sp.padX, padR: Math.max(0, sp.padX - 3),
+      // A boundary's title is a real 4px-padded box (its ring), not clipped.
+      ovf: sp.frame && !bnd ? 'hidden' : 'visible', tpad: sp.frame ? '4px' : '6px', tmar: bnd ? '0' : sp.frame ? '-4px' : '-6px',
+      // Boundary tiers (dir, Session 53): the line is its own div starting
+      // frameTop below the rect; the head strip's label and actions knock the
+      // canvas out of the line. Outer div carries no border.
+      // Head strip. Every tier: [padX] label … spacer … actions [padR].
+      // Boundary (Session 54): the strip starts past the corner arc (r + 2),
+      // the inner span is the cut-out (knock, padding cutPad) holding the
+      // title box, a 6px gap and the action boxes (16px each); no spacer.
+      boundary: sp.boundary, frameTop: sp.frameTop, fbc: sp.bc, hbg: sp.boundary ? sp.knock : 'transparent', hflex: sp.boundary ? '0 0 auto' : '1', spacer: sp.boundary ? 'none' : 'block', hgap: sp.boundary ? 6 : 0,
+      rowL: sp.boundary ? sp.headX : 0, cutL: sp.boundary ? sp.cutPad : sp.padX, cutR: sp.boundary ? sp.cutPad : 0,
+      id: o.id || key, x, y, w: W, h: H, wc: typeof W === 'number' ? W + 'px' : W, hc: typeof H === 'number' ? H + 'px' : H, bw: sp.frame && !sp.boundary ? 1 : 0, bc: sp.bc, r: sp.r, bg: sp.bg, sh: sp.sh, op: sp.op,
+      cur: acts.length && !bnd ? 'pointer' : 'default', band: sp.band, padX: sp.padX, padR: sp.boundary ? 0 : Math.max(0, sp.padX - 3),
       dot: sp.dot, dotC: sp.dotC, icon: sp.icon, iconVb: sp.iconVb, iconD: sp.iconD, iconDash: sp.iconDash, iconC: sp.iconC,
       font: sp.font, titleLine: sp.titleLine, ls: sp.ls, tt: sp.upper ? 'uppercase' : 'none',
       // Optical centre (Session 47f): a label box is trimmed to the height its
       // letters fill: cap height for uppercase labels, x-height for lowercase
-      // (code names). CSS text-box does it; no offsets.
-      edge: sp.upper ? 'cap' : 'ex', pre: sp.pre.map(p => ({ ...p, edge: p.tt === 'uppercase' ? 'cap' : 'ex' })), slash: sp.slash, slashC: sp.slashC, lc: sp.lc, lbg: sp.lbg, lsh: sp.lsh, tsh: sp.tsh, title: o.title || '', hasSub: sp.hasSub, sub: sp.sub, subC: sp.subC,
+      // (code names). CSS text-box does it; no offsets. Session 54: a path
+      // always ends in its slash, cap-tall, so paths trim to cap too (the
+      // selected ring then sits evenly round the ink).
+      edge: sp.upper || sp.slash ? 'cap' : 'ex', pre: sp.pre.map(p => ({ ...p, edge: p.tt === 'uppercase' || p.slash ? 'cap' : 'ex' })), slash: sp.slash, slashC: sp.slashC, lc: sp.lc, lbg: sp.lbg, lsh: sp.lsh, tsh: sp.tsh, title: o.title || '', hasSub: sp.hasSub, sub: sp.sub, subC: sp.subC,
       rule: sp.rule, ruleC: sp.ruleC, rowH: sp.rowH,
       // Member rows (Session 46s): each row is its own select zone; hover
       // lights the row, not the card's action; selected rows carry the ring.
       rows: sp.rows.map((r, i) => { const hv = z === 'row:' + i, sl = (o.selRows || []).includes(i);
         return { ...r, y: rowTop + i * sp.rowH, x: sp.padX - 4, c: hv || sl ? '#ecebe6' : r.c, bg: hv || sl ? 'rgba(255,255,255,.06)' : 'transparent', sh: sl ? '0 0 0 1.5px #f1efe9' : 'none',
-          onEnter: () => { this.setZone(key, 'row:' + i); if (live && P.onHover) P.onHover(true); }, onLeave: () => { this.setZone(key, 'body'); if (live && P.onHover) P.onHover(false); },
+          onEnter: () => { this.setZone(key, 'row:' + i); if (live && P.onHover) P.onHover(true); }, onLeave: () => { this.setZone(key, null); if (live && P.onHover) P.onHover(false); },
           onClick: stop(live ? ev => P.onSelectRow && P.onSelectRow(i, { shift: !!(ev && (ev.shiftKey || ev.metaKey)) }) : null) }; }),
-      actions: sp.actions.map(a => ({ ...a, onEnter: () => this.setZone(key, 'act:' + a.id), onLeave: () => this.setZone(key, 'body'), onClick: stop(act(a.id)) })),
+      actions: sp.actions.map(a => ({ ...a, w: sp.boundary ? 16 : 22, onEnter: () => this.setZone(key, 'act:' + a.id), onLeave: () => this.setZone(key, null), onClick: stop(act(a.id)) })),
       // Hover reported to the page (arrows) from the select zones only: the
       // label zone and member rows, never the body (Session 46w).
-      // Zones (user, Session 51): the label selects; the rest of the header
-      // folds (lights the chevron); the body below the header is inert.
+      // Zones (user, Session 51; Session 54, seventh report): every zone is
+      // its own element, full head height, no inference from pointer
+      // position. `data-sel` (label) selects; `data-fold` (the spacer between
+      // label and actions) folds and lights the first action; each action is
+      // itself; the head's padding, the row and the body have no handlers.
+      // Leaving any zone clears it (null), never falls back to 'body'.
       onBody: () => { this.setZone(key, 'body'); if (live && P.onHover) P.onHover(false); },
       onTitle: () => { this.setZone(key, 'title'); if (live && P.onHover) P.onHover(true); },
       onOut: () => { this.setZone(key, null); if (live && P.onHover) P.onHover(false); },
       onSelect: stop(sel),
-      onPrimary: acts[0] ? stop(act(acts[0].id)) : stop(null),
+      onPrimary: acts[0] && !bnd ? stop(act(acts[0].id)) : stop(null),
     };
   }
 

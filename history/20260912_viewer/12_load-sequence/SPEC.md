@@ -44,7 +44,11 @@ Out of scope, and why:
   a switch never reaches the old map, a fingerprint without `generatedAt`, no
   late corrections, the readout): theirs, posted. Until they land, a first load
   still shows their fit tween, and a switch can still carry the old camera. This
-  step removes the races on our side; it does not remove those.
+  step removes the races on our side; it does not remove those. (They landed:
+  their reply of 2026-09-28 took all six, pulled that day and probed under our
+  host — the first load revealed at its fit with no tween, a reload restored
+  with nothing moving after, a switch cold-loaded at the new project's own fit
+  with the old project's saved view untouched, the readout matching.)
 - What the loader looks like: rixo, 2026-09-27: ours, temporary, designed in a
   polish phase. Here it is a line of text.
 - `?project=` in our URL: nothing asks for it yet (§ Open).

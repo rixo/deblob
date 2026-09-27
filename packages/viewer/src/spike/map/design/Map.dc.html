@@ -23,7 +23,8 @@
         <dc-import name="Map - Box" id="{{ b.id }}" tier="{{ b.tier }}" kind="{{ b.kind }}" title="{{ b.title }}" pre="{{ b.pre }}" icon="{{ b.icon }}" open="{{ b.open }}" rows="{{ b.rows }}" actions="{{ b.actions }}" state="{{ b.state }}" sel="{{ b.sel }}" sel-rows="{{ b.selRows }}" on-select-row="{{ b.onRow }}" on-select="{{ b.onSelect }}" on-action="{{ b.onAction }}" on-hover="{{ b.onHover }}" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
       </div>
     </sc-for>
-    <svg width="1" height="1" style="position:absolute;z-index:1;left:0;top:0;overflow:visible;pointer-events:none;opacity:{{ linkOp }};transition:opacity 140ms">
+    <svg ref="{{ twUnderRef }}" width="1" height="1" style="position:absolute;z-index:1;left:0;top:0;overflow:visible;pointer-events:none"></svg>
+    <svg width="1" height="1" style="position:absolute;z-index:1;left:0;top:0;overflow:visible;pointer-events:none">
       <sc-for list="{{ hitsUnder }}" as="l" hint-placeholder-count="0">
         <path d="{{ l.d }}" fill="none" stroke="transparent" stroke-width="{{ l.hw }}" pointer-events="{{ l.pe }}" onMouseEnter="{{ l.onEnter }}" onMouseLeave="{{ l.onLeave }}" style="cursor:pointer"></path>
       </sc-for>
@@ -42,7 +43,8 @@
         <dc-import name="Map - Box" id="{{ b.id }}" tier="{{ b.tier }}" kind="{{ b.kind }}" title="{{ b.title }}" pre="{{ b.pre }}" icon="{{ b.icon }}" open="{{ b.open }}" rows="{{ b.rows }}" actions="{{ b.actions }}" state="{{ b.state }}" sel="{{ b.sel }}" sel-rows="{{ b.selRows }}" on-select-row="{{ b.onRow }}" on-select="{{ b.onSelect }}" on-action="{{ b.onAction }}" on-hover="{{ b.onHover }}" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
       </div>
     </sc-for>
-    <svg width="1" height="1" style="position:absolute;z-index:3;left:0;top:0;overflow:visible;pointer-events:none;opacity:{{ linkOp }};transition:opacity 140ms">
+    <svg ref="{{ twOverRef }}" width="1" height="1" style="position:absolute;z-index:3;left:0;top:0;overflow:visible;pointer-events:none"></svg>
+    <svg width="1" height="1" style="position:absolute;z-index:3;left:0;top:0;overflow:visible;pointer-events:none">
       <sc-for list="{{ linksOver }}" as="l" hint-placeholder-count="0">
         <g opacity="{{ l.op }}">
           <path d="{{ l.d }}" fill="none" stroke="{{ l.c }}" stroke-width="{{ l.sw }}" stroke-dasharray="{{ l.dash }}"></path>
@@ -120,12 +122,19 @@ const LOOK = { rest: [REST_C(), 1, 0.3], low: [REST_C(), 1, 0.3], high: ['#e6e4d
 function REST_C() { return '#6a6d75'; }
 const TW = 420, CTRL_KEY = 'deblob-gravity.controls.v1', PROJECT_KEY = 'deblob-map.project';
 const ON = '#e6e4df', REST = '#5d6068';
-const syms = n => (n.syms || []).filter(s => !s.typeOnly);
+// Rows of a module = its runtime symbols. A port's symbols are its exported
+// types (typeOnly), so a port passes its types' members through as rows, as a
+// service shows its functions (user, Session 55; FROM-DEBLOB addendum). A type
+// without known members stands as its own row.
+const portSyms = n => { const out = []; for (const s of n.syms || []) { if (!s.typeOnly) { out.push(s); continue; } if (Array.isArray(s.members) && s.members.length) for (const m of s.members) { const fn = /\(\)$/.test(m); out.push({ name: fn ? m.slice(0, -2) : m, form: fn ? 'function' : 'member', of: s.name }); } else out.push({ name: s.name, form: 'type' }); } return out; };
+const syms = n => n.kind === 'ports' ? portSyms(n) : (n.syms || []).filter(s => !s.typeOnly);
 const members = n => syms(n).map(s => s.name + (s.form === 'function' ? '()' : ''));
 const isU = n => n.type === 'unit' || n.type === 'driver';
+// Point of r's border on the ray from its centre to (tx, ty), +2 out.
+const edge = (r, tx, ty) => { const cx = r.x + r.w / 2, cy = r.y + r.h / 2, dx = tx - cx, dy = ty - cy; const t = Math.min(dx ? (r.w / 2 + 2) / Math.abs(dx) : Infinity, dy ? (r.h / 2 + 2) / Math.abs(dy) : Infinity, 1); return [cx + dx * t, cy + dy * t]; };
 
 class Component extends DCLogic {
-  state = { ready: false, revealed: false, flow: false, dirs: true, focus: false, centre: false, chain: false, sel: [], depth: 2, folded: [], cards: [], arrows: 'auto', hover: null, hoverArrow: null, linksOn: true, dragging: false, projects: null, project: null, projOpen: false, busy: false };
+  state = { ready: false, revealed: false, flow: false, dirs: true, focus: false, centre: false, chain: false, sel: [], depth: 2, folded: [], cards: [], arrows: 'auto', hover: null, hoverArrow: null, dragging: false, projects: null, project: null, projOpen: false, busy: false };
   cam = { k: 0.8, x: 60, y: 90 };
   last = new Map(); cbs = new Map(); acts = new Map(); sz = new Map(); lcbs = new Map();
   lcb(k) { let c = this.lcbs.get(k); if (!c) { c = { onEnter: () => this.state.hoverArrow !== k && this.setState({ hoverArrow: k }), onLeave: () => this.state.hoverArrow === k && this.setState({ hoverArrow: null }) }; this.lcbs.set(k, c); } return c; }
@@ -158,7 +167,7 @@ class Component extends DCLogic {
   firstPick(list) {
     let want = null;
     try { const u = new URL(location.href); want = u.searchParams.get('project'); if (want) { u.searchParams.delete('project'); history.replaceState(null, '', u); } want = want || localStorage.getItem(PROJECT_KEY); } catch (e) {}
-    return (list.find(p => p.id === want) || list[0]).id;
+    const p = list.find(p => p.id === want) || list[0]; return p ? p.id : null;
   }
   loadProjects() {
     fetch('./data/projects.json').then(r => r.ok ? r.json() : null).catch(() => null).then(j => {
@@ -185,7 +194,9 @@ class Component extends DCLogic {
   set(patch) { this.setState(patch); this.save(); this.emit(patch); }
   save() { if (!this._restored) return; clearTimeout(this._sv); this._sv = setTimeout(this.flush, 300); }
   onVis = () => { if (document.visibilityState === 'hidden') this.flush(); };
-  flush = () => {
+  flush = () => this.flushTo(null);
+  // Write the view now; `S` = the store to write (a store being replaced), else the current one.
+  flushTo(S) {
     clearTimeout(this._sv); if (!this._restored || !this.M || !this._el) return;
     // On pagehide / unmount the pane may already measure 0 × 0: use the last
     // real size (a 0 width turned the saved centre into −x / k, 47b fix).
@@ -194,13 +205,19 @@ class Component extends DCLogic {
     try {
       localStorage.setItem(CTRL_KEY, JSON.stringify({ flow: s.flow, dirs: s.dirs, arrows: s.arrows, chain: s.chain, focus: s.focus, centre: s.centre, depth: s.depth }));
     } catch (e) {}
-    this.writeView({ folded: s.folded, cards: s.cards, sel: s.sel, k: c.k, cx: (W / 2 - c.x) / c.k, cy: (H / 2 - c.y) / c.k, anchor: this.anchor(W, H), fp: this.fp(s) });
-  };
+    const v = { folded: s.folded, cards: s.cards, sel: s.sel, k: c.k, cx: (W / 2 - c.x) / c.k, cy: (H / 2 - c.y) / c.k, anchor: this.anchor(W, H), fp: this.fp(s) };
+    if (S) { try { S.save(v); } catch (e) {} } else this.writeView(v);
+  }
   size() { const W = this._el ? this._el.clientWidth : 0, H = this._el ? this._el.clientHeight : 0; if (W > 0 && H > 0) this._sz = { W, H }; return this._sz || { W: 0, H: 0 }; }
-  // Fingerprint of everything the layout is a function of.
+  // Fingerprint of everything the layout is a function of: the graph's shape
+  // (node ids in order, edge count), the folds and the knobs. Not
+  // `meta.generatedAt`: it names a delivery, not a layout (rule 4). Not the
+  // graph path either: the store is scoped per project by whoever names it
+  // (host store or our key), and a flush to a replaced store must not read
+  // the new project's props.
   fp(s) {
-    const P = this.props, m = this.gmeta || {};
-    const t = JSON.stringify([this.srcOf(), m.generatedAt || m.generated || m.files || '', this.order.length, s.flow, s.dirs, s.focus, [...s.folded].sort(), [...s.cards].sort(),
+    const P = this.props, M = this.M;
+    const t = JSON.stringify(['v2', this.order.join(','), M ? M.dir.length : 0, s.flow, s.dirs, s.focus, [...s.folded].sort(), [...s.cards].sort(),
       s.focus ? [...s.sel].sort() : 0, P.spread ?? 110, P.cohesion ?? 0.6, P.stability ?? 0, P.gap ?? 28, P.fusion !== false, this.dirLabels(), P.dirRoots ?? 'lib', P.galaxy ?? 1, P.groupGap ?? 1, this.energy(), P.mass ?? 0.6, P.interleave ?? 0, 'u1', s.focus ? P.orbit ?? 0.5 : 0, 'g1', P.kinds || 0, P.types || 0]);
     let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36);
   }
@@ -309,10 +326,14 @@ class Component extends DCLogic {
     if (p.cmd && p.cmd !== pp.cmd) { const op = p.cmd.op; if (op === 'fit') this.fit(); else if (op === 'zoomIn') this.zoomBy(1.18); else if (op === 'zoomOut') this.zoomBy(1 / 1.18); else if (op === 'zoomReset') this.zoomBy(1 / this.cam.k); else if (op === 'stepUp') this.step(1); else if (op === 'stepDown') this.step(-1); else if (op === 'reset') this.reset(); else if (op === 'deselect') this.select(null); }
   }
   componentDidUpdate(pp) { if (this._tm) { const m = this._tm; this._tm = null; console.log(`[gravity] ${m.label}: ${Math.round(performance.now() - m.t0)} ms commit`); }
+    // A project switch (rule 3): the old project's view goes to the old store
+    // now, before anything is saved through the new one.
+    if (pp.viewStore !== this.props.viewStore && pp.viewStore && this.M && this._proj != null && this._proj !== this.curProject()) this.flushTo(pp.viewStore);
+    if (!this.tw && this._twU && this._twU.firstChild) this.drawTween(null);   // landed: the template has the arrows now, same commit
     this.syncProps(pp);
     if (pp.graph !== this.props.graph || pp.src !== this.props.src) this.load(false);
     // A new graph for the project shown is an update (ask 2); for another project a cold load.
-    else if (pp.graphData !== this.props.graphData && this.props.graphData) this.load(this._proj === this.curProject());
+    else if (pp.graphData !== this.props.graphData && this.props.graphData) this.load(this._proj === this.curProject() && pp.project === this.props.project);
     else if (pp.project !== this.props.project && this.props.project != null && !this.awaiting()) this.load(false);
     else if (this.M && JSON.stringify([pp.kinds, pp.types]) !== JSON.stringify([this.props.kinds, this.props.types])) this.load(true);
     else if (pp.fusion !== this.props.fusion || pp.fusionDirs !== this.props.fusionDirs || pp.dirLabels !== this.props.dirLabels || pp.dirRoots !== this.props.dirRoots || pp.galaxy !== this.props.galaxy || pp.groupGap !== this.props.groupGap || pp.energy !== this.props.energy || pp.mass !== this.props.mass || pp.interleave !== this.props.interleave) { this.sz.clear(); this.acts.clear(); this.go({}); }
@@ -348,7 +369,7 @@ class Component extends DCLogic {
     // Widths are measured on a canvas: measure only once the webfonts are in.
     if (document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]);
     window.BoxSpec.clearCache();
-    this._restored = false; this.gmeta = g.meta;
+    this._restored = false; this.gmeta = g.meta; this._lastK = null;   // the readout follows the restored camera (rule 6)
     this.PS = window.PlaceSandbox; this.M = this.PS.prepare(g); this._T = {};
     this._slots = null; this.tw = null; this.last.clear(); this.cbs.clear(); this.acts.clear(); this.sz.clear();
     const M = this.M, order = [];
@@ -369,7 +390,7 @@ class Component extends DCLogic {
     const n = this.order.length, t0 = this._t0;
     const poll = () => {
       const k = this._w ? this._w.querySelectorAll(':scope > [data-slot] [data-node]').length : 0;
-      if (k >= n || performance.now() - t0 > 1500) { console.log(`[gravity] revealed: ${k}/${n} parts, ${Math.round(performance.now() - t0)} ms`); this._restored = true; this.setState({ revealed: true }); }
+      if (k >= n || performance.now() - t0 > 1500) { console.log(`[gravity] revealed: ${k}/${n} parts, ${Math.round(performance.now() - t0)} ms`); this._restored = true; this.setState({ revealed: true }); this.save(); }   // the store holds the revealed view (fresh fp), not a stale entry
       else requestAnimationFrame(poll);
     };
     requestAnimationFrame(poll);
@@ -540,7 +561,8 @@ class Component extends DCLogic {
       if (f0 && ref) this.tw.home = { from: { x: (f0.x + f0.w / 2) * c.k + c.x, y: (f0.y + f0.h / 2) * c.k + c.y, k: c.k }, to: { x: (hm.rx + ref.w / 2) * k + hm.cam.x, y: (hm.ry + ref.h / 2) * k + hm.cam.y, k } };
       else this.tw.home = { from: { ...this.cam }, to: { ...hm.cam }, cam: true }; this.home = null; }
     this.armCam(R0);
-    this.setState({ ...patch, linksOn: false }); this.save(); this.emit(patch);
+    this.setState({ ...patch }); this.save(); this.emit(patch);
+    this.drawTween(R0);
     cancelAnimationFrame(this._raf); this._raf = requestAnimationFrame(this.tick);
   }
   // Tween (Session 46z''), for every box: a box present before and after
@@ -616,9 +638,23 @@ class Component extends DCLogic {
       if (!f) { st.opacity = 0; continue; }
       st.left = f.x + 'px'; st.top = f.y + 'px'; st.width = f.w + 'px'; st.height = f.h + 'px'; st.transform = 'scale(' + f.s + ')'; st.opacity = f.op; st.pointerEvents = t < 1 ? 'none' : (this.cur.L.has(id) ? 'auto' : 'none');
     }
+    this.drawTween(R);
     if (t < 1) this._raf = requestAnimationFrame(this.tick);
-    else { this.tw = null; this.setState({ linksOn: true }); }
+    else { this.tw = null; this.forceUpdate(); }
   };
+  // Arrows during a tween (Session 54): the template's arrow lists are
+  // empty while `tw` is set; each frame draws the blended arrows into two
+  // imperative svgs (under / over), cleared in the commit that redraws the
+  // template's arrows (componentDidUpdate). Before, the template's arrows
+  // sat at B's rects for a 140 ms fade while the boxes were still at A.
+  twUnderRef = el => { this._twU = el; }; twOverRef = el => { this._twO = el; };
+  drawTween(R) {
+    if (!this._twU || !this._twO) return;
+    if (!R || !this.tw || this.tw.A === this.tw.B || this.state.arrows === 'none') { this._twU.innerHTML = ''; this._twO.innerHTML = ''; return; }
+    const L = this.linksOf(this.tw.B, R, this.tw.A);
+    const str = list => list.map(l => `<g opacity="${l.op}"><path d="${l.d}" fill="none" stroke="${l.c}" stroke-width="${l.sw}" stroke-dasharray="${l.dash}"></path><path d="${l.hd}" fill="${l.c}"></path></g>`).join('');
+    this._twU.innerHTML = str(L.linksUnder); this._twO.innerHTML = str(L.linksOver);
+  }
   toggleFold(id) { const f = new Set(this.state.folded), ch = [id, ...this.chainOf(id)];
     if (ch.length > 1) { if (ch.some(x => f.has(x))) ch.forEach(x => f.delete(x)); else f.add(id); } else f.has(id) ? f.delete(id) : f.add(id); this.timeIt('fold'); this.go({ folded: [...f] }, id); }
   toggleCard(id) { const c = new Set(this.state.cards); c.has(id) ? c.delete(id) : c.add(id); this.timeIt('card'); this.go({ cards: [...c] }, id); }
@@ -690,7 +726,10 @@ class Component extends DCLogic {
     const W = this._el.clientWidth, H = this._el.clientHeight, m = 70;
     const k = Math.max(0.12, Math.min(1.4, Math.min((W - 2 * m) / (x1 - x0), (H - 2 * m - 50) / (y1 - y0))));
     const to = { k, x: (W - k * (x1 + x0)) / 2, y: (H - 30 - k * (y1 + y0)) / 2 };
-    if (!this.state.ready || (this.tw && this.tw.A !== this.tw.B)) { this.cam = to; this.applyCam(); return; }   // restore / mid-relayout: jump
+    // Before the reveal (first placement: saved view or fit) and mid-relayout
+    // the camera jumps; a tween is for a change the user saw start (FROM-DEBLOB
+    // 2026-09-27 late, rule 1).
+    if (!this.state.ready || !this.state.revealed || (this.tw && this.tw.A !== this.tw.B)) { this.cam = to; this.applyCam(); return; }
     const A = this.cur; this.tw = { A, B: A, t0: performance.now(), anchor: null, pin: null, centre: null, home: { from: { ...this.cam }, to, cam: true } }; this._fm = null;
     this.armCam(this.frameAt(0)); cancelAnimationFrame(this._raf); this._raf = requestAnimationFrame(this.tick);
   };
@@ -709,7 +748,7 @@ class Component extends DCLogic {
     const s = this.state, on = v => v ? '#26282d' : 'transparent', fg = v => v ? '#f4f2ec' : '#c4c2bc';
     const base = {
       cursor: s.dragging ? 'grabbing' : 'default', graphName: this.props.graph || 'deblob-seq',
-      canvasRef: this.canvasRef, worldRef: this.worldRef, onDown: this.onDown, onMove: this.onMove, onUp: this.onUp, onDbl: this.onDbl, fit: this.fit,
+      canvasRef: this.canvasRef, worldRef: this.worldRef, twUnderRef: this.twUnderRef, twOverRef: this.twOverRef, onDown: this.onDown, onMove: this.onMove, onUp: this.onUp, onDbl: this.onDbl, fit: this.fit,
       toggleChain: () => this.set({ chain: !this.state.chain }), chainBg: on(s.chain), chainFg: fg(s.chain),
       toggleFocus: () => this.M && this.go({ focus: !this.state.focus }, this.state.sel[0], !this.state.focus),
       toggleCentre: () => { const c = !this.state.centre; this.set({ centre: c }); if (c && this.M && this.state.focus && this.state.sel.length) this.centreNow(); }, centreBg: on(s.centre), centreFg: fg(s.centre), focusBg: on(s.focus), focusFg: fg(s.focus),
@@ -719,7 +758,7 @@ class Component extends DCLogic {
       stops: STOPS.filter(([, d]) => d > 0 || s.dirs).map(([label, d]) => ({ label, bg: on(s.depth === d), fg: fg(s.depth === d),
         onClick: () => this.M && this.go({ depth: d, folded: [...this.PS.foldAt(this.M, Math.min(d, 3))], cards: d >= 4 ? this.withRows : [] }) })),
       arrowStops: ARROWS.map(([k, label, title]) => ({ label, title, bg: on(s.arrows === k), fg: fg(s.arrows === k), onClick: () => this.set({ arrows: k }) })),
-      boxes: [], dirBoxes: [], tethers: [], linksUnder: [], linksOver: [], hitsUnder: [], hitsOver: [], worldVis: s.revealed ? 'visible' : 'hidden', linkOp: s.linksOn ? 1 : 0,
+      boxes: [], dirBoxes: [], tethers: [], linksUnder: [], linksOver: [], hitsUnder: [], hitsOver: [], worldVis: s.revealed ? 'visible' : 'hidden',
       ...this.projVals(),
     };
     if (!s.ready || !this.cur) return base;
@@ -741,7 +780,6 @@ class Component extends DCLogic {
     const star = this.starsOf(s);
     boxes.forEach(b => { b.z = M.nodes.get(b.id).type !== 'dir' || (star && star.has(b.id)) ? 2 : 0; });
     const dirBoxes = boxes.filter(b => M.nodes.get(b.id).type === 'dir'), rest = boxes.filter(b => M.nodes.get(b.id).type !== 'dir');
-    const edge = (r, tx, ty) => { const cx = r.x + r.w / 2, cy = r.y + r.h / 2, dx = tx - cx, dy = ty - cy; const t = Math.min(dx ? (r.w / 2 + 2) / Math.abs(dx) : Infinity, dy ? (r.h / 2 + 2) / Math.abs(dy) : Infinity, 1); return [cx + dx * t, cy + dy * t]; };
     // Tethers: star → each drawn box whose nearest drawn holder is that star.
     const tethers = [];
     if (star && !FR) for (const [id, r] of B.L) {
@@ -755,7 +793,16 @@ class Component extends DCLogic {
       tethers.push({ d: `M${x1 + nx} ${y1 + ny}L${x2} ${y2}L${x1 - nx} ${y1 - ny}Z`, c: on ? '#cfcdc7' : '#8f8d87', op: on ? 0.9 : part ? 0.12 : 0.35, on });
     }
     tethers.sort((x, y) => x.on - y.on);
-    if (s.arrows === 'none') return { ...base, boxes: rest, dirBoxes, tethers };
+    if (s.arrows === 'none' || (this.tw && this.tw.A !== this.tw.B)) return { ...base, boxes: rest, dirBoxes, tethers };
+    return { ...base, boxes: rest, dirBoxes, tethers, ...this.linksOf(B, B.L, null) };
+  }
+  // Arrows of frame B drawn at the rects LR (B.L at rest; a blended frame
+  // during a tween, then A adds the pairs it alone had). Same geometry law
+  // at rest and mid-tween: an arrow moves with its ends.
+  linksOf(B, LR, A) {
+    const s = this.state, M = this.M, part = s.sel.length ? this.partOf(s.sel) : null, selSet = new Set(s.sel);
+    const litNode = id => { const n = M.nodes.get(id); return n.type === 'item' ? part.P.has(n.li) : (M.leafIdx.get(id) || []).some(i => part.P.has(i)); };
+    const star = this.starsOf(s);
     const hov0 = s.hover && M.nodes.get(s.hover), hov = hov0 && !(star && star.has(hov0.id)) ? hov0 : null;
     const hovL = hov && new Set(hov.type === 'item' ? [hov.li] : M.leafIdx.get(hov.id) || []);
     const hovOK = !!hov && (!part || litNode(hov.id));
@@ -769,15 +816,21 @@ class Component extends DCLogic {
     // edge is type-only (dash 3 2); implements is its own line (ports colour,
     // dash 2 2). Direction per line: a head at the imported end, both ends
     // when the two units import each other. Layout weights are untouched.
-    for (const [a, b, t] of M.dir) {
-      if (B.shown && !(B.shown.has(a) && B.shown.has(b))) continue;
-      const ra = this.PS.repOf(M, B.F, M.leaves[a]), rb = this.PS.repOf(M, B.F, M.leaves[b]);
-      if (ra === rb || !B.L.has(ra) || !B.L.has(rb)) continue;
+    // Tween (Session 54): pairs of the landing frame B at the blended rects
+    // LR; then the pairs A alone had (kin pairs share a key and are already
+    // in), so an arrow leaves with its ends (op = min of its ends' op).
+    const pass = (Fr, only) => { for (const [a, b, t] of M.dir) {
+      if (Fr.shown && !(Fr.shown.has(a) && Fr.shown.has(b))) continue;
+      const ra = this.PS.repOf(M, Fr.F, M.leaves[a]), rb = this.PS.repOf(M, Fr.F, M.leaves[b]);
+      if (ra === rb || !LR.has(ra) || !LR.has(rb)) continue;
       const impl = t === 'implements', lo = ra < rb, pk = (lo ? ra + '|' + rb : rb + '|' + ra) + (impl ? '|i' : '');
       const sel = !!part && (part.S.has(a) || part.S.has(b)), hn = hovOK && (hovL.has(a) || hovL.has(b));
-      let p = pairs.get(pk); if (!p) pairs.set(pk, p = { pk, ra: lo ? ra : rb, rb: lo ? rb : ra, impl, sel: false, hn: false, n: 0, ab: false, ba: false, solid: false });
+      if (only && !pairs.has(pk)) pairs.set(pk, { pk, ra: lo ? ra : rb, rb: lo ? rb : ra, impl, sel: false, hn: false, n: 0, ab: false, ba: false, solid: false, only: true });
+      let p = pairs.get(pk); if (!p) { if (only) continue; pairs.set(pk, p = { pk, ra: lo ? ra : rb, rb: lo ? rb : ra, impl, sel: false, hn: false, n: 0, ab: false, ba: false, solid: false }); }
+      if (only && !p.only) continue;
       p.sel = p.sel || sel; p.hn = p.hn || hn; p.n++; if (ra === p.ra) p.ab = true; else p.ba = true; if (t !== 'type') p.solid = true;
-    }
+    } };
+    pass(B, false); if (A) pass(A, true);
     // Segments end at the box borders (+2), not the centres: a line never
     // crosses its own ends. Hit paths sit in the layer the stop and the
     // selection put an arrow in, never moved by hover (a hover lift would
@@ -786,7 +839,7 @@ class Component extends DCLogic {
     // Code defaults = the user's settled Tweaks (Session 48q): a host that
     // passes no arrow props gets the same map as the standalone page.
     const beta = Math.max(0, Math.min(1, this.props.bundling ?? 0.8)), weighted = this.props.weighted ?? true;
-    const holders = id => { const out = []; for (let p = M.nodes.get(id).parent; p && M.nodes.has(p); p = M.nodes.get(p).parent) if (B.L.has(p)) out.push(p); return out; };
+    const holders = id => { const out = []; for (let p = M.nodes.get(id).parent; p && M.nodes.has(p); p = M.nodes.get(p).parent) if (LR.has(p)) out.push(p); return out; };
     const bundle = (ra, rb, x1, y1, x2, y2) => {
       const HA = holders(ra), HB = holders(rb), lca = HA.find(p => HB.includes(p));
       const up = lca ? HA.slice(0, HA.indexOf(lca)) : HA, down = lca ? HB.slice(0, HB.indexOf(lca)).reverse() : HB.slice().reverse();
@@ -797,12 +850,12 @@ class Component extends DCLogic {
       // Straighten the holder centres toward the chord, then drop control
       // points within a box radius of an endpoint (a hairpin otherwise), and
       // leave each box toward its first control point, not along the chord.
-      const A = B.L.get(ra), Bb = B.L.get(rb), ca = [A.x + A.w / 2, A.y + A.h / 2], cb2 = [Bb.x + Bb.w / 2, Bb.y + Bb.h / 2];
+      const A = LR.get(ra), Bb = LR.get(rb), ca = [A.x + A.w / 2, A.y + A.h / 2], cb2 = [Bb.x + Bb.w / 2, Bb.y + Bb.h / 2];
       // Waypoint per holder (tweak `bundleAt`): its centre (Holten), or the
       // point of its border facing the other end of the arrow (48p, trial:
       // the trunk runs between the boxes instead of sagging through one).
       const atEdge = (this.props.bundleAt ?? 'centre') === 'edge';
-      let C = ctrl.map((p, k) => { const r = B.L.get(p); if (!atEdge) return [r.x + r.w / 2, r.y + r.h / 2]; const towards = up.includes(p) ? cb2 : ca; return edge(r, towards[0], towards[1]); }); const N0 = C.length + 1;
+      let C = ctrl.map((p, k) => { const r = LR.get(p); if (!atEdge) return [r.x + r.w / 2, r.y + r.h / 2]; const towards = up.includes(p) ? cb2 : ca; return edge(r, towards[0], towards[1]); }); const N0 = C.length + 1;
       C = C.map((q, k) => { const t = (k + 1) / N0, cx = ca[0] + (cb2[0] - ca[0]) * t, cy = ca[1] + (cb2[1] - ca[1]) * t; return [beta * q[0] + (1 - beta) * cx, beta * q[1] + (1 - beta) * cy]; });
       const rad = r => Math.hypot(r.w, r.h) / 2;
       C = C.filter(q => Math.hypot(q[0] - ca[0], q[1] - ca[1]) > rad(A) && Math.hypot(q[0] - cb2[0], q[1] - cb2[1]) > rad(Bb));
@@ -836,7 +889,7 @@ class Component extends DCLogic {
     for (const p of pairs.values()) {
       let tier = part ? (p.sel ? 'high' : 'low') : 'rest';
       if ((p.hn || s.hoverArrow === p.pk) && tier !== 'low') tier = 'highest';
-      const a = B.L.get(p.ra), b = B.L.get(p.rb), [c0, sw0, op] = LOOK[tier], cb = this.lcb(p.pk);
+      const a = LR.get(p.ra), b = LR.get(p.rb), [c0, sw0, op] = LOOK[tier], cb = this.lcb(p.pk);
       // Implements: the ports colour (user, Session 41), quieter at rest.
       const c = p.impl ? (tier === 'high' || tier === 'highest' ? PORTS : TH.mix(PORTS, 55, SCH.bg)) : c0;
       const dash = p.impl ? '2 2' : p.solid ? '' : '3 2';
@@ -864,13 +917,14 @@ class Component extends DCLogic {
       if (heads && p.ab) { const u = unit(P[N - 1], P[N]), h = headAt(P[N], u, sw); hd += h.d; P[N] = [P[N][0] - u[0] * h.L, P[N][1] - u[1] * h.L]; }
       if (heads && p.ba) { const u = unit(P[1], P[0]), h = headAt(P[0], u, sw); hd += h.d; P[0] = [P[0][0] - u[0] * h.L, P[0][1] - u[1] * h.L]; }
       const d = spline(P);
-      const l = { d, hd, c, sw, op, dash, r: R[tier] };
+      const eop = Math.min(a.op ?? 1, b.op ?? 1);
+      const l = { d, hd, c, sw, op: op * eop, dash, r: R[tier] };
       const byStop = s.arrows === 'over' || (s.arrows === 'lit' && !!part && p.sel);
       ((byStop || ((s.arrows === 'lit' || s.arrows === 'auto') && tier === 'highest')) ? over : under).push(l);
       (byStop ? hitsOver : hitsUnder).push({ d: hit, pe: 'stroke', hw: Math.max(8, sw + 6), onEnter: cb.onEnter, onLeave: cb.onLeave });
     }
     under.sort((x, y) => x.r - y.r); over.sort((x, y) => x.r - y.r);
-    return { ...base, boxes: rest, dirBoxes, tethers, linksUnder: under, linksOver: over, hitsUnder, hitsOver };
+    return { linksUnder: under, linksOver: over, hitsUnder, hitsOver };
   }
 }
 </script>

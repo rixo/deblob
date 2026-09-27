@@ -9,8 +9,13 @@
   // Tier presets. A tier is only values; the markup is the same for all.
   const TIERS = {
     unit:  { font: "600 13.5px 'IBM Plex Sans',sans-serif", line: 17, frame: true, neutral: true, r: 8, padX: 12, pad: 13, ruleDefault: true },
-    // Directory = a path (Session 47i): mono, muted ink, trailing slash.
-    dir:   { font: "400 12.5px 'IBM Plex Mono',monospace", path: true, line: 16, frame: true, neutral: true, r: 8, padX: 12, pad: 13, ruleDefault: false },   // no header line (user, Session 46v)
+    // Directory = a path (Session 47i): mono, trailing slash. Session 53
+    // (Box Styles Board 2b/2d): a boundary, not a surface. 1px line, no face,
+    // r 12; the head sits ON the top line: path cut out at the left, actions
+    // at the right (canvas knockout), the line between is the head strip. The
+    // head stays inside the layout rect: the frame starts `frameTop` below
+    // the rect top, so layout reads headH / padBottom as for every tier.
+    dir:   { font: "400 12.5px 'IBM Plex Mono',monospace", path: true, line: 16, frame: true, boundary: true, knock: 'rgba(18,19,22,.92)', ink: 'ink2', neutral: true, r: 12, padX: 22, pad: 13, cutPad: 4, ruleDefault: false, headY: 1 },   // padX = headX (r + 2) + cutPad + the title box's 4: children align with the text
     // Galaxy star (Session 47j): a directory drawn as its label only, a dot
     // and the path; no frame, no body.
     // Readable over arrows: brighter ink than a path prefix, and a knockout
@@ -36,7 +41,7 @@
     adapters: { d: 'M4 1v3M8 1v3M2.5 4h7v2a3.5 3.5 0 0 1-7 0zM6 9.5v2', vb: '0 0 12 12' },
     driver: { d: 'M3 2l7 4-7 4z', vb: '0 0 12 12' },
     assembly: { d: 'M1.5 1.5h3.5v3.5H1.5zM7 1.5h3.5v3.5H7zM1.5 7h3.5v3.5H1.5zM7 7h3.5v3.5H7z', vb: '0 0 12 12' },
-    blob: { d: 'M6 1.6a4.4 4.4 0 1 0 0 8.8a4.4 4.4 0 1 0 0-8.8', vb: '0 0 12 12', dash: '2 1.6' },
+    blob: { d: 'M2 10V6.5C2 3.9 3.8 2 6 2s4 1.9 4 4.5V10c-.7 0-1-.9-1.7-.9S7.3 10 6 10 4.4 9.1 3.7 9.1 2.7 10 2 10ZM4.7 5.3v1.1M7.3 5.3v1.1', vb: '0 0 12 12' },   // jelly (Icon Studies 2e)
     externals: { d: 'M5 2H2v8h8V7M7 2h3v3M10 2 5.5 6.5', vb: '0 0 12 12' },
   };
   // Action glyphs (24-unit viewBox). Every head button behaves the same
@@ -71,7 +76,13 @@
     const band = headY * 2 + T.line;
     const hasRows = o.tier === 'card' && rows.length > 0;
     let headH = band, h = band, padBottom = 0;
-    if (o.tier === 'card') {
+    const frameTop = T.boundary ? band / 2 : 0;
+    if (T.boundary) {
+      // Open: line at frameTop, content pad below the line. Folded: a short
+      // empty box under the line (the label stays on the line, no closed chip).
+      headH = frameTop + band / 2 + T.pad; padBottom = T.pad;
+      h = open ? headH + (o.bodyH || 0) + padBottom : frameTop + 2 * T.pad;
+    } else if (o.tier === 'card') {
       h = C.boxH(0) - 2 * C.BOX.bw;
       if (hasRows && open) h += C.BOX.gap + rows.length * C.BOX.rowH;
       headH = h;
@@ -91,18 +102,28 @@
     let w = T.padX * 2 + preW + dotW + iconW + titleW + subW + actsW + (T.frame ? 2 : 0);
     if (hasRows && open) for (const r of rows) w = Math.max(w, T.padX * 2 + 5 + GAP + textW(r, ROW_FONT) + 2);
     const tier = o.state || 'rest', lit = tier === 'lit' || o.sel || o.hov;
-    const P = TH.paint(S, { kind: o.kind || null, neutral: T.neutral && !o.sub, frame: T.frame, tier, sel: !!o.sel, hov: !!o.hov, aff: false, labelKind: T.labelKind, dotRow: T.dotRow });
+    const P = TH.paint(S, { kind: o.kind || null, neutral: T.neutral && !o.sub, frame: T.frame && !T.boundary, tier, sel: !!o.sel, hov: !!o.hov, aff: false, labelKind: T.labelKind, dotRow: T.dotRow });
     if (T.ghost) {
       P.bg = 'transparent';
       if (!o.sel) P.bc = tier === 'lit' ? TH.mix(P.kc || S.ink2, 38, S.bg) : 'transparent';
+    }
+    if (T.boundary) {
+      // No face, no box ring, no hover halo: the line carries rest / lit.
+      // Selected reads as the star does (user, Session 54): the label ring
+      // (paint called frameless), the line at its lit strength.
+      P.bg = 'transparent'; P.sh = 'none'; P.tsh = 'none';
+      if (!o.sel) { P.lbg = 'transparent'; P.lsh = 'none'; }
+      P.bc = o.sel || o.hov || tier === 'lit' ? '#6a6d74' : '#3b3e45';
     }
     const act = acts.map(a => {
       const G = GLYPH[a.glyph] || GLYPH.chev, on = !!a.on, hot = o.aff === a.id;
       const c = hot ? S.ink : lit ? S.ink2 : S.mute;
       const ac = P.kc || S.ink2;
+      // Hot action = the label's halo on the glyph (user, Session 54): the
+      // same two glows, no tint box behind it.
       return { id: a.id, d: G.d, sw: G.sw, fill: G.fill ? (on ? c : 'none') : 'none', stroke: c, rot: on ? G.rotOn : 0,
-        sh: hot ? `drop-shadow(0 0 3px ${TH.mix(ac, 80, 'transparent')}) drop-shadow(0 0 7px ${TH.mix(ac, 40, 'transparent')})` : 'none',
-        bg: hot ? TH.mix(ac, 12, 'transparent') : 'transparent', title: a.title || a.id };
+        sh: hot ? `drop-shadow(0 0 6px ${TH.mix(ac, 70, 'transparent')}) drop-shadow(0 0 14px ${TH.mix(ac, 35, 'transparent')})` : 'none',
+        bg: 'transparent', title: a.title || a.id };
     });
     const ic = o.icon && ICON[o.icon];
     const subC = o.sub && o.kind ? TH.mix(S.kind[o.kind] || S.ink2, 85, S.bg) : S.mute;
@@ -114,12 +135,13 @@
       icon: !!ic, iconD: ic ? ic.d : '', iconVb: ic ? ic.vb : '0 0 12 12', iconDash: ic && ic.dash ? ic.dash : 'none', iconC: P.ic,
       sub: o.sub ? String(o.sub).toUpperCase() : '', hasSub: !!o.sub, subC,
       rows: hasRows && open ? rows.map(t => ({ t, c: lit ? S.ink2 : S.mute, dotC: P.kc || S.mute })) : [], rowTop: C.BOX.padY + 18 + C.BOX.gap, rowH: C.BOX.rowH,
+      boundary: !!T.boundary, frameTop, knock: T.knock || 'transparent', headX: T.r + 2, cutPad: T.cutPad || 0,
       bc: T.frame ? P.bc : 'transparent', bg: T.frame ? P.bg : T.knock || 'transparent', sh: P.sh, op: P.op,
       lc: T.path && !o.sel && !o.hov ? S[T.ink || 'mute'] : P.lc, lbg: P.lbg, lsh: P.lsh, tsh: P.tsh, actions: act, hasActions: act.length > 0,
       pre: pre.map(p => ({ t: p.t, font: p.PT.font, ls: p.PT.ls || 'normal', tt: p.PT.upper ? 'uppercase' : 'none',
         c: p.PT.path ? (o.sel || o.hov ? S.ink2 : S.mute) : TH.paint(S, { kind: null, neutral: true, frame: true, tier, sel: !!o.sel, hov: !!o.hov, aff: false }).lc,
         slash: p.PT.path ? '/' : '', sc: TH.mix(S.mute, 55, S.bg) })),
-      slash: T.path ? '/' : '', slashC: TH.mix(S.mute, 55, S.bg),
+      slash: T.path ? '/' : '', slashC: T.boundary ? (o.sel || o.hov ? S.ink2 : S.mute) : TH.mix(S.mute, 55, S.bg),
     };
   }
 

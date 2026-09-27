@@ -508,24 +508,30 @@
       const K = ids.map(lay), hd = headOf(n);
       let y = hd.head, w = 0;
       if (n.type === 'layer') {
-        const maxW = WRAPW[n.kind], cols = WRAP[n.kind] || 2;
+        const maxW = WRAPW[n.kind], cols = WRAP[n.kind] || 2, rows = [[]];
         let x = hd.padX, rowH = 0, inRow = 0;
         for (const k of K) {
-          if (inRow && (maxW ? x + k.w > hd.padX + maxW : inRow >= cols)) { y += rowH + GAP_IN; x = hd.padX; rowH = 0; inRow = 0; }
-          k.px = x; k.py = y; x += k.w + GAP_IN; rowH = Math.max(rowH, k.h); inRow++; w = Math.max(w, x - GAP_IN + hd.padX);
+          if (inRow && (maxW ? x + k.w > hd.padX + maxW : inRow >= cols)) { y += rowH + GAP_IN; x = hd.padX; rowH = 0; inRow = 0; rows.push([]); }
+          k.px = x; k.py = y; x += k.w + GAP_IN; rowH = Math.max(rowH, k.h); inRow++; w = Math.max(w, x - GAP_IN + hd.padX); rows[rows.length - 1].push(k);
         }
         y += rowH + hd.padB;
-      } else {
-        for (const k of K) { k.px = hd.padX; k.py = y; y += k.h + GAP_IN; w = Math.max(w, k.w + 2 * hd.padX); }
-        y += hd.padB - GAP_IN;
         w = Math.max(w, foldSz(n).w);
-        for (const k of K) if (M.nodes.get(k.id).type === 'layer') stretch(k, w - 2 * hd.padX);
+        K.forEach(k => { k.dx = k.px + k.w / 2 - w / 2; k.dy = k.py + k.h / 2 - y / 2; });
+        const b = { id: n.id, w, h: y, open: true, K, rows, padX: hd.padX }; fillLone(b); return b;
       }
+      for (const k of K) { k.px = hd.padX; k.py = y; y += k.h + GAP_IN; w = Math.max(w, k.w + 2 * hd.padX); }
+      y += hd.padB - GAP_IN;
+      w = Math.max(w, foldSz(n).w);
+      for (const k of K) if (M.nodes.get(k.id).type === 'layer') stretch(k, w - 2 * hd.padX);
       w = Math.max(w, foldSz(n).w);
       K.forEach(k => { k.dx = k.px + k.w / 2 - w / 2; k.dy = k.py + k.h / 2 - y / 2; });
       return { id: n.id, w, h: y, open: true, K };
     };
-    const stretch = (b, w) => { const d = w - b.w; if (d <= 0) return; b.w = w; if (b.K) b.K.forEach(k => { k.dx -= d / 2; }); };
+    const stretch = (b, w) => { const d = w - b.w; if (d <= 0) return; b.w = w; if (b.K) b.K.forEach(k => { k.dx -= d / 2; }); fillLone(b); };
+    // A box alone on its row fills the layer's inner width (user, Session 55:
+    // as the folded layers fill the unit). Re-applied when the unit stretches
+    // the layer. A lone row's box is centred, so dx = 0.
+    const fillLone = b => { if (!b.rows) return; for (const r of b.rows) if (r.length === 1) { const k = r[0]; if (k.K) continue; k.w = Math.max(k.w, b.w - 2 * b.padX); k.dx = 0; } };
     const place = (b, x, y) => { out.set(b.id, { x: x - b.w / 2, y: y - b.h / 2, w: b.w, h: b.h, open: b.open }); if (b.K) b.K.forEach(k => place(k, x + k.dx, y + k.dy)); };
 
     // One solve for every mode (Session 47s). Directories are clusters:

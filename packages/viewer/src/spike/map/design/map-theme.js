@@ -20,7 +20,7 @@
   // paint(S, o): o = { kind, neutral, frame, tier: 'rest'|'lit'|'dim', sel, hov, aff, treat, labelKind, dotRow }
   // Frame: rest = kind at 38% over bg, participant = 70%, selected = full + 2px ring.
   // Label: hover treatment only (halo | pill | bar); selection never touches the label.
-  // Chevron: own halo when the card body is hovered (aff).
+  // Chevron / any head action: the label's own halo when hot (aff); never a tint box (user, Session 54).
   function paint(S, o) {
     const kc = accent(S, o.kind), ac = kc || S.ink2, neutral = o.neutral || !kc;
     const lit = o.tier === 'lit' || o.sel || o.hov;
@@ -43,7 +43,7 @@
     }
     if (o.sel && !o.frame) lsh = `0 0 0 1px ${ac}`;
     const cc = o.aff ? S.ink : lit ? S.ink2 : S.mute;
-    const csh = o.aff ? `drop-shadow(0 0 3px ${mix(ac, 80, 'transparent')}) drop-shadow(0 0 7px ${mix(ac, 40, 'transparent')})` : 'none';
+    const csh = o.aff ? `drop-shadow(0 0 6px ${mix(ac, 70, 'transparent')}) drop-shadow(0 0 14px ${mix(ac, 35, 'transparent')})` : 'none';
     const ic = kc ? (o.labelKind ? lc : lit ? kc : mix(kc, 78, S.bg)) : S.mute;
     return { kc, ac, bc, bg, sh, lc, lbg, lsh, tsh, cc, csh, ic, rule: o.sel || lit ? mix(S.ink2, 40, S.bg) : S.line, op: o.tier === 'dim' ? 0.34 : 1 };
   }

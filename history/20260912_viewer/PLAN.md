@@ -231,6 +231,17 @@ ask.
   class lists its private members too (`#x`, and `private` / `protected` are not
   read).
 
+- **A port's symbols look wrong** (2026-09-28, rixo: "our parsing is
+  suspicious", from the source) — the design asked about a dogfood project's
+  port: its symbols hold the contract interface (its methods as members) and two
+  value types beside it, one with `members: null`. Their user reads the two as
+  not the port's; rixo, having read the file, agrees the extraction is the
+  suspect, not the project. Investigate in a coming step: what the symbol level
+  reads for that file against what it declares and exports (re-exports, a
+  namespace or an alias resolved to the wrong declaration, types that come in
+  through an import), with a fixture of the same shape. Related: members of
+  aliased types (above).
+
 - **`pure` by subpath** (2026-09-27, rixo: "3 + accept the red pending") — the
   `pure` key takes package names only (`externalPurityOf` compares the import's
   package), so `svelte/store` cannot be declared pure without declaring all of
