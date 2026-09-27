@@ -12,6 +12,7 @@ afterEach(async () => {
   vi.resetModules()
   document.body.replaceChildren()
   location.hash = ""
+  localStorage.clear()
   await new Promise((resolve) => setTimeout(resolve))
   vi.mocked(mountMap).mockClear()
 })
@@ -49,8 +50,24 @@ it("mounts the map on #app, fed by the snapshot source", async () => {
       subscribe: expect.any(Function),
       select: expect.any(Function),
     }),
+    expect.objectContaining({
+      load: expect.any(Function),
+      save: expect.any(Function),
+    }),
   )
   expect(target.querySelector("main")).toBeNull()
+})
+
+it("keeps the map's view in the browser's storage, per project", async () => {
+  const target = appTarget()
+
+  await import("./main.ts")
+
+  const [map] = mapCallsOn(target)
+  const viewStore = map?.args[2]
+  viewStore?.save("/work/app", { k: 2 })
+  expect(localStorage.getItem("deblob.view.v1:/work/app")).toBe('{"k":2}')
+  expect(viewStore?.load("/work/app")).toEqual({ k: 2 })
 })
 
 it("mounts the outline instead at #debug", async () => {

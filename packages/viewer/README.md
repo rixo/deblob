@@ -78,9 +78,13 @@ kept. What a state means for their page is product code, with rows:
 their picker, the current snapshot's graph, call stacks and READMEs, loading and
 the server's error, and one graph object per snapshot, so a flip of loading
 never reads as a new graph. Their picker is the project switch: its `on-project`
-is the source's `select`. Their page draws loading and errors; above it, a strip
-of ours keeps what it has no place for yet: the tracer's reason when a project
-has no call stacks, and the "experimental map" tag. Their page's root is
+is the source's `select`. Their view of a project (camera, folds, selection:
+theirs, opaque to us) is kept in the browser's `localStorage`, one entry per
+project, `deblob.view.v1:<root>`, through the `ViewStore` port
+(`src/lib/map/view-store.port.ts`); the host hands them `{ load, save }` bound
+to the project shown. Their page draws loading and errors; above it, a strip of
+ours keeps what it has no place for yet: the tracer's reason when a project has
+no call stacks, and the "experimental map" tag. Their page's root is
 `position: fixed`; our `#dc-root` contains it (`contain: layout`) so it fills
 the space under the strip.
 

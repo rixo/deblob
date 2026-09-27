@@ -1,6 +1,7 @@
 # Step 11 — the design's Viewer, fed by value
 
-Ruled 2026-09-27 (rixo). Checkpoint 1 landed; checkpoint 2 to go.
+Ruled 2026-09-27 (rixo). Both checkpoints landed; the load sequence goes to a
+step of its own (checkpoint 2, below).
 
 Step 09 put the design's map in the product through a bridge: every snapshot
 became `blob:` URLs, their page fetched and imported them, and the page was
@@ -150,6 +151,27 @@ Checkpoints, each its own commit; red rows first, as their own commit.
 
 2. **The view store.** The port, both adapters with their rows, the host binds
    it per project. The probe runs whole on the built package.
+
+   Landed: probed headless with `deblob view` from the built bundle (and
+   `verify:pack` green) — their page reads the store once, before its first
+   layout, and writes it under `deblob.view.v1:<root>`; a zoom survives a
+   reload; a broken config shows their error with the map under it, and a fix
+   clears it; no request for `blob:` or `data/`. What it took:
+   - The entry builds the `localStorage` store inside the map's mount, not at
+     the module's root, where it would add two violations to the entry's known
+     debt.
+   - The host hands them `{ load, save }` bound to the project shown, a new
+     object only when the project changes (their contract reads it again on a
+     new object only), `null` before the first snapshot.
+
+   The reload restore holds by accident. Tracing it
+   ([research/load-sequence.md](research/load-sequence.md)) showed that their
+   page is mounted before any data, that nobody on our side names the project
+   (every load runs the server's first project, then often again), and six
+   defects on their side, among them a project switch that saves the old
+   project's camera into the new project's slot. The sequence that works, and
+   what must not happen before what, is in that note; our part is a step of its
+   own, theirs goes to the design.
 
 ## Docs
 

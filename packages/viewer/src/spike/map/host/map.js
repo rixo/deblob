@@ -2,8 +2,9 @@
 // Viewer, their page as sent, mounted once in our app and fed by value from the
 // snapshot source (their data contract; step 11 SPEC). What each state means
 // for their page is `buildViewerProps`, product code; this host only mounts
-// the page, hands it each new value, and turns their picker's pick into the
-// source's select. Their page draws the server's loading and errors. Above it,
+// the page, hands it each new value, turns their picker's pick into the
+// source's select, and hands them the view store bound to the project shown.
+// Their page draws the server's loading and errors. Above it,
 // a strip of ours keeps what their page has no place for yet: the tracer's
 // miss, and the map's status: experimental.
 
@@ -49,10 +50,10 @@ const drawStrip = (strip, state) => {
 }
 
 /**
- * Mounts the design's Viewer on `target`, fed by `source`; returns its
- * teardown.
+ * Mounts the design's Viewer on `target`, fed by `source`, its view kept in
+ * `viewStore` per project; returns its teardown.
  */
-export function mountMap(target, source) {
+export function mountMap(target, source, viewStore) {
   const style = el("style", { textContent: STYLE })
   const strip = el("div", { className: "dbm-strip" })
   const root = el("div", { id: "dc-root" })
@@ -64,11 +65,29 @@ export function mountMap(target, source) {
   let built = null // the props last built, and the snapshot behind them
   let viewer = null // the mounted page and its update
   let gone = false
+  // their contract: `{ load, save }` for the project shown, a new object when
+  // the project changes (they read it again on a new object only)
+  let bound = null
+
+  const bind = (project) => {
+    if (bound?.project === project) return bound.store
+    bound = {
+      project,
+      store:
+        project === null
+          ? null
+          : {
+              load: () => viewStore.load(project),
+              save: (view) => viewStore.save(project, view),
+            },
+    }
+    return bound.store
+  }
 
   const unsubscribe = source.subscribe((state) => {
     drawStrip(strip, state)
     built = buildViewerProps(state, built, globalThis.GenGraph.buildGraph)
-    viewer?.update(built.props)
+    viewer?.update({ ...built.props, viewStore: bind(built.props.project) })
   })
 
   // their page, mounted once, on the props built so far
@@ -76,6 +95,7 @@ export function mountMap(target, source) {
     if (gone) return
     viewer = bootPage(mod.default, mod.dcDef, root, mount, {
       ...built.props,
+      viewStore: bind(built.props.project),
       onProject: (project) => source.select(project),
     })
   })

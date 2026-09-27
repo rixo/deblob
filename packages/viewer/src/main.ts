@@ -2,6 +2,7 @@ import { mount, unmount } from "svelte"
 import { get } from "svelte/store"
 
 import App from "./App.svelte"
+import { createLocalViewStore } from "./lib/map/adapters/local-view-store.adapter.ts"
 import { createWsSource } from "./lib/snapshot/adapters/ws-source.adapter.ts"
 import type { SourceState } from "./lib/snapshot/snapshot-source.port.ts"
 import { mountMap } from "./spike/map/host/map.js"
@@ -22,7 +23,9 @@ const isDebug = (): boolean => location.hash === "#debug"
 
 /** `#debug`: the outline (steps 01–06); anything else: the design's map. */
 const mountView = (debug: boolean): (() => void) => {
-  if (!debug) return mountMap(target, source)
+  // the map's view, per project, kept across reloads
+  if (!debug)
+    return mountMap(target, source, createLocalViewStore(localStorage))
   const app = mount(App, { target, props: { source } })
   return () => void unmount(app)
 }

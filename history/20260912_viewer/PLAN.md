@@ -129,8 +129,15 @@
     once, fed by value (their replies of 2026-09-27): a save redraws in place,
     their picker is the switch, the view survives a reload per project; step
     09's URL bridge and remount go. Drafted 2026-09-27; runs before step 10,
-    which waits on driver-layer's roles. Checkpoint 1 landed (Viewer mounted
-    once, fed by value, the bridge gone).
+    which waits on driver-layer's roles. Landed: Viewer mounted once, fed by
+    value, the bridge gone; the view kept per project in the browser's storage.
+
+12. The load sequence (not yet specified) — nothing of their page before the
+    full first rendering: the host names the project on connect, the server runs
+    nothing before the client has spoken, their page is mounted once with every
+    prop. Ruled a step of its own (rixo, 2026-09-27); the trace and the sequence
+    that works are in `11_viewer-by-value/research/load-sequence.md`. Their part
+    goes to the design as a post.
 
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
