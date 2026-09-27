@@ -117,6 +117,14 @@
    the switch), symbols (into extraction) and READMEs graduate, the spike host
    goes. Left spike: the DC host the product runs, and the tracer.
 
+10. `10_behavior-panel/` — the panel's per-function behavior (`fns`) from the
+    specs deblob already reads: a function's tree is its spec's root group named
+    after it, behavior and verification kept apart. Drafted 2026-09-26; ruled
+    that day: the test reader translates its runner into roles of ours, asked of
+    driver-layer (the reader is theirs). Realigned 2026-09-27: every hook
+    captured, ranges into file texts instead of copied lines, presentation
+    questions left to the design.
+
 Then the pivot to general UI considerations (rixo, 2026-09-13) before the map
 (ELK in a worker, tween, the bake-off's interaction requirements; Playwright
 through Vitest browser mode enters there).
@@ -143,6 +151,12 @@ through Vitest browser mode enters there).
   may ship the experimental map with its gaps (no call stacks on a tree the
   tracer cannot read, or without `typescript` installed; the view reset on each
   save). A real release may not.
+- **The view side under driver-layer's rules** (merged 2026-09-26).
+  `assembly-builds-only` now reaches what only this branch has: 77 violations in
+  the view drivers (`serve/main.ts` 42, `snapshot/main.ts` 14, `serve/bin.ts`
+  12, `snapshot/bin.ts` 5, `wiring.ts` 4), and 27 in the viewer's entry
+  (`main.ts`; the viewer's check went from 16 to 43). The same reshaping as the
+  CLI driver's; waits for the pattern driver-layer settles there.
 
 ## Design track
 
