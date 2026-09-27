@@ -453,6 +453,49 @@ const ROOT_CALLS: readonly Row[] = [
     },
   },
   {
+    // Added at the sweep, batch 4 (ruled 2026-09-27: red the call too, as
+    // the driver and assembly checks do). canon: "a local function of a file
+    // whose layer may touch the tech"; a test file is outside, and the import
+    // being forbidden does not make the call free — two facts, two fixes.
+    name: "a test file's export called at a service's root is red beside its import: a test file may touch the tech",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/prices/fixtures.spec.ts": `
+        import { it } from "vitest"
+        export const seedName = () => "apple"
+        it("seeds", () => {})
+      `,
+      "src/prices/prices.service.ts": `
+        import { seedName } from "./fixtures.spec.ts"
+        export const NAME: string = seedName() // red: stable-root -- a test file's export, run on import
+        // red: test-is-outside, inward-deps -- the import of fixtures.spec.ts
+      `,
+    },
+  },
+  {
+    // The other side of the row above: a port's layer touches nothing, so its
+    // function run on import is not presumed to act. The function is the
+    // port's own defect (`ports-types-only`), its fix moving it to a model —
+    // after which the call is a model call at root, green.
+    name: "a port's function called at a service's root is not a stable-root red: the port's runtime content is the fault",
+    files: {
+      "src/clock/ports/clock.port.ts": `
+        export type Clock = { readonly now: () => number }
+        export const nameOf = (name: string) => "clock:" + name
+        // red: ports-types-only -- runtime content in a port
+      `,
+      "src/clock/clock.service.ts": `
+        import { nameOf } from "./ports/clock.port.ts"
+        export const NAME: string = nameOf("x")
+        // red: ports-types-only -- the runtime import of clock.port.ts
+      `,
+    },
+  },
+  {
     // canon: "a local function of a file whose layer may touch the tech — an
     // adapter's, a blob's", and the exemption list is closed: a spec file's
     // registration calls, nothing else.

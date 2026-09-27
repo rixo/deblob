@@ -656,6 +656,8 @@ const reachWords = (
       return `a call to the use case ${name}`
     case "function":
       return `a call into ${name}, a function of a file that may touch the tech`
+    case "export":
+      return `a call into an export of ${name}, a file that may touch the tech`
     case "wiring":
       return `the wiring function ${name} runs, and sets up its tech`
     case "unclaimed":

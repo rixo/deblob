@@ -559,6 +559,40 @@ may reopen the service example and the config pattern section.
   `stable-root` unknowns from the roles commit: the test reader's `Role`
   constants, `as const` their way out.
 
+  Then `04/07_driver-readers` (added 2026-09-28, runs before `04/06`: the test
+  reader rides on it). A driver is read only by a reader bound to its tech; the
+  stock plain-TypeScript reader reads the driver kind with no tech of its own,
+  and everything it cannot know is filed as tech — a concrete import, any free
+  name outside the language list, the project-wide `driverTech`. Ruled
+  2026-09-28, the SPEC's input:
+
+  - A reader claims its tech; a driver's tech is only what something claims.
+    What nothing claims is `unclaimed`, never tech: red in a driver; at a
+    service's root, red or unknown — to rule.
+  - `readers` becomes an ordered array; claims stack across the readers bound to
+    a file (a node reader claims `process` and the builtins, a TS one the
+    language), order settles only a disagreement. A user reader is an entry in
+    the array. `drivers` and `driverTech` dissolve into it (never released).
+  - Every callback handed to a claimed tech is a hook; a reader relaxes a rule
+    only by a role's exemption, with its reason. No open part: canon's "lenient
+    by default" (§ Driver) predates the unknown verdict and goes.
+  - A driver no reader reads is unknown and fails, its way out a binding.
+    `blob-driver`, a stock reader, silences one on purpose: it counts as blob
+    and keeps the driver's inbound seal.
+  - Assembly and boot are read by the core through the flavor.
+  - Canon pins "tech" to what a driver listens to and the values it hands; "a
+    layer that may touch the tech" gets its own words. No global rename.
+  - Canon is the step's first checkpoint. Until then four passages of § Driver
+    are known false: "Lenient by default, on purpose"; the plain-TypeScript
+    reading with the host's globals and declared packages as its tech;
+    "Plain-TypeScript drivers carry the `.driver.ts` suffix"; and "what the
+    project declares as tech for a technology no reading knows yet".
+  - The proof: deblob's own CLI rewritten to callbacks over a router of our own,
+    read by a claim-only reader. The corpus gets a fixture reader.
+  - Moved in from the sweep: a builtin undeclared in a driver is red (ruled at
+    its cp1); its way out, `driverTech`, is ruled out — a builtin is a reader's
+    claim here.
+
   Then `04/06_test-rules` (added 2026-09-26, **not to slip**: the ruling it
   revisits was made provisional on purpose). What a test body may do is
   underspecified. Canon's `test-is-outside` says of a test file's hooks "the
@@ -604,6 +638,16 @@ may reopen the service example and the config pattern section.
   cases corpus, CLI golden); the canon sentence rewritten to state what applies
   to a test; the provisional exemption in `driver.model.ts` replaced.
 
+  **Input: the gate test is a driver** (2026-09-26, banked 2026-09-27, 4c + 4d
+  folded). Orientation, not recipe: a codebase's gate connects at its use cases
+  (memory adapters at the ports) and its 100% is measured there — a line only a
+  unit reaches is a line no behavior needs; deblob's own gate is this (corpus
+  rows through `deblob check`). The clause it suggests: a gate test is judged as
+  a driver — each `it` a hook, one use case — for that purpose only; it stays a
+  test file for the import rules. A unit calling a model function is not a gate
+  test and is not judged so. How to write tests stays out of scope (red-first
+  included). Candidate for the "what applies to a test" rewrite above, beside C.
+
   **Owed by the lens ruling** (added 2026-09-27; `04/04_lens` SPEC, § "Ruled
   2026-09-27: a hook hands the event on, untouched — (A)", carries each in
   full). Each lands at the step named, each with its own go:
@@ -611,9 +655,10 @@ may reopen the service example and the config pattern section.
   - Error guidance, "Report at the edge. The driver decides presentation"
     (`docs/implementation-guide.md` § 7, the skill's error-management card): the
     front service decides; a hook cannot catch. → `07_slugs`.
-  - The folder axis: "…and may file its own assembly and its drivers". To rule;
-    no step yet (the worked example files each sub-driver with its front
-    service).
+  - The folder axis: "…and may file its own assembly and its drivers". **Ruled
+    2026-09-27, applied** (canon § Layers, rides with the sweep's batch 4): no
+    special rule — the folder grants nothing, each file keeps every rule of its
+    layer, and a combination they forbid splits into units.
   - deblob's own CLI under (A): `lib/cli/cli.service.ts` taking argv with an
     output port, the sub-driver exposing its registration, the gate through an
     argv front; `deblob.config.ts` files `src/drivers/**` as assembly today,
@@ -660,6 +705,26 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
 ## Future
 
 ### Ideas
+
+- **Mutation testing over the gate alone** (2026-09-26, rixo, banked
+  2026-09-27). Mutate deblob's source and run only the corpus rows, not the
+  units: a surviving mutant is a behavior no row observes. The units would catch
+  it, but they are scaffolding; the gate is the set that must see everything.
+  First probe: the message text. A row asserts slug and line; its `-- <why>` is
+  free text, compared to nothing (`cases/runner/markers.model.ts:179`). So a
+  message offering a wrong way out survives every row — the sweep's
+  `render.model.ts:357` finding ("or a model export" offered to a driver) was
+  caught by a cold reader, not by the gate.
+
+- **Total observation — why the markers work** (2026-09-26, rixo, banked
+  2026-09-27; for the method docs, much later). In a corpus row silence is an
+  assertion: an unmarked line claims green, and a report there fails the row
+  (`cases/runner/markers.model.ts:13-15`, "strict both ways"). Gherkin checks
+  only the steps someone wrote, through glue; approval testing checks everything
+  and is rubber-stamped unread. Markers check everything and put each verdict on
+  the line it judges: approval testing a reviewer reads. That is why a stamp is
+  a review, not a ritual. Home: `cases/README` or the SDD skill's testing part,
+  whenever step 07 or later touches them.
 
 - **The web app as a program** (2026-09-26, rixo, at the lens review). From the
   core, a front end is a driver: one job, wire hooks, one use case each. From
@@ -755,10 +820,13 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
   Summary), not a half of `service-purity` — that one judges imports, and the
   fix differs. Its cases are in `lib/cases/layers.spec.ts`, red: a service and a
   model reading `process.env`, `Date.now`, `Math.random`, at root and in
-  functions; `Math.min` / `Math.floor` green; an adapter green. Left open: the
-  detector (the body walk above), and the tech _callees_ this card also names —
-  `console.log`, `setTimeout` are I/O, not ambient reads, and no rule covers
-  them in a model or service body yet.
+  functions; `Math.min` / `Math.floor` green; an adapter green. **Ruled
+  2026-09-27:** the tech _callees_ this card also names (`console.log`,
+  `setTimeout`) are `ambient-access` too — canon's sentence now reads "reads
+  them from a global or calls them there"; a service that logs takes a logger
+  port, and that price is the point. Left open: the detector (the body walk
+  above), with call rows beside the read rows; the `layer-model` card's bullet
+  follows at step 07.
 - **The depth is ours; the reviewer judges verdicts** (rixo, 2026-09-17, from
   step 03 checkpoint 2's handback; a guiding principle to lift to the method
   docs when its home is ruled). The reader's depth is JavaScript's: a call hides

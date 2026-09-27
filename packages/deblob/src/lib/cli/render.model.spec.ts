@@ -897,6 +897,11 @@ describe("renderCheckResults", () => {
           "a call into nameOf, a function of a file that may touch the tech",
         ],
         [
+          "export",
+          "src/prices/fixtures.spec.ts",
+          "a call into an export of src/prices/fixtures.spec.ts, a file that may touch the tech",
+        ],
+        [
           "wiring",
           "main",
           "the wiring function main runs, and sets up its tech",

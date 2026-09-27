@@ -100,9 +100,13 @@ const judgeCall = (call: ReadCall, layer: Layer): CallVerdict => {
   switch (callee.kind) {
     case "language":
     case "model":
-    // the import rules judge these edges; the call adds nothing to them
-    case "forbidden-import":
       return GREEN
+    // the import is the layer rules' fact; the call running on load is this
+    // one's — a port's function is its own defect (`ports-types-only`)
+    case "forbidden-import":
+      return TOUCHES_TECH.has(callee.layer)
+        ? { verdict: "red", reaches: "export", name: callee.path }
+        : GREEN
     case "factory":
       return callee.layer === "adapters" || callee.layer === "blob"
         ? { verdict: "red", reaches: "function", name: callee.name }

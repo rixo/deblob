@@ -264,10 +264,18 @@ export type ModulesViolation = {
        * A call at root that reaches the tech, runs a use case, or goes into a
        * function of a file whose layer may touch the tech — presumed to have
        * side effects; or a call the reader cannot place, `reaches` then `null`
-       * and `unknown` set. `name` is what it is called when the call names it.
+       * and `unknown` set. `name` is what it is called when the call names it;
+       * for `export`, an import the layer rules forbid, the file's path.
        */
       shape: "root-call"
-      reaches: "tech" | "use-case" | "function" | "wiring" | "unclaimed" | null
+      reaches:
+        | "tech"
+        | "use-case"
+        | "function"
+        | "export"
+        | "wiring"
+        | "unclaimed"
+        | null
       name: string | null
     }
   | {

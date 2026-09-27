@@ -215,9 +215,12 @@ boundary, model and service its inside, the thing that can be tested through its
 ports in isolation. Adapters, assembly, drivers and boot are the outside. The
 layer order says who may depend on whom, not who belongs to what. The folder is
 a third axis: a service package files its adapters, and may file its own
-assembly, next to its hexagon; filing together is not being inside. Constraints
-do not thin outward: the inside is ruled by what it may depend on, the outside
-by what it may do, and the widest import rights carry the narrowest verb lists.
+assembly and its drivers, next to its hexagon; filing together is not being
+inside. The folder grants nothing: each file keeps every rule of its layer, so a
+combination those rules forbid is not made legal by sharing a folder — it splits
+into units instead. Constraints do not thin outward: the inside is ruled by what
+it may depend on, the outside by what it may do, and the widest import rights
+carry the narrowest verb lists.
 
 Inside the hexagon, innermost first:
 
@@ -273,8 +276,9 @@ The bar is abstractness, the opposite of `service-purity`'s "concrete", not of
 I/O, time, randomness, platform — is what makes code concrete:
 
 - Depends on nothing outside the model layer — no ports, no concrete imports
-- No ambient environment access (`ambient-access`) — time, randomness,
-  `globalThis` are inputs passed by the caller, not discoveries
+- No ambient environment access (`ambient-access`) — time, randomness, the
+  console, the timers, `globalThis` are inputs passed by the caller, not
+  discoveries
 - A stable module root (`stable-root`) — no module-level mutable state, exported
   or not: no top-level `let`, no unfrozen collections, nothing a closure could
   capture at module scope; state lives inside factories, and a module exports
@@ -323,8 +327,8 @@ from injected dependencies. It orchestrates; it does not compute.
 
 - Module-level code must be stateless — state lives inside the factory closure
 - Dependencies are injected through the factory's arguments (IoC) — the
-  environment, time and randomness included: no ambient environment access
-  (`ambient-access`)
+  environment, time, randomness, the console and the timers included: no ambient
+  environment access (`ambient-access`)
 - The returned API is the contract consumers depend on
 
 ```typescript
@@ -910,14 +914,15 @@ needs tooling that knows service boundaries.
   belong in adapters; a service depending on concrete bypasses its ports and
   becomes untestable. Pure, deterministic third-party libraries are model;
   purity should be declared, not presumed.
-- <a id="ambient-access"></a>`ambient-access` — **The inside reads no ambient
-  environment** — a model or a service is handed the environment, the time and
-  randomness, by its caller or through a port; it never reads them from a
-  global. Code that discovers them depends on the machine it runs on, and cannot
-  be tested without setting that machine up. The same at module root or in a
-  function, in a condition or in a value. Adapters and drivers read the
-  environment: that is the tech's business. Distinct from `service-purity`,
-  which judges imports: a global is reached without one.
+- <a id="ambient-access"></a>`ambient-access` — **The inside touches no ambient
+  environment** — a model or a service is handed the environment, the time,
+  randomness, the console and the timers, by its caller or through a port; it
+  never reads them from a global or calls them there. Code that reaches them
+  depends on the machine it runs on, and cannot be tested without setting that
+  machine up. The same at module root or in a function, in a condition, in a
+  value or in a call. Adapters and drivers reach the environment: that is the
+  tech's business. Distinct from `service-purity`, which judges imports: a
+  global is reached without one.
 - <a id="blob-quarantine"></a>`blob-quarantine` — **Only assembly and test files
   may import from blob** — anything else importing it contaminates a layer that
   had guarantees. Blob importing blob is fine: blob claims none. Assembly may
