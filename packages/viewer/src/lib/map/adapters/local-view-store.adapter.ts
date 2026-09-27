@@ -7,6 +7,24 @@
 
 import type { ViewStore } from "../view-store.port.ts"
 
-export function createLocalViewStore(_storage: Storage): ViewStore {
-  throw new Error("createLocalViewStore: not built yet (step 11 cp2, red rows)")
+export function createLocalViewStore(storage: Storage): ViewStore {
+  const keyOf = (project: string) => `deblob.view.v1:${project}`
+  return {
+    load: (project) => {
+      const entry = storage.getItem(keyOf(project))
+      if (entry === null) return null
+      try {
+        return JSON.parse(entry) as unknown
+      } catch {
+        return null
+      }
+    },
+    save: (project, view) => {
+      try {
+        storage.setItem(keyOf(project), JSON.stringify(view))
+      } catch {
+        // full or blocked: the view is not kept, nothing else is lost
+      }
+    },
+  }
 }

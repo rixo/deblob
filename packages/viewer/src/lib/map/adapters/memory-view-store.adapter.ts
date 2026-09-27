@@ -3,7 +3,11 @@
 import type { ViewStore } from "../view-store.port.ts"
 
 export function createMemoryViewStore(): ViewStore {
-  throw new Error(
-    "createMemoryViewStore: not built yet (step 11 cp2, red rows)",
-  )
+  const kept = new Map<string, unknown>()
+  return {
+    load: (project) => kept.get(project) ?? null,
+    save: (project, view) => {
+      kept.set(project, view)
+    },
+  }
 }
