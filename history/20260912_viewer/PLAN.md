@@ -242,6 +242,16 @@ ask.
   through an import), with a fixture of the same shape. Related: members of
   aliased types (above).
 
+- **The viewer serves its own fonts** (2026-09-27, rixo: "sooner than later") —
+  the design's pages load IBM Plex Sans and Mono from Google Fonts
+  (`Map.dc.html:11`, `Viewer.dc.html:11`) and size boxes by measuring text in
+  them (`box-spec.js:63`). Offline or behind a proxy that blocks Google Fonts,
+  the map draws and lays out in the fallback font; on a slow load it lays out in
+  it anyway after 1.5 s (`Map.dc.html:370`). Either way the layout differs and a
+  saved camera no longer matches. Ship the Plex woff2 files (OFL) in the viewer
+  and serve them ourselves; their room keeps pointing at Google. Found by the
+  navigation study (shareable link).
+
 - **`pure` by subpath** (2026-09-27, rixo: "3 + accept the red pending") — the
   `pure` key takes package names only (`externalPurityOf` compares the import's
   package), so `svelte/store` cannot be declared pure without declaring all of
