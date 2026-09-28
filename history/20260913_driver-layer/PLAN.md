@@ -706,6 +706,18 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
 
 ### Ideas
 
+- **Two hook calls the reader misses** (2026-09-28, found by the sweep's title
+  audit, confirmed by runs; confessed as `missed red` in their rows, fixes not
+  started). (1) `process.cwd()` behind `??` in a hook draws no "calls the host"
+  red — `cli.check({ cwd: opts.cwd ?? process.cwd() })` reads exactly as
+  `opts.cwd ?? "/"`, while the same call in a spread is red
+  (`cases/driver.spec.ts`, the "default" hook); cause not located. (2) A hook
+  registered on a parameter no caller binds is not judged at all
+  (`registerMore(parser)`, the second-wiring-function row): the true verdict is
+  red, but what the reader can honestly say without the binding may be unknown
+  rather than red — a verdict question for rixo before the fix. Both are
+  `04/07_driver-readers` territory (what a hook's tech is), so look there first.
+
 - **Mutation testing over the gate alone** (2026-09-26, rixo, banked
   2026-09-27). Mutate deblob's source and run only the corpus rows, not the
   units: a surviving mutant is a behavior no row observes. The units would catch

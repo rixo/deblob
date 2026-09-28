@@ -203,6 +203,7 @@ const ROWS: readonly Row[] = [
           parser.command("echo").action((opts) => console.log(opts)) // red: hook-one-call -- no use case: logic with no home
           parser.command("both").action(async (opts) => { await cli.check(opts); return cli.status(opts) }) // red: hook-one-call -- two calls: a use case nobody owns
           parser.command("maybe").action((opts) => { if (opts.run) return cli.check(opts) }) // red: hook-one-call -- a conditional call
+          // missed red: hook-one-call -- process.cwd(), a call that is not the use case's: behind \`??\`, the reader does not see it
           parser.command("default").action((opts) => cli.check({ cwd: opts.cwd ?? process.cwd() })) // red: hook-one-call, hook-one-call -- a default on the way in: a branch in the hook, and the argument it computes
           parser.command("exit").action(async (opts) => { if (!(await cli.check(opts))) process.exit(1) }) // red: hook-one-call, hook-one-call -- a branch on the result: the result computed with, and branched on
           // red: hook-one-call -- console.log, a call that is not the use case's
@@ -511,7 +512,7 @@ const ROWS: readonly Row[] = [
           parser.parse(argv)
         }
         export const registerMore = (parser: ReturnType<typeof cac>) => { // red: driver-hooks-only -- a second wiring function
-          parser.command("more").action(() => createCliAssembly({ cwd: process.cwd() }).cli.status({}))
+          parser.command("more").action(() => createCliAssembly({ cwd: process.cwd() }).cli.status({})) // missed red: hook-one-call, hook-one-call -- a hook does not wire: process.cwd(), the assembly call; the reader does not cut a hook on a parameter no caller binds
         }
       `,
     },
