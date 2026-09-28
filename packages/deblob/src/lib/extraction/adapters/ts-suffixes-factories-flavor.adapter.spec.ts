@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import { STOCK_FLAVOR_NAME } from "../stock-flavor.model.ts"
 import {
@@ -115,10 +115,16 @@ describe("ts-suffixes-factories flavor", () => {
   })
 
   it("attributes through a chain of grouping dirs when the service dir has no direct layer file", () => {
-    const result = classify(["icons/ports/icon-source.port.ts"])
+    const result = classify([
+      "icons/ports/icon-source.port.ts",
+      "fonts/private/adapters/font-source.adapter.ts",
+    ])
     expect(result.get("icons/ports/icon-source.port.ts")?.serviceRoot).toBe(
       "icons",
     )
+    expect(
+      result.get("fonts/private/adapters/font-source.adapter.ts")?.serviceRoot,
+    ).toBe("fonts")
   })
 
   it("treats a repo-root layer file as belonging to the root service", () => {
@@ -164,7 +170,7 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  it("leaves test naming to the test runner's binding: a spec file is blob to the flavor, filed under its service, marking no root", () => {
+  it("leaves test naming to the test runner's binding: a spec file is blob to the flavor, filed under its service", () => {
     const result = classify([
       "icons/icons.model.spec.ts",
       "icons/loader.test.ts",
@@ -238,9 +244,9 @@ describe("classifyStockEntry — the naming rule over subpath and specifier tail
     expect(classifyStockEntry("x.helper.js")).toBe(null)
   })
 
-  it("rides the resolver instance as classifyEntry — the port method is the same rule", () => {
+  test("the flavor's classifyEntry is classifyStockEntry", () => {
     const flavor = createTsSuffixesFactoriesFlavor()
-    expect(flavor.classifyEntry?.("checkout.service")).toBe("service")
+    expect(flavor.classifyEntry).toBe(classifyStockEntry)
   })
 })
 
@@ -259,9 +265,8 @@ describe("the factory naming rule — `create` followed by a capital", () => {
     expect(isStockFactoryName("default")).toBe(false)
   })
 
-  it("rides the resolver instance as isFactory — the port method is the same rule", () => {
+  test("the flavor's isFactory is isStockFactoryName", () => {
     const flavor = createTsSuffixesFactoriesFlavor()
-    expect(flavor.isFactory?.("createSomeMadeUpThing")).toBe(true)
-    expect(flavor.isFactory?.("someMadeUpThing")).toBe(false)
+    expect(flavor.isFactory).toBe(isStockFactoryName)
   })
 })

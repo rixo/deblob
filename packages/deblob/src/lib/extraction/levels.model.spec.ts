@@ -86,8 +86,11 @@ describe("useCaseLevels", () => {
       ["src/other.driver.ts", "app", 24],
       ["src/other.driver.ts", "group", 25],
     ])
+    const primaryAt = primary.map(({ driver, span }) => [driver, span.line])
+    // `services.group.store.has` — an adapter's instance, skipped
+    expect(primaryAt).not.toContainEqual(["src/other.driver.ts", 16])
     // `services.registry.get` — a model factory's instance, skipped like an adapter's
-    expect(primary.map(({ member }) => member)).not.toContain("registry.get")
+    expect(primaryAt).not.toContainEqual(["src/other.driver.ts", 27])
   })
 
   it("counts a sub-driver's hook once its parameters are bound: the same use case, another driver", async () => {

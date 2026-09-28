@@ -180,7 +180,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("@made-up/billing/checkout.service")).toBe("service")
   })
 
-  it("classifies an assembly-designated subpath assembly — the producer's word, over the tail", async () => {
+  it("classifies an assembly-designated subpath assembly — the producer's word, over the tail; a blob entry retracts it first", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/@made-up/tool/package.json": JSON.stringify({
@@ -269,7 +269,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("marked/x.model")).toBe("model")
   })
 
-  it("walks past a scalar manifest — valid JSON, no package there", async () => {
+  it("claims nothing under a scalar manifest", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/scalar/package.json": "42",

@@ -157,7 +157,7 @@ describe("readModule", () => {
     const calls = callsOf(main.body)
     const callee = (line: number): CalleeKind => callAt(calls, line).callee
 
-    it("cuts every top-level function definition, exported or not, named or default", () => {
+    it("cuts every top-level function definition — a const arrow, a declaration, one exported by specifier, the anonymous default", () => {
       expect(
         reading.functions.map((fn) => [fn.name, fn.exported, fn.params.length]),
       ).toEqual([
@@ -234,7 +234,7 @@ describe("readModule", () => {
       })
     })
 
-    it("classifies a call's result called inline by its value: a factory's result is an instance, so a use case with no member; `this` stays unknown, listed open", () => {
+    it("reads a factory's result called inline as a use case with no member; `this` called is unknown — and every unknown callee is listed open, once", () => {
       expect(
         calls.filter((call) => call.span.line === 58).map((c) => c.callee.kind),
       ).toEqual(["factory", "use-case"])
@@ -326,7 +326,7 @@ describe("readModule", () => {
       expect(uses(53)).toEqual([["computed", 53]])
     })
 
-    it("reads what a control's test reads off — a parameter, an instance, a computed value", () => {
+    it("reads what a control's test reads off — a parameter, an instance, a computed value; a catch and a loop read `other`; each arm holds its own calls", () => {
       expect(
         controls(main.body).map((control) => [
           control.span.line,
@@ -518,7 +518,7 @@ describe("readModule", () => {
       ["another tech's `it`", 22],
       ['a computed member (`runner["it"]`), never evaluated', 23],
       ["a chain that starts from no name (`(await import(…)).it`)", 24],
-    ])("tripwire: %s maps to no role, never a guessed one", (_, line) => {
+    ])("maps %s to no role, never a guessed one (tripwire)", (_, line) => {
       const reading = read("roles.ts", { layer: "test", tech: TESTS })
       expect(rolesOf(reading.hooks).find(([at]) => at === line)?.[1]).toBeNull()
     })
@@ -629,8 +629,11 @@ describe("readModule", () => {
       expect(callee(20)).toEqual({ kind: "language" })
     })
 
-    it("reads a computed member as `[]`: a use case on an instance keeps its origin", () => {
+    it("reads a computed member as `[]`: `inst[key]()` is a use case with member `[]`", () => {
       expect(callee(22)).toMatchObject({ kind: "use-case", member: "[]" })
+    })
+
+    it("reads an export called off an awaited `import()` as that module's factory, and a member of it as a use case", () => {
       expect(callee(24)).toEqual({
         kind: "factory",
         layer: "assembly",
@@ -773,9 +776,21 @@ describe("readModule", () => {
       })
       // the tech destructured, called: still the tech
       expect(callee(61)).toEqual({ kind: "tech", package: null })
+      // `const {} = helper()`: no definition, the call still read
+      expect(
+        main.body.filter(
+          (statement) =>
+            statement.kind === "definition" && statement.span.line === 63,
+        ),
+      ).toEqual([])
+      expect(callee(63)).toEqual({
+        kind: "model",
+        path: "src/helper.model.ts",
+        name: "helper",
+      })
     })
 
-    it("classifies bare calls on odd roots: a file outside coverage is the tech; a non-literal import or an expression called is the language; a module namespace called bare stays unknown", () => {
+    it("classifies bare calls on odd roots: a file outside coverage is the tech, and so is a call on a tech-held value; a non-literal import or an expression called is the language; a module namespace called bare stays unknown", () => {
       expect(callee(67)).toEqual({ kind: "tech", package: "./outside.ts" })
       // a call on a tech-held value is the tech's, whatever its name
       expect(callee(68)).toEqual({ kind: "tech", package: null })
@@ -784,6 +799,9 @@ describe("readModule", () => {
       // a namespace is not callable — no export named, nothing to classify
       expect(callee(70)).toEqual({ kind: "unknown" })
       expect(callee(71)).toEqual({ kind: "language" })
+    })
+
+    it("reads a value from a shadowed `require` as the local's result, not an import", () => {
       // `require` shadowed by a local: the local's result, not an import
       expect(
         main.body.find(
@@ -791,6 +809,9 @@ describe("readModule", () => {
             statement.kind === "definition" && statement.name === "notImport",
         ),
       ).toMatchObject({ value: "computed" })
+    })
+
+    it("reads a construction on an instance member as a use case", () => {
       // a construction on an instance member is a use case
       expect(callee(73)).toMatchObject({ kind: "use-case", member: "Klass" })
     })
@@ -834,7 +855,7 @@ describe("readModule", () => {
       ])
     })
 
-    it("keeps root declarations that are not one function each as root definitions; a function exported by specifier, an anonymous default", () => {
+    it("keeps root declarations that are not one function each as root definitions, and cuts a function exported by specifier and a named default", () => {
       expect(reading.functions.map((fn) => [fn.name, fn.exported])).toEqual([
         ["main", true],
         ["viaSpecifier", true],
@@ -967,7 +988,7 @@ describe("readModule", () => {
       ).toEqual(["one", "two"])
     })
 
-    test("a helper registering a hook: the hook is main's, on the tech the site handed; at another site the same line is a use case on the instance handed, its callback read inline", () => {
+    test("a helper registering a hook: the hook is main's, on the tech the site handed; at another site the same line is a use case on the instance handed, its callback read inline; a record handed to a destructuring parameter binds by key, a spread, computed or unnamed key dropped", () => {
       expect(
         main.hooks.map((hook) => [hook.span.line, hook.registeredBy.callee]),
       ).toEqual([
@@ -1095,7 +1116,7 @@ describe("readModule", () => {
       expect(reading.open).toEqual([])
     })
 
-    it("reads a computed key as a reference: `keyed` is not tracked, its call reads `local`, and a function expression is a function of the file", () => {
+    it("reads a computed key as a reference: `keyed` is not tracked, and a function expression is a function of the file", () => {
       expect(reading.functions.map((fn) => fn.name)).toContain("keyed")
       expect(reading.functions.map((fn) => fn.name)).toContain("g")
     })
@@ -1152,7 +1173,7 @@ describe("readModule", () => {
       "shadowedDeep",
     ]
 
-    it('keeps `helper` out of the functions of the file: it is read at its sites, so only the four sites are functions — `readsIn("helper")` has nothing to find', () => {
+    it("keeps `helper` out of the functions of the file — read at its sites, only the four sites are functions", () => {
       expect(reading.functions.map((fn) => fn.name)).toEqual([
         "plainSite",
         "shadowedByLocals",

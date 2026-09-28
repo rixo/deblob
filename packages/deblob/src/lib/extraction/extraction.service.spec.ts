@@ -15,7 +15,11 @@ import type {
   ReadCall,
   ReadStatement,
 } from "./graph.model.ts"
-import { asExtractionError, isExtractionError } from "./graph.model.ts"
+import {
+  ExtractionError,
+  asExtractionError,
+  isExtractionError,
+} from "./graph.model.ts"
 import type { Reader } from "./ports/reader.port.ts"
 import type { ExtractionEngine } from "./ports/extraction.port.ts"
 import type { Resolver } from "./ports/resolver.port.ts"
@@ -298,7 +302,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  it("extracts a file with no require through the prefilter negative path", async () => {
+  it("keeps the static edge of a file whose text has no `require(`", async () => {
     const edges = edgesFrom(await extractForms(), "src/no-require.ts")
     expect(edges).toEqual([
       {
@@ -509,7 +513,7 @@ describe("extractGraph over the forms fixture", () => {
     })
   })
 
-  it("gives a file the kind a single-kind reader's binding designates, over every designation — a test file is one wherever it sits", async () => {
+  it("gives a file the kind a single-kind reader's binding designates, over a config designation", async () => {
     const graph = await extractFixture({
       fixture: "forms",
       files: FORMS_FILES,
@@ -565,18 +569,6 @@ describe("extractGraph over the forms fixture", () => {
         /src\/app\.ts is designated "assembly" and "boot"/,
       ) as string,
     })
-    // the guard is duck-typed on the name: a bare Error is not extraction's,
-    // an instance from another realm with the name is
-    expect(isExtractionError(new Error("parse failed"))).toBe(false)
-    expect(
-      isExtractionError(
-        Object.assign(new Error("SOME_MADE_UP"), { name: "ExtractionError" }),
-      ),
-    ).toBe(true)
-    // the presenting twin: extraction's own error comes back, a bug keeps flying
-    expect(asExtractionError(thrown)).toBe(thrown)
-    const bug = new Error("SOME_MADE_UP_BUG")
-    expect(() => asExtractionError(bug)).toThrow(bug)
   })
 })
 
@@ -904,7 +896,7 @@ describe("externalLayerOf — the crossed layer carrier on external leaves", () 
     })
   })
 
-  it("leaves every leaf at layer: null without the carrier — today's behavior", async () => {
+  it("leaves a leaf at layer: null without the carrier", async () => {
     const graph = await extractCrossed(["@made-up/billing/checkout.service"])
     expect(graph.edges[0]?.to).toMatchObject({ layer: null })
   })
@@ -1029,7 +1021,7 @@ describe("the reading on the graph — the reading fixture", () => {
     )
   })
 
-  it("tries a configured binding first and keeps the kinds filter: plain-ts bound over the spec naming does not read a test file", async () => {
+  it("tries a configured binding first and keeps the kinds filter: plain-ts bound over the spec naming does not read a test file; the runner bound over a plain file makes it a test, read with the four exemptions", async () => {
     const graph = await extractReading([
       { ...createPlainTsReader(), files: ["**/*.spec.ts"] },
       createGoodEnoughTestsReader(),
@@ -1051,7 +1043,7 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(bound.modules.get("src/globals.spec.ts")?.layer).toBe("test")
   })
 
-  test("a driver: externals by claim, purity and complement; hooks cut, nested; the open part", async () => {
+  test("a driver: externals by claim, purity and complement; the assembly's instance handed to the sub-driver's wiring; hooks cut, nested, their assignments statements; a `.then` read inline; the open part", async () => {
     const [main] = readingOf(
       await extractReading(),
       "src/cli.driver.ts",
@@ -1152,7 +1144,7 @@ describe("the reading on the graph — the reading fixture", () => {
     )
   })
 
-  test("an assembly: factories by file kind, a use case on an instance, controls by their test", async () => {
+  test("an assembly: factories by file kind, a use case on an instance matched to its declared load, controls by their test, the group assembly's arguments, parameters bound at the drivers' sites", async () => {
     const [assembly] = readingOf(
       await extractReading(),
       "src/cli.assembly.ts",
@@ -1311,7 +1303,7 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(register?.hooks).toHaveLength(1)
   })
 
-  it("throws an ExtractionError for a load naming a file outside coverage, presented by the driver", async () => {
+  it("throws an ExtractionError, code `load-file-not-covered`, for a load naming a file outside coverage", async () => {
     let thrown: unknown
     try {
       await extractReading(undefined, [
@@ -1324,7 +1316,7 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(thrown).toMatchObject({ code: "load-file-not-covered" })
   })
 
-  test("a sub-driver called from two sites with different kinds: one reading per world, each judged as the only caller; `reading` binds from the first", async () => {
+  test("a sub-driver called from three sites: one reading per distinct argument vector — two differ in kinds, the third only in the instance's origin — each judged as the only caller; `reading` binds from the first", async () => {
     const graph = await extractReading()
     const node = graph.modules.get("src/sub.driver.ts")
     expect(
@@ -1424,7 +1416,7 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(readingOf(single, "src/sub.driver.ts").open).toEqual([])
   })
 
-  it("names no factory under a flavor without the factory naming rule: every model callee stays model", async () => {
+  it("names no factory under a flavor without the factory naming rule: `createRegistry` stays a model callee", async () => {
     const root = fixtureRoot("reading")
     const stock = createTsSuffixesFactoriesFlavor()
     const extraction = createExtraction({
@@ -1481,5 +1473,29 @@ describe("the reading on the graph — the reading fixture", () => {
       { kind: "tech", package: null },
     ])
     expect(reading.hooks[0]?.hooks).toHaveLength(1)
+  })
+})
+
+describe("isExtractionError", () => {
+  it("tells extraction's error by its name — a bare Error is not one, an instance from another realm with the name is", () => {
+    expect(isExtractionError(new Error("parse failed"))).toBe(false)
+    expect(
+      isExtractionError(
+        Object.assign(new Error("SOME_MADE_UP"), { name: "ExtractionError" }),
+      ),
+    ).toBe(true)
+  })
+})
+
+describe("asExtractionError", () => {
+  it("gives extraction's own error back and rethrows any other", () => {
+    const thrown = new ExtractionError(
+      "designation-conflict",
+      'src/app.ts is designated "assembly" and "boot"',
+    )
+    // the presenting twin: extraction's own error comes back, a bug keeps flying
+    expect(asExtractionError(thrown)).toBe(thrown)
+    const bug = new Error("SOME_MADE_UP_BUG")
+    expect(() => asExtractionError(bug)).toThrow(bug)
   })
 })

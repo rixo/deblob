@@ -72,7 +72,7 @@ describe("createGoodEnoughTestsReader", () => {
       ["a name every object inherits", ["constructor"]],
       ["an inherited name as a member (`vi.toString`)", ["vi", "toString"]],
       ["no name at all", []],
-    ])("tripwire: %s maps to no role", (_, chain) => {
+    ])("maps %s to no role (tripwire)", (_, chain) => {
       expect(roleOf(chain)).toBeNull()
     })
   })
