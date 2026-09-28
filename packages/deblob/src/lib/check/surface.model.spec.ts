@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import { classifyStockEntry } from "../extraction/adapters/ts-suffixes-factories-flavor.adapter.ts"
 import type {
@@ -236,7 +236,7 @@ describe("checkSurface", () => {
     })
   })
 
-  it("looks a target under no mirror root up as itself — a source target outside coverage is unverified", () => {
+  it("looks up a target under no mirror root as itself — a source target outside coverage is unverified", () => {
     const g = graph({ "src/index.ts": { layer: "blob" } })
     const s = surface({
       ".": ["src/index.ts"],
@@ -269,7 +269,7 @@ describe("checkSurface", () => {
     })
   })
 
-  it("reads a declaration file as describing its sibling — one stem, one module; alone it is the module", () => {
+  it("reads a declaration file as describing its sibling — one stem, one module; alone it is the module; two declaration forms alone stay ambiguous", () => {
     const g = graph({
       "src/x.d.ts": { layer: "blob" },
       "src/x.js": { layer: "service", serviceRoot: "src" },
@@ -427,7 +427,7 @@ describe("checkSurface", () => {
       })
     })
 
-    it("judges a file once, under the literal key naming it — a literal key wins over a pattern", () => {
+    it("judges a subpath once, under the literal key naming it — a literal key wins over a pattern; a second subpath to the same file is a second claim", () => {
       const g = graph(
         {
           "src/index.ts": { layer: "assembly", serviceRoot: "src" },
@@ -573,7 +573,7 @@ describe("checkSurface", () => {
       ])
     })
 
-    it("retracts a pattern key disclosed whole, never unverified — even when it matches nothing", () => {
+    it("counts a pattern key disclosed whole once, as disclosed — never unverified, even when it matches nothing", () => {
       // build: false and nothing under the key on disk: the producer said
       // "./legacy/**" is not claimed, so the run has nothing to certify
       const g = graph({ "lib/x.ts": { layer: "blob" } })
@@ -616,8 +616,14 @@ describe("checkSurface", () => {
           },
         ],
       })
-      // the key's own trailer is part of the claim: every bound stem is
-      // exported as "<stem>.model", and neither file is one
+    })
+
+    it("binds the key's trailer into the claim — `./*.model` over a service and an adapter mismatches", () => {
+      const g = graph({
+        "src/checkout.service.ts": { layer: "service", serviceRoot: "src" },
+        "src/stripe.adapter.ts": { layer: "adapters", serviceRoot: "src" },
+      })
+      // every bound stem is exported as "<stem>.model", and neither file is one
       const lying = surface({ "./*.model": ["dist/*"] })
       expect(checkSurface(g, lying, options).violations).toEqual([
         expect.objectContaining({
@@ -825,7 +831,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  it("picks the smallest front whatever order the edges came in", () => {
+  it("picks the smallest front even when its edge comes last", () => {
     const g = graph(
       {
         "src/a.ts": { layer: "blob" },
@@ -1020,7 +1026,7 @@ describe("resolveSurface", () => {
 })
 
 describe("tallySurface", () => {
-  it("counts what the claim reaches and what it does not — bare never diagnoses; carve-outs count once as written, once per concrete", () => {
+  it("counts what the claim reaches and what it does not — carve-outs count once as written, once per concrete", () => {
     const covered = [
       "src/api.ts",
       "src/legacy/old.ts",
@@ -1042,7 +1048,29 @@ describe("tallySurface", () => {
       claimed: 3,
       disclosed: 2,
     })
-    // the check's coverage is the same count minus what it could not reach
+  })
+})
+
+describe("tallySurface and checkSurface", () => {
+  test("agree: the check's checked and disclosed are the tally minus what it could not reach", () => {
+    const covered = [
+      "src/api.ts",
+      "src/legacy/old.ts",
+      "src/checkout.service.ts",
+    ]
+    const s = surface({
+      "./*": ["dist/*.js"],
+      "./vendor/*": ["dist/vendor/*.js"],
+      "./gone": ["dist/gone.js"],
+      "./*/*": ["dist/*.js"],
+      "./styles.css": ["dist/styles.css"],
+    })
+    const disclosed = (subpath: string) =>
+      subpath.startsWith("./legacy/") || subpath === "./vendor/*"
+    expect(tallySurface(s, covered, { ...reachOptions, disclosed })).toEqual({
+      claimed: 3,
+      disclosed: 2,
+    })
     const g = graph({
       "src/api.ts": { layer: "assembly", serviceRoot: "src" },
       "src/legacy/old.ts": { layer: "assembly", serviceRoot: "src" },

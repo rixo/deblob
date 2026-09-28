@@ -433,7 +433,7 @@ describe("checkBarrels", () => {
       expect(checkBarrels(g, { tolerateBlobReexport: true })).toEqual([])
     })
 
-    it("keeps index-import firing on the same graph — claimants stay bound", () => {
+    it("keeps index-import firing when a service imports the barrel — claimants stay bound", () => {
       const g = graph(nodes, [
         { from: "billing/refund.service.ts", to: mod("invoice/index.ts") },
         {

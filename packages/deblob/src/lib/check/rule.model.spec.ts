@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { RULE_IDS, isRuleId, ruleOrder } from "./rule.model.ts"
 
 describe("RULE_IDS", () => {
-  it("lists the twenty-seven rules of the summary, each once", () => {
+  it("lists twenty-seven rules, each once", () => {
     expect(RULE_IDS).toHaveLength(27)
     expect(new Set(RULE_IDS).size).toBe(RULE_IDS.length)
   })

@@ -46,7 +46,7 @@ describe("groupByFix", () => {
     ])
   })
 
-  it("leads a group of one with a violation whose cause no violation has for subject", () => {
+  it("makes an orphan the lead of its own group of one — no violation's subject is its cause", () => {
     const orphan = rootCall(spanAt(0, 12), spanAt(0, 5))
     expect(groupByFix([orphan])).toEqual([{ lead: orphan, riders: [] }])
   })

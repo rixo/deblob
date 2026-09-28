@@ -227,7 +227,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    it("stays green on type edges from a port, whatever the target", () => {
+    it("stays green on a type edge from a port to an adapter", () => {
       const g = port(
         mod("invoice/pdf.adapter.ts"),
         { kind: "type" },
@@ -303,7 +303,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    it("stays green on `import type` of a port from anywhere", () => {
+    it("stays green on `import type` of a port from a service", () => {
       const g = importOfPort(
         "invoice/invoice.service.ts",
         { layer: "service", serviceRoot: "invoice" },

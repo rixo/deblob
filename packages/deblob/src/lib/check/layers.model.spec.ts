@@ -117,7 +117,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires `inward-deps` when model imports service, adapters, assembly, or ports — the assembly also `assembly-driver-only`", () => {
+    it("fires `inward-deps` when model imports service, adapters, assembly, or ports — `runtime-import` as hint on service and adapters, the assembly also `assembly-driver-only`", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -159,7 +159,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires `inward-deps` when ports import outward", () => {
+    it("fires `inward-deps`, `runtime-import` as hint, when ports import a service", () => {
       const g = graph(
         {
           "invoice/ports/renderer.ts": {
@@ -402,7 +402,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires for a never-seen bare specifier — unlisted ⇒ concrete, no census (tripwire)", () => {
+    it("fires for a never-seen bare specifier — unlisted ⇒ concrete, no census", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: lib("@nobody/heard-of-this-one") }],
@@ -590,7 +590,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("stays green on the same import unlabeled from adapters — the carrier is exactly what distinguishes", () => {
+    it("stays green on an adapter importing an unlabeled package — the layer carrier is exactly what distinguishes", () => {
       const g = graph(
         { "a/x.adapter.ts": { layer: "adapters", serviceRoot: "a" } },
         [{ from: "a/x.adapter.ts", to: lib("@made-up/raw-sdk") }],
@@ -712,7 +712,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("exempts a type-only crossing to service/adapters targets, binds it to assembly, binds all under strict", () => {
+    it("exempts a type-only crossing to service/adapters targets, binds it to assembly, binds the service one under strict", () => {
       const service = crossed("@made-up/b/checkout.service", "service")
       const adapters = crossed("@made-up/b/stripe.adapter", "adapters")
       const assembly = crossed("@made-up/b/main", "assembly")
@@ -1069,7 +1069,7 @@ describe("checkLayers", () => {
       ).toEqual([])
     })
 
-    it("fires `inward-deps` outward from the outside kinds, and the target kind's own import rule — assembly to driver, driver to boot", () => {
+    it("fires `inward-deps` outward from the outside kinds, and the target kind's own import rule — assembly to driver or boot, driver to boot, a type edge too", () => {
       const violations = outside([
         { from: "src/cli.assembly.ts", to: mod("src/cli.driver.ts") },
         { from: "src/cli.assembly.ts", to: mod("src/cli.boot.ts") },
@@ -1092,7 +1092,7 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("fires `inward-deps` when the inside imports an outside kind, and the target kind's own import rule — a driver, a boot, a test", () => {
+    it("fires `inward-deps` when the inside imports an outside kind, and the target kind's own import rule — a driver, a boot, a test, a type edge too", () => {
       const violations = outside([
         { from: "src/a/a.model.ts", to: mod("src/cli.driver.ts") },
         { from: "src/a/a.service.ts", to: mod("src/cli.boot.ts") },
@@ -1218,7 +1218,7 @@ describe("checkLayers", () => {
   })
 
   describe("non-violations — deliberately legal shapes stay green", () => {
-    it("stays green on blob importing blob, model, or ports", () => {
+    it("stays green on blob importing blob, model, ports, a concrete builtin, or an unlisted lib", () => {
       const g = graph(
         {
           "lib/a.ts": { layer: "blob" },

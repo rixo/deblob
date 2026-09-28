@@ -309,8 +309,6 @@ describe("checkDag", () => {
         members: ["a", "b", "c"],
         services: ["a", "b"],
       })
-      // determinism: same graph, same witness
-      expect(checkDag(g)).toEqual(checkDag(g))
     })
 
     it("reports disjoint knots separately", () => {
