@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import type {
   EdgeForm,
@@ -74,7 +74,7 @@ const entry = (overrides: Partial<RuntimeEntry> = {}): RuntimeEntry => ({
 
 describe("checkPorts", () => {
   describe("runtime-export — runtime content in a port file (`ports-types-only`)", () => {
-    test("fires on a runtime export, carrying the declaration's form and name", () => {
+    it("fires on a runtime export, carrying the declaration's form and name", () => {
       const g = graph({
         "invoice/ports/renderer.ts": {
           layer: "ports",
@@ -97,7 +97,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    test("fires once per entry when a port holds several", () => {
+    it("fires once per entry when a port holds several", () => {
       const g = graph({
         "invoice/ports/renderer.ts": {
           layer: "ports",
@@ -114,14 +114,14 @@ describe("checkPorts", () => {
       ])
     })
 
-    test("stays green on a pure port", () => {
+    it("stays green on a pure port", () => {
       const g = graph({
         "invoice/ports/renderer.ts": { layer: "ports", serviceRoot: "invoice" },
       })
       expect(checkPorts(g)).toEqual([])
     })
 
-    test.each(["model", "service", "adapters", "assembly", "blob"] as const)(
+    it.each(["model", "service", "adapters", "assembly", "blob"] as const)(
       "stays green on runtime content in a %s file — `ports-types-only` binds ports only",
       (layer) => {
         const g = graph({
@@ -153,7 +153,7 @@ describe("checkPorts", () => {
         [{ from: "invoice/ports/renderer.ts", to, ...edge }],
       )
 
-    test("fires on a matrix-legal target — the rule is target-blind", () => {
+    it("fires on a matrix-legal target — the rule is target-blind", () => {
       const g = port(
         mod("invoice/dpi.model.ts"),
         {},
@@ -174,7 +174,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    test.each([
+    it.each([
       ["another port", mod("invoice/ports/other.ts")],
       ["blob", mod("lib/helpers.ts")],
     ] as const)("fires on a runtime edge to %s", (_label, to) => {
@@ -194,7 +194,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    test("fires on an external target — pure-lib classification is irrelevant", () => {
+    it("fires on an external target — pure-lib classification is irrelevant", () => {
       const g = port(lib("zod"))
       expect(checkPorts(g)).toEqual([
         expect.objectContaining({
@@ -204,14 +204,14 @@ describe("checkPorts", () => {
       ])
     })
 
-    test.each(["dynamic", "require"] as const)("fires on a %s edge", (form) => {
+    it.each(["dynamic", "require"] as const)("fires on a %s edge", (form) => {
       const g = port(lib("zod"), { form })
       expect(checkPorts(g)).toEqual([
         expect.objectContaining({ shape: "runtime-import-in-port" }),
       ])
     })
 
-    test("fires on a runtime re-export edge", () => {
+    it("fires on a runtime re-export edge", () => {
       const g = port(
         mod("invoice/pdf.adapter.ts"),
         { reExport: true },
@@ -227,7 +227,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    test("stays green on type edges from a port, whatever the target", () => {
+    it("stays green on type edges from a port, whatever the target", () => {
       const g = port(
         mod("invoice/pdf.adapter.ts"),
         { kind: "type" },
@@ -259,7 +259,7 @@ describe("checkPorts", () => {
         [{ from, to: mod("invoice/ports/renderer.ts"), ...edge }],
       )
 
-    test("fires at the importer on the matrix-legal service → ports cell", () => {
+    it("fires at the importer on the matrix-legal service → ports cell", () => {
       const g = importOfPort("invoice/invoice.service.ts", {
         layer: "service",
         serviceRoot: "invoice",
@@ -277,7 +277,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    test.each([
+    it.each([
       ["model", "invoice/dpi.model.ts", "invoice"],
       ["adapters", "invoice/pdf.adapter.ts", "invoice"],
       ["assembly", "src/main.ts", null],
@@ -296,14 +296,14 @@ describe("checkPorts", () => {
       },
     )
 
-    test.each(["dynamic", "require"] as const)("fires on a %s edge", (form) => {
+    it.each(["dynamic", "require"] as const)("fires on a %s edge", (form) => {
       const g = importOfPort("lib/helpers.ts", { layer: "blob" }, { form })
       expect(checkPorts(g)).toEqual([
         expect.objectContaining({ shape: "runtime-import-of-port" }),
       ])
     })
 
-    test("stays green on `import type` of a port from anywhere", () => {
+    it("stays green on `import type` of a port from anywhere", () => {
       const g = importOfPort(
         "invoice/invoice.service.ts",
         { layer: "service", serviceRoot: "invoice" },
@@ -312,7 +312,7 @@ describe("checkPorts", () => {
       expect(checkPorts(g)).toEqual([])
     })
 
-    test("stays green on runtime imports of non-port targets", () => {
+    it("stays green on runtime imports of non-port targets", () => {
       const g = graph(
         {
           "invoice/invoice.service.ts": {
@@ -334,7 +334,7 @@ describe("checkPorts", () => {
   })
 
   describe("the shapes partition `ports-types-only`", () => {
-    test("port → port runtime yields exactly one finding, at the acting port", () => {
+    it("reports a port → port runtime import once, at the acting port", () => {
       const g = graph(
         {
           "invoice/ports/a.ts": { layer: "ports", serviceRoot: "invoice" },
@@ -350,7 +350,7 @@ describe("checkPorts", () => {
       ])
     })
 
-    test("a port with runtime content and a runtime import yields two findings, distinct shapes", () => {
+    it("reports a port with runtime content and a runtime import as two violations, distinct shapes", () => {
       const g = graph(
         {
           "invoice/ports/renderer.ts": {
@@ -369,7 +369,7 @@ describe("checkPorts", () => {
   })
 
   describe("contract breaches are loud", () => {
-    test("throws when an edge references a module missing from the graph", () => {
+    it("throws when an edge references a module missing from the graph", () => {
       const g = graph(
         {
           "invoice/ports/renderer.ts": {

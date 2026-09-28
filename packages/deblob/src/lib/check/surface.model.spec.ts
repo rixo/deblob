@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import { classifyStockEntry } from "../extraction/adapters/ts-suffixes-factories-flavor.adapter.ts"
 import type {
@@ -72,7 +72,7 @@ const options = {
 }
 
 describe("checkSurface", () => {
-  test("yields nothing for a null surface — no field, no claim, no check", () => {
+  it("yields nothing for a null surface — no field, no claim, no check", () => {
     const g = graph({ "src/checkout.service.ts": { layer: "service" } })
     expect(checkSurface(g, null, options)).toEqual({
       checked: 0,
@@ -82,7 +82,7 @@ describe("checkSurface", () => {
     })
   })
 
-  test("stays green when every claim matches its file", () => {
+  it("stays green when every claim matches its file", () => {
     const g = graph({
       "src/checkout.service.ts": { layer: "service", serviceRoot: "src" },
       "src/totals.model.ts": { layer: "model", serviceRoot: "src" },
@@ -94,7 +94,7 @@ describe("checkSurface", () => {
     expect(checkSurface(g, s, options).violations).toEqual([])
   })
 
-  test("fires 3 when a claimed subpath fronts a file of another layer", () => {
+  it("fires `chain-purity` when a claimed subpath fronts a file of another layer", () => {
     const g = graph({
       "src/stripe.adapter.ts": { layer: "adapters", serviceRoot: "src" },
     })
@@ -115,7 +115,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("reads the graph's word for covered targets — a designated assembly entry contradicts a service claim", () => {
+  it("reads the graph's word for covered targets — a designated assembly entry contradicts a service claim", () => {
     const g = graph({
       "src/index.ts": { layer: "assembly", serviceRoot: "src" },
     })
@@ -130,7 +130,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("reaches a built target through the mirror — dist/ maps to src/, extensions stripped", () => {
+  it("reaches a built target through the mirror — dist/ maps to src/, extensions stripped", () => {
     const g = graph({
       "src/checkout.service.ts": { layer: "service", serviceRoot: "src" },
       "src/stripe.adapter.ts": { layer: "adapters", serviceRoot: "src" },
@@ -162,7 +162,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("no basename fallback — a name in dist is not a fact about a layer", () => {
+  it("never falls back to the basename — a name in dist is not a fact about a layer", () => {
     const g = graph({})
     const s = surface({ "./checkout.service": ["dist/stripe.adapter.js"] })
     expect(checkSurface(g, s, options)).toEqual({
@@ -185,7 +185,7 @@ describe("checkSurface", () => {
     })
   })
 
-  test("the gap's own pin — a laundering root fires 2 through the mirror", () => {
+  it("fires `layer-in-path` on a laundering root through the mirror — the gap's own pin", () => {
     const g = graph(
       {
         "src/index.ts": { layer: "assembly", serviceRoot: "src" },
@@ -211,7 +211,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("several mirror roots — the longest prefixing root wins", () => {
+  it("maps through the longest prefixing root when several mirror roots match", () => {
     const g = graph({
       "src/index.ts": { layer: "blob" },
       "legacy/index.ts": { layer: "blob" },
@@ -236,7 +236,7 @@ describe("checkSurface", () => {
     })
   })
 
-  test("under no mirror root: looked up as itself — a source target outside coverage is unverified", () => {
+  it("looks a target under no mirror root up as itself — a source target outside coverage is unverified", () => {
     const g = graph({ "src/index.ts": { layer: "blob" } })
     const s = surface({
       ".": ["src/index.ts"],
@@ -269,7 +269,7 @@ describe("checkSurface", () => {
     })
   })
 
-  test("a declaration file describes its sibling — one stem, one module; alone it is the module", () => {
+  it("reads a declaration file as describing its sibling — one stem, one module; alone it is the module", () => {
     const g = graph({
       "src/x.d.ts": { layer: "blob" },
       "src/x.js": { layer: "service", serviceRoot: "src" },
@@ -308,7 +308,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("an ambiguous stem is unverified — two covered modules, no exact match", () => {
+  it("leaves an ambiguous stem unverified — two covered modules, no exact match", () => {
     const g = graph({
       "src/index.ts": { layer: "blob" },
       "src/index.js": { layer: "blob" },
@@ -327,7 +327,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("no mirror declared — built targets are unverified, nothing guessed", () => {
+  it("leaves built targets unverified when no mirror is declared, guessing nothing", () => {
     const g = graph({ "src/index.ts": { layer: "blob" } })
     const s = surface({ ".": ["dist/index.js"] })
     expect(checkSurface(g, s, { ...options, mirror: {} }).unverified).toEqual([
@@ -340,7 +340,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("non-module targets are not surface entries — neither verified nor unverified", () => {
+  it("skips non-module targets — neither verified nor unverified", () => {
     const g = graph({})
     const s = surface({
       "./package.json": ["package.json"],
@@ -355,7 +355,7 @@ describe("checkSurface", () => {
     })
   })
 
-  test("a disclosed subpath is the field's own carve-out — not checked, not unverified", () => {
+  it("skips a disclosed subpath — the field's own carve-out, not checked, not unverified", () => {
     const g = graph(
       {
         "src/index.ts": { layer: "assembly", serviceRoot: "src" },
@@ -384,7 +384,7 @@ describe("checkSurface", () => {
   })
 
   describe("pattern entries — Node's substitution, expanded over source", () => {
-    test("binds the star per covered stem, across slashes, and judges each concrete subpath", () => {
+    it("binds the star per covered stem, across slashes, and judges each concrete subpath", () => {
       const g = graph(
         {
           "src/api.ts": { layer: "assembly", serviceRoot: "src" },
@@ -427,7 +427,7 @@ describe("checkSurface", () => {
       })
     })
 
-    test("a literal key wins over a pattern for the file it names — judged once, under the literal", () => {
+    it("judges a file once, under the literal key naming it — a literal key wins over a pattern", () => {
       const g = graph(
         {
           "src/index.ts": { layer: "assembly", serviceRoot: "src" },
@@ -459,7 +459,7 @@ describe("checkSurface", () => {
       ).toEqual([".", "./index"])
     })
 
-    test("the most specific pattern wins — longest base, then longest key", () => {
+    it("judges under the most specific pattern — longest base, then longest key", () => {
       const g = graph(
         {
           "src/legacy/x.ts": { layer: "assembly", serviceRoot: "src" },
@@ -494,7 +494,7 @@ describe("checkSurface", () => {
       ])
     })
 
-    test("a pattern matching no covered stem is unverified as itself", () => {
+    it("reports a pattern matching no covered stem unverified, as itself", () => {
       const g = graph({ "lib/x.ts": { layer: "blob" } })
       const s = surface({ "./*": ["dist/*.js"], "./out/*": ["out/*.js"] })
       expect(checkSurface(g, s, options)).toEqual({
@@ -529,7 +529,7 @@ describe("checkSurface", () => {
       })
     })
 
-    test("a pattern key is one claim too — its declarations expanding verifies it, a bundled twin missing is not reported", () => {
+    it("judges a pattern key as one claim too — its declarations expanding verify it, a bundled twin missing is not reported", () => {
       // the hybrid build: tsc declarations mirror src/, the runtime entry is a
       // rollup bundle under no honest mirror
       const g = graph({
@@ -573,7 +573,7 @@ describe("checkSurface", () => {
       ])
     })
 
-    test("a pattern key disclosed whole is retracted, not unverified — even when it matches nothing", () => {
+    it("retracts a pattern key disclosed whole, never unverified — even when it matches nothing", () => {
       // build: false and nothing under the key on disk: the producer said
       // "./legacy/**" is not claimed, so the run has nothing to certify
       const g = graph({ "lib/x.ts": { layer: "blob" } })
@@ -584,7 +584,7 @@ describe("checkSurface", () => {
       )
     })
 
-    test("a star-less target under a pattern key is one literal entry — the pattern is its claim", () => {
+    it("reads a star-less target under a pattern key as one literal entry — the pattern is its claim", () => {
       const g = graph({
         "src/features.ts": { layer: "service", serviceRoot: "src" },
       })
@@ -598,7 +598,7 @@ describe("checkSurface", () => {
       ])
     })
 
-    test("a target ending in the star leaves the extension to the consumer — bound to the stem, judged extensionless", () => {
+    it("leaves the extension to the consumer for a target ending in the star — bound to the stem, judged extensionless", () => {
       const g = graph({
         "src/checkout.service.ts": { layer: "service", serviceRoot: "src" },
         "src/stripe.adapter.ts": { layer: "adapters", serviceRoot: "src" },
@@ -636,7 +636,7 @@ describe("checkSurface", () => {
       ])
     })
 
-    test("a two-star key never matches in Node — no consumer reaches it, nothing to certify", () => {
+    it("never matches a two-star key — Node reaches it from no consumer, nothing to certify", () => {
       const g = graph({
         "src/checkout.service.ts": { layer: "service", serviceRoot: "src" },
       })
@@ -649,7 +649,7 @@ describe("checkSurface", () => {
       })
     })
 
-    test("disclosure applies to the concrete subpath — a carve-out pattern trims an expansion", () => {
+    it("applies disclosure to the concrete subpath — a carve-out pattern trims an expansion", () => {
       const g = graph(
         {
           "src/api.ts": { layer: "assembly", serviceRoot: "src" },
@@ -676,7 +676,7 @@ describe("checkSurface", () => {
       ])
     })
 
-    test("substitutes the bound string verbatim — a dollar in a name is a name", () => {
+    it("substitutes the bound string verbatim — a dollar in a name is a name", () => {
       const g = graph({
         "src/$made-up.ts": { layer: "service", serviceRoot: "src" },
       })
@@ -690,7 +690,7 @@ describe("checkSurface", () => {
     })
   })
 
-  test("fires 2 when an unlabeled subpath sits directly over a composition unit", () => {
+  it("fires `layer-in-path` when an unlabeled subpath sits directly over a composition unit", () => {
     const g = graph({
       "src/checkout.service.ts": { layer: "service", serviceRoot: "src" },
     })
@@ -711,7 +711,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("fires 2 on the laundering shape — an assembly-designated entry re-exporting a service", () => {
+  it("fires `layer-in-path` on the laundering shape — an assembly-designated entry re-exporting a service", () => {
     const g = graph(
       {
         "src/index.ts": { layer: "assembly", serviceRoot: "src" },
@@ -743,7 +743,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("follows re-export chains — a hop through an unlabeled file hides nothing", () => {
+  it("follows re-export chains — a hop through an unlabeled file hides nothing", () => {
     const g = graph(
       {
         "src/index.ts": { layer: "blob", serviceRoot: null },
@@ -769,7 +769,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("plain imports are not fronting — only re-export edges launder", () => {
+  it("ignores plain imports for fronting — only re-export edges launder", () => {
     const g = graph(
       {
         "src/index.ts": { layer: "assembly", serviceRoot: "src" },
@@ -781,7 +781,7 @@ describe("checkSurface", () => {
     expect(checkSurface(g, s, options).violations).toEqual([])
   })
 
-  test("an unlabeled entry over models stays green — the fat root barrel stays what it is", () => {
+  it("stays green on an unlabeled entry over models — the fat root barrel stays what it is", () => {
     const g = graph(
       {
         "src/index.ts": { layer: "blob", serviceRoot: null },
@@ -801,7 +801,7 @@ describe("checkSurface", () => {
     expect(checkSurface(g, s, options).violations).toEqual([])
   })
 
-  test("survives re-export cycles and picks the smallest front deterministically", () => {
+  it("survives re-export cycles and picks the smallest front deterministically", () => {
     const g = graph(
       {
         "src/a.ts": { layer: "blob" },
@@ -825,7 +825,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("picks the smallest front whatever order the edges came in", () => {
+  it("picks the smallest front whatever order the edges came in", () => {
     const g = graph(
       {
         "src/a.ts": { layer: "blob" },
@@ -843,7 +843,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("an unlabeled subpath over an unreachable target is unverified — nothing to front through, nothing certified", () => {
+  it("leaves an unlabeled subpath over an unreachable target unverified — nothing to front through, nothing certified", () => {
     const g = graph({})
     const s = surface({ ".": ["dist/index.js"] })
     expect(checkSurface(g, s, options)).toEqual({
@@ -866,7 +866,7 @@ describe("checkSurface", () => {
     })
   })
 
-  test("a subpath is one claim — conditions reaching the same module are judged once, wearing the first target", () => {
+  it("judges a subpath as one claim — conditions reaching the same module judged once, wearing the first target", () => {
     const g = graph({
       "src/stripe.adapter.ts": { layer: "adapters", serviceRoot: "src" },
     })
@@ -889,7 +889,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("the hybrid build — one reaching target verifies the subpath; the bundled twin under no mirror is not unverified", () => {
+  it("verifies a hybrid build's subpath by its one reaching target; the bundled twin under no mirror is not unverified", () => {
     const g = graph({
       "src/stripe.adapter.ts": { layer: "adapters", serviceRoot: "src" },
       "src/totals.model.ts": { layer: "model", serviceRoot: "src" },
@@ -916,7 +916,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("every target missing is the unverified case — the entry lists them all", () => {
+  it("reports a subpath unverified when every target is missing — the entry lists them all", () => {
     const g = graph({ "src/index.ts": { layer: "blob" } })
     const s = surface({
       "./thing": ["dist/lib/thing.js", "dist/types/thing.d.ts"],
@@ -941,7 +941,7 @@ describe("checkSurface", () => {
     ])
   })
 
-  test("re-exports pointing outward stay out of the closure — the seal never parses through", () => {
+  it("keeps re-exports pointing outward out of the closure — the seal never parses through", () => {
     const g = graph({ "src/index.ts": { layer: "blob" } }, [
       {
         from: "src/index.ts",

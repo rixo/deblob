@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import type {
   EdgeForm,
@@ -65,7 +65,7 @@ const lib = (specifier: string): EdgeTarget => ({
 
 describe("checkBarrels", () => {
   describe("barrel-file fires — an index re-exporting layered files (`layer-in-path`)", () => {
-    test("fires at the index for a re-exported service file — the catalog line", () => {
+    it("fires at the index for a re-exported service file — the catalog line", () => {
       const g = graph(
         {
           "invoice/index.ts": { layer: "blob", serviceRoot: "invoice" },
@@ -95,7 +95,7 @@ describe("checkBarrels", () => {
       ])
     })
 
-    test("fires for a re-exported model file", () => {
+    it("fires for a re-exported model file", () => {
       const g = graph(
         {
           "invoice/index.ts": { layer: "blob", serviceRoot: "invoice" },
@@ -121,7 +121,7 @@ describe("checkBarrels", () => {
       ])
     })
 
-    test("fires on a type-only re-export — `layer-in-path` is kind-blind", () => {
+    it("fires on a type-only re-export — `layer-in-path` is kind-blind", () => {
       const g = graph(
         {
           "invoice/index.ts": { layer: "blob", serviceRoot: "invoice" },
@@ -147,7 +147,7 @@ describe("checkBarrels", () => {
       ])
     })
 
-    test.each(["index.tsx", "index.mjs"])(
+    it.each(["index.tsx", "index.mjs"])(
       "recognizes the %s extension variant",
       (basename) => {
         const g = graph(
@@ -177,7 +177,7 @@ describe("checkBarrels", () => {
   })
 
   describe("barrel-file stays green", () => {
-    test("lets an index re-export blob only — no guarantee erased", () => {
+    it("stays green on an index re-exporting blob only — no guarantee erased", () => {
       const g = graph(
         {
           "utils/index.ts": { layer: "blob" },
@@ -194,7 +194,7 @@ describe("checkBarrels", () => {
       expect(checkBarrels(g)).toEqual([])
     })
 
-    test("lets an index that only imports — no re-export edge, no barrel", () => {
+    it("stays green on an index that only imports — no re-export edge, no barrel", () => {
       const g = graph(
         {
           "invoice/index.ts": { layer: "blob", serviceRoot: "invoice" },
@@ -208,7 +208,7 @@ describe("checkBarrels", () => {
       expect(checkBarrels(g)).toEqual([])
     })
 
-    test("exempts an assembly-classified index — the package-entry designation", () => {
+    it("exempts an assembly-classified index — the package-entry designation", () => {
       const g = graph(
         {
           "index.ts": { layer: "assembly", serviceRoot: "." },
@@ -228,7 +228,7 @@ describe("checkBarrels", () => {
       expect(checkBarrels(g)).toEqual([])
     })
 
-    test("lets a non-index file re-export layered files — the layer stays visible in its path", () => {
+    it("stays green on a non-index file re-exporting layered files — the layer stays visible in its path", () => {
       const g = graph(
         {
           "invoice/invoice.service.ts": {
@@ -248,7 +248,7 @@ describe("checkBarrels", () => {
       expect(checkBarrels(g)).toEqual([])
     })
 
-    test("ignores index.model.ts — a layered basename is not an index", () => {
+    it("ignores index.model.ts — a layered basename is not an index", () => {
       const g = graph(
         {
           "invoice/index.model.ts": { layer: "model", serviceRoot: "invoice" },
@@ -267,7 +267,7 @@ describe("checkBarrels", () => {
   })
 
   describe("index-import fires — a labeled layer importing through an index (`layer-in-path`)", () => {
-    test("fires at the importer for a service's directory import — the catalog line", () => {
+    it("fires at the importer for a service's directory import — the catalog line", () => {
       const g = graph(
         {
           "billing/refund.service.ts": {
@@ -296,7 +296,7 @@ describe("checkBarrels", () => {
       ])
     })
 
-    test("fires for a model importer", () => {
+    it("fires for a model importer", () => {
       const g = graph(
         {
           "billing/b.model.ts": { layer: "model", serviceRoot: "billing" },
@@ -312,7 +312,7 @@ describe("checkBarrels", () => {
       ])
     })
 
-    test.each([
+    it.each([
       { kind: "type", form: "static" },
       { kind: "runtime", form: "dynamic" },
     ] as const)("fires on a $kind $form edge", ({ kind, form }) => {
@@ -340,7 +340,7 @@ describe("checkBarrels", () => {
   })
 
   describe("index-import stays green", () => {
-    test("exempts a blob importer — `layer-in-path` binds guarantees, blob makes none", () => {
+    it("exempts a blob importer — `layer-in-path` binds guarantees, blob makes none", () => {
       const g = graph(
         {
           "lib/helpers.ts": { layer: "blob" },
@@ -351,7 +351,7 @@ describe("checkBarrels", () => {
       expect(checkBarrels(g)).toEqual([])
     })
 
-    test("exempts an assembly importer — assembly claims nothing", () => {
+    it("exempts an assembly importer — assembly claims nothing", () => {
       const g = graph(
         {
           "main.spec.ts": { layer: "assembly" },
@@ -362,7 +362,7 @@ describe("checkBarrels", () => {
       expect(checkBarrels(g)).toEqual([])
     })
 
-    test("never fires on an external target — a bare specifier is the package's API", () => {
+    it("never fires on an external target — a bare specifier is the package's API", () => {
       const g = graph(
         {
           "billing/b.service.ts": { layer: "service", serviceRoot: "billing" },
@@ -374,7 +374,7 @@ describe("checkBarrels", () => {
   })
 
   describe("both shapes at once — separately attributable", () => {
-    test("fires the importer and the index each for their own fact", () => {
+    it("fires the importer and the index each for their own fact", () => {
       const g = graph(
         {
           "billing/refund.service.ts": {
@@ -422,7 +422,7 @@ describe("checkBarrels", () => {
       },
     }
 
-    test("silences barrel-file", () => {
+    it("silences barrel-file", () => {
       const g = graph(nodes, [
         {
           from: "invoice/index.ts",
@@ -433,7 +433,7 @@ describe("checkBarrels", () => {
       expect(checkBarrels(g, { tolerateBlobReexport: true })).toEqual([])
     })
 
-    test("keeps index-import firing on the same graph — claimants stay bound", () => {
+    it("keeps index-import firing on the same graph — claimants stay bound", () => {
       const g = graph(nodes, [
         { from: "billing/refund.service.ts", to: mod("invoice/index.ts") },
         {
@@ -452,7 +452,7 @@ describe("checkBarrels", () => {
   })
 
   describe("ground state", () => {
-    test("keeps an all-blob graph with an index and directory imports clean", () => {
+    it("keeps an all-blob graph with an index and directory imports clean", () => {
       const g = graph(
         {
           "src/app.ts": { layer: "blob" },
@@ -473,7 +473,7 @@ describe("checkBarrels", () => {
   })
 
   describe("contract breaches are loud", () => {
-    test("throws when an edge references a module missing from the graph", () => {
+    it("throws when an edge references a module missing from the graph", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: mod("ghost.ts") }],

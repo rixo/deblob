@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import type {
   EdgeForm,
@@ -64,7 +64,7 @@ const lib = (specifier: string): EdgeTarget => ({
 
 describe("checkDag", () => {
   describe("service cycles (`no-service-cycle`)", () => {
-    test("fires a 2-node runtime cycle with both carrying edges quoted", () => {
+    it("fires a 2-node runtime cycle with both carrying edges quoted", () => {
       const g = graph(
         {
           "orders/checkout.service.ts": {
@@ -127,7 +127,7 @@ describe("checkDag", () => {
       ])
     })
 
-    test("fires the nesting trap — type edge up, runtime edge down, nearest-ancestor roots", () => {
+    it("fires the nesting trap — type edge up, runtime edge down, nearest-ancestor roots", () => {
       const g = graph(
         {
           "icons/icons.service.ts": { layer: "service", serviceRoot: "icons" },
@@ -161,7 +161,7 @@ describe("checkDag", () => {
       })
     })
 
-    test("keeps root wiring green — unowned files contribute no edges", () => {
+    it("keeps root wiring green — unowned files contribute no edges", () => {
       const g = graph(
         {
           "main.ts": { layer: "assembly" },
@@ -182,7 +182,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual([])
     })
 
-    test("keeps fixture wiring green — a spec wiring a same-service fixture adapter", () => {
+    it("keeps fixture wiring green — a spec wiring a same-service fixture adapter", () => {
       const g = graph(
         {
           "icons/icons.service.spec.ts": {
@@ -214,7 +214,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual([])
     })
 
-    test("fires misplaced wiring — a spec importing the real nested adapter", () => {
+    it("fires misplaced wiring — a spec importing the real nested adapter", () => {
       const g = graph(
         {
           "icons/icons.service.spec.ts": {
@@ -260,7 +260,7 @@ describe("checkDag", () => {
       ])
     })
 
-    test("reports an N-node cycle as one finding with the full witness path", () => {
+    it("reports an N-node cycle as one violation with the full witness path", () => {
       const g = graph(
         {
           "a/a.service.ts": { layer: "service", serviceRoot: "a" },
@@ -286,7 +286,7 @@ describe("checkDag", () => {
       )
     })
 
-    test("keeps a chorded SCC one finding — members beyond the witness", () => {
+    it("keeps a chorded SCC one violation — members beyond the witness", () => {
       // a ⇄ b plus the 3-loop through c: one knot, shortest witness
       const g = graph(
         {
@@ -313,7 +313,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual(checkDag(g))
     })
 
-    test("reports disjoint knots separately", () => {
+    it("reports disjoint knots separately", () => {
       const g = graph(
         {
           "a/a.service.ts": { layer: "service", serviceRoot: "a" },
@@ -338,7 +338,7 @@ describe("checkDag", () => {
       ])
     })
 
-    test("fires a mutual type-only cycle — both hops flagged", () => {
+    it("fires a mutual type-only cycle — both hops flagged", () => {
       const g = graph(
         {
           "a/a.service.ts": { layer: "service", serviceRoot: "a" },
@@ -360,7 +360,7 @@ describe("checkDag", () => {
       ])
     })
 
-    test("keeps a mixed hop unflagged — wiring means every inducing edge is assembly-origin", () => {
+    it("keeps a mixed hop unflagged — wiring means every inducing edge is assembly-origin", () => {
       // the spec file sorts first (carrying edge) but a service file also
       // induces the hop: the placement remedy would misdirect
       const g = graph(
@@ -389,7 +389,7 @@ describe("checkDag", () => {
       })
     })
 
-    test("quotes the smallest carrying edge and stays runtime-flagged when any inducing edge is runtime", () => {
+    it("quotes the smallest carrying edge and stays runtime-flagged when any inducing edge is runtime", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -417,7 +417,7 @@ describe("checkDag", () => {
       })
     })
 
-    test("breaks a same-importer tie on the target path", () => {
+    it("breaks a same-importer tie on the target path", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -443,7 +443,7 @@ describe("checkDag", () => {
   })
 
   describe("module cycles (`no-runtime-cycle`)", () => {
-    test("fires a runtime cycle between two blob files, blob bucket", () => {
+    it("fires a runtime cycle between two blob files, blob bucket", () => {
       const g = graph(
         {
           "lib/fetchers.ts": { layer: "blob" },
@@ -467,7 +467,7 @@ describe("checkDag", () => {
       ])
     })
 
-    test("buckets an in-service cycle under its service", () => {
+    it("buckets an in-service cycle under its service", () => {
       const g = graph(
         {
           "icons/a.ts": { layer: "blob", serviceRoot: "icons" },
@@ -486,7 +486,7 @@ describe("checkDag", () => {
       ])
     })
 
-    test("coexists with the service finding on a cross-service runtime cycle — keep both", () => {
+    it("reports a cross-service runtime cycle beside the service violation — both kept", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -508,7 +508,7 @@ describe("checkDag", () => {
       })
     })
 
-    test("fires through an unowned file while `no-service-cycle` stays silent — no service-edge transit", () => {
+    it("fires through an unowned file while `no-service-cycle` stays silent — no service-edge transit", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -530,7 +530,7 @@ describe("checkDag", () => {
       })
     })
 
-    test("stays green on a type-only cycle through an unowned file — the named non-goal", () => {
+    it("stays green on a type-only cycle through an unowned file — the named non-goal", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -546,7 +546,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual([])
     })
 
-    test("stays green when a type edge breaks the runtime loop", () => {
+    it("stays green when a type edge breaks the runtime loop", () => {
       const g = graph(
         {
           "lib/a.ts": { layer: "blob" },
@@ -560,7 +560,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual([])
     })
 
-    test("fires a runtime self-import as a one-file cycle", () => {
+    it("fires a runtime self-import as a one-file cycle", () => {
       const g = graph({ "lib/loop.ts": { layer: "blob" } }, [
         { from: "lib/loop.ts", to: mod("lib/loop.ts") },
       ])
@@ -573,7 +573,7 @@ describe("checkDag", () => {
       ])
     })
 
-    test.each(["dynamic", "require"] as const)(
+    it.each(["dynamic", "require"] as const)(
       "counts a %s runtime edge — form-blind",
       (form) => {
         const g = graph(
@@ -594,7 +594,7 @@ describe("checkDag", () => {
   })
 
   describe("non-participants", () => {
-    test("ignores external targets — leaves can never point back", () => {
+    it("ignores external targets — leaves can never point back", () => {
       const g = graph(
         {
           "a/x.model.ts": { layer: "model", serviceRoot: "a" },
@@ -607,7 +607,7 @@ describe("checkDag", () => {
       expect(checkDag(g)).toEqual([])
     })
 
-    test("runs a clean layered mini-graph green", () => {
+    it("keeps a clean layered mini-graph green", () => {
       const g = graph(
         {
           "main.ts": { layer: "assembly" },
@@ -638,7 +638,7 @@ describe("checkDag", () => {
   })
 
   describe("contract breaches are loud", () => {
-    test("throws when an edge references a module missing from the graph", () => {
+    it("throws when an edge references a module missing from the graph", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: mod("ghost.ts") }],
