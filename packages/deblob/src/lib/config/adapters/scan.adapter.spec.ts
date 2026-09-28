@@ -43,7 +43,7 @@ describe("scanCoverage", () => {
     // (the gate: a script extension, or named by a designation or a binding)
   })
 
-  it("admits a file named by a designation or a binding whatever its extension — the gate is the config's", async () => {
+  it("admits any file the covers gate admits, whatever its extension — the gate is the config's", async () => {
     expect(
       await scan({
         covers: (path) =>
@@ -91,7 +91,7 @@ describe("statSizes", () => {
 })
 
 describe("over the memory fs", () => {
-  test("the scan is the port's: a tree of strings lists like the disk, gated and sorted", async () => {
+  test("the scan and the sizes are the port's: a tree of strings lists like the disk, gated and sorted, sized in bytes", async () => {
     const scan = createCoverageScan({
       fs: createMemoryFs({
         "/made-up-root/src/app.ts": "",

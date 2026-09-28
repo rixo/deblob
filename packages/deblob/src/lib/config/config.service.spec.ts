@@ -74,7 +74,7 @@ describe("resolveConfig — defaults", () => {
     expect(resolved.isAssembly("src/main.ts")).toBe(false)
   })
 
-  it("loosens the readonly check on mutableModuleState: true, keeps it on false or absent", () => {
+  it("carries mutableModuleState as given, true or false", () => {
     expect(resolve({ mutableModuleState: true }).mutableModuleState).toBe(true)
     expect(resolve({ mutableModuleState: false }).mutableModuleState).toBe(
       false,
@@ -214,7 +214,7 @@ describe("resolveConfig — tsconfig & alias", () => {
 })
 
 describe("resolveConfig — the outside kinds: designations, configLoads, driverTech", () => {
-  it("defaults every designation to a matcher that matches nothing", () => {
+  it("defaults every designation to a matcher that matches nothing, configLoads to none, driverTech to false", () => {
     const resolved = resolve({})
     for (const matches of [
       resolved.isAssembly,
@@ -372,13 +372,18 @@ describe("resolveConfig — external specifier patterns", () => {
     expect(external("$a:")).toBe("$a:**")
   })
 
-  it("keeps `*` within a segment, and `.` and other regex characters literal", () => {
+  it("keeps `*` within a segment, and `.` and other regex characters literal; `/**` does not match the bare namespace root", () => {
     const { external } = resolve({ external: ["$a:*.scss", "$b/*"] })
     expect(external("$a:x.scss")).toBe("$a:*.scss")
     expect(external("$a:x/y.scss")).toBeNull()
     expect(external("$a:xXscss")).toBeNull()
     expect(external("$b/x")).toBe("$b/*")
     expect(external("$b/x/y")).toBeNull()
+    const literal = String.raw`a+b?c^d{2}(e)|f[g]\h`
+    const specials = resolve({ external: [literal] }).external
+    expect(specials(literal)).toBe(literal)
+    // a `|` read as alternation would match either half alone
+    expect(specials(String.raw`f[g]\h`)).toBeNull()
     // `/**` is not optional: the bare namespace root is its own entry
     expect(resolve({ external: ["$c/**"] }).external("$c")).toBeNull()
   })

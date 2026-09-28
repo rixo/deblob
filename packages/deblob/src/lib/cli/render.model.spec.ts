@@ -333,7 +333,7 @@ describe("renderCheckResults", () => {
     )
   })
 
-  it("prints the coverage line's exports segment iff a claim was checked, the disclosed count only when nonzero", () => {
+  it("prints the coverage line's exports segment iff a claim was checked, the disclosed count only when nonzero, and the singulars", () => {
     const claimed = { ...STATS, surface: { checked: 7, disclosed: 2 } }
     expect(renderViolations([], claimed, NO_COLORS)).toContain(
       "\n12 services · 380 imports · exports 7 checked, 2 disclosed\n",
@@ -350,12 +350,6 @@ describe("renderCheckResults", () => {
         NO_COLORS,
       ),
     ).toContain("\n1 service · 1 import\n")
-  })
-
-  it("names the opt-in in the no-field note — one stderr line, the driver keeps exit 0", () => {
-    expect(SURFACE_NOT_CLAIMED).toBe(
-      'surface: no "deblob" field in package.json — nothing to check; declaring is opting in ("deblob": {})\n',
-    )
   })
 
   it("says 1 violation in the singular", () => {
@@ -475,6 +469,7 @@ describe("renderCheckResults", () => {
         }),
       )
       expect(output).toContain("only assembly may import blob")
+      expect(output).toContain("extract what you need")
     })
 
     it("words model purity apart from service purity", () => {
@@ -806,7 +801,7 @@ describe("renderCheckResults", () => {
         // tripwire: a form no case lists still names itself
         ["SomeMadeUpForm", null, "ts", "SomeMadeUpForm"],
       ] as const)(
-        "a proven red by %s (%s, %s) says: %s",
+        "formats a proven red by %s (%s, %s) as: %s",
         (form, name, language, words) => {
           expect(
             binding(
@@ -830,7 +825,7 @@ describe("renderCheckResults", () => {
         ["TSObjectKeyword", "object"],
         // tripwire: a form no case lists still names itself
         ["SomeMadeUpType", "SomeMadeUpType"],
-      ])("an unread type form %s is named %s", (form, words) => {
+      ])("formats an unread type form %s as %s", (form, words) => {
         expect(binding({ unknown: { kind: "type-form", form } })).toContain(
           `— unknown: the reader does not read ${words} yet;`,
         )
@@ -853,7 +848,7 @@ describe("renderCheckResults", () => {
         ["ArrayPattern", "a destructured part"],
         // tripwire: a form no case lists still names itself
         ["SomeMadeUpExpression", "SomeMadeUpExpression"],
-      ])("an unfollowed value %s is named %s", (form, words) => {
+      ])("formats an unfollowed value %s as %s", (form, words) => {
         expect(
           binding({ unknown: { kind: "value", form, name: null } }),
         ).toContain(`— unknown: the reader does not follow ${words};`)
@@ -939,7 +934,7 @@ describe("renderCheckResults", () => {
           "a call into left-pad, a package nothing claims",
         ],
       ] as const)(
-        "a call reaching %s (%s) says: %s",
+        "formats a call reaching %s (%s) as: %s",
         (reaches, name, words) => {
           expect(message(call({ reaches, name }))).toContain(
             `line 7 runs on import — ${words}, presumed to act; move it inside a factory or a function`,
@@ -1039,7 +1034,7 @@ describe("renderCheckResults", () => {
           { kind: "language" },
           "calls the language, which builds nothing — computing is not building, it is the assembly opening the door itself; the adapter takes the raw value and derives it",
         ],
-      ] as const)("a call into %o says: %s", (callee, words) => {
+      ] as const)("formats a call into %o as: %s", (callee, words) => {
         expect(message(assembly({ shape: "call", callee }))).toContain(
           `line 7 ${words} (assembly-builds-only)`,
         )
@@ -1148,7 +1143,7 @@ describe("renderCheckResults", () => {
         ["reassigned", "reassigns"],
         ["assigned", "writes into a member"],
       ] as const)(
-        "a result used as %s says it %s what was built",
+        "formats a result used as %s: it %s what was built",
         (use, verb) => {
           expect(
             message(assembly({ shape: "result-use", use, callee: FS_STORE })),
@@ -1214,7 +1209,7 @@ describe("renderCheckResults", () => {
           },
           "returns the adapter fs to a caller that is not a test — an assembly returns services; return services only, a test factory returns the adapters",
         ],
-      ] as const)("%o says: %s", (shape, words) => {
+      ] as const)("formats %o as: %s", (shape, words) => {
         expect(message(assembly(shape))).toContain(`line 7 ${words}`)
       })
     })
@@ -1468,7 +1463,7 @@ describe("renderCheckResults", () => {
           { shape: "parameter", name: null },
           "the wiring function takes a parameter — a root driver's wiring function takes nothing and reads its tech itself; read it inside",
         ],
-      ] as const)("%s, %o says: %s", (rule, shape, words) => {
+      ] as const)("formats %s, %o as: %s", (rule, shape, words) => {
         expect(message(driver(rule, shape))).toContain(`line 7 ${words}`)
       })
 
@@ -1566,7 +1561,7 @@ describe("renderCheckResults", () => {
           { shape: "statement", form: "unread" },
           "line 3 runs a statement at the boot's root",
         ],
-      ] as const)("%j", (shape, expected) => {
+      ] as const)("formats %j as: %s", (shape, expected) => {
         expect(message(boot(shape))).toContain(expected)
       })
 
@@ -1663,7 +1658,7 @@ describe("renderCheckResults", () => {
           "an assembly imports no concrete tech; the adapter that uses it imports it, the driver hands tech values in",
         ],
       ] as const)(
-        "%j from %s to %s",
+        "formats %j from %s to %s as: %s",
         (rules, importerLayer, targetClass, expected) => {
           expect(cell([...rules], importerLayer, targetClass)).toContain(
             `imports src/x.ts — ${expected}`,
@@ -1881,7 +1876,7 @@ describe("renderCheckResults", () => {
       expect(output).toContain("wiring outside the service tree")
     })
 
-    it("renders a longer witness as an arrow chain and notes entanglement", () => {
+    it("renders a longer module cycle as an arrow chain in its service's group, not cross-service, and notes a service cycle's entanglement", () => {
       const output = renderViolations(
         [
           serviceCycle({
@@ -1926,6 +1921,14 @@ describe("renderCheckResults", () => {
         lines.indexOf("cross-service"),
       )
     })
+  })
+})
+
+describe("SURFACE_NOT_CLAIMED", () => {
+  it("names the opt-in in one line", () => {
+    expect(SURFACE_NOT_CLAIMED).toBe(
+      'surface: no "deblob" field in package.json — nothing to check; declaring is opting in ("deblob": {})\n',
+    )
   })
 })
 

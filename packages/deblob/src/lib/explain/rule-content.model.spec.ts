@@ -18,7 +18,7 @@ const repoRoot = fileURLToPath(new URL("../../../../..", import.meta.url))
 const architectureMd = () =>
   readFileSync(join(repoRoot, "docs/architecture.md"), "utf8")
 
-describe("rule mapping", () => {
+describe("RULE_CARDS", () => {
   it("is total over the rule list, every rule with a card but the outside rules, whose cards are owed", () => {
     expect(Object.keys(RULE_CARDS).sort()).toEqual([...RULE_IDS].sort())
     const cardless = RULE_IDS.filter((id) => RULE_CARDS[id].length === 0)
@@ -42,7 +42,9 @@ describe("rule mapping", () => {
       }
     }
   })
+})
 
+describe("RULE_VERDICTS", () => {
   it("teaches how to read stable-root's verdicts: each kind, what triggers it, every way out", () => {
     const text = (RULE_VERDICTS["stable-root"] ?? []).join("\n\n")
     for (const words of [
@@ -58,8 +60,10 @@ describe("rule mapping", () => {
     ])
       expect(text, words).toContain(words)
   })
+})
 
-  it("pins the rule's URL to the binary's own release tag", () => {
+describe("canonicalRuleUrl", () => {
+  it("pins the rule's URL to the version given, as a release tag", () => {
     expect(canonicalRuleUrl("service-purity", "0.0.5")).toBe(
       "https://github.com/rixo/deblob/blob/v0.0.5/docs/architecture.md#service-purity",
     )
@@ -77,7 +81,9 @@ describe("architecture.md anchors", () => {
     expect(positions).toEqual([...positions].sort((a, b) => a - b))
     expect(summary).not.toMatch(/<a id="rule-\d+">/)
   })
+})
 
+describe("extractRulesSummary", () => {
   it("throws loudly when the summary section is missing", () => {
     expect(() => extractRulesSummary("# nothing here")).toThrow(
       /no '### Summary' section/,
@@ -116,14 +122,14 @@ describe("ruleSummaryOf", () => {
     })
   })
 
-  it("drops the title's trailing period and inline-link syntax", () => {
+  it("drops the title's trailing period, and strips a body link to its text", () => {
     expect(ruleSummaryOf(summary, "layer-in-path")).toEqual({
       title: "Title with trailing period inside bold",
       body: "Body with a link label stripped to its text.",
     })
   })
 
-  it("reads an entry ended by a section header or end of text", () => {
+  it("reads the last entry through to end of text", () => {
     expect(ruleSummaryOf(summary, "chain-purity").body).toBe("last body.")
   })
 

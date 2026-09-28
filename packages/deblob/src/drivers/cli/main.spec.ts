@@ -178,7 +178,7 @@ describe("main", () => {
       expect(out).not.toContain("$made-up:tokens.scss")
     })
 
-    test("aware sibling: the crossed service identity seals to assembly, the crossed model is pure — trust is the dependency model", async () => {
+    test("aware sibling: the crossed service identity seals to assembly, the crossed model is pure, the crossed assembly entry seals to the consumer's wiring — trust is the dependency model", async () => {
       const { code, out, err } = await run(["check"], { cwd: awareDir })
       expect(err).toBe("")
       expect(code).toBe(1)
@@ -356,7 +356,7 @@ describe("main", () => {
       expect(result.err).toContain("src/")
     })
 
-    it("prints one stderr note and no exports segment, exit 0, for check surface named by hand on a package with no field — a pass it never ran does not read as a pass", async () => {
+    it("prints one stderr note, exit 0, when surface is named by hand on a package with no field — a pass it never ran does not read as a pass", async () => {
       const named = await run(["check", "surface"], { cwd: cleanDir })
       expect(named.code).toBe(0)
       expect(named.err).toBe(
@@ -367,6 +367,9 @@ describe("main", () => {
       // package that did not opt in
       const all = await run(["check"], { cwd: cleanDir })
       expect(all.err).toBe("")
+    })
+
+    it("prints the exports segment only when surface runs on a declaring package", async () => {
       // named on a declaring package: no note, the segment as usual
       const declared = await run(["check", "surface"], { cwd: billingDir })
       expect(declared.err).toBe("")
@@ -376,7 +379,7 @@ describe("main", () => {
       expect(others.out).not.toContain("exports")
     })
 
-    it("appends the crash course for every fired rule on --explain", async () => {
+    it("appends the crash course for every fired rule on --explain, in the summary's order", async () => {
       const { code, out } = await run(["check", "--explain"])
       expect(code).toBe(1)
       expect(out).toContain("pdf-render.service.ts")
@@ -401,7 +404,7 @@ describe("main", () => {
       expect(out).toContain("service-purity —")
     })
 
-    it("adds nothing on --explain over a clean repo", async () => {
+    it("adds nothing on --explain or --explain-only over a clean repo", async () => {
       const { out } = await run(["check", "--explain"], { cwd: cleanDir })
       expect(out).toMatch(
         /^0 violations · \d+ files · \d+kb · \d+% blob\n\d+ services? · \d+ imports\n$/,
@@ -435,7 +438,7 @@ describe("main", () => {
       )
     })
 
-    it("explains each rule of a check name, the shared card shown once", async () => {
+    it("explains the rules of a check name", async () => {
       const { code, out } = await run(["explain", "private"])
       expect(code).toBe(0)
       expect(out).toContain("private-sealed —")

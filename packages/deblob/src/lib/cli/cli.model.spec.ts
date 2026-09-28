@@ -33,7 +33,7 @@ describe("parseCli", () => {
       })
     })
 
-    it("selects the checks named, argv order kept; `explicit` records that check names were passed on the command line rather than defaulted", () => {
+    it("selects the checks named, in argv order, and marks them explicit", () => {
       expect(parseCli(["check", "ports", "layers"])).toMatchObject({
         action: {
           command: "check",
@@ -59,7 +59,7 @@ describe("parseCli", () => {
   })
 
   describe("flags", () => {
-    it("yields the help screen for --help and -h from anywhere", () => {
+    it("yields the help screen for --help and -h", () => {
       expect(parseCli(["--help"])).toMatchObject({
         action: { command: "help" },
       })
@@ -134,7 +134,7 @@ describe("parseCli", () => {
       expect(errorOf(["explain"])).toContain("topic")
     })
 
-    it("reports --explain outside check as a usage error", () => {
+    it("reports --explain and --explain-only outside check as usage errors", () => {
       expect(errorOf(["--explain"])).toContain("--explain")
       expect(
         errorOf(["explain", "service-purity", "--explain-only"]),

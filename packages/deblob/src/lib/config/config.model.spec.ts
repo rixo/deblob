@@ -55,7 +55,7 @@ describe("configImportErrorMessage", () => {
     expect(message).toMatch(/deblob\.config\.ts/)
   })
 
-  it("teaches the .mts rename when ESM syntax was read as CommonJS", () => {
+  it("teaches the .mts (or .mjs) rename only for a SyntaxError that shows ESM read as CommonJS in a .ts or .js config", () => {
     const error = new SyntaxError("Unexpected token 'export'")
     const message = configImportErrorMessage(error, "/repo/deblob.config.ts")
     expect(message).toMatch(/loaded as CommonJS/)

@@ -169,6 +169,9 @@ describe("importConfigDefault + the assembly sequence", () => {
     )
     expect(failure).toBeInstanceOf(ConfigError)
     expect((failure as ConfigError).message).toMatch(/failed to load/)
+    expect((failure as ConfigError).message).toContain(
+      join(fixture("throws"), "deblob.config.ts"),
+    )
     expect(((failure as ConfigError).cause as Error).message).toBe(
       "FAKE_CONFIG_EVAL_FAILURE",
     )
@@ -185,7 +188,7 @@ describe("importConfigDefault + the assembly sequence", () => {
       if (isolated) await rm(isolated, { recursive: true, force: true })
     })
 
-    it("resolves every default with root = cwd and null provenance", async () => {
+    it("resolves root = cwd, null provenance, no pure entries and typeOnlyExempt on", async () => {
       isolated = await mkdtemp(join(tmpdir(), "deblob-configless-"))
       const resolved = await load(isolated)
       expect(resolved.configPath).toBeNull()
@@ -278,7 +281,7 @@ describe("readPackageSurface", () => {
     })
   })
 
-  it("normalizes a bare string target; yields no entries for a non-path scalar map", async () => {
+  it("accepts a target without ./ as-is; yields no entries for a scalar exports", async () => {
     const bare = await rootWith(
       JSON.stringify({ name: "m", deblob: {}, exports: "src/index.ts" }),
     )
