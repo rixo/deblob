@@ -44,9 +44,10 @@ const renderViolations = (
 /** Where a statement-level violation's subject sits — a line's span. */
 const SUBJECT = { start: 100, end: 110, line: 7, column: 0 } as const
 
-const layersViolation = (
-  overrides: Partial<LayersViolation> = {},
-): LayersViolation => ({
+type MatrixCell = Extract<LayersViolation, { shape: "matrix-cell" }>
+type UnclassifiedLib = Extract<LayersViolation, { shape: "unclassified-lib" }>
+
+const layersViolation = (overrides: Partial<MatrixCell> = {}): MatrixCell => ({
   check: "layers",
   ruleset: "arch",
   rules: ["service-purity"],
@@ -63,6 +64,24 @@ const layersViolation = (
   shape: "matrix-cell",
   targetClass: "concrete",
   ...overrides,
+})
+
+/** A package nobody classified, imported from a pure layer. */
+const unclassifiedLib = (pkg: string): UnclassifiedLib => ({
+  check: "layers",
+  ruleset: "arch",
+  rules: ["service-purity"],
+  file: "src/invoice/pdf-render.service.ts",
+  serviceRoot: "src/invoice",
+  importerLayer: "service",
+  target: {
+    type: "external",
+    specifier: pkg,
+    package: pkg,
+    declared: false,
+    layer: null,
+  },
+  shape: "unclassified-lib",
 })
 
 const privateViolation = (): PrivateViolation => ({
@@ -89,21 +108,42 @@ const barrelsViolation = (
   ...overrides,
 })
 
-const portsViolation = (
-  overrides: Partial<PortsViolation> = {},
-): PortsViolation =>
-  ({
-    check: "ports",
-    ruleset: "arch",
-    rules: ["ports-types-only"],
-    file: "src/invoice/ports/renderer.ts",
-    serviceRoot: "src/invoice",
-    shape: "runtime-export",
-    form: "const",
-    name: "SOME_MADE_UP_CONST",
-    exported: true,
-    ...overrides,
-  }) as PortsViolation
+type PortsExport = Extract<PortsViolation, { shape: "runtime-export" }>
+type PortsEdge = Extract<
+  PortsViolation,
+  { shape: "runtime-import-in-port" | "runtime-import-of-port" }
+>
+
+const portsViolation = (overrides: Partial<PortsExport> = {}): PortsExport => ({
+  check: "ports",
+  ruleset: "arch",
+  rules: ["ports-types-only"],
+  file: "src/invoice/ports/renderer.ts",
+  serviceRoot: "src/invoice",
+  shape: "runtime-export",
+  form: "const",
+  name: "SOME_MADE_UP_CONST",
+  exported: true,
+  ...overrides,
+})
+
+/**
+ * A runtime edge at a port, out of it or into it; `file` is the attribution
+ * side.
+ */
+const portsEdge = (
+  shape: PortsEdge["shape"],
+  path: string,
+  file = "src/invoice/ports/renderer.ts",
+): PortsEdge => ({
+  check: "ports",
+  ruleset: "arch",
+  rules: ["ports-types-only"],
+  file,
+  serviceRoot: "src/invoice",
+  shape,
+  target: { type: "module", path },
+})
 
 type RootBinding = Extract<ModulesViolation, { shape: "root-binding" }>
 
@@ -354,11 +394,11 @@ describe("renderCheckResults", () => {
   it("orders violations inside a file by check name", () => {
     const output = renderViolations(
       [
-        portsViolation({
-          file: "src/invoice/checkout.service.ts",
-          shape: "runtime-import-of-port",
-          target: { type: "module", path: "src/invoice/ports/renderer.ts" },
-        } as Partial<PortsViolation>),
+        portsEdge(
+          "runtime-import-of-port",
+          "src/invoice/ports/renderer.ts",
+          "src/invoice/checkout.service.ts",
+        ),
         barrelsViolation({
           file: "src/invoice/checkout.service.ts",
           shape: "index-import",
@@ -375,8 +415,7 @@ describe("renderCheckResults", () => {
   })
 
   it("orders same-check violations in a file by message, either input order", () => {
-    const exportViolation = (name: string) =>
-      portsViolation({ name } as Partial<PortsViolation>)
+    const exportViolation = (name: string) => portsViolation({ name })
     for (const input of [
       [exportViolation("AAA_FAKE"), exportViolation("ZZZ_FAKE")],
       [exportViolation("ZZZ_FAKE"), exportViolation("AAA_FAKE")],
@@ -492,19 +531,7 @@ describe("renderCheckResults", () => {
     })
 
     it("points an unclassified lib at the `pure` escape hatch", () => {
-      const output = message(
-        layersViolation({
-          rules: ["service-purity"],
-          shape: "unclassified-lib",
-          target: {
-            type: "external",
-            specifier: "some-made-up-lib",
-            package: "some-made-up-lib",
-            declared: false,
-            layer: null,
-          },
-        } as Partial<LayersViolation>),
-      )
+      const output = message(unclassifiedLib("some-made-up-lib"))
       expect(output).toContain("unclassified third-party in a pure layer")
       expect(output).toContain('config key "pure"')
     })
@@ -1442,9 +1469,7 @@ describe("renderCheckResults", () => {
           "the wiring function takes a parameter — a root driver's wiring function takes nothing and reads its tech itself; read it inside",
         ],
       ] as const)("%s, %o says: %s", (rule, shape, words) => {
-        expect(message(driver(rule, shape as Shape))).toContain(
-          `line 7 ${words}`,
-        )
+        expect(message(driver(rule, shape))).toContain(`line 7 ${words}`)
       })
 
       it("says what the reader could not see, in a call and in an argument", () => {
@@ -1542,7 +1567,7 @@ describe("renderCheckResults", () => {
           "line 3 runs a statement at the boot's root",
         ],
       ] as const)("%j", (shape, expected) => {
-        expect(message(boot(shape as Shape))).toContain(expected)
+        expect(message(boot(shape))).toContain(expected)
       })
 
       it("says a file-level fact without a line: nothing started, a driver never started", () => {
@@ -1657,7 +1682,7 @@ describe("renderCheckResults", () => {
             form: "function",
             name: "someMadeUpFn",
             exported: false,
-          } as Partial<PortsViolation>),
+          }),
         ),
       ).toContain("contains function someMadeUpFn — ports are types only")
       expect(
@@ -1666,77 +1691,77 @@ describe("renderCheckResults", () => {
             form: "statement",
             name: null,
             exported: false,
-          } as Partial<PortsViolation>),
+          }),
         ),
       ).toContain("contains a runtime statement — ports are types only")
       expect(
         message(
-          portsViolation({
-            shape: "runtime-import-in-port",
-            target: { type: "module", path: "src/invoice/invoice.model.ts" },
-          } as Partial<PortsViolation>),
+          portsEdge("runtime-import-in-port", "src/invoice/invoice.model.ts"),
         ),
       ).toContain("a port needs no runtime imports")
       expect(
         message(
-          portsViolation({
-            file: "src/invoice/invoice.service.ts",
-            shape: "runtime-import-of-port",
-            target: { type: "module", path: "src/invoice/ports/renderer.ts" },
-          } as Partial<PortsViolation>),
+          portsEdge(
+            "runtime-import-of-port",
+            "src/invoice/ports/renderer.ts",
+            "src/invoice/invoice.service.ts",
+          ),
         ),
       ).toContain("a types-only file supplies no runtime binding")
     })
   })
 
   describe("dag blocks", () => {
-    const serviceCycle = (
-      overrides: Partial<DagViolation> = {},
-    ): DagViolation =>
-      ({
-        check: "dag",
-        ruleset: "arch",
-        rules: ["no-service-cycle"],
-        group: { kind: "cross-service" },
-        members: ["src/billing", "src/orders"],
-        shape: "service-cycle",
-        services: ["src/billing", "src/orders"],
-        hops: [
-          {
-            from: "src/billing",
-            to: "src/orders",
-            via: {
-              from: "src/billing/refund.service.ts",
-              to: "src/orders/model/order.ts",
-            },
-            typeOnly: false,
-            wiring: false,
-          },
-          {
-            from: "src/orders",
-            to: "src/billing",
-            via: {
-              from: "src/orders/checkout.service.ts",
-              to: "src/billing/ports/payment.ts",
-            },
-            typeOnly: false,
-            wiring: false,
-          },
-        ],
-        ...overrides,
-      }) as DagViolation
+    type ServiceCycle = Extract<DagViolation, { shape: "service-cycle" }>
+    type ModuleCycle = Extract<DagViolation, { shape: "module-cycle" }>
 
-    const moduleCycle = (overrides: Partial<DagViolation> = {}): DagViolation =>
-      ({
-        check: "dag",
-        ruleset: "arch",
-        rules: ["no-runtime-cycle"],
-        group: { kind: "blob" },
-        members: ["src/lib/api/client.ts", "src/lib/utils/fetchers.ts"],
-        shape: "module-cycle",
-        files: ["src/lib/api/client.ts", "src/lib/utils/fetchers.ts"],
-        ...overrides,
-      }) as DagViolation
+    const serviceCycle = (
+      overrides: Partial<ServiceCycle> = {},
+    ): ServiceCycle => ({
+      check: "dag",
+      ruleset: "arch",
+      rules: ["no-service-cycle"],
+      group: { kind: "cross-service" },
+      members: ["src/billing", "src/orders"],
+      shape: "service-cycle",
+      services: ["src/billing", "src/orders"],
+      hops: [
+        {
+          from: "src/billing",
+          to: "src/orders",
+          via: {
+            from: "src/billing/refund.service.ts",
+            to: "src/orders/model/order.ts",
+          },
+          typeOnly: false,
+          wiring: false,
+        },
+        {
+          from: "src/orders",
+          to: "src/billing",
+          via: {
+            from: "src/orders/checkout.service.ts",
+            to: "src/billing/ports/payment.ts",
+          },
+          typeOnly: false,
+          wiring: false,
+        },
+      ],
+      ...overrides,
+    })
+
+    const moduleCycle = (
+      overrides: Partial<ModuleCycle> = {},
+    ): ModuleCycle => ({
+      check: "dag",
+      ruleset: "arch",
+      rules: ["no-runtime-cycle"],
+      group: { kind: "blob" },
+      members: ["src/lib/api/client.ts", "src/lib/utils/fetchers.ts"],
+      shape: "module-cycle",
+      files: ["src/lib/api/client.ts", "src/lib/utils/fetchers.ts"],
+      ...overrides,
+    })
 
     it("renders the fiction's cross-service block with quoted carrying edges", () => {
       const output = renderViolations([serviceCycle()], STATS, NO_COLORS)
@@ -1764,7 +1789,7 @@ describe("renderCheckResults", () => {
         [
           moduleCycle({
             group: { kind: "cross-service" },
-          } as Partial<DagViolation>),
+          }),
           serviceCycle(),
         ],
         STATS,
@@ -1779,7 +1804,7 @@ describe("renderCheckResults", () => {
           serviceCycle(),
           moduleCycle({
             group: { kind: "cross-service" },
-          } as Partial<DagViolation>),
+          }),
         ],
         STATS,
         NO_COLORS,
@@ -1791,11 +1816,11 @@ describe("renderCheckResults", () => {
       const early = moduleCycle({
         members: ["src/lib/aaa.ts", "src/lib/bbb.ts"],
         files: ["src/lib/aaa.ts", "src/lib/bbb.ts"],
-      } as Partial<DagViolation>)
+      })
       const late = moduleCycle({
         members: ["src/lib/yyy.ts", "src/lib/zzz.ts"],
         files: ["src/lib/yyy.ts", "src/lib/zzz.ts"],
-      } as Partial<DagViolation>)
+      })
       const output = renderViolations([late, early], STATS, NO_COLORS)
       expect(output.indexOf("src/lib/aaa.ts ⇄")).toBeLessThan(
         output.indexOf("src/lib/yyy.ts ⇄"),
@@ -1845,7 +1870,7 @@ describe("renderCheckResults", () => {
                 wiring: false,
               },
             ],
-          } as Partial<DagViolation>),
+          }),
         ],
         STATS,
         NO_COLORS,
@@ -1879,12 +1904,12 @@ describe("renderCheckResults", () => {
                 wiring: false,
               },
             ],
-          } as Partial<DagViolation>),
+          }),
           moduleCycle({
             group: { kind: "service", root: "src/a" },
             members: ["src/a/one.ts", "src/a/three.ts", "src/a/two.ts"],
             files: ["src/a/one.ts", "src/a/two.ts", "src/a/three.ts"],
-          } as Partial<DagViolation>),
+          }),
         ],
         STATS,
         NO_COLORS,

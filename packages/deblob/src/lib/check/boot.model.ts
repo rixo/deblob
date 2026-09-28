@@ -49,7 +49,7 @@ const judgeBoot = (node: ModuleNode, graph: ImportGraph): BootViolation[] => {
       serviceRoot: node.serviceRoot,
       line,
       ...shape,
-    } as BootViolation)
+    })
   }
 
   let oneCall: ReadCall | null = null

@@ -150,7 +150,7 @@ const judgeDriver = (
       subject: span,
       cause: null,
       ...shape,
-    } as DriverViolation)
+    })
   }
 
   /** A callee no driver calls: the services-only rule, unless exempt. */
