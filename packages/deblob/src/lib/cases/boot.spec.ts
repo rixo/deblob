@@ -114,7 +114,7 @@ const ROWS: readonly Row[] = [
   },
   {
     // canon: "defines nothing, holds nothing".
-    name: "a definition, or the call's result held, is red",
+    name: "a definition, a call into it, or the wiring call's result held, is red",
     config: CONFIG,
     files: {
       ...CLI,

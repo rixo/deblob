@@ -146,10 +146,13 @@ const ROOT_CALLS: readonly Row[] = [
     },
   },
   {
-    // canon: the binding half, plus "a call that … runs a use case". One red,
-    // on the binding: an assembly call counted as tech-reaching too would put
-    // two reds of one slug on one line, a shape the marker grammar cannot write.
-    name: "a driver building its assembly at root is red on the binding and on the use case it calls next",
+    // canon: the binding half, plus "a call that … runs a use case". One
+    // stable-root red on the binding line, the binding's: an instance no
+    // syntax proves immutable ("a call's result stored at root adds nothing
+    // to the call: the call is judged where it sits"). The call itself pins
+    // no red: whether an assembly call reaches the tech — it builds what
+    // does — is open, not ruled. The use case run next is red.
+    name: "a driver building its assembly at root is red on the binding, as captured state and a definition beside the hooks, and on the use case it calls next",
     files: {
       "src/app.service.ts": `
         export const createApp = () => ({ run: () => 1 })
@@ -920,7 +923,7 @@ const READONLY_BINDINGS: readonly Row[] = [
     // canon: the same clause's limits — "`as const` is deep, `Readonly<…>` is one
     // level". `Readonly<Map<…>>` red and `ReadonlyMap<…>` green (the row above)
     // are one word apart: Readonly marks properties, a Map's mutators are methods.
-    name: "every form the syntax does not prove is red at a model's root: proof is per level",
+    name: "a form that is mutable is red at a model's root, proof per level; a number the reader cannot follow yet is green, confessed",
     files: {
       "src/forms.model.ts": `
         export let counter = 0 // red: stable-root -- let
@@ -1197,7 +1200,7 @@ const ROOT_STATEMENTS: readonly Row[] = [
     // not a second rule reaching in (rixo 2026-09-21: "having shit in your
     // codebase is gonna stink somewhere; we're containing it as much as we
     // can").
-    name: "blob is judged by nothing here: the same statements that are red in a model draw no verdict in an unplaced file",
+    name: "blob is judged by nothing here: mutable root state and a root assignment, red in a model, draw no verdict in an unplaced file",
     files: {
       "src/legacy/wiring.ts": `
         export const STATE: { n: number } = { n: 0 }
@@ -1206,8 +1209,8 @@ const ROOT_STATEMENTS: readonly Row[] = [
         throw new Error("blob does what it wants")
       `,
       "src/state.model.ts": `
-        export const COUNT: number = 0
-        COUNT_HOLDER.n = 1 // red: stable-root -- the same shape, in a file that claims something
+        export const STATE: { n: number } = { n: 0 } // red: stable-root -- a mutable record type, the same declaration, in a file that claims something
+        STATE.n = 1 // red: stable-root -- the same assignment
       `,
     },
   },
@@ -1342,7 +1345,8 @@ const INLINED_SCOPE: readonly Row[] = [
  * TypeScript resolves it, and stands for the declaration it lands on; the
  * verdict is the one that declaration's type would get written out in place.
  * One row per kind of declaration a name can land on, then the step's boundary,
- * the cycle, and a tripwire for the forms no row lists.
+ * the cycle, and a tripwire for the forms no row lists. Type names are not
+ * followed yet: every row here is a confession.
  */
 const TYPE_NAMES: readonly Row[] = [
   {
@@ -1547,7 +1551,7 @@ describe("modules", () => {
     })
   })
 
-  describe("a type name is followed to what it names", () => {
+  describe("a type name stands for what it names — not followed yet, every row confessed", () => {
     test.each(TYPE_NAMES)("$name", async (row) => {
       const { judge } = assembleCase(row.files)
       const { expectedFailures, ...match } = await judge(row)

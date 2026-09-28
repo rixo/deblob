@@ -33,11 +33,15 @@ const ROWS: readonly Row[] = [
         export const report = () => createTotals().sum([])
         // red: inward-deps, runtime-import -- the import of totals.service: a model reaching outward
       `,
+      "src/summary.model.ts": `
+        import type { createTotals } from "./totals.service.ts"
+        export type Totals = ReturnType<typeof createTotals>
+      `,
     },
     checks: ["layers"],
   },
   {
-    name: "a bare import lands in the tree's node_modules and reads through its manifest: concrete in a service is service-purity",
+    name: "a bare import lands in the tree's node_modules and reads through its manifest: concrete in a service is service-purity, and runtime-import",
     files: {
       "node_modules/made-up-pkg/package.json": JSON.stringify({
         name: "made-up-pkg",
@@ -138,7 +142,7 @@ const ROWS: readonly Row[] = [
   {
     // canon: `assembly-driver-only`, "type imports included; an assembly has
     // no contract to depend on".
-    name: "a service importing an assembly as a type is red: runtime-import's exemption does not reach it",
+    name: "a service importing an assembly as a type is red twice, outward and assembly-driver-only: runtime-import's type exemption does not reach it",
     files: {
       ...ASSEMBLY,
       "src/search/search.service.ts": `
@@ -186,12 +190,14 @@ const ROWS: readonly Row[] = [
     // canon: "Never a driver" (assembly), outward along the chain
     // (`inward-deps`), and `driver-not-imported`, "Nothing but a boot or
     // another driver imports a driver".
-    name: "an assembly importing a driver is red twice: outward, and a driver is imported by a boot or a driver only",
+    name: "an assembly importing a driver is red twice, outward and driver-not-imported, and handing the driver's function on is red too",
     files: {
       ...ASSEMBLY,
       "src/other.driver.ts": `
+        import { createNotesAssembly } from "./notes.assembly.ts"
         export const main = () => {
-          process.on("ready", () => undefined) // red: hook-one-call -- the hook runs no use case
+          const services = createNotesAssembly({ cwd: process.cwd() })
+          process.on("ready", () => services.notes.list())
         }
       `,
       "src/wired.assembly.ts": `
@@ -246,7 +252,7 @@ const ROWS: readonly Row[] = [
   {
     // canon: `boot-one-call`, "a boot imports a single driver … It imports
     // nothing else".
-    name: "a boot importing a service beside its driver is red",
+    name: "a boot importing a service beside its driver is red: only an assembly imports a service, and a boot imports nothing but its driver",
     files: {
       ...ASSEMBLY,
       "src/cli.driver.ts": `
@@ -284,8 +290,10 @@ const ROWS: readonly Row[] = [
       `,
       "src/other.driver.ts": `
         import "./cli.boot.ts"
+        import { createNotesAssembly } from "./notes.assembly.ts"
         export const main = () => {
-          process.on("ready", () => undefined) // red: hook-one-call -- the hook runs no use case
+          const services = createNotesAssembly({ cwd: process.cwd() })
+          process.on("ready", () => services.notes.list())
         }
         // red: inward-deps -- the import of cli.boot: a driver reaching outward
         // red: boot-one-call -- the import of cli.boot: nothing imports a boot

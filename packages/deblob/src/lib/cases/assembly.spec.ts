@@ -153,7 +153,7 @@ const ROWS: readonly Row[] = [
     // canon: "A condition on an instance, or on a value computed from one, is
     // a decision the map cannot show; it belongs to the service or adapter
     // that owns it."
-    name: "a branch on an instance is red: a decision the map cannot show",
+    name: "a branch on a field of an instance is red twice, the field read and the branch: a decision the map cannot show",
     files: {
       ...NOTES,
       ...DRIVER,
@@ -228,7 +228,7 @@ const ROWS: readonly Row[] = [
   {
     // canon: "an undeclared call is a violation whose resolution is the
     // declaration".
-    name: "the same load, undeclared, is a use-case call: red",
+    name: "the same load, undeclared, is a use-case call: red, and its result handed on is red with it",
     files: {
       ...NOTES,
       ...CONFIG,
@@ -560,7 +560,7 @@ const ROWS: readonly Row[] = [
     // assembly per event, in a hook — "a hook does not wire", both hooks red.
     // A handle reaches an assembly only at wiring time (a component's context
     // at mount); a per-request one goes to the use case.
-    name: "a framework's handle passed through is green; called in the assembly, it is red; built per event in a hook, the assembly is red",
+    name: "a framework's handle passed through is green; called in the assembly, it is red; built per event in a hook, the driver's hook is red: a hook does not wire",
     files: {
       ...NOTES,
       "src/auth/adapters/header-auth.adapter.ts": `

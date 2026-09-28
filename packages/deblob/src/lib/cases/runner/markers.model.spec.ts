@@ -425,7 +425,7 @@ describe("reportedOf", () => {
     ])
   })
 
-  it("names a statement-level violation's line, so it matches its marker there and nowhere else", () => {
+  it("names a statement-level violation's line", () => {
     const violation = {
       check: "modules",
       rules: ["stable-root"],
@@ -436,25 +436,6 @@ describe("reportedOf", () => {
     expect(reportedOf(alone(violation))).toEqual([
       { file: "src/a.model.ts", line: 4, slugs: ["stable-root"], via: [] },
     ])
-    expect(
-      matchVerdicts(
-        [
-          {
-            kind: "red",
-            file: "src/a.model.ts",
-            line: 3,
-            slug: "stable-root",
-            why: null,
-          },
-        ],
-        reportedOf(alone(violation)),
-      ),
-    ).toEqual({
-      missing: ["src/a.model.ts:3 stable-root"],
-      unexpected: ["src/a.model.ts:4 stable-root"],
-      unexpectedPasses: [],
-      expectedFailures: [],
-    })
   })
 
   it("carries a red the reader cannot prove as unknown, and a proven one without the mark", () => {
@@ -557,6 +538,28 @@ describe("matchVerdicts", () => {
     ).toEqual({
       missing: [],
       unexpected: [],
+      unexpectedPasses: [],
+      expectedFailures: [],
+    })
+  })
+
+  it("never matches a statement-level report to a marker on another line", () => {
+    expect(
+      matchVerdicts(
+        [
+          {
+            kind: "red",
+            file: "src/a.model.ts",
+            line: 3,
+            slug: "stable-root",
+            why: null,
+          },
+        ],
+        [{ file: "src/a.model.ts", line: 4, slugs: ["stable-root"], via: [] }],
+      ),
+    ).toEqual({
+      missing: ["src/a.model.ts:3 stable-root"],
+      unexpected: ["src/a.model.ts:4 stable-root"],
       unexpectedPasses: [],
       expectedFailures: [],
     })
@@ -774,7 +777,7 @@ describe("matchVerdicts", () => {
     })
   })
 
-  it("a red on the trigger's line does not stand for its `via` marker, nor the reverse", () => {
+  it("never lets a red marker on the trigger's line stand for its `via`, nor the reverse", () => {
     expect(
       matchVerdicts(
         [

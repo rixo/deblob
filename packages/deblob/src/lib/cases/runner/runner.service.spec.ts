@@ -80,7 +80,7 @@ describe("createRunner", () => {
     ).rejects.toThrow(/src\/a\.model\.ts:1: malformed marker/)
   })
 
-  it("hands the port the row's config and the checks it names, every check when it names none", async () => {
+  it("hands the port the row's config and the checks it names, no checks key when it names none", async () => {
     const { check, asked } = fakeCheck([])
     const { judge } = createRunner({ check })
     await judge({ files: {}, config: { pure: ["made-up"] }, checks: ["dag"] })

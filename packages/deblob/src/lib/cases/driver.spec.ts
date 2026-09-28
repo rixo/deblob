@@ -168,7 +168,7 @@ const ROWS: readonly Row[] = [
     // event". Now: "a hook does not wire … laziness is the assembly's, at
     // startup". A local of the wiring function is wiring, not a definition
     // (D5, ruled 2026-09-25) — the parser line stays green.
-    name: "an assembly imported lazily in a hook is red: a hook does not wire; a parser held in a local of main is green",
+    name: "an assembly imported lazily in a hook is red three times, import(), process.cwd() and the assembly call: a hook does not wire; a parser held in a local of main is green",
     config: CONFIG,
     files: {
       ...CLI,
@@ -249,7 +249,7 @@ const ROWS: readonly Row[] = [
     // it — or dropped, and never used". Ways out: the service sets the exit
     // code and prints through its ports, `process` handed down; pass `opts`
     // whole.
-    name: "the value written, printed or read off, the event read by field, the host called in a hook: red",
+    name: "the value written or printed, the event read by field, the host called in a hook: red",
     config: CONFIG,
     files: {
       ...CLI,
@@ -362,7 +362,7 @@ const ROWS: readonly Row[] = [
   {
     // canon: "Never an adapter: an adapter call from a hook is an effect no
     // contract covers." The import is `adapter-assembly-only`, reported today.
-    name: "a driver calling an adapter is red, and so is its import",
+    name: "a driver calling an adapter from a hook is red, and so is its import; the hook runs no use case",
     config: CONFIG,
     files: {
       ...CLI,
@@ -374,8 +374,7 @@ const ROWS: readonly Row[] = [
         import { createFsStore } from "./lib/notes/adapters/fs-store.adapter.ts"
         export const main = () => {
           const parser = cac("notes")
-          // red: hook-one-call -- process.cwd(), a call that is not the use case's
-          parser.command("store").action(() => createFsStore(process.cwd())) // red: driver-calls-services, hook-one-call -- an adapter called from a hook; the hook runs no use case
+          parser.command("store").action(() => createFsStore("/")) // red: driver-calls-services, hook-one-call -- an adapter called from a hook; the hook runs no use case
           parser.parse(process.argv)
         }
         // red: adapter-assembly-only, runtime-import -- the import of fs-store.adapter from a driver: a type import would pass
@@ -385,7 +384,7 @@ const ROWS: readonly Row[] = [
   {
     // canon: "Never a model: parsing and rendering are use cases of a
     // service"; the parse is also a translation around the call.
-    name: "a driver calling a model is red, and the parse around the call is a translation",
+    name: "a driver calling a model is red, and so is its import; the parse around the call is a translation",
     config: CONFIG,
     files: {
       ...CLI,
@@ -459,7 +458,7 @@ const ROWS: readonly Row[] = [
     // wiring function … a local `parseFoo` is a model without a test"; a
     // constant is a definition too. A type is not (re-ruled at the detectors
     // step, checkpoint 4: types are no definitions in any layer).
-    name: "a helper and a constant beside the hooks and the wiring function are red; a type is not a definition",
+    name: "a helper and a constant beside the hooks and the wiring function are red, and so is the helper's call in a hook; a type is not a definition",
     config: CONFIG,
     files: {
       ...CLI,
@@ -480,7 +479,7 @@ const ROWS: readonly Row[] = [
   {
     // canon: "a table of lambdas a service without a contract" — a lambda
     // not handed to the tech where it is written is not a hook.
-    name: "a table of lambdas in main is red: a service without a contract",
+    name: "a table of lambdas in main is red: a service without a contract; handing its member on is red too",
     config: CONFIG,
     files: {
       ...CLI,
@@ -588,7 +587,7 @@ const ROWS: readonly Row[] = [
     // imported a sub-driver as a namespace. canon: "a driver imports another driver only
     // to call its wiring function" — a namespace names nothing; each member is
     // judged where it is used: called, green; handed on, red.
-    name: "a sub-driver imported as a namespace: its wiring function called is green, a member handed on as a hook is red",
+    name: "a sub-driver imported as a namespace: its wiring function called is green; a member handed on as a hook, or the namespace handed on whole, is red",
     config: CONFIG,
     files: {
       ...CLI,

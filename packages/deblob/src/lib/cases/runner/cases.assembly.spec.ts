@@ -41,7 +41,7 @@ describe("assembleCase", () => {
     })
   })
 
-  it("throws on a literal import the tree does not resolve, naming file, specifier and reason", async () => {
+  it("hands back a judge that rejects on a literal import the tree does not resolve, naming file and specifier", async () => {
     const files = {
       "src/a.model.ts": `import { b } from "./SOME_MISSING.model.ts"\nexport const A = b`,
     }
