@@ -92,8 +92,23 @@ Checkpoints, one commit each, one go each:
    - `it` where the title is a behavior sentence, `test` elsewhere — row by row,
      never a blind rename.
    - Typed builders for `render.model.spec.ts`'s `as …Violation` casts.
-3. **Close.** The table's rulings all applied or carded; the PLAN's queue moves
-   to `04/06_test-rules`.
+3. **The title audit** (added 2026-09-28, ruled at the sweep's self-review). The
+   it/test pass judged each title against its unit, never against its body:
+   about 280 titles kept as they were, and about 370 rewritten, were never read
+   beside the assertions under them. Fresh Fable 5.1 agents, with no part in the
+   pass, four in parallel over a split of the 42 spec files, read every `it` and
+   `test` in `packages/deblob/src` (785, fixtures excluded; a corpus row's title
+   is its `name`, its body the marked tree) against its body and return one row
+   per finding: `path:line`, the title, what the body asserts (quoted), and the
+   mismatch — the title claims more than the body checks, less, or something
+   else; or the title is true but hard to read. The rule they judge by, given
+   verbatim: `it` when the title describes the subject its `describe` names,
+   `test` when it is only related to it (a corpus row, a relation between two
+   subjects, a parity check); one test describing two subjects is split. I
+   verify each row against the tree and bring rixo the survivors; fixes land in
+   batches, one go each.
+4. **Close.** The table's rulings all applied or carded; the PLAN's queue moves
+   to `04/07_driver-readers` (canon first), then `04/06_test-rules`.
 
 **Reviewer: Fable 5.1** (ruled 2026-09-27). The review is meant to push back,
 and a different model's blind spots are the point.
