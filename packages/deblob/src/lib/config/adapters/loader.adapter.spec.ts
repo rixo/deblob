@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { afterAll, describe, expect, test } from "vitest"
+import { afterAll, describe, expect, it } from "vitest"
 
 import type { FlavorResolver } from "../../extraction/ports/flavor.port.ts"
 import { STOCK_FLAVOR_NAME } from "../../extraction/stock-flavor.model.ts"
@@ -54,19 +54,19 @@ const load = async (cwd: string) => {
 }
 
 describe("discoverConfig", () => {
-  test("finds the config in cwd", async () => {
+  it("finds the config in cwd", async () => {
     expect(await discoverConfig(fixture("walk"))).toBe(
       join(fixture("walk"), "deblob.config.ts"),
     )
   })
 
-  test("walks up to the nearest config — never past it", async () => {
+  it("walks up to the nearest config — never past it", async () => {
     expect(await discoverConfig(fixture("walk/nested/deeper"))).toBe(
       join(fixture("walk/nested"), "deblob.config.ts"),
     )
   })
 
-  test("rejects two config files in one directory as ambiguity", async () => {
+  it("rejects two config files in one directory as ambiguity", async () => {
     await expect(discoverConfig(fixture("ambiguous"))).rejects.toThrowError(
       /deblob\.config\.ts and deblob\.config\.js/,
     )
@@ -74,7 +74,7 @@ describe("discoverConfig", () => {
 })
 
 describe("explicitConfigPath", () => {
-  test("resolves a relative path from cwd, absolute passed through", async () => {
+  it("resolves a relative path from cwd, absolute passed through", async () => {
     const absolute = join(fixture("walk"), "deblob.config.ts")
     expect(
       await explicitConfigPath(fixture("walk/nested"), "../deblob.config.ts"),
@@ -84,7 +84,7 @@ describe("explicitConfigPath", () => {
     ).toBe(absolute)
   })
 
-  test("a missing explicit path is a teaching error, never a silent fallback", async () => {
+  it("throws a teaching error on a missing explicit path, never a silent fallback", async () => {
     await expect(
       explicitConfigPath(fixture("walk"), "SOME_MADE_UP_PATH.config.ts"),
     ).rejects.toThrowError(/SOME_MADE_UP_PATH.*does not exist/s)
@@ -105,30 +105,30 @@ describe("tsconfigPathOf", () => {
     ),
   )
 
-  test("discovers tsconfig.json at the root when undeclared", async () => {
+  it("discovers tsconfig.json at the root when undeclared", async () => {
     const root = await makeRoot(true)
     expect(await tsconfigPathOf({ root, tsconfig: undefined })).toBe(
       join(root, "tsconfig.json"),
     )
   })
 
-  test("yields null when undeclared and the root has none", async () => {
+  it("yields null when undeclared and the root has none", async () => {
     const root = await makeRoot(false)
     expect(await tsconfigPathOf({ root, tsconfig: undefined })).toBeNull()
   })
 
-  test("false disables discovery even when the file exists", async () => {
+  it("disables discovery on false, even when the file exists", async () => {
     const root = await makeRoot(true)
     expect(await tsconfigPathOf({ root, tsconfig: false })).toBeNull()
   })
 
-  test("returns a declared path that exists", async () => {
+  it("returns a declared path that exists", async () => {
     const root = await makeRoot(true)
     const declared = join(root, "tsconfig.json")
     expect(await tsconfigPathOf({ root, tsconfig: declared })).toBe(declared)
   })
 
-  test("a declared-but-missing path is a teaching error — declared means load-bearing", async () => {
+  it("throws a teaching error on a declared-but-missing path — declared means load-bearing", async () => {
     const root = await makeRoot(false)
     await expect(
       tsconfigPathOf({ root, tsconfig: join(root, "tsconfig.json") }),
@@ -137,32 +137,32 @@ describe("tsconfigPathOf", () => {
 })
 
 describe("importConfigDefault + the assembly sequence", () => {
-  test("loads a .ts config natively and resolves it", async () => {
+  it("loads a .ts config natively and resolves it", async () => {
     const resolved = await load(fixture("walk"))
     expect(resolved.pure).toEqual(["FAKE_ROOT_LIB"])
     expect(resolved.root).toBe(fixture("walk"))
     expect(resolved.configPath).toBe(join(fixture("walk"), "deblob.config.ts"))
   })
 
-  test("the nearest config governs a nested cwd — no merge with the ancestor", async () => {
+  it("loads the nearest config for a nested cwd — no merge with the ancestor", async () => {
     const resolved = await load(fixture("walk/nested/deeper"))
     expect(resolved.pure).toEqual(["FAKE_NESTED_LIB"])
     expect(resolved.root).toBe(fixture("walk/nested"))
   })
 
-  test("loads .mts, .js and .mjs configs", async () => {
+  it("loads .mts, .js and .mjs configs", async () => {
     expect((await load(fixture("mts-config"))).pure).toEqual(["FAKE_MTS_LIB"])
     expect((await load(fixture("js-config"))).pure).toEqual(["FAKE_JS_LIB"])
     expect((await load(fixture("mjs-config"))).pure).toEqual(["FAKE_MJS_LIB"])
   })
 
-  test("rejects a config without a default export, teaching the fix", async () => {
+  it("rejects a config without a default export, teaching the fix", async () => {
     await expect(load(fixture("no-default"))).rejects.toThrowError(
       /no default export.*defineConfig/s,
     )
   })
 
-  test("wraps an evaluation failure with the config path, cause preserved", async () => {
+  it("wraps an evaluation failure with the config path, cause preserved", async () => {
     const failure = await load(fixture("throws")).then(
       () => null,
       (error: unknown) => error,
@@ -174,7 +174,7 @@ describe("importConfigDefault + the assembly sequence", () => {
     )
   })
 
-  test("uses a custom flavor exported from the config", async () => {
+  it("uses a custom flavor exported from the config", async () => {
     const resolved = await load(fixture("custom-flavor"))
     expect(resolved.flavor.classify(["a.ts"]).get("a.ts")?.layer).toBe("model")
   })
@@ -185,7 +185,7 @@ describe("importConfigDefault + the assembly sequence", () => {
       if (isolated) await rm(isolated, { recursive: true, force: true })
     })
 
-    test("resolves every default with root = cwd and null provenance", async () => {
+    it("resolves every default with root = cwd and null provenance", async () => {
       isolated = await mkdtemp(join(tmpdir(), "deblob-configless-"))
       const resolved = await load(isolated)
       expect(resolved.configPath).toBeNull()
@@ -212,18 +212,18 @@ describe("readPackageSurface", () => {
     ),
   )
 
-  test("yields null without a package.json — no claim, no check", async () => {
+  it("yields null without a package.json — no claim, no check", async () => {
     expect(await readPackageSurface(await rootWith())).toBeNull()
   })
 
-  test("yields null without a deblob field — declaring is opting in", async () => {
+  it("yields null without a deblob field — declaring is opting in", async () => {
     const root = await rootWith(
       JSON.stringify({ name: "made-up", exports: "./src/x.service.ts" }),
     )
     expect(await readPackageSurface(root)).toBeNull()
   })
 
-  test("flattens a dot-keyed exports map to subpath → targets", async () => {
+  it("flattens a dot-keyed exports map to subpath → targets", async () => {
     const root = await rootWith(
       JSON.stringify({
         name: "made-up",
@@ -253,7 +253,7 @@ describe("readPackageSurface", () => {
     })
   })
 
-  test("reads a string exports and a bare conditions object as the root entry", async () => {
+  it("reads a string exports and a bare conditions object as the root entry", async () => {
     const asString = await rootWith(
       JSON.stringify({ name: "m", deblob: {}, exports: "./src/index.ts" }),
     )
@@ -278,7 +278,7 @@ describe("readPackageSurface", () => {
     })
   })
 
-  test("a bare string target normalizes; a non-path scalar map yields no entries", async () => {
+  it("normalizes a bare string target; yields no entries for a non-path scalar map", async () => {
     const bare = await rootWith(
       JSON.stringify({ name: "m", deblob: {}, exports: "src/index.ts" }),
     )
@@ -297,7 +297,7 @@ describe("readPackageSurface", () => {
     })
   })
 
-  test("rejects a field without an exports map — the map is the surface the field claims; main is not one", async () => {
+  it("rejects a field without an exports map — the map is the surface the field claims; main is not one", async () => {
     for (const manifest of [
       { name: "m", deblob: {} },
       { name: "m", deblob: {}, exports: null },
@@ -310,12 +310,12 @@ describe("readPackageSurface", () => {
     }
   })
 
-  test("treats a non-object manifest as empty — a scalar package.json claims nothing", async () => {
+  it("treats a non-object manifest as empty — a scalar package.json claims nothing", async () => {
     const root = await rootWith("42")
     expect(await readPackageSurface(root)).toBeNull()
   })
 
-  test("rejects a non-object field — presence is the claim, as {}", async () => {
+  it("rejects a non-object field — presence is the claim, as {}", async () => {
     for (const field of ["stock", true, ["x"]]) {
       const root = await rootWith(JSON.stringify({ name: "m", deblob: field }))
       await expect(readPackageSurface(root)).rejects.toThrowError(
@@ -324,7 +324,7 @@ describe("readPackageSurface", () => {
     }
   })
 
-  test("rejects keys this version cannot honor — load-bearing at home, loud, never silent", async () => {
+  it("rejects keys this version cannot honor — load-bearing at home, loud, never silent", async () => {
     const root = await rootWith(
       JSON.stringify({ name: "m", deblob: { flavor: "SOME_MADE_UP_FLAVOR" } }),
     )
@@ -333,7 +333,7 @@ describe("readPackageSurface", () => {
     )
   })
 
-  test("reads the blob carve-outs — subpath patterns, as written", async () => {
+  it("reads the blob carve-outs — subpath patterns, as written", async () => {
     const root = await rootWith(
       JSON.stringify({
         name: "m",
@@ -348,7 +348,7 @@ describe("readPackageSurface", () => {
     })
   })
 
-  test("rejects a malformed blob loudly at home — naming the offending value", async () => {
+  it("rejects a malformed blob loudly at home — naming the offending value", async () => {
     for (const [blob, offending] of [
       ["./x", '"./x"'],
       [["./ok", "legacy"], '"legacy"'],
@@ -370,7 +370,7 @@ describe("readPackageSurface", () => {
     }
   })
 
-  test("reads the assembly designations — the same pattern grammar, its own list", async () => {
+  it("reads the assembly designations — the same pattern grammar, its own list", async () => {
     const root = await rootWith(
       JSON.stringify({
         name: "m",
@@ -385,7 +385,7 @@ describe("readPackageSurface", () => {
     })
   })
 
-  test("rejects a malformed assembly list loudly at home — the message names the key", async () => {
+  it("rejects a malformed assembly list loudly at home — the message names the key", async () => {
     const root = await rootWith(
       JSON.stringify({
         name: "m",
@@ -398,7 +398,7 @@ describe("readPackageSurface", () => {
     )
   })
 
-  test("rejects an unparseable own manifest loudly — home is not a stranger", async () => {
+  it("rejects an unparseable own manifest loudly — home is not a stranger", async () => {
     const root = await rootWith("{ not json")
     await expect(readPackageSurface(root)).rejects.toThrowError(ConfigError)
   })

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import { RULE_IDS } from "../check/rule.model.ts"
 import {
@@ -11,7 +11,7 @@ import {
 
 describe("parseCli", () => {
   describe("commands", () => {
-    test("bare argv is the status command", () => {
+    it("reads bare argv as the status command", () => {
       expect(parseCli([])).toEqual({
         config: null,
         noColor: false,
@@ -19,7 +19,7 @@ describe("parseCli", () => {
       })
     })
 
-    test("check with no names runs every known check", () => {
+    it("selects every known check when none is named", () => {
       expect(parseCli(["check"])).toEqual({
         config: null,
         noColor: false,
@@ -33,7 +33,7 @@ describe("parseCli", () => {
       })
     })
 
-    test("check with names runs that subset, argv order kept; `explicit` records that check names were passed on the command line rather than defaulted", () => {
+    it("selects the checks named, argv order kept; `explicit` records that check names were passed on the command line rather than defaulted", () => {
       expect(parseCli(["check", "ports", "layers"])).toMatchObject({
         action: {
           command: "check",
@@ -43,7 +43,7 @@ describe("parseCli", () => {
       })
     })
 
-    test("explain takes one or many topics — the check footer is pasteable", () => {
+    it("takes one or many explain topics — the check footer is pasteable", () => {
       expect(parseCli(["explain", "service-purity"])).toMatchObject({
         action: { command: "explain", topics: ["service-purity"] },
       })
@@ -59,20 +59,20 @@ describe("parseCli", () => {
   })
 
   describe("flags", () => {
-    test("--help and -h yield the help screen from anywhere", () => {
+    it("yields the help screen for --help and -h from anywhere", () => {
       expect(parseCli(["--help"])).toMatchObject({
         action: { command: "help" },
       })
       expect(parseCli(["-h"])).toMatchObject({ action: { command: "help" } })
     })
 
-    test("check --help yields the check help screen", () => {
+    it("yields the check help screen for check --help", () => {
       expect(parseCli(["check", "--help"])).toMatchObject({
         action: { command: "check-help" },
       })
     })
 
-    test("--version and -v print the version", () => {
+    it("yields the version for --version and -v", () => {
       expect(parseCli(["--version"])).toMatchObject({
         action: { command: "version" },
       })
@@ -81,7 +81,7 @@ describe("parseCli", () => {
       })
     })
 
-    test("-c / --config carries the explicit config path", () => {
+    it("carries the explicit config path from -c / --config", () => {
       expect(parseCli(["-c", "some/made-up.config.ts", "check"])).toMatchObject(
         { config: "some/made-up.config.ts" },
       )
@@ -90,13 +90,13 @@ describe("parseCli", () => {
       })
     })
 
-    test("--no-color is carried", () => {
+    it("carries --no-color", () => {
       expect(parseCli(["--no-color", "check"])).toMatchObject({
         noColor: true,
       })
     })
 
-    test("--explain and --explain-only ride check", () => {
+    it("accepts --explain and --explain-only on check", () => {
       expect(parseCli(["check", "--explain"])).toMatchObject({
         action: { explain: true, explainOnly: false },
       })
@@ -113,35 +113,35 @@ describe("parseCli", () => {
       return parsed.error
     }
 
-    test("unknown command names the valid commands", () => {
+    it("names the valid commands for an unknown command", () => {
       const message = errorOf(["frobnicate"])
       expect(message).toContain("frobnicate")
       expect(message).toContain("check")
       expect(message).toContain("explain")
     })
 
-    test("unknown check names the known set", () => {
+    it("names the known set for an unknown check", () => {
       const message = errorOf(["check", "SOME_MADE_UP_CHECK"])
       expect(message).toContain("SOME_MADE_UP_CHECK")
       for (const check of KNOWN_CHECKS) expect(message).toContain(check)
     })
 
-    test("unknown flag is a usage error", () => {
+    it("reports an unknown flag as a usage error", () => {
       expect(errorOf(["--some-made-up-flag"])).toContain("--some-made-up-flag")
     })
 
-    test("explain without a topic is a usage error", () => {
+    it("reports explain without a topic as a usage error", () => {
       expect(errorOf(["explain"])).toContain("topic")
     })
 
-    test("--explain outside check is a usage error", () => {
+    it("reports --explain outside check as a usage error", () => {
       expect(errorOf(["--explain"])).toContain("--explain")
       expect(
         errorOf(["explain", "service-purity", "--explain-only"]),
       ).toContain("--explain-only")
     })
 
-    test("--explain with --explain-only is contradictory", () => {
+    it("rejects --explain with --explain-only as contradictory", () => {
       const message = errorOf(["check", "--explain", "--explain-only"])
       expect(message).toContain("--explain")
       expect(message).toContain("--explain-only")
@@ -150,17 +150,17 @@ describe("parseCli", () => {
 })
 
 describe("rulesForTopic", () => {
-  test("resolves a slug to the rule — every one in the list", () => {
+  it("resolves a slug to the rule — every one in the list", () => {
     expect(rulesForTopic("service-purity")).toEqual(["service-purity"])
     for (const id of RULE_IDS) expect(rulesForTopic(id)).toEqual([id])
   })
 
-  test("resolves a check name to the rules it cites", () => {
+  it("resolves a check name to the rules it cites", () => {
     expect(rulesForTopic("layers")).toEqual(CHECK_RULES.layers)
     expect(rulesForTopic("ports")).toEqual(["ports-types-only"])
   })
 
-  test("rejects numbers (the 0.0.4 grammar), slug-shaped strangers, and anything else", () => {
+  it("rejects numbers (the 0.0.4 grammar), slug-shaped strangers, and anything else", () => {
     expect(rulesForTopic("4")).toBeNull()
     expect(rulesForTopic("rule-4")).toBeNull()
     expect(rulesForTopic("some-made-up-rule")).toBeNull()
@@ -169,7 +169,7 @@ describe("rulesForTopic", () => {
 })
 
 describe("isRuleNumber", () => {
-  test("spots the old citation forms, nothing else", () => {
+  it("spots the old citation forms, nothing else", () => {
     expect(isRuleNumber("4")).toBe(true)
     expect(isRuleNumber("rule-4")).toBe(true)
     expect(isRuleNumber("999")).toBe(true)

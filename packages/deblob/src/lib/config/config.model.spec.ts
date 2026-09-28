@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import {
   ConfigError,
@@ -10,7 +10,7 @@ import {
 } from "./config.model.ts"
 
 describe("isConfigError", () => {
-  test("recognizes a ConfigError by name, across realms — an instance from elsewhere counts", () => {
+  it("recognizes a ConfigError by name, across realms — an instance from elsewhere counts", () => {
     expect(isConfigError(new ConfigError("SOME_MADE_UP_MESSAGE"))).toBe(true)
     const foreign = Object.assign(new Error("SOME_MADE_UP_MESSAGE"), {
       name: "ConfigError",
@@ -22,7 +22,7 @@ describe("isConfigError", () => {
 })
 
 describe("asConfigError", () => {
-  test("passes a ConfigError through, rethrows anything else", () => {
+  it("passes a ConfigError through, rethrows anything else", () => {
     const teaching = new ConfigError("SOME_MADE_UP_MESSAGE")
     expect(asConfigError(teaching)).toBe(teaching)
     const bug = new Error("SOME_MADE_UP_BUG")
@@ -31,13 +31,13 @@ describe("asConfigError", () => {
 })
 
 describe("hasCoverageExtension", () => {
-  test("accepts every extension of the gate", () => {
+  it("accepts every extension of the gate", () => {
     for (const ext of COVERAGE_EXTENSIONS) {
       expect(hasCoverageExtension(`dir/file${ext}`)).toBe(true)
     }
   })
 
-  test("rejects non-source extensions and near-misses", () => {
+  it("rejects non-source extensions and near-misses", () => {
     expect(hasCoverageExtension("dir/styles.css")).toBe(false)
     expect(hasCoverageExtension("dir/notes.md")).toBe(false)
     expect(hasCoverageExtension("dir/data.json")).toBe(false)
@@ -46,7 +46,7 @@ describe("hasCoverageExtension", () => {
 })
 
 describe("configImportErrorMessage", () => {
-  test("teaches the erasable-only constraint on the Node syntax code", () => {
+  it("teaches the erasable-only constraint on the Node syntax code", () => {
     const error = Object.assign(new Error("enum stripped"), {
       code: "ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX",
     })
@@ -55,7 +55,7 @@ describe("configImportErrorMessage", () => {
     expect(message).toMatch(/deblob\.config\.ts/)
   })
 
-  test("teaches the .mts rename when ESM syntax was read as CommonJS", () => {
+  it("teaches the .mts rename when ESM syntax was read as CommonJS", () => {
     const error = new SyntaxError("Unexpected token 'export'")
     const message = configImportErrorMessage(error, "/repo/deblob.config.ts")
     expect(message).toMatch(/loaded as CommonJS/)
@@ -81,7 +81,7 @@ describe("configImportErrorMessage", () => {
     ).toMatch(/^failed to load/)
   })
 
-  test("names the config path on any other failure", () => {
+  it("names the config path on any other failure", () => {
     const message = configImportErrorMessage(
       new Error("SOME_FAKE_EVALUATION_FAILURE"),
       "/repo/deblob.config.ts",

@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url"
 
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import {
   DEFAULT_INCLUDE,
@@ -32,7 +32,7 @@ const scan = (
   })
 
 describe("scanCoverage", () => {
-  test("covers the whole tree by default — baseline out, the gate applied, hidden skipped, sorted", async () => {
+  it("covers the whole tree by default — baseline out, the gate applied, hidden skipped, sorted", async () => {
     expect(await scan()).toEqual([
       "scripts/task.js",
       "src/app.model.ts",
@@ -43,7 +43,7 @@ describe("scanCoverage", () => {
     // (the gate: a script extension, or named by a designation or a binding)
   })
 
-  test("the gate is the config's: a file named by a designation or a binding enters whatever its extension", async () => {
+  it("admits a file named by a designation or a binding whatever its extension — the gate is the config's", async () => {
     expect(
       await scan({
         covers: (path) =>
@@ -57,14 +57,14 @@ describe("scanCoverage", () => {
     ])
   })
 
-  test("appended user excludes remove more", async () => {
+  it("removes more with appended user excludes", async () => {
     expect(await scan({ exclude: ["scripts/**"] })).toEqual([
       "src/app.model.ts",
       "src/app.ts",
     ])
   })
 
-  test("a tightened include narrows coverage", async () => {
+  it("narrows coverage to a tightened include", async () => {
     expect(await scan({ include: ["src/**"] })).toEqual([
       "src/app.model.ts",
       "src/app.ts",
@@ -73,7 +73,7 @@ describe("scanCoverage", () => {
 })
 
 describe("statSizes", () => {
-  test("returns the byte size per covered file, paths preserved", async () => {
+  it("returns the byte size per covered file, paths preserved", async () => {
     const files = await scan({ include: ["src/**"] })
     const sizes = await statSizes(root, files)
     expect(sizes.map((entry) => entry.path)).toEqual([...files])
@@ -82,7 +82,7 @@ describe("statSizes", () => {
     }
   })
 
-  test("a covered file gone since the scan is a race, not a case — loud", async () => {
+  it("throws on a covered file gone since the scan — a race, not a case", async () => {
     const scan = createCoverageScan({ fs: createMemoryFs({}) })
     await expect(
       scan.statSizes("/made-up-root", ["src/app.ts"]),
