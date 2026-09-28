@@ -557,7 +557,10 @@ may reopen the service example and the config pattern section.
   boot's `void main()` goes unjudged — a reader question; the fix flips the
   plumbing SPEC's mutation-table line that counts that red as a catch. And five
   `stable-root` unknowns from the roles commit: the test reader's `Role`
-  constants, `as const` their way out.
+  constants, `as const` their way out. `04/05_sweep` closed 2026-09-28 in four
+  checkpoints: the review (24 findings, all ruled), the rulings and the parked
+  cleanups applied, a title audit of every test (113 findings; five unguarded
+  behaviors pinned on the way), the close. Next: `04/07`, canon first.
 
   Then `04/07_driver-readers` (added 2026-09-28, runs before `04/06`: the test
   reader rides on it). A driver is read only by a reader bound to its tech; the
@@ -717,6 +720,21 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
   red, but what the reader can honestly say without the binding may be unknown
   rather than red — a verdict question for rixo before the fix. Both are
   `04/07_driver-readers` territory (what a hook's tech is), so look there first.
+
+- **What the title audit left** (2026-09-28, the sweep's close). (1) The 26
+  fixture tours — 11 in the extraction and reading specs, 15 in `main.spec.ts` —
+  split one concern per test. Their titles, made true, run to 250 characters.
+  Speed is not the cost: extract each fixture once per `describe` and the split
+  is free. (2) Root describes not named exactly after their unit, facets flat in
+  the title: the audit relayed four ("extractGraph over the forms fixture", "the
+  reading on the graph — …", "stock flavor registry", "the factory naming rule —
+  …"), but `extraction.service.spec.ts` and the flavor's spec hold ten of the
+  kind — re-nest each under its unit, in the same pass as (1), which touches the
+  same files. The it/test sweep's last batch says in its message that every root
+  describe names one unit: it overclaims, and these ten are the rest. (3) The
+  two contract suites, `resolver-test-suite.service.ts` (13 tests) and
+  `fs-test-suite.service.ts` (8), are not spec files, and the audit never read
+  them.
 
 - **Mutation testing over the gate alone** (2026-09-26, rixo, banked
   2026-09-27). Mutate deblob's source and run only the corpus rows, not the

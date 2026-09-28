@@ -5,7 +5,9 @@ checkpoint for days, then the lens re-read them all. Before type-name depth or
 the test rules build on top, a reviewer that wrote none of it reads everything
 since `02_rows-first` closed, and the loose ends it finds are fixed in batches.
 
-**Drafted 2026-09-27.** Nothing below is run until "go".
+**Drafted 2026-09-27. Closed 2026-09-28** in four checkpoints: the review, the
+rulings applied in four batches plus the parked cleanups, the title audit in
+four batches, the close.
 
 ## Goal
 
@@ -198,3 +200,46 @@ On deblob's own check (479 violations): **56 groups carry a rider, 76 riders in
 all.** One lead in nine brings riders along, and riders add a sixth to what the
 reader sees. **Kept** (ruled 2026-09-27): the riders are the entries that look
 like separate problems and are not.
+
+### Title audit
+
+Checkpoint 3, 2026-09-28. Four Fable 5.1 agents returned 113 findings over the
+spec files: `lib/check` 21, `lib/extraction` 29, the CLI, config, explain and
+driver specs 38, `lib/cases` 25. Four verifiers re-read each one in the tree:
+106 hold as stated, 6 in part, 1 refuted and dropped (the layers check does
+report an assembly's concrete import, under `assembly-builds-only`). Ruled: a
+title that claims more than its body is trimmed when it overgeneralizes, pinned
+when it names a behavior worth protecting. Applied in four batches, one per
+split.
+
+Each trim was checked before it landed: a claim dropped from a title must be
+asserted elsewhere, or it is a behavior the suite no longer names. Three were
+not, and are pinned instead; with them, two assertions that could not fail. Each
+pin is shown live by breaking the code for one run:
+
+- A use case on an adapter's or a model factory's instance is not primary. The
+  prescribed `not.toContain("group.store.has")`, and the standing
+  `not.toContain("registry.get")`, could not fail: a traced member is the path
+  left after the instance, so a wrong trace reads `"has"` or `"get"`. Both are
+  pinned by driver and line.
+- A chain of grouping dirs collapses to the service dir (the collapse's `while`
+  as an `if` went unseen).
+- An empty binding pattern defines nothing and its initializer is still read
+  (skipping it went unseen).
+- A specifier pattern keeps every regex character literal (only `.` and `$` were
+  exercised; dropping `|` from the escape list needs a half of the pattern
+  matched alone to show).
+
+The flavor's `classifyEntry` and `isFactory` now assert identity with the stock
+functions, the wiring they state. The blob-control row's model side declares
+what it writes to as the blob side does (`STATE: { n: number }`), so it compiles
+and is red twice.
+
+Beyond titles, three findings, confirmed by runs: `process.cwd()` behind `??` in
+a hook draws no red, and a hook on a parameter no caller binds is not judged —
+both confessed as `missed red`, the fixes carded on the PLAN for
+`04/07_driver-readers`; and the type-name rows read as landed where every one is
+a confession — their header and `describe` now say so.
+
+Left over, carded on the PLAN: the fixture tours split one concern per test;
+four root describes that name no unit; the two contract suites, never audited.
