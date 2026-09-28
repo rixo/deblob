@@ -530,71 +530,47 @@ may reopen the service example and the config pattern section.
   `04/02_rows-first` — rows, no detector, for `stable-root`'s call half and the
   ten outside rules; then call reading and the detectors against those rows;
   type names (`04/01`, checkpoints 2–3), `node_modules` types and the engine
-  last, their rows already stamped `false unknown`. `04/02_rows-first` closed
-  2026-09-25 in five checkpoints: every rule has its rows, every red its way
-  out, and three canon edits came of writing them (a tech value may be read,
-  "what the assembly builds", awaiting a call is the call). Next: call reading
-  and the detectors — paused after their checkpoint 6 for `04/04_lens` (added
-  2026-09-26: the outside layers are concessions, one thing each; canon
-  rewritten around that test, every stamped row re-read through it; its SPEC
-  carries the rationale), resuming at checkpoint 7 under it. `04/04_lens` closed
-  2026-09-27 in four checkpoints: canon, the rows re-read (and the hook ruled:
-  the event handed on untouched), the checks aligned, memory and the assert
-  sweep. `04/03_detectors` closed 2026-09-27 with its checkpoint 7 (the boot
-  check, the import cells). Then, before type-name depth, `04/05_sweep` (added
-  2026-09-25: the detectors went fast, one commit a checkpoint for days): loose
-  ends caught and bolts tightened before building on them. A review by another
-  model, cold, of everything since `02_rows-first` closed — code, units, rows,
-  READMEs, SPEC notes against what landed; the confessed known failures and
-  every "to be measured" re-read; the two owed cleanups (`it` where the title is
-  a behavior sentence, `test` elsewhere — never a blind rename; the typed
-  builders replacing `render.model.spec.ts`'s `as …Violation` casts); and
-  grouping's worth measured on the self-check (how many groups carry riders)
-  before anything else is built on it. Findings as a table, rixo rules each,
-  fixes one commit per batch. Parked for it at detectors checkpoint 7
-  (2026-09-27): `void x` reads as a computed use, so a hook dropping its promise
-  (`void cli.check(opts)`) is red where canon lets a hook drop the value, and a
-  boot's `void main()` goes unjudged — a reader question; the fix flips the
-  plumbing SPEC's mutation-table line that counts that red as a catch. And five
-  `stable-root` unknowns from the roles commit: the test reader's `Role`
-  constants, `as const` their way out. `04/05_sweep` closed 2026-09-28 in four
-  checkpoints: the review (24 findings, all ruled), the rulings and the parked
-  cleanups applied, a title audit of every test (113 findings; five unguarded
-  behaviors pinned on the way), the close. Next: `04/07`, canon first.
+  (the `ts` reader's, ruled at `04/07`) last, their rows already stamped
+  `false unknown`. `04/02_rows-first` closed 2026-09-25 in five checkpoints:
+  every rule has its rows, every red its way out, and three canon edits came of
+  writing them (a tech value may be read, "what the assembly builds", awaiting a
+  call is the call). Next: call reading and the detectors — paused after their
+  checkpoint 6 for `04/04_lens` (added 2026-09-26: the outside layers are
+  concessions, one thing each; canon rewritten around that test, every stamped
+  row re-read through it; its SPEC carries the rationale), resuming at
+  checkpoint 7 under it. `04/04_lens` closed 2026-09-27 in four checkpoints:
+  canon, the rows re-read (and the hook ruled: the event handed on untouched),
+  the checks aligned, memory and the assert sweep. `04/03_detectors` closed
+  2026-09-27 with its checkpoint 7 (the boot check, the import cells). Then,
+  before type-name depth, `04/05_sweep` (added 2026-09-25: the detectors went
+  fast, one commit a checkpoint for days): loose ends caught and bolts tightened
+  before building on them. A review by another model, cold, of everything since
+  `02_rows-first` closed — code, units, rows, READMEs, SPEC notes against what
+  landed; the confessed known failures and every "to be measured" re-read; the
+  two owed cleanups (`it` where the title is a behavior sentence, `test`
+  elsewhere — never a blind rename; the typed builders replacing
+  `render.model.spec.ts`'s `as …Violation` casts); and grouping's worth measured
+  on the self-check (how many groups carry riders) before anything else is built
+  on it. Findings as a table, rixo rules each, fixes one commit per batch.
+  Parked for it at detectors checkpoint 7 (2026-09-27): `void x` reads as a
+  computed use, so a hook dropping its promise (`void cli.check(opts)`) is red
+  where canon lets a hook drop the value, and a boot's `void main()` goes
+  unjudged — a reader question; the fix flips the plumbing SPEC's mutation-table
+  line that counts that red as a catch. And five `stable-root` unknowns from the
+  roles commit: the test reader's `Role` constants, `as const` their way out.
+  `04/05_sweep` closed 2026-09-28 in four checkpoints: the review (24 findings,
+  all ruled), the rulings and the parked cleanups applied, a title audit of
+  every test (113 findings; five unguarded behaviors pinned on the way), the
+  close. Next: `04/07`, canon first.
 
   Then `04/07_driver-readers` (added 2026-09-28, runs before `04/06`: the test
-  reader rides on it). A driver is read only by a reader bound to its tech; the
-  stock plain-TypeScript reader reads the driver kind with no tech of its own,
-  and everything it cannot know is filed as tech — a concrete import, any free
-  name outside the language list, the project-wide `driverTech`. Ruled
-  2026-09-28, the SPEC's input:
-
-  - A reader claims its tech; a driver's tech is only what something claims.
-    What nothing claims is `unclaimed`, never tech: red in a driver; at a
-    service's root, red or unknown — to rule.
-  - `readers` becomes an ordered array; claims stack across the readers bound to
-    a file (a node reader claims `process` and the builtins, a TS one the
-    language), order settles only a disagreement. A user reader is an entry in
-    the array. `drivers` and `driverTech` dissolve into it (never released).
-  - Every callback handed to a claimed tech is a hook; a reader relaxes a rule
-    only by a role's exemption, with its reason. No open part: canon's "lenient
-    by default" (§ Driver) predates the unknown verdict and goes.
-  - A driver no reader reads is unknown and fails, its way out a binding.
-    `blob-driver`, a stock reader, silences one on purpose: it counts as blob
-    and keeps the driver's inbound seal.
-  - Assembly and boot are read by the core through the flavor.
-  - Canon pins "tech" to what a driver listens to and the values it hands; "a
-    layer that may touch the tech" gets its own words. No global rename.
-  - Canon is the step's first checkpoint. Until then four passages of § Driver
-    are known false: "Lenient by default, on purpose"; the plain-TypeScript
-    reading with the host's globals and declared packages as its tech;
-    "Plain-TypeScript drivers carry the `.driver.ts` suffix"; and "what the
-    project declares as tech for a technology no reading knows yet".
-  - The proof: deblob's own CLI rewritten to callbacks over a router of our own,
-    read by a claim-only reader. The corpus gets a fixture reader.
-  - Moved in from the sweep: a builtin undeclared in a driver is red (ruled at
-    its cp1); its way out, `driverTech`, is ruled out — a builtin is a reader's
-    claim here.
+  reader rides on it): a driver is read only by a reader bound to its tech, and
+  its tech is only what a reader claims; the flavor names every kind, tests
+  included; the language and host knowledge moves out of the reading into
+  readers, grouped by concern in the config; the `ts` reader brings the
+  TypeScript engine when it lands. SPEC drafted and ruled 2026-09-28; the
+  rulings that fed it live there now. Canon is its first checkpoint; until then
+  four passages of § Driver are known false (the SPEC names them).
 
   Then `04/06_test-rules` (added 2026-09-26, **not to slip**: the ruling it
   revisits was made provisional on purpose). What a test body may do is
@@ -651,6 +627,12 @@ may reopen the service example and the config pattern section.
   test and is not judged so. How to write tests stays out of scope (red-first
   included). Candidate for the "what applies to a test" rewrite above, beside C.
 
+  **Input: the test reader as a default** (2026-09-28, from `04/07` ruling 7).
+  `good-enough-tests` stays in the default readers through `04/07`, but it makes
+  wild assumptions about test patterns (the runners' names, one reader for every
+  runner). Reassess here whether it stays default, now that the flavor names
+  test files and an unread one fails loud.
+
   **Owed by the lens ruling** (added 2026-09-27; `04/04_lens` SPEC, § "Ruled
   2026-09-27: a hook hands the event on, untouched — (A)", carries each in
   full). Each lands at the step named, each with its own go:
@@ -686,9 +668,14 @@ may reopen the service example and the config pattern section.
   goes back to this board as a question. Recorded as a table in the step's SPEC;
   mismatches fixed there or carded on this board before 06.
 - `06_cli-restructure` — deblob's own CLI: `cli.boot.ts` (today's `bin.ts`),
-  `cli.driver.ts` (cac, one hook per command), `cli.assembly.ts` (factory calls,
-  returns the CLI service), `lib/cli/cli.service.ts` (parse, dispatch, render;
-  io port). Today's `main.ts` is red under every driver rule.
+  `cli.driver.ts` (callbacks over a router of our own, one hook per command,
+  read by a claim-only reader — realigned 2026-09-28 by `04/07`'s ruling 3, cac
+  retired), `cli.assembly.ts` (factory calls, returns the CLI service),
+  `lib/cli/cli.service.ts` (parse, dispatch, render; io port). Today's `main.ts`
+  is red under every driver rule. Open, from `04/07`: a router of our own is a
+  project file, and claims name packages today — can a reader claim a project
+  file as tech, and what kind is that file (not an adapter, and blob by name)?
+  Or the router is a package of its own.
 - `07_slugs` — code, skills, README follow canon (`test-setup-assembly` →
   `test-is-outside`, the new assembly/driver/boot rules); breaking, accepted.
   Implementation guide's config pattern (lazy `getConfig()` in the root)
@@ -709,6 +696,12 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
 
 ### Ideas
 
+- **Standard stacks without a config** (2026-09-28, rixo, to be discussed).
+  `node` is not in the stock default (`04/07` ruling 2), so every project with a
+  driver writes a `readers` line. CLI flags could switch a standard stack on
+  (`--node`, say) for a config-less run. Open: which stacks, and whether a flag
+  is the right carrier.
+
 - **Two hook calls the reader misses** (2026-09-28, found by the sweep's title
   audit, confirmed by runs; confessed as `missed red` in their rows, fixes not
   started). (1) `process.cwd()` behind `??` in a hook draws no "calls the host"
@@ -718,8 +711,9 @@ alignment review, 05 for the CLI restructure, 06 for the slugs.
   registered on a parameter no caller binds is not judged at all
   (`registerMore(parser)`, the second-wiring-function row): the true verdict is
   red, but what the reader can honestly say without the binding may be unknown
-  rather than red — a verdict question for rixo before the fix. Both are
-  `04/07_driver-readers` territory (what a hook's tech is), so look there first.
+  rather than red — answered by `04/07` § Ruled 8: a better reader would bind
+  it, so unknown. Both are `04/07_driver-readers` territory (what a hook's tech
+  is), so look there first.
 
 - **What the title audit left** (2026-09-28, the sweep's close). (1) The 26
   fixture tours — 11 in the extraction and reading specs, 15 in `main.spec.ts` —

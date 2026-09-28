@@ -79,6 +79,12 @@
 
 ### Ideas
 
+- **Configurable flavors** (rixo, 2026-09-28; not the first time it comes up) —
+  a stock flavor takes options: the flavor registry holds factories, and config
+  passes them their options. Today `flavor` is a stock name or a whole custom
+  resolver, nothing between. First case: overriding the test patterns the flavor
+  names since `20260913_driver-layer/04_outside-rules/07_driver-readers`
+  (`.spec`, `.test`, `.e2e`).
 - **Functions as variables, an opt-in** (rixo, 2026-09-26) — decided: a function
   declaration or a method (on a class, on an object) is code, never state,
   though the runtime lets it be reassigned — using one as a variable is the
@@ -92,9 +98,11 @@
   globs, `globals`, `setupFiles`), possibly asks vitest itself for the list of
   tests; a jest reader declares its globals, so a free `describe` is the
   runner's only where a reader says so. `good-enough-tests` stays the first,
-  fast adapter: common conventions over every runner it knows. `Reader` stays
-  the one generic port: a runner's globals is a generic addition (the free names
-  a tech defines), made by the first reader that needs it.
+  fast adapter: common conventions over every runner it knows. A runner's
+  globals is an addition to the test reader's interface (the free names a tech
+  defines), made by the first reader that needs it. _Since
+  `20260913_driver-layer/04_outside-rules/07_driver-readers`: one reader
+  interface per concern (language, host, test, driver), not one generic port._
 - **`deblob blob [--branch]`** (rixo, 2026-09-25) — list the blob files. With
   `--branch`, only the blob files in the diff, by default the current branch
   against `origin/main`.
@@ -125,7 +133,14 @@
   of one unit of knowledge, how a codebase gets the units that apply (detected,
   declared, or both), what happens when two sources disagree (the reader, the
   engine, a unit), and whether the user's `pure` is the same concept or its
-  neighbour. See `20260913_driver-layer/06_unknown-verdict/SPEC.md`.
+  neighbour. See `20260913_driver-layer/06_unknown-verdict/SPEC.md`. **Ruled
+  2026-09-28** (`20260913_driver-layer/04_outside-rules/07_driver-readers`):
+  knowledge lives in readers, one interface per concern; the language half lands
+  there (`js`, `ts`), the host half as `node`. The `ts` reader brings the
+  TypeScript engine — the engine is not a source beside the readers but the `ts`
+  reader's, and `noTsc` becomes an option of `ts()`. Open: who brings the parser
+  — oxc as the `js`/`ts` readers', or the core's for ES syntax with a reader
+  turning its format into ES (a `.svelte` file) — and the questions above.
 - **Readonly laundered away after the root** (rixo, 2026-09-23, to discuss
   calmly and decide) — `stable-root`'s readonly half proves what a root
   binding's syntax allows, and TypeScript refuses direct writes through it
