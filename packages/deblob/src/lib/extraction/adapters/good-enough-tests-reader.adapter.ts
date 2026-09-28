@@ -22,10 +22,13 @@ const RUNNERS: ReadonlySet<string> = new Set([
   "tap",
 ])
 
-const SETUP_EACH: Role = { kind: "setup", scope: "each" }
-const SETUP_ALL: Role = { kind: "setup", scope: "all" }
-const TEARDOWN_EACH: Role = { kind: "teardown", scope: "each" }
-const TEARDOWN_ALL: Role = { kind: "teardown", scope: "all" }
+const SETUP_EACH = { kind: "setup", scope: "each" } as const satisfies Role
+const SETUP_ALL = { kind: "setup", scope: "all" } as const satisfies Role
+const TEARDOWN_EACH = {
+  kind: "teardown",
+  scope: "each",
+} as const satisfies Role
+const TEARDOWN_ALL = { kind: "teardown", scope: "all" } as const satisfies Role
 
 /**
  * The runners' names, in deblob's roles — the names the runners above share.
@@ -34,7 +37,7 @@ const TEARDOWN_ALL: Role = { kind: "teardown", scope: "all" }
  * `node:test` and mocha. A mock is a module factory (`vi.mock`, `jest.mock`),
  * never `vi.fn`'s implementation: a name not listed maps to no role.
  */
-const ROLES: Readonly<Record<string, Role>> = {
+const ROLES = {
   describe: { kind: "group" },
   suite: { kind: "group" },
   it: { kind: "behavior" },
@@ -47,7 +50,7 @@ const ROLES: Readonly<Record<string, Role>> = {
   after: TEARDOWN_ALL,
   "vi.mock": { kind: "mock" },
   "jest.mock": { kind: "mock" },
-}
+} as const satisfies Readonly<Record<string, Role>>
 
 /**
  * The test naming — canon: test files are recognized by their tech's globs.
@@ -84,7 +87,7 @@ export const createGoodEnoughTestsReader = (): Reader => ({
   roleOf: (chain) => {
     for (let length = chain.length; length > 0; length -= 1) {
       const name = chain.slice(0, length).join(".")
-      if (Object.hasOwn(ROLES, name)) return ROLES[name] as Role
+      if (Object.hasOwn(ROLES, name)) return ROLES[name as keyof typeof ROLES]
     }
     return null
   },
