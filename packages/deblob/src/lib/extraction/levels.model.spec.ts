@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
@@ -50,7 +50,7 @@ const levelsOf = async (files: readonly string[] = FILES) => {
 }
 
 describe("useCaseLevels", () => {
-  test("a use case called from a driver's hook is primary, traced through the assembly's returned record to its service", async () => {
+  it("labels a use case called from a driver's hook primary, traced through the assembly's returned record to its service", async () => {
     const { primary } = await levelsOf()
     expect(
       primary.map(({ service, member, driver, span }) => [
@@ -70,7 +70,7 @@ describe("useCaseLevels", () => {
     ])
   })
 
-  test("a use case on an instance the reading cannot trace is listed unresolved; an adapter or a model instance reached through the records is neither", async () => {
+  it("lists a use case on an instance the reading cannot trace as unresolved; an adapter or a model instance reached through the records is neither", async () => {
     const { primary, unresolved } = await levelsOf()
     expect(
       unresolved.map(({ driver, member, span }) => [driver, member, span.line]),
@@ -90,7 +90,7 @@ describe("useCaseLevels", () => {
     expect(primary.map(({ member }) => member)).not.toContain("registry.get")
   })
 
-  test("a sub-driver's hook counts once its parameters are bound: the same use case, another driver", async () => {
+  it("counts a sub-driver's hook once its parameters are bound: the same use case, another driver", async () => {
     const { primary } = await levelsOf(
       FILES.filter((file) => file !== "src/other.driver.ts"),
     )
@@ -99,7 +99,7 @@ describe("useCaseLevels", () => {
     ).toContainEqual(["check", "src/sub.driver.ts"])
   })
 
-  test("test hooks never label", async () => {
+  it("never labels from a test hook", async () => {
     const { primary, unresolved } = await levelsOf()
     expect(primary.map(({ driver }) => driver)).not.toContain(
       "src/app/app.service.spec.ts",

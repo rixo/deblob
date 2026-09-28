@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { STOCK_FLAVOR_NAME } from "../stock-flavor.model.ts"
 import {
@@ -12,7 +12,7 @@ const classify = (files: string[]) =>
   createTsSuffixesFactoriesFlavor().classify(files)
 
 describe("stock flavor registry", () => {
-  test("yields this flavor under the stock name", () => {
+  it("yields this flavor under the stock name", () => {
     const flavor = STOCK_FLAVORS[STOCK_FLAVOR_NAME]?.()
     const result = flavor?.classify(["icons/icons.model.ts"])
     expect(result?.get("icons/icons.model.ts")?.layer).toBe("model")
@@ -20,7 +20,7 @@ describe("stock flavor registry", () => {
 })
 
 describe("ts-suffixes-factories flavor", () => {
-  test("classifies each layer suffix to its layer", () => {
+  it("classifies each layer suffix to its layer", () => {
     const result = classify([
       "icons/icons.model.ts",
       "icons/icons.service.ts",
@@ -33,13 +33,13 @@ describe("ts-suffixes-factories flavor", () => {
     expect(result.get("icons/fs-source.adapter.ts")?.layer).toBe("adapters")
   })
 
-  test("classifies every file of the set — none skipped", () => {
+  it("classifies every file of the set — none skipped", () => {
     const files = ["a/a.model.ts", "b/readme.md", "c.ts"]
     const result = classify(files)
     expect([...result.keys()].sort()).toEqual([...files].sort())
   })
 
-  test("classifies unsuffixed files as blob", () => {
+  it("classifies unsuffixed files as blob", () => {
     const result = classify(["src/util.ts"])
     expect(result.get("src/util.ts")).toEqual({
       layer: "blob",
@@ -48,7 +48,7 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  test("classifies unknown shapes as blob, never an error (open-set tripwire)", () => {
+  it("classifies unknown shapes as blob, never an error (open-set tripwire)", () => {
     const result = classify([
       "src/foo.helper.ts",
       "src/widget.svelte",
@@ -59,7 +59,7 @@ describe("ts-suffixes-factories flavor", () => {
     expect(result.get("src/data.json")?.layer).toBe("blob")
   })
 
-  test("classifies the outside kinds by suffix — assembly, driver, boot", () => {
+  it("classifies the outside kinds by suffix — assembly, driver, boot", () => {
     const result = classify([
       "src/cli.assembly.ts",
       "src/cli.driver.ts",
@@ -73,7 +73,7 @@ describe("ts-suffixes-factories flavor", () => {
     expect(result.get("src/assembly/wire.ts")?.layer).toBe("blob")
   })
 
-  test("outside kinds mark no service root — a driver directory is not a service", () => {
+  it("marks no service root for the outside kinds — a driver directory is not a service", () => {
     const result = classify([
       "src/drivers/cli/cli.driver.ts",
       "src/drivers/cli/cli.boot.ts",
@@ -85,7 +85,7 @@ describe("ts-suffixes-factories flavor", () => {
     }
   })
 
-  test("attributes an outside-kind file to an enclosing service root like any file", () => {
+  it("attributes an outside-kind file to an enclosing service root like any file", () => {
     const result = classify([
       "src/lib/cli/cli.service.ts",
       "src/lib/cli/cli.assembly.ts",
@@ -95,7 +95,7 @@ describe("ts-suffixes-factories flavor", () => {
     )
   })
 
-  test("attributes a file to the nearest ancestor service root", () => {
+  it("attributes a file to the nearest ancestor service root", () => {
     const result = classify(["icons/icons.service.ts", "icons/notes.ts"])
     expect(result.get("icons/notes.ts")).toEqual({
       layer: "blob",
@@ -104,7 +104,7 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  test("does not count a layer grouping dir as a service root", () => {
+  it("does not count a layer grouping dir as a service root", () => {
     const result = classify([
       "icons/icons.service.ts",
       "icons/ports/icon-source.port.ts",
@@ -114,19 +114,19 @@ describe("ts-suffixes-factories flavor", () => {
     )
   })
 
-  test("attributes through a chain of grouping dirs when the service dir has no direct layer file", () => {
+  it("attributes through a chain of grouping dirs when the service dir has no direct layer file", () => {
     const result = classify(["icons/ports/icon-source.port.ts"])
     expect(result.get("icons/ports/icon-source.port.ts")?.serviceRoot).toBe(
       "icons",
     )
   })
 
-  test("treats a repo-root layer file as belonging to the root service", () => {
+  it("treats a repo-root layer file as belonging to the root service", () => {
     const result = classify(["app.model.ts"])
     expect(result.get("app.model.ts")?.serviceRoot).toBe(".")
   })
 
-  test("marks private/ subtree membership", () => {
+  it("marks private/ subtree membership", () => {
     const result = classify([
       "icons/icons.service.ts",
       "icons/private/scoring.model.ts",
@@ -138,7 +138,7 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  test("gives a nested service its own root", () => {
+  it("gives a nested service its own root", () => {
     const result = classify([
       "icons/icons.service.ts",
       "icons/manifest/manifest.adapter.ts",
@@ -152,7 +152,7 @@ describe("ts-suffixes-factories flavor", () => {
     )
   })
 
-  test("gives a nested service under private/ its own root, still private", () => {
+  it("gives a nested service under private/ its own root, still private", () => {
     const result = classify([
       "icons/icons.service.ts",
       "icons/private/manifest/manifest.service.ts",
@@ -164,7 +164,7 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  test("leaves test naming to the test runner's binding: a spec file is blob to the flavor, filed under its service, marking no root", () => {
+  it("leaves test naming to the test runner's binding: a spec file is blob to the flavor, filed under its service, marking no root", () => {
     const result = classify([
       "icons/icons.model.spec.ts",
       "icons/loader.test.ts",
@@ -187,13 +187,13 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  test("does not let a spec file's layered stem mark a service root", () => {
+  it("does not let a spec file's layered stem mark a service root", () => {
     const result = classify(["icons/icons.service.spec.ts", "icons/util.ts"])
     expect(result.get("icons/util.ts")?.serviceRoot).toBe(null)
     expect(result.get("icons/icons.service.spec.ts")?.layer).toBe("blob")
   })
 
-  test("keeps .svelte and unknown suffixes blob", () => {
+  it("keeps .svelte and unknown suffixes blob", () => {
     const result = classify(["src/widget.svelte", "src/foo.specs.ts"])
     expect(result.get("src/widget.svelte")?.layer).toBe("blob")
     expect(result.get("src/foo.specs.ts")?.layer).toBe("blob")
@@ -201,7 +201,7 @@ describe("ts-suffixes-factories flavor", () => {
 })
 
 describe("classifyStockEntry — the naming rule over subpath and specifier tails", () => {
-  test("classifies each layer suffix on an extensionless tail", () => {
+  it("classifies each layer suffix on an extensionless tail", () => {
     expect(classifyStockEntry("checkout.service")).toBe("service")
     expect(classifyStockEntry("totals.model")).toBe("model")
     expect(classifyStockEntry("store.port")).toBe("ports")
@@ -211,12 +211,12 @@ describe("classifyStockEntry — the naming rule over subpath and specifier tail
     expect(classifyStockEntry("cli.boot")).toBe("boot")
   })
 
-  test("reads exports-map subpaths as written — ./ prefix and nesting", () => {
+  it("reads exports-map subpaths as written — ./ prefix and nesting", () => {
     expect(classifyStockEntry("./checkout.service")).toBe("service")
     expect(classifyStockEntry("./nested/totals.model")).toBe("model")
   })
 
-  test("sees through an extension — dist artifacts and typed entries included", () => {
+  it("sees through an extension — dist artifacts and typed entries included", () => {
     expect(classifyStockEntry("checkout.service.js")).toBe("service")
     expect(classifyStockEntry("dist/checkout.service.mjs")).toBe("service")
     expect(classifyStockEntry("src/stripe.adapter.ts")).toBe("adapters")
@@ -224,7 +224,7 @@ describe("classifyStockEntry — the naming rule over subpath and specifier tail
     expect(classifyStockEntry("checkout.service.d.mts")).toBe("service")
   })
 
-  test("claims nothing for unsuffixed tails — the bare root included", () => {
+  it("claims nothing for unsuffixed tails — the bare root included", () => {
     expect(classifyStockEntry("")).toBe(null)
     expect(classifyStockEntry(".")).toBe(null)
     expect(classifyStockEntry("./")).toBe(null)
@@ -232,25 +232,25 @@ describe("classifyStockEntry — the naming rule over subpath and specifier tail
     expect(classifyStockEntry("dist/index.js")).toBe(null)
   })
 
-  test("claims nothing for a suffix no list names — the set is the record, no census (tripwire)", () => {
+  it("claims nothing for a suffix no list names — the set is the record, no census (tripwire)", () => {
     expect(classifyStockEntry("thing.mega-widget")).toBe(null)
     expect(classifyStockEntry("x.spec")).toBe(null)
     expect(classifyStockEntry("x.helper.js")).toBe(null)
   })
 
-  test("rides the resolver instance as classifyEntry — the port method is the same rule", () => {
+  it("rides the resolver instance as classifyEntry — the port method is the same rule", () => {
     const flavor = createTsSuffixesFactoriesFlavor()
     expect(flavor.classifyEntry?.("checkout.service")).toBe("service")
   })
 })
 
 describe("the factory naming rule — `create` followed by a capital", () => {
-  test("names the guide's factories", () => {
+  it("names the guide's factories", () => {
     expect(isStockFactoryName("createSomeMadeUpService")).toBe(true)
     expect(isStockFactoryName("createX")).toBe(true)
   })
 
-  test("names nothing else: bare, lowercase continuation, other prefixes, the default export", () => {
+  it("names nothing else: bare, lowercase continuation, other prefixes, the default export", () => {
     expect(isStockFactoryName("create")).toBe(false)
     expect(isStockFactoryName("createdAt")).toBe(false)
     expect(isStockFactoryName("creates")).toBe(false)
@@ -259,7 +259,7 @@ describe("the factory naming rule — `create` followed by a capital", () => {
     expect(isStockFactoryName("default")).toBe(false)
   })
 
-  test("rides the resolver instance as isFactory — the port method is the same rule", () => {
+  it("rides the resolver instance as isFactory — the port method is the same rule", () => {
     const flavor = createTsSuffixesFactoriesFlavor()
     expect(flavor.isFactory?.("createSomeMadeUpThing")).toBe(true)
     expect(flavor.isFactory?.("someMadeUpThing")).toBe(false)

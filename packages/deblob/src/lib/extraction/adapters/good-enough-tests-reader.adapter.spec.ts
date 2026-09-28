@@ -1,9 +1,9 @@
-import { describe, expect, it, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.adapter.ts"
 
 describe("createGoodEnoughTestsReader", () => {
-  test("binds the test naming, reads the test kind only, claims the runners it knows by package, exempts the four", () => {
+  it("binds the test naming, reads the test kind only, claims the runners it knows by package, exempts the four", () => {
     const reader = createGoodEnoughTestsReader()
     expect(reader.name).toBe("good-enough-tests")
     expect(reader.files).toEqual([
@@ -66,7 +66,7 @@ describe("createGoodEnoughTestsReader", () => {
       expect(roleOf(["vi", "mock"])).toEqual({ kind: "mock" })
     })
 
-    test.each([
+    it.each([
       ["a runner name not listed", ["bench"]],
       ["an unlisted member of a listed name's root (`vi.fn`)", ["vi", "fn"]],
       ["a name every object inherits", ["constructor"]],

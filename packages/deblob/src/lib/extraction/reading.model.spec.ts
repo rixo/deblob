@@ -157,7 +157,7 @@ describe("readModule", () => {
     const calls = callsOf(main.body)
     const callee = (line: number): CalleeKind => callAt(calls, line).callee
 
-    test("cuts every top-level function definition, exported or not, named or default", () => {
+    it("cuts every top-level function definition, exported or not, named or default", () => {
       expect(
         reading.functions.map((fn) => [fn.name, fn.exported, fn.params.length]),
       ).toEqual([
@@ -170,7 +170,7 @@ describe("readModule", () => {
       expect(reading.tech).toBe("plain-ts")
     })
 
-    test("the kinds table — one callee kind per import target, the language, the host", () => {
+    it("gives each import target its one callee kind, and the language and the host theirs — the kinds table", () => {
       expect(callee(20)).toEqual({
         kind: "factory",
         layer: "service",
@@ -222,7 +222,7 @@ describe("readModule", () => {
       expect(callee(42)).toEqual({ kind: "language" })
     })
 
-    test("a member called on an instance is a use case, with the factory it came from", () => {
+    it("reads a member called on an instance as a use case, with the factory it came from", () => {
       expect(callee(21)).toEqual({
         kind: "use-case",
         member: "run",
@@ -234,7 +234,7 @@ describe("readModule", () => {
       })
     })
 
-    test("a call's result called inline is classified by its value: a factory's result is an instance, so a use case with no member; `this` stays unknown, listed open", () => {
+    it("classifies a call's result called inline by its value: a factory's result is an instance, so a use case with no member; `this` stays unknown, listed open", () => {
       expect(
         calls.filter((call) => call.span.line === 58).map((c) => c.callee.kind),
       ).toEqual(["factory", "use-case"])
@@ -249,7 +249,7 @@ describe("readModule", () => {
       ).toEqual([47, 59, 71])
     })
 
-    test("a shadowing local wins over the import — a local definition", () => {
+    it("reads a shadowing local over the import — a local definition", () => {
       // no flavor's word given to the reader: nothing is a factory by name
       expect(callee(50)).toEqual({
         kind: "local",
@@ -258,7 +258,7 @@ describe("readModule", () => {
       })
     })
 
-    test("dynamic import and bound require read as imports of their target", () => {
+    it("reads a dynamic import and a bound require as imports of their target", () => {
       expect(callee(35)).toEqual({
         kind: "factory",
         layer: "assembly",
@@ -273,7 +273,7 @@ describe("readModule", () => {
       })
     })
 
-    test("argument kinds: a literal, a record joined to its least allowed entry, the tech, an instance", () => {
+    it("gives each argument its kind: a literal, a record joined to its least allowed entry, the tech, an instance", () => {
       const kinds = (line: number) =>
         callAt(calls, line).args.map((arg) => arg.kind)
       expect(kinds(20)).toEqual(["tech"])
@@ -298,7 +298,7 @@ describe("readModule", () => {
       })
     })
 
-    test("result flow: every context a bound result reaches, in order", () => {
+    it("follows a bound result to every context it reaches, in order", () => {
       // each use where it is made: the kind, and the line of the reference
       const uses = (line: number) =>
         callAt(calls, line).result.map((use) => [use.kind, use.span.line])
@@ -326,7 +326,7 @@ describe("readModule", () => {
       expect(uses(53)).toEqual([["computed", 53]])
     })
 
-    test("controls: what the test reads off — a parameter, an instance, a computed value", () => {
+    it("reads what a control's test reads off — a parameter, an instance, a computed value", () => {
       expect(
         controls(main.body).map((control) => [
           control.span.line,
@@ -352,7 +352,7 @@ describe("readModule", () => {
       ).toEqual([["factory"], ["tech"]])
     })
 
-    test("definitions carry their value kind; a reassigned let is computed", () => {
+    it("gives definitions their value kind; a reassigned let is computed", () => {
       const definitions = main.body.flatMap((statement) =>
         statement.kind === "definition"
           ? [[statement.name, statement.form, statement.value]]
@@ -374,7 +374,7 @@ describe("readModule", () => {
       expect(callee(54)).toEqual({ kind: "language" })
     })
 
-    test("the cut: a function handed to a tech callee is a hook; to the language, read inline where it sits — nothing open", () => {
+    it("cuts a function handed to a tech callee as a hook, and reads one handed to the language inline where it sits — nothing open", () => {
       expect(
         main.hooks.map((hook) => [hook.span.line, hook.registeredBy.callee]),
       ).toEqual([[56, { kind: "tech", package: null }]])
@@ -391,7 +391,7 @@ describe("readModule", () => {
     // argument vector), never joining sites to unknown: step 03's open-part
     // checkpoint (history/20260913_driver-layer/03_outside-rules/SPEC.md § The
     // open part, audited, item 1), pinned in extraction.service.spec.ts.
-    test("parameters are unknown until a call site binds them — listed open, once each", () => {
+    it("leaves parameters unknown until a call site binds them — listed open, once each", () => {
       expect(main.params).toEqual([
         { name: "param", kind: "unknown" },
         { name: "b", kind: "unknown" },
@@ -402,14 +402,14 @@ describe("readModule", () => {
       ).toHaveLength(4)
     })
 
-    test("the return statement carries the returned value's kind", () => {
+    it("gives the return statement the returned value's kind", () => {
       expect(main.body.at(-1)).toMatchObject({
         kind: "return",
         value: "computed",
       })
     })
 
-    test("spans carry line and column, 1-based", () => {
+    it("gives spans line and column, 1-based", () => {
       expect(callAt(calls, 20).span).toMatchObject({ line: 20, column: 20 })
     })
   })
@@ -511,7 +511,7 @@ describe("readModule", () => {
       ])
     })
 
-    test.each([
+    it.each([
       ["a runner name the roles do not list", 19],
       ["a member of a listed name that is not listed itself (`vi.fn`)", 20],
       ["a name every object inherits (`constructor`)", 21],
@@ -608,7 +608,7 @@ describe("readModule", () => {
     const callee = (line: number): CalleeKind =>
       callAt(calls.toReversed(), line).callee
 
-    test("an instance called bare is a use case named by its binding; a namespace called bare, a parameter, a tech value, a bare let: by their kinds", () => {
+    it("reads an instance called bare as a use case named by its binding; a namespace called bare, a parameter, a tech value, a bare let by their kinds", () => {
       expect(callee(9)).toEqual({
         kind: "use-case",
         member: "inst",
@@ -624,12 +624,12 @@ describe("readModule", () => {
       expect(callee(18)).toEqual({ kind: "language" })
     })
 
-    test("a binding cycle resolves unknown; a member destructured from a computed value is computed", () => {
+    it("resolves a binding cycle unknown; a member destructured from a computed value is computed", () => {
       expect(callee(16)).toEqual({ kind: "unknown" })
       expect(callee(20)).toEqual({ kind: "language" })
     })
 
-    test("a computed member is read as `[]`: a use case on an instance keeps its origin", () => {
+    it("reads a computed member as `[]`: a use case on an instance keeps its origin", () => {
       expect(callee(22)).toMatchObject({ kind: "use-case", member: "[]" })
       expect(callee(24)).toEqual({
         kind: "factory",
@@ -641,7 +641,7 @@ describe("readModule", () => {
       expect(callee(25)).toMatchObject({ kind: "use-case", member: "e" })
     })
 
-    test("a shadowed `require` is a local, not an import", () => {
+    it("reads a shadowed `require` as a local, not an import", () => {
       expect(callee(27)).toEqual({
         kind: "local",
         name: "require",
@@ -650,17 +650,17 @@ describe("readModule", () => {
       expect(callee(28)).toEqual({ kind: "language" })
     })
 
-    test("a hook registered after its first use is cut once, when its statement is walked", () => {
+    it("cuts a hook registered after its first use once, when its statement is walked", () => {
       expect(main.hooks.map((hook) => hook.span.line)).toEqual([30])
     })
 
-    test("spread arguments are computed", () => {
+    it("reads spread arguments as computed", () => {
       expect(callAt(calls, 31).args.map((arg) => arg.kind)).toEqual([
         "computed",
       ])
     })
 
-    test("test origins through unary, binary, an unbound name, a literal root, a use-case call, and an else arm", () => {
+    it("traces a control's test origin through unary, binary, an unbound name, a literal root, a use-case call, and an else arm", () => {
       expect(
         controls(main.body)
           .filter((control) => control.span.line < 57)
@@ -681,7 +681,7 @@ describe("readModule", () => {
       ])
     })
 
-    test("values: the literal globals, a language global, a member of a literal, a member of an instance, spreads and holes", () => {
+    it("gives values their kind: the literal globals, a language global, a member of a literal, a member of an instance, spreads and holes", () => {
       const definitions = Object.fromEntries(
         main.body.flatMap((statement) =>
           statement.kind === "definition"
@@ -704,7 +704,7 @@ describe("readModule", () => {
       })
     })
 
-    test("assignments to members and destructuring targets are `assignment` statements carrying the target root's kind, never calls; an increment is `other`", () => {
+    it("reads assignments to members and destructuring targets as `assignment` statements carrying the target root's kind, never calls; an increment is `other`", () => {
       const assignments = main.body.flatMap((statement) =>
         statement.kind === "assignment"
           ? [[statement.span.line, statement.target]]
@@ -730,7 +730,7 @@ describe("readModule", () => {
       expect(others).toEqual([64])
     })
 
-    test("a block-bodied callback read inline: its statements are the enclosing body's, its returns go to the callee it was handed to, never a `return` statement of the function", () => {
+    it("reads a block-bodied callback inline: its statements are the enclosing body's, its returns go to the callee it was handed to, never a `return` statement of the function", () => {
       // the callback's branch on its (computed) parameter sits in main's body
       expect(
         controls(main.body).map((control) => [
@@ -754,7 +754,7 @@ describe("readModule", () => {
       ).toEqual([103])
     })
 
-    test("binding patterns: rest, computed and string keys, a hole, an empty pattern; a tech or a literal destructured keeps its kind", () => {
+    it("reads binding patterns — rest, computed and string keys, a hole, an empty pattern; a tech or a literal destructured keeps its kind", () => {
       const definitions = Object.fromEntries(
         main.body.flatMap((statement) =>
           statement.kind === "definition"
@@ -775,7 +775,7 @@ describe("readModule", () => {
       expect(callee(61)).toEqual({ kind: "tech", package: null })
     })
 
-    test("bare calls on odd roots: a file outside coverage is the tech; a non-literal import or an expression called is the language; a module namespace called bare stays unknown", () => {
+    it("classifies bare calls on odd roots: a file outside coverage is the tech; a non-literal import or an expression called is the language; a module namespace called bare stays unknown", () => {
       expect(callee(67)).toEqual({ kind: "tech", package: "./outside.ts" })
       // a call on a tech-held value is the tech's, whatever its name
       expect(callee(68)).toEqual({ kind: "tech", package: null })
@@ -795,7 +795,7 @@ describe("readModule", () => {
       expect(callee(73)).toMatchObject({ kind: "use-case", member: "Klass" })
     })
 
-    test("test origins: a bound construction on an instance, a model call's member, a model call, a parameter compared, a loop with no test, a catch", () => {
+    it("traces a control's test origin: a bound construction on an instance, a model call's member, a model call, a parameter compared, a loop with no test, a catch", () => {
       expect(
         controls(main.body)
           .filter(
@@ -812,7 +812,7 @@ describe("readModule", () => {
       ])
     })
 
-    test("a conditional initializer: both arms' calls share the binding's result flow, and a use-case arm makes the test an instance's", () => {
+    it("shares a conditional initializer's result flow between both arms' calls, and a use-case arm makes the test an instance's", () => {
       expect(
         controls(main.body)
           .filter((control) => control.span.line >= 89)
@@ -834,7 +834,7 @@ describe("readModule", () => {
       ])
     })
 
-    test("root declarations that are not one function each stay root definitions; a function exported by specifier, an anonymous default", () => {
+    it("keeps root declarations that are not one function each as root definitions; a function exported by specifier, an anonymous default", () => {
       expect(reading.functions.map((fn) => [fn.name, fn.exported])).toEqual([
         ["main", true],
         ["viaSpecifier", true],
@@ -857,7 +857,7 @@ describe("readModule", () => {
     const calls = callsOf(main.body)
     const callee = (line: number): CalleeKind => callAt(calls, line).callee
 
-    test("a model import the flavor names is a factory of layer model; one it does not name stays model", () => {
+    it("reads a model import the flavor names as a factory of layer model; one it does not name stays model", () => {
       expect(callee(10)).toEqual({
         kind: "factory",
         layer: "model",
@@ -881,7 +881,7 @@ describe("readModule", () => {
       })
     })
 
-    test("a pure package's export: the same rule, the path is the specifier", () => {
+    it("reads a pure package's export by the same rule, the path being the specifier", () => {
       expect(callee(12)).toEqual({
         kind: "factory",
         layer: "model",
@@ -895,7 +895,7 @@ describe("readModule", () => {
       })
     })
 
-    test("a local function the flavor names is a local factory, its instance untraced; one it does not name is a plain local", () => {
+    it("reads a local function the flavor names as a local factory, its instance untraced; one it does not name is a plain local", () => {
       expect(callee(14)).toEqual({
         kind: "local",
         name: "createLocalThing",
@@ -913,7 +913,7 @@ describe("readModule", () => {
       })
     })
 
-    test("a root factory call named by the flavor: a root call with a factory callee, its definition an instance", () => {
+    it("reads a root factory call named by the flavor as a root call with a factory callee, its definition an instance", () => {
       expect(
         reading.root.map((statement) =>
           statement.kind === "call"
@@ -929,7 +929,7 @@ describe("readModule", () => {
       ])
     })
 
-    test("without the flavor's word, nothing is a factory by name — step 01's reading", () => {
+    it("names nothing a factory without the flavor's word — step 01's reading", () => {
       const plain = read("factories.ts", { layer: "assembly" })
       const kinds = callsOf(
         plain.functions.find((fn) => fn.name === "main")?.body ?? [],
@@ -953,7 +953,7 @@ describe("readModule", () => {
     if (!main) throw new Error("main not read")
     const calls = callsOf(main.body)
 
-    test("the tracked locals are no functions of the file; one passed as a value, or never called, stays one", () => {
+    it("keeps the tracked locals out of the file's functions; one passed as a value, or never called, stays one", () => {
       expect(reading.functions.map((fn) => fn.name)).toEqual([
         "passed",
         "dead",
@@ -1016,7 +1016,7 @@ describe("readModule", () => {
       ])
     })
 
-    test("the return value is the call's: an instance handed back binds an instance; two returns bind computed; no argument is a literal", () => {
+    it("gives the call its return value: an instance handed back binds an instance; two returns bind computed; no argument is a literal", () => {
       const definitions = Object.fromEntries(
         main.body.flatMap((statement) =>
           statement.kind === "definition"
@@ -1038,7 +1038,7 @@ describe("readModule", () => {
       ).toEqual([30])
     })
 
-    test("what the inlined bodies do with an argument is recorded on the caller's binding — the inlined text's flow, never an argument to a second function", () => {
+    it("records what the inlined bodies do with an argument on the caller's binding — the inlined text's flow, never an argument to a second function", () => {
       expect(callAt(calls, 18).result.map((use) => use.kind)).toEqual([
         "receiver", // register(process, thing): thing.run in the hook
         "receiver", // register(thing, process): thing.on
@@ -1058,7 +1058,7 @@ describe("readModule", () => {
       ).toBe(false)
     })
 
-    test("a tracked local calling itself reads the inner call as a local callee; a branch on its parameter is a branch on a parameter; nothing open", () => {
+    it("reads the inner call of a tracked local calling itself as a local callee; a branch on its parameter is a branch on a parameter; nothing open", () => {
       expect(
         controls(main.body).map((control) => [
           control.span.line,
@@ -1082,7 +1082,7 @@ describe("readModule", () => {
     const main = reading.functions.find((fn) => fn.name === "main")
     if (!main) throw new Error("main not read")
 
-    test("a property name, a key, a label, an import or export name, a function expression's own name and a type are no references: `named` is tracked and read at its one site", () => {
+    it("reads no reference in a property name, a key, a label, an import or export name, a function expression's own name or a type: `named` is tracked and read at its one site", () => {
       expect(reading.functions.map((fn) => fn.name)).toEqual([
         "keyed",
         "g",
@@ -1095,7 +1095,7 @@ describe("readModule", () => {
       expect(reading.open).toEqual([])
     })
 
-    test("a computed key is a reference: `keyed` is not tracked, its call reads `local`, and a function expression is a function of the file", () => {
+    it("reads a computed key as a reference: `keyed` is not tracked, its call reads `local`, and a function expression is a function of the file", () => {
       expect(reading.functions.map((fn) => fn.name)).toContain("keyed")
       expect(reading.functions.map((fn) => fn.name)).toContain("g")
     })
@@ -1152,7 +1152,7 @@ describe("readModule", () => {
       "shadowedDeep",
     ]
 
-    test('`helper` is no function of the file: it is read at its sites, so only the four sites are functions — `readsIn("helper")` has nothing to find', () => {
+    it('keeps `helper` out of the functions of the file: it is read at its sites, so only the four sites are functions — `readsIn("helper")` has nothing to find', () => {
       expect(reading.functions.map((fn) => fn.name)).toEqual([
         "plainSite",
         "shadowedByLocals",
@@ -1181,11 +1181,11 @@ describe("readModule", () => {
       "use-case run of createThing", // if (mode) thing.run()
     ]
 
-    test("the control: at a site that rebinds nothing, helper's lines are all there is to read", () => {
+    it("reads only helper's lines at a site that rebinds nothing — the control", () => {
       expect(readsIn("plainSite")).toEqual(HELPERS_LINES)
     })
 
-    test("a use case's origin is the instance built in the body, never a binding of the same name at the site", () => {
+    it("takes a use case's origin from the instance built in the body, never from a binding of the same name at the site", () => {
       // the site's `thing` is an object literal and carries no origin, so an
       // origin read at the site would be `(no origin)`, not this factory
       expect(
@@ -1198,7 +1198,7 @@ describe("readModule", () => {
       )
     })
 
-    test("a branch tests the module's value, not the literal the site binds to that name", () => {
+    it("reads a branch as testing the module's value, not the literal the site binds to that name", () => {
       // `mode` is `process.env.MODE` where helper is written and a plain `0`
       // at every site: reading the site's would give `literal / other`
       expect(SITES.map(branchesIn)).toEqual([
@@ -1211,13 +1211,13 @@ describe("readModule", () => {
       ])
     })
 
-    test("an assignment writes to the module's reassignable binding, not to the literal the site binds to that name", () => {
+    it("reads an assignment as writing to the module's reassignable binding, not to the literal the site binds to that name", () => {
       // `tally` is a root `let` where helper is written, a `const` string at
       // every site: reading the site's would give `literal`
       expect(SITES.map(writesIn)).toEqual(SITES.map(() => ["computed"]))
     })
 
-    test("the same four names read as the import, the package and the host inside the inlined body, and as the site's own bindings on the site's own lines", () => {
+    it("reads the same four names as the import, the package and the host inside the inlined body, and as the site's own bindings on the site's own lines", () => {
       expect(readsIn("shadowedByLocals")).toEqual([
         // helper()        — the call itself is gone, its body read here
         ...HELPERS_LINES,
@@ -1232,7 +1232,7 @@ describe("readModule", () => {
       ])
     })
 
-    test("parameters rebind exactly as locals do: the body is unmoved, the site's own lines read the parameters", () => {
+    it("rebinds parameters exactly as locals: the body is unmoved, the site's own lines read the parameters", () => {
       expect(readsIn("shadowedByParams")).toEqual([
         // helper()
         ...HELPERS_LINES,
@@ -1245,7 +1245,7 @@ describe("readModule", () => {
       ])
     })
 
-    test("the site's depth does not matter: rebindings spread over a function, a block and a callback capture nothing", () => {
+    it("captures nothing from rebindings spread over a function, a block and a callback — the site's depth does not matter", () => {
       expect(readsIn("shadowedDeep")).toEqual([
         // helper(), from inside the innermost callback
         ...HELPERS_LINES,
@@ -1268,7 +1268,7 @@ describe("readModule", () => {
     if (!assembly) throw new Error("createFactsAssembly not read")
     const calls = callsOf(assembly.body)
 
-    test("a local function is not read inline: it stays a function of the file, its call a local callee", () => {
+    it("reads a local function outside inlining: it stays a function of the file, its call a local callee", () => {
       expect(reading.functions.map((fn) => fn.name)).toEqual([
         "rootOf",
         "createFactsAssembly",
@@ -1281,14 +1281,14 @@ describe("readModule", () => {
       })
     })
 
-    test("a field read straight off a call is a member use of its result", () => {
+    it("reads a field read straight off a call as a member use of its result", () => {
       const store = calls.find(
         (call) => call.span.line === 11 && call.callee.kind === "factory",
       )
       expect(store?.result.map((use) => use.kind)).toEqual(["member"])
     })
 
-    test("a conditional's value is its arms' join: one origin when both share it, none when they differ", () => {
+    it("joins a conditional's value from its arms: one origin when both share it, none when they differ", () => {
       const record = callAt(calls, 14).args[0]?.entries
       expect(record?.map(({ key, value }) => [key, value.kind])).toEqual([
         ["same", "instance"],
@@ -1378,12 +1378,12 @@ describe("readModule", () => {
     const all = (names: string[], expected: boolean) =>
       names.map((name) => [name, expected])
 
-    test("code is readonly: a function, class or enum declaration", () => {
+    it("marks code readonly: a function, class or enum declaration", () => {
       const names = ["fnDecl", "ClassDecl", "EnumDecl"]
       expect(readonlyOf(...names)).toEqual(all(names, true))
     })
 
-    test("a const whose initializer's form is immutable: primitives and their operators, functions, `as const`, `Object.freeze`, an assertion to a readonly type, through TS wrappers", () => {
+    it("marks readonly a const whose initializer's form is immutable: primitives and their operators, functions, `as const`, `Object.freeze`, an assertion to a readonly type, through TS wrappers", () => {
       const names = [
         "primitive",
         "str",
@@ -1408,7 +1408,7 @@ describe("readModule", () => {
       expect(readonlyOf(...names)).toEqual(all(names, true))
     })
 
-    test("a const whose annotation is readonly at its top: `Readonly*`, `readonly T[]`, a primitive keyword, a literal type, unions and parentheses of those", () => {
+    it("marks readonly a const whose annotation is readonly at its top: `Readonly*`, `readonly T[]`, a primitive keyword, a literal type, unions and parentheses of those", () => {
       const names = [
         "annotatedReadonly",
         "annotatedArray",
@@ -1422,7 +1422,7 @@ describe("readModule", () => {
       expect(readonlyOf(...names)).toEqual(all(names, true))
     })
 
-    test("a destructured const reads the whole declarator's form", () => {
+    it("reads a destructured const by the whole declarator's form", () => {
       expect(readonlyOf("d1", "d2", "d3")).toEqual([
         ["d1", true],
         ["d2", true],
@@ -1430,7 +1430,7 @@ describe("readModule", () => {
       ])
     })
 
-    test("not readonly: let and var, a record, array, `new`, call or member initializer, a mutable assertion, an alias annotation, a mixed union, an awaited value, a default-exported record", () => {
+    it("marks not readonly: let and var, a record, array, `new`, call or member initializer, a mutable assertion, an alias annotation, a mixed union, an awaited value, a default-exported record", () => {
       const names = [
         "letBinding",
         "varBinding",

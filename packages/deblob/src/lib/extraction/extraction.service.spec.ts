@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
@@ -107,7 +107,7 @@ const edgesFrom = (graph: ImportGraph, from: string): ImportEdge[] =>
   graph.edges.filter((edge) => edge.from === from)
 
 describe("extractGraph over the forms fixture", () => {
-  test("yields a runtime static edge for a plain import", async () => {
+  it("yields a runtime static edge for a plain import", async () => {
     const edges = edgesFrom(await extractForms(), "src/static-runtime.ts")
     expect(edges).toEqual([
       {
@@ -120,7 +120,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("yields a type edge for an `import type` statement", async () => {
+  it("yields a type edge for an `import type` statement", async () => {
     const edges = edgesFrom(await extractForms(), "src/type-statement.ts")
     expect(edges).toEqual([
       {
@@ -133,7 +133,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("yields one runtime edge for a mixed `{ mk, type T }` statement", async () => {
+  it("yields one runtime edge for a mixed `{ mk, type T }` statement", async () => {
     const edges = edgesFrom(await extractForms(), "src/mixed.ts")
     expect(edges).toEqual([
       {
@@ -146,7 +146,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("dedupes type + runtime statements to the same target into one runtime edge", async () => {
+  it("dedupes type + runtime statements to the same target into one runtime edge", async () => {
     const edges = edgesFrom(await extractForms(), "src/two-statements.ts")
     expect(edges).toEqual([
       {
@@ -159,7 +159,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("yields a type edge for `export type ... from`", async () => {
+  it("yields a type edge for `export type ... from`", async () => {
     const edges = edgesFrom(await extractForms(), "src/export-type-from.ts")
     expect(edges).toEqual([
       {
@@ -172,7 +172,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("yields a runtime edge for `export * from`", async () => {
+  it("yields a runtime edge for `export * from`", async () => {
     const edges = edgesFrom(await extractForms(), "src/export-star.ts")
     expect(edges).toEqual([
       {
@@ -185,7 +185,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("yields a runtime re-export edge for `export { x } from`", async () => {
+  it("yields a runtime re-export edge for `export { x } from`", async () => {
     const edges = edgesFrom(await extractForms(), "src/export-named-from.ts")
     expect(edges).toEqual([
       {
@@ -198,7 +198,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("yields a runtime re-export edge for `export * as ns from`", async () => {
+  it("yields a runtime re-export edge for `export * as ns from`", async () => {
     const edges = edgesFrom(await extractForms(), "src/export-star-as.ts")
     expect(edges).toEqual([
       {
@@ -211,7 +211,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("marks the indirect form `import { x } …; export { x }` as a re-export — the module record normalizes it", async () => {
+  it("marks the indirect form `import { x } …; export { x }` as a re-export — the module record normalizes it", async () => {
     const edges = edgesFrom(await extractForms(), "src/local-reexport.ts")
     expect(edges).toEqual([
       {
@@ -224,7 +224,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("merges a same-target import + re-export into one re-export edge", async () => {
+  it("merges a same-target import + re-export into one re-export edge", async () => {
     const edges = edgesFrom(await extractForms(), "src/import-and-reexport.ts")
     expect(edges).toEqual([
       {
@@ -237,7 +237,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test('yields a runtime edge for a side-effect `import "mod"`', async () => {
+  it('yields a runtime edge for a side-effect `import "mod"`', async () => {
     const edges = edgesFrom(await extractForms(), "src/side-effect.ts")
     expect(edges).toEqual([
       {
@@ -250,7 +250,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("yields a runtime dynamic edge for `import()`", async () => {
+  it("yields a runtime dynamic edge for `import()`", async () => {
     const edges = edgesFrom(await extractForms(), "src/dynamic.ts")
     expect(edges).toEqual([
       {
@@ -263,14 +263,14 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("surfaces a non-literal `import(expr)` as an unresolved diagnostic", async () => {
+  it("surfaces a non-literal `import(expr)` as an unresolved diagnostic", async () => {
     const graph = await extractForms()
     expect(graph.unresolved).toContainEqual(
       expect.objectContaining({ from: "src/dynamic.ts", specifier: "path" }),
     )
   })
 
-  test("surfaces a non-literal require(expr) as a diagnostic, skips argument-less require()", async () => {
+  it("surfaces a non-literal require(expr) as a diagnostic, skips argument-less require()", async () => {
     const graph = await extractForms()
     const fromRequires = graph.unresolved.filter(
       (entry) => entry.from === "src/requires.ts",
@@ -285,7 +285,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("yields a runtime require edge for `require()`", async () => {
+  it("yields a runtime require edge for `require()`", async () => {
     const edges = edgesFrom(await extractForms(), "src/requires.ts")
     expect(edges).toEqual([
       {
@@ -298,7 +298,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("extracts a file with no require through the prefilter negative path", async () => {
+  it("extracts a file with no require through the prefilter negative path", async () => {
     const edges = edgesFrom(await extractForms(), "src/no-require.ts")
     expect(edges).toEqual([
       {
@@ -311,7 +311,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("surfaces an unresolvable specifier as a diagnostic, not an edge", async () => {
+  it("surfaces an unresolvable specifier as a diagnostic, not an edge", async () => {
     const graph = await extractForms()
     expect(edgesFrom(graph, "src/unresolvable.ts")).toEqual([])
     const diagnostics = graph.unresolved.filter(
@@ -326,7 +326,7 @@ describe("extractGraph over the forms fixture", () => {
     })
   })
 
-  test("keeps an unparseable file kind as a node and edge target without outgoing edges", async () => {
+  it("keeps an unparseable file kind as a node and edge target without outgoing edges", async () => {
     const graph = await extractForms()
     expect(graph.modules.get("src/widget.svelte")).toMatchObject({
       parsed: false,
@@ -343,7 +343,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("turns builtins, packages and exports subpaths into external leaves", async () => {
+  it("turns builtins, packages and exports subpaths into external leaves", async () => {
     const targets = edgesFrom(await extractForms(), "src/externals.ts").map(
       (edge) => edge.to,
     )
@@ -385,14 +385,14 @@ describe("extractGraph over the forms fixture", () => {
     })
   })
 
-  test("never expands an external leaf into the module set", async () => {
+  it("never expands an external leaf into the module set", async () => {
     const graph = await extractForms()
     for (const path of graph.modules.keys()) {
       expect(path).not.toContain("node_modules")
     }
   })
 
-  test("turns a file outside the coverage set into an external leaf with no package", async () => {
+  it("turns a file outside the coverage set into an external leaf with no package", async () => {
     const edges = edgesFrom(await extractForms(), "src/imports-outside.ts")
     expect(edges).toEqual([
       {
@@ -411,7 +411,7 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
-  test("classifies nodes through the flavor at graph build", async () => {
+  it("classifies nodes through the flavor at graph build", async () => {
     const graph = await extractForms()
     expect(graph.modules.get("src/foo.model.ts")).toMatchObject({
       layer: "model",
@@ -420,7 +420,7 @@ describe("extractGraph over the forms fixture", () => {
   })
 
   describe("runtime content — the fact ports-types-only reads", () => {
-    test("collects every non-erasable top-level entry, statement order", async () => {
+    it("collects every non-erasable top-level entry, statement order", async () => {
       const graph = await extractForms()
       expect(
         graph.modules.get("src/runtime-content.ts")?.runtimeContent,
@@ -442,12 +442,12 @@ describe("extractGraph over the forms fixture", () => {
       ])
     })
 
-    test("yields no entries for erasable forms — types, ambients, export clauses", async () => {
+    it("yields no entries for erasable forms — types, ambients, export clauses", async () => {
       const graph = await extractForms()
       expect(graph.modules.get("src/types-only.ts")?.runtimeContent).toEqual([])
     })
 
-    test("carries a default-exported declaration's keyword, and its name where one exists", async () => {
+    it("carries a default-exported declaration's keyword, and its name where one exists", async () => {
       const graph = await extractForms()
       expect(graph.modules.get("src/default-fn.ts")?.runtimeContent).toEqual([
         { form: "function", name: "makeThing", exported: true },
@@ -458,7 +458,7 @@ describe("extractGraph over the forms fixture", () => {
       )
     })
 
-    test("never lists import or re-export statements — those are edge facts", async () => {
+    it("never lists import or re-export statements — those are edge facts", async () => {
       const graph = await extractForms()
       expect(
         graph.modules.get("src/export-named-from.ts")?.runtimeContent,
@@ -472,13 +472,13 @@ describe("extractGraph over the forms fixture", () => {
       ])
     })
 
-    test("claims nothing for an unparseable file kind", async () => {
+    it("claims nothing for an unparseable file kind", async () => {
       const graph = await extractForms()
       expect(graph.modules.get("src/widget.svelte")?.runtimeContent).toEqual([])
     })
   })
 
-  test("grants assembly through the designation matcher, on top of the flavor", async () => {
+  it("grants assembly through the designation matcher, on top of the flavor", async () => {
     const graph = await extractFixture({
       fixture: "forms",
       files: FORMS_FILES,
@@ -487,7 +487,7 @@ describe("extractGraph over the forms fixture", () => {
     expect(graph.modules.get("src/app.ts")).toMatchObject({ layer: "assembly" })
   })
 
-  test("grants driver and boot through their designation matchers", async () => {
+  it("grants driver and boot through their designation matchers", async () => {
     const graph = await extractFixture({
       fixture: "forms",
       files: FORMS_FILES,
@@ -498,7 +498,7 @@ describe("extractGraph over the forms fixture", () => {
     expect(graph.modules.get("src/dep.ts")).toMatchObject({ layer: "boot" })
   })
 
-  test("a designation wins over the flavor's word — a layered file under the glob takes the kind", async () => {
+  it("gives a file under a designation's glob its kind over the flavor's word — a layered file included", async () => {
     const graph = await extractFixture({
       fixture: "forms",
       files: FORMS_FILES,
@@ -509,7 +509,7 @@ describe("extractGraph over the forms fixture", () => {
     })
   })
 
-  test("a single-kind reader's binding designates its kind, over every designation — a test file is one wherever it sits", async () => {
+  it("gives a file the kind a single-kind reader's binding designates, over every designation — a test file is one wherever it sits", async () => {
     const graph = await extractFixture({
       fixture: "forms",
       files: FORMS_FILES,
@@ -520,7 +520,7 @@ describe("extractGraph over the forms fixture", () => {
     expect(graph.modules.get("src/dep.ts")).toMatchObject({ layer: "driver" })
   })
 
-  test("a reader of several kinds designates nothing — the file keeps the flavor's word", async () => {
+  it("keeps the flavor's word when the binding reader reads several kinds — it designates nothing", async () => {
     const graph = await extractFixture({
       fixture: "forms",
       files: FORMS_FILES,
@@ -534,7 +534,7 @@ describe("extractGraph over the forms fixture", () => {
     expect(graph.modules.get("src/app.ts")).toMatchObject({ layer: "blob" })
   })
 
-  test("an unparsed file takes its designated kind too — the web fence, recognized and open", async () => {
+  it("gives an unparsed file its designated kind too — the web fence, recognized and open", async () => {
     const graph = await extractFixture({
       fixture: "forms",
       files: FORMS_FILES,
@@ -546,7 +546,7 @@ describe("extractGraph over the forms fixture", () => {
     })
   })
 
-  test("throws an ExtractionError naming the file and both keys when two designations claim one file", async () => {
+  it("throws an ExtractionError naming the file and both keys when two designations claim one file", async () => {
     let thrown: unknown
     try {
       await extractFixture({
@@ -591,7 +591,7 @@ describe("extractGraph over the resolution fixture", () => {
   const extractResolution = () =>
     extractFixture({ fixture: "resolution", files: RESOLUTION_FILES })
 
-  test("resolves a tsconfig paths alias to the in-set module", async () => {
+  it("resolves a tsconfig paths alias to the in-set module", async () => {
     const edges = edgesFrom(await extractResolution(), "src/uses-alias.ts")
     expect(edges).toEqual([
       {
@@ -604,7 +604,7 @@ describe("extractGraph over the resolution fixture", () => {
     ])
   })
 
-  test("resolves .cjs to .cts between .mts/.cts modules", async () => {
+  it("resolves .cjs to .cts between .mts/.cts modules", async () => {
     const edges = edgesFrom(await extractResolution(), "src/esm.mts")
     expect(edges).toEqual([
       {
@@ -617,7 +617,7 @@ describe("extractGraph over the resolution fixture", () => {
     ])
   })
 
-  test("resolves a config alias to the in-set module — bundler-only aliases teach the resolver", async () => {
+  it("resolves a config alias to the in-set module — bundler-only aliases teach the resolver", async () => {
     const root = fixtureRoot("resolution")
     const extraction = createExtraction({
       engine: createOxcEngine({ fs }),
@@ -707,7 +707,7 @@ describe("extractGraph — declared external specifiers", () => {
   const themeMatcher = (specifier: string): string | null =>
     specifier.startsWith("$theme:") ? "$theme:*" : null
 
-  test("turns a matched specifier into a declared external leaf, bypassing the resolver", async () => {
+  it("turns a matched specifier into a declared external leaf, bypassing the resolver", async () => {
     const { graph, resolved } = await extractDeclared(
       { "src/a.model.ts": ["$theme:config.scss"] },
       themeMatcher,
@@ -731,7 +731,7 @@ describe("extractGraph — declared external specifiers", () => {
     expect(resolved).toEqual([])
   })
 
-  test("leaves an unmatched specifier to the resolver — unresolved as before", async () => {
+  it("leaves an unmatched specifier to the resolver — unresolved as before", async () => {
     const { graph, resolved } = await extractDeclared(
       { "src/a.model.ts": ["$other:config.scss"] },
       themeMatcher,
@@ -743,7 +743,7 @@ describe("extractGraph — declared external specifiers", () => {
     expect(resolved).toEqual(["$other:config.scss"])
   })
 
-  test("without a matcher nothing is declared external", async () => {
+  it("declares nothing external without a matcher", async () => {
     const { graph } = await extractDeclared({
       "src/a.model.ts": ["$theme:x.scss"],
     })
@@ -751,7 +751,7 @@ describe("extractGraph — declared external specifiers", () => {
     expect(graph.unresolved).toHaveLength(1)
   })
 
-  test("lands a tail no fixture or list names — the set is open (tripwire)", async () => {
+  it("lands a tail no fixture or list names — the set is open (tripwire)", async () => {
     const { graph } = await extractDeclared(
       { "src/a.model.ts": ["$theme:zz-unseen-tail.scss"] },
       themeMatcher,
@@ -763,7 +763,7 @@ describe("extractGraph — declared external specifiers", () => {
     })
   })
 
-  test("merges type + runtime occurrences into one runtime edge, like every external", async () => {
+  it("merges type + runtime occurrences into one runtime edge, like every external", async () => {
     const { graph } = await extractDeclared(
       {
         "src/a.model.ts": [
@@ -779,7 +779,7 @@ describe("extractGraph — declared external specifiers", () => {
 })
 
 describe("extractGraph failure modes", () => {
-  test("lists a file that does not parse as broken, with no line, and keeps it a node with nothing read", async () => {
+  it("lists a file that does not parse as broken, with no line, and keeps it a node with nothing read", async () => {
     const graph = await extractFixture({
       fixture: "broken",
       files: ["src/broken.ts"],
@@ -793,7 +793,7 @@ describe("extractGraph failure modes", () => {
     })
   })
 
-  test("throws when a covered file is not there — the scan listed it, nothing else may answer for it", async () => {
+  it("throws when a covered file is not there — the scan listed it, nothing else may answer for it", async () => {
     await expect(
       extractFixture({
         fixture: "forms",
@@ -802,7 +802,7 @@ describe("extractGraph failure modes", () => {
     ).rejects.toThrow(/no such file/)
   })
 
-  test("throws when the flavor breaks its totality contract", async () => {
+  it("throws when the flavor breaks its totality contract", async () => {
     const extraction = createExtraction({
       engine: createOxcEngine({ fs }),
       resolver: createOxcResolver(),
@@ -869,7 +869,7 @@ describe("externalLayerOf — the crossed layer carrier on external leaves", () 
   const layerByConvention = (specifier: string) =>
     specifier.endsWith(".service") ? ("service" as const) : null
 
-  test("stamps the layer on package, builtin, and out-of-coverage leaves — one operation, every leaf kind", async () => {
+  it("stamps the layer on package, builtin, and out-of-coverage leaves — one operation, every leaf kind", async () => {
     const graph = await extractCrossed(
       [
         "@made-up/billing/checkout.service",
@@ -891,7 +891,7 @@ describe("externalLayerOf — the crossed layer carrier on external leaves", () 
     expect(layers.get("@made-up/billing")).toBe(null)
   })
 
-  test("consults the carrier for declared externals too — a pattern hit can carry a patched layer", async () => {
+  it("consults the carrier for declared externals too — a pattern hit can carry a patched layer", async () => {
     const graph = await extractCrossed(
       ["$made-up:checkout.service"],
       layerByConvention,
@@ -904,7 +904,7 @@ describe("externalLayerOf — the crossed layer carrier on external leaves", () 
     })
   })
 
-  test("without the carrier every leaf stays layer: null — today's behavior", async () => {
+  it("leaves every leaf at layer: null without the carrier — today's behavior", async () => {
     const graph = await extractCrossed(["@made-up/billing/checkout.service"])
     expect(graph.edges[0]?.to).toMatchObject({ layer: null })
   })
@@ -979,7 +979,7 @@ describe("the reading on the graph — the reading fixture", () => {
   const kindsOf = (calls: readonly ReadCall[]) =>
     calls.map((call) => call.callee.kind)
 
-  test("chooses the reader by binding and kind: plain-ts for assembly, driver and boot; good-enough-tests for the files its naming binds; none inside", async () => {
+  it("chooses the reader by binding and kind: plain-ts for assembly, driver and boot; good-enough-tests for the files its naming binds; none inside", async () => {
     const graph = await extractReading()
     expect(readingOf(graph, "src/cli.assembly.ts").tech).toBe("plain-ts")
     expect(readingOf(graph, "src/cli.driver.ts").tech).toBe("plain-ts")
@@ -1002,7 +1002,7 @@ describe("the reading on the graph — the reading fixture", () => {
     ).toEqual([{ kind: "language" }])
   })
 
-  test("an unparsed designated file has no reading — recognized and open", async () => {
+  it("gives an unparsed designated file no reading — recognized and open", async () => {
     const graph = await extractReading()
     // the CLI driver calls its wiring function: a world for it, which no
     // reader reads — no reading in any world either
@@ -1029,7 +1029,7 @@ describe("the reading on the graph — the reading fixture", () => {
     )
   })
 
-  test("a configured binding comes first, and the kinds filter holds: plain-ts bound over the spec naming does not read a test file", async () => {
+  it("tries a configured binding first and keeps the kinds filter: plain-ts bound over the spec naming does not read a test file", async () => {
     const graph = await extractReading([
       { ...createPlainTsReader(), files: ["**/*.spec.ts"] },
       createGoodEnoughTestsReader(),
@@ -1259,7 +1259,7 @@ describe("the reading on the graph — the reading fixture", () => {
     ])
   })
 
-  test("an undeclared use-case call in an assembly stays `load: null`", async () => {
+  it("leaves an undeclared use-case call in an assembly at `load: null`", async () => {
     const [assembly] = readingOf(
       await extractReading(undefined, []),
       "src/cli.assembly.ts",
@@ -1301,7 +1301,7 @@ describe("the reading on the graph — the reading fixture", () => {
     ).toEqual([])
   })
 
-  test("a sub-driver exported as the default is bound under the default key", async () => {
+  it("binds a sub-driver exported as the default under the default key", async () => {
     const [register] = readingOf(
       await extractReading(),
       "src/default.driver.ts",
@@ -1311,7 +1311,7 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(register?.hooks).toHaveLength(1)
   })
 
-  test("a load naming a file outside coverage is an ExtractionError, presented by the driver", async () => {
+  it("throws an ExtractionError for a load naming a file outside coverage, presented by the driver", async () => {
     let thrown: unknown
     try {
       await extractReading(undefined, [
@@ -1424,7 +1424,7 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(readingOf(single, "src/sub.driver.ts").open).toEqual([])
   })
 
-  test("a flavor without the factory naming rule names nothing: every model callee stays model", async () => {
+  it("names no factory under a flavor without the factory naming rule: every model callee stays model", async () => {
     const root = fixtureRoot("reading")
     const stock = createTsSuffixesFactoriesFlavor()
     const extraction = createExtraction({

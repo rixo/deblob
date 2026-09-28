@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
-import { afterAll, describe, expect, test } from "vitest"
+import { afterAll, describe, expect, it } from "vitest"
 
 import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
 import type { Resolution } from "../ports/resolver.port.ts"
@@ -61,7 +61,7 @@ const AWARE = JSON.stringify({
 })
 
 describe("createPackageMetaReader", () => {
-  test("classifies a subpath of a deblob-aware package by the stock naming rule", async () => {
+  it("classifies a subpath of a deblob-aware package by the stock naming rule", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/@made-up/billing/package.json": AWARE,
@@ -75,7 +75,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("@made-up/billing/checkout.service")).toBe("service")
   })
 
-  test("the bare root claims nothing — an unlabeled surface, exactly as today", async () => {
+  it("claims nothing for the bare root — an unlabeled surface, exactly as today", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/@made-up/billing/package.json": AWARE,
@@ -86,7 +86,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("@made-up/billing")).toBe(null)
   })
 
-  test("a package without the field stays unlabeled — no claim to read", async () => {
+  it("leaves a package without the field unlabeled — no claim to read", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/plain-pkg/package.json": JSON.stringify({
@@ -99,7 +99,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("plain-pkg/x.service")).toBe(null)
   })
 
-  test("honors presence over keys it does not understand — a newer producer stays readable", async () => {
+  it("honors presence over keys it does not understand — a newer producer stays readable", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/newer/package.json": JSON.stringify({
@@ -114,7 +114,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("newer/x.adapter")).toBe("adapters")
   })
 
-  test("a subpath off the exports surface claims nothing — a deep import around the map is unlabeled", async () => {
+  it("claims nothing for a subpath off the exports surface — a deep import around the map is unlabeled", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/@made-up/billing/package.json": JSON.stringify({
@@ -153,7 +153,7 @@ describe("createPackageMetaReader", () => {
     )
   })
 
-  test("a disclosed subpath classifies null even with a suffixed tail — the retraction pin", async () => {
+  it("classifies a disclosed subpath null even with a suffixed tail — the retraction pin", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/@made-up/billing/package.json": JSON.stringify({
@@ -180,7 +180,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("@made-up/billing/checkout.service")).toBe("service")
   })
 
-  test("an assembly-designated subpath classifies assembly — the producer's word, over the tail", async () => {
+  it("classifies an assembly-designated subpath assembly — the producer's word, over the tail", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/@made-up/tool/package.json": JSON.stringify({
@@ -205,7 +205,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("@made-up/tool/totals.model")).toBe("model")
   })
 
-  test("a malformed assembly list abroad reads as absent — the tail decides", async () => {
+  it("reads a malformed assembly list abroad as absent — the tail decides", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/sloppy-tool/package.json": JSON.stringify({
@@ -221,7 +221,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("sloppy-tool/x.service")).toBe("service")
   })
 
-  test("a field without an exports map is the provider's error — ignored abroad, no claim", async () => {
+  it("ignores a field without an exports map abroad, claiming nothing — the provider's error", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/mainonly/package.json": JSON.stringify({
@@ -236,7 +236,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("mainonly/x.service")).toBe(null)
   })
 
-  test("a malformed blob abroad reads as absent — a stranger's field never breaks the run", async () => {
+  it("reads a malformed blob abroad as absent — a stranger's field never breaks the run", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/sloppy/package.json": JSON.stringify({
@@ -251,7 +251,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("sloppy/x.service")).toBe("service")
   })
 
-  test("steps over nameless type-marker manifests to the owning package", async () => {
+  it("steps over nameless type-marker manifests to the owning package", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/marked/package.json": JSON.stringify({
@@ -269,7 +269,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("marked/x.model")).toBe("model")
   })
 
-  test("walks past a scalar manifest — valid JSON, no package there", async () => {
+  it("walks past a scalar manifest — valid JSON, no package there", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/scalar/package.json": "42",
@@ -280,7 +280,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("scalar/x.service")).toBe(null)
   })
 
-  test("degrades to unlabeled on a stranger's broken manifest — never breaks the run", async () => {
+  it("degrades to unlabeled on a stranger's broken manifest — never breaks the run", async () => {
     const { layerOf } = await workspace(
       {
         "node_modules/broken/package.json": "{ not json",
@@ -291,14 +291,14 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("broken/x.service")).toBe(null)
   })
 
-  test("yields no claim for relative specifiers, builtins, and unresolvable packages", async () => {
+  it("yields no claim for relative specifiers, builtins, and unresolvable packages", async () => {
     const { layerOf } = await workspace({}, {})
     expect(await layerOf("./local/thing.service")).toBe(null)
     expect(await layerOf("node:path")).toBe(null)
     expect(await layerOf("@made-up/ghost/x.service")).toBe(null)
   })
 
-  test("yields no claim when nothing up the tree carries a named manifest", async () => {
+  it("yields no claim when nothing up the tree carries a named manifest", async () => {
     const { layerOf } = await workspace(
       { "stray/x.service.js": "" },
       { "stray-pkg/x.service": "stray/x.service.js" },
@@ -306,7 +306,7 @@ describe("createPackageMetaReader", () => {
     expect(await layerOf("stray-pkg/x.service")).toBe(null)
   })
 
-  test("caches per package name — one probe serves every subpath", async () => {
+  it("caches per package name — one probe serves every subpath", async () => {
     const { layerOf, resolvedCount } = await workspace(
       {
         "node_modules/@made-up/billing/package.json": AWARE,
@@ -323,7 +323,7 @@ describe("createPackageMetaReader", () => {
     expect(resolvedCount()).toBe(1)
   })
 
-  test("a subpath that resolves to no file teaches nothing — the claim is read from the next one", async () => {
+  it("reads the claim from the next subpath when one resolves to no file — that one teaches nothing", async () => {
     // order pin: a stray or declared-external subpath seen first (a stylesheet
     // the environment provides) must not blank the package's claim
     const { layerOf, resolvedCount } = await workspace(
