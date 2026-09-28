@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { groupByFix } from "../check/grouping.model.ts"
 import type { RuleId } from "../check/rule.model.ts"
@@ -1904,7 +1904,7 @@ describe("renderCheckResults", () => {
   })
 })
 
-describe("bare status", () => {
+describe("renderBareStatus", () => {
   it("renders the fiction's block with the full check-list hint", () => {
     const output = renderBareStatus(
       {
@@ -1976,13 +1976,6 @@ describe("bare status", () => {
     expect(output).toContain("  2 services · exports 3 claimed\n")
   })
 
-  test("formatSize: kb below 1000kb, mb above, no trailing .0", () => {
-    expect(formatSize(0)).toBe("0kb")
-    expect(formatSize(125952)).toBe("123kb")
-    expect(formatSize(5 * 1024 * 1024)).toBe("5mb")
-    expect(formatSize(4404019)).toBe("4.2mb")
-  })
-
   it("skips the stat lines on a broken config — bare informs, never fails", () => {
     const output = renderBareStatus(
       {
@@ -1995,8 +1988,19 @@ describe("bare status", () => {
     expect(output).not.toContain("% blob")
     expect(output).toContain("Commands")
   })
+})
 
-  test("sizeStatsOf folds total bytes + size-weighted blob %, survives an empty set", () => {
+describe("formatSize", () => {
+  it("writes kb below 1000kb, mb above, no trailing .0", () => {
+    expect(formatSize(0)).toBe("0kb")
+    expect(formatSize(125952)).toBe("123kb")
+    expect(formatSize(5 * 1024 * 1024)).toBe("5mb")
+    expect(formatSize(4404019)).toBe("4.2mb")
+  })
+})
+
+describe("sizeStatsOf", () => {
+  it("folds total bytes and the size-weighted blob %, an empty set included", () => {
     expect(
       sizeStatsOf([
         { size: 900, blob: true },
@@ -2322,19 +2326,24 @@ describe("renderExplain", () => {
   })
 })
 
-describe("colors", () => {
-  test("ANSI palette wraps in SGR codes; NO_COLORS is identity", () => {
+describe("ANSI_COLORS", () => {
+  it("wraps in SGR codes", () => {
     expect(ANSI_COLORS.strong("x")).toBe("\u001b[1mx\u001b[22m")
     expect(ANSI_COLORS.dim("x")).toBe("\u001b[2mx\u001b[22m")
     expect(ANSI_COLORS.accent("x")).toBe("\u001b[36mx\u001b[39m")
+  })
+})
+
+describe("NO_COLORS", () => {
+  it("is the identity", () => {
     expect(NO_COLORS.strong("x")).toBe("x")
     expect(NO_COLORS.dim("x")).toBe("x")
     expect(NO_COLORS.accent("x")).toBe("x")
   })
 })
 
-describe("help screens", () => {
-  it("lists commands, checks, options, exit codes and the no-autofix line in the main help", () => {
+describe("HELP", () => {
+  it("lists commands, checks, options, exit codes and the no-autofix line", () => {
     expect(HELP).toContain("deblob check [what...]")
     expect(HELP).toContain("deblob explain <topic...>")
     expect(HELP).toContain("-c, --config <path>")
@@ -2345,22 +2354,29 @@ describe("help screens", () => {
     expect(HELP).toContain("deblob detects; it never moves code.")
   })
 
-  it("gives the check help its batch flags and the teaching primer", () => {
+  it("carries dag — the fiction's full check list", () => {
+    expect(HELP).toContain("dag        service dependencies form a DAG")
+  })
+
+  it("cites rules by slug, never by number", () => {
+    expect(HELP).not.toMatch(/\brules? [0-9]/)
+    expect(HELP).toContain("(private-sealed)")
+  })
+})
+
+describe("CHECK_HELP", () => {
+  it("gives the batch flags and the teaching primer", () => {
     expect(CHECK_HELP).toContain("--explain")
     expect(CHECK_HELP).toContain("--explain-only")
     expect(CHECK_HELP).toContain("one shared import graph")
   })
 
-  it("carries dag in both help screens — the fiction's full check list", () => {
-    expect(HELP).toContain("dag        service dependencies form a DAG")
+  it("carries dag — the fiction's full check list", () => {
     expect(CHECK_HELP).toContain("deblob check dag layers")
   })
 
-  it("cites rules by slug in the help screens, never by number", () => {
-    for (const screen of [HELP, CHECK_HELP]) {
-      expect(screen).not.toMatch(/\brules? [0-9]/)
-    }
-    expect(HELP).toContain("(private-sealed)")
+  it("cites rules by slug, never by number", () => {
+    expect(CHECK_HELP).not.toMatch(/\brules? [0-9]/)
     expect(CHECK_HELP).toContain("(service-purity)")
   })
 })

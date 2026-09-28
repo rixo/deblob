@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { RULE_IDS, isRuleId, ruleOrder } from "./rule.model.ts"
 
@@ -8,7 +8,7 @@ describe("RULE_IDS", () => {
     expect(new Set(RULE_IDS).size).toBe(RULE_IDS.length)
   })
 
-  test("every id follows the slug grammar — two or three kebab words", () => {
+  it("follows the slug grammar in every id — two or three kebab words", () => {
     for (const id of RULE_IDS) {
       expect(id).toMatch(/^[a-z]+(-[a-z]+){1,2}$/)
     }

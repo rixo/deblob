@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import type { RuleId } from "../../check/rule.model.ts"
 import type { ViolationGroup } from "../../check/grouping.model.ts"
@@ -130,7 +130,7 @@ describe("markersOf", () => {
     ).toThrow(/src\/a\.ts:2: marker names no rule: some-made-up-rule/)
   })
 
-  test.each([
+  it.each([
     ["the old form, no colon", "run() // red inward-deps"],
     ["the old why", "run() // red: inward-deps: why"],
     ["no space after the slashes", "run() //red: inward-deps"],
@@ -217,7 +217,7 @@ describe("markersOf", () => {
       expect(markers[1]).not.toHaveProperty("expectedFailure")
     })
 
-    test.each([
+    it.each([
       [
         "`missed` with no `red` or `via`",
         "run() // missed: stable-root -- why",
@@ -304,7 +304,7 @@ describe("markersOf", () => {
       ])
     })
 
-    test.each([
+    it.each([
       ["a bare unknown", "run() // unknown: stable-root -- why"],
       ["a stubborn red", "run() // stubborn red: stable-root -- why"],
       [
@@ -350,7 +350,7 @@ describe("markersOf", () => {
       ).toMatchObject([{ kind: "broken", line: null }])
     })
 
-    test.each([
+    it.each([
       ["a broken without a why", "run() // broken"],
       ["a broken with an empty why", "run() // broken --"],
       ["a broken naming a rule", "run() // broken: stable-root -- why"],

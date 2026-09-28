@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { classifyStockEntry } from "../extraction/adapters/ts-suffixes-factories-flavor.adapter.ts"
 import type {
@@ -960,10 +960,14 @@ describe("checkSurface", () => {
   })
 })
 
-describe("resolveSurface / tallySurface — the claim counted, no graph", () => {
-  const reachOptions = { mirror: { dist: "src" }, disclosed: () => false }
+/** The claim counted over a path list, no graph: both units below read it. */
+const reachOptions = {
+  mirror: { dist: "src" },
+  disclosed: () => false,
+} as const
 
-  test("reaches over a covered path list — one entry per concrete subpath, every module its targets land on", () => {
+describe("resolveSurface", () => {
+  it("reaches over a covered path list — one entry per concrete subpath, every module its targets land on", () => {
     const covered = [
       "src/checkout.service.ts",
       "src/totals.model.ts",
@@ -1013,8 +1017,10 @@ describe("resolveSurface / tallySurface — the claim counted, no graph", () => 
       disclosed: 0,
     })
   })
+})
 
-  test("the tally claims what is reached and what is not — bare never diagnoses; carve-outs count once as written, once per concrete", () => {
+describe("tallySurface", () => {
+  it("counts what the claim reaches and what it does not — bare never diagnoses; carve-outs count once as written, once per concrete", () => {
     const covered = [
       "src/api.ts",
       "src/legacy/old.ts",

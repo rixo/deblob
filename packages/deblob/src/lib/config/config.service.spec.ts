@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import type { FlavorResolver } from "../extraction/ports/flavor.port.ts"
 import type { Reader } from "../extraction/ports/reader.port.ts"
@@ -527,8 +527,8 @@ describe("resolveConfig — typeOnlyExempt precedence", () => {
     { flavorStance: true, key: true, winner: true },
   ]
 
-  test.each(cases)(
-    "flavor $flavorStance × key $key → $winner",
+  it.each(cases)(
+    "resolves typeOnlyExempt from flavor $flavorStance × key $key to $winner",
     ({ flavorStance, key, winner }) => {
       const flavor =
         flavorStance === undefined

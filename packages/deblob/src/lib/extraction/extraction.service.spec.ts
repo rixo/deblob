@@ -1014,7 +1014,7 @@ describe("the reading on the graph — the reading fixture", () => {
     })
   })
 
-  test("tripwire: an outside kind no injected reader covers reads as null, no throw", async () => {
+  it("reads an outside kind no injected reader covers as null, never a throw (tripwire)", async () => {
     const graph = await extractReading([createGoodEnoughTestsReader()])
     // the boot calls `main()`: a world for the driver, which no reader reads
     // in any world — no reading, and no world reading either

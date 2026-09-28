@@ -180,7 +180,7 @@ describe("isRuleNumber", () => {
 })
 
 describe("CHECK_RULES", () => {
-  test("pins the detector↔rule map", () => {
+  it("maps each detector to the rules it cites", () => {
     expect(CHECK_RULES).toEqual({
       dag: ["no-service-cycle", "no-runtime-cycle"],
       layers: [
@@ -215,7 +215,7 @@ describe("CHECK_RULES", () => {
     })
   })
 
-  test("keys are exactly the known checks", () => {
+  it("keys exactly the known checks", () => {
     expect(Object.keys(CHECK_RULES)).toEqual([...KNOWN_CHECKS])
   })
 

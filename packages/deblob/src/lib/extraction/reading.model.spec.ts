@@ -523,7 +523,7 @@ describe("readModule", () => {
       expect(rolesOf(reading.hooks).find(([at]) => at === line)?.[1]).toBeNull()
     })
 
-    test("tripwire: a free `describe`, a globals-mode runner, maps to no role — the host's, not the reader's", () => {
+    it("maps a free `describe`, a globals-mode runner, to no role — the host's, not the reader's (tripwire)", () => {
       const reading = read("root-forms.ts", { layer: "test", tech: TESTS })
       expect(rolesOf(reading.hooks).map(([, role]) => role)).toEqual([
         null,
@@ -531,7 +531,7 @@ describe("readModule", () => {
       ])
     })
 
-    test("tripwire: a tech with no roles gives none", () => {
+    it("gives no role for a tech with none (tripwire)", () => {
       const reading = read("roles.ts", {
         layer: "test",
         tech: { name: "good-enough-tests", exempts: ["registration"] },
@@ -543,7 +543,7 @@ describe("readModule", () => {
   })
 
   describe("total over the tree", () => {
-    test("tripwire: a node type the reader has never seen is walked for its calls, never a throw", async () => {
+    it("walks a node type it has never seen for its calls, never a throw (tripwire)", async () => {
       const extraction = await engine.extract(fixture("root-forms.ts"))
       if (extraction === null || "unparsed" in extraction)
         throw new Error("no extraction")
