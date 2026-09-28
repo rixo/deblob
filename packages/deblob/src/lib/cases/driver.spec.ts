@@ -289,6 +289,28 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // Added at the sweep (04/05), found at its self-review: `void 0` was read
+    // as a computed value, `undefined` as a literal — one value, two
+    // verdicts. canon: a hook's arguments are the event as received, "the
+    // host's values handed whole …, instances and literals"; what `void`
+    // gives back is `undefined`, a literal.
+    name: "void 0 handed to the use case is a literal, like undefined",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli.driver.ts": `
+        ${IMPORTS}
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("notes")
+          parser.command("check").action((opts) => cli.check(opts, undefined))
+          parser.command("again").action((opts) => cli.check(opts, void 0))
+          parser.parse(process.argv)
+        }
+      `,
+    },
+  },
+  {
     // Added at the lens step, checkpoint 3 (stamped 2026-09-27). canon: "the
     // host's values handed whole (`process`, never `process.cwd()`) …
     // nothing read off them (`opts`, never `opts.files`)". A part destructured

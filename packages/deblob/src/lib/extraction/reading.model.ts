@@ -2539,10 +2539,13 @@ export const readModule = ({
       case "Super":
         return unknown
       case "UnaryExpression":
-        // `void` drops its operand's value, as a statement drops a call's
-        if (node["operator"] === "void")
+        // `void` drops its operand's value, as a statement drops a call's,
+        // and gives back `undefined`: a literal
+        if (node["operator"] === "void") {
           evaluate(node["argument"] as AstNode, { kind: "discarded" }, emitting)
-        else evaluateChildren(node, emitting)
+          return literal
+        }
+        evaluateChildren(node, emitting)
         return computed
       case "UpdateExpression":
       case "BinaryExpression":
