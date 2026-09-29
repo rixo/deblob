@@ -283,6 +283,30 @@ export const createExtraction = ({
       return "unclaimed"
     }
 
+    // the first pass: every file parsed, its symbol level known before any
+    // file is read — a reading asks what an import's target exports
+    const extractedByFile = new Map<
+      string,
+      Awaited<ReturnType<ExtractionEngine["extract"]>>
+    >()
+    for (const file of files)
+      extractedByFile.set(file, await engine.extract(resolve(root, file)))
+    const symbolsByFile = new Map(
+      [...extractedByFile].map(([file, extracted]) => [
+        file,
+        extracted !== null && !("unparsed" in extracted)
+          ? symbolLevelOf(extracted)
+          : { symbols: [], internalDeclarations: 0 },
+      ]),
+    )
+    /**
+     * The declared form of a covered module's export (`const`, `function`, …),
+     * `null` for a name it does not declare.
+     */
+    const exportFormOf = (path: string, name: string): string | null =>
+      symbolsByFile.get(path)?.symbols.find((symbol) => symbol.name === name)
+        ?.form ?? null
+
     /** What an import lands on, for the reader: the target's kind, or the claim. */
     const importTargetKindOf = (
       own: readonly (DriverReader | TestReader)[],
@@ -300,6 +324,7 @@ export const createExtraction = ({
           kind: "module",
           path: target.path,
           layer: layerOf(target.path, classification.layer),
+          exportForm: (name) => exportFormOf(target.path, name),
         }
       }
       return {
@@ -422,7 +447,7 @@ export const createExtraction = ({
       }
 
       const absolutePath = resolve(root, file)
-      const extracted = await engine.extract(absolutePath)
+      const extracted = extractedByFile.get(file) ?? null
       // a file that does not parse is a place deblob cannot read: listed,
       // then a node with nothing read, as one no engine supports
       if (extracted !== null && "unparsed" in extracted)
@@ -501,9 +526,7 @@ export const createExtraction = ({
         isPrivate: classification.isPrivate,
         parsed: extraction !== null,
         runtimeContent: extraction ? extraction.runtimeContent : [],
-        ...(extraction
-          ? symbolLevelOf(extraction)
-          : { symbols: [], internalDeclarations: 0 }),
+        ...(symbolsByFile.get(file) as ReturnType<typeof symbolLevelOf>),
         reading,
         readings: [],
         ...(ownReadersOf(file).some((reader) => reader.blob)

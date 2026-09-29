@@ -127,6 +127,24 @@ Anonymous; the partner run's details stay local.
   but it is the first friction a partner meets. No default taken: a consequence
   to confirm or soften.
 
+- **P5 — Brought to green by hand: what the rules cost, and bought.** The
+  smallest partner package (a cac CLI over five services), on a scratch copy:
+  the CLI split into boot, a thin cac driver (one use-case call per hook), an
+  assembly, a `cli` service with its use cases, and `terminal`/`env`/`paths`
+  ports with their adapters; the remote API adapter reads its token through the
+  env port. 78 → 16 in under an hour; the 16 are 13 T5 (spec roots), 1 R9 (a
+  type name not followed), 2 E1 (unknown, see below). The rules caught a design
+  error of the refactor's own: the env port first sat in the `cli` unit, the
+  adapter needing it made a service cycle — env and paths are a kernel of their
+  own.
+- **E1 — An import read as a function, whatever the target declared.** A
+  constant a covered file exports, handed on by an assembly, was red "hands a
+  function". Fixed: extraction parses every file first, and a covered module's
+  export declared as a value (`const`, `let`, `var`, an enum) reads unknown. The
+  truth is a literal: a better reader follows it (`false unknown` row in
+  `cases/assembly.spec.ts`). Status: taken — `extraction.service.ts` two passes,
+  `reading.model.ts` `isValueForm`.
+
 ## deblob's own outside
 
 - **C1 — deblob's own CLI has no router.** A hook is a callback handed to the

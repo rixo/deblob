@@ -100,6 +100,29 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // Added in endgame (E1): an import was read as a function whatever the
+    // target declared. A constant another file exports holds a value the
+    // reader does not follow: unknown, never "a function". The truth is a
+    // literal — green; the reader cannot see it yet.
+    name: "a constant another file exports, handed on: unknown for now, never read as a function",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes/defaults.model.ts": `
+        export const DEFAULT_LIMIT = 10
+      `,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        import { DEFAULT_LIMIT } from "./notes/defaults.model.ts"
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          const fs = createFsStore(cwd)
+          const limits = createLimits(DEFAULT_LIMIT) // false unknown: assembly-builds-only -- the export is a literal in another file, not followed
+          return { notes: createNotes({ store: fs, limits }) }
+        }
+      `,
+    },
+  },
+  {
     // canon: "arguments are literals, tech values received as parameters, or
     // instances" — a computed one is none of them.
     name: "a computed argument is red: not a literal, not a tech value received, not an instance",

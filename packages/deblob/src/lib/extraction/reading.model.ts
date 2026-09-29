@@ -39,9 +39,22 @@ import type {
 } from "./graph.model.ts"
 import type { Knowledge } from "./knowledge.model.ts"
 
+/** A declared form that holds a value, not code: `const`, `let`, `var`, an enum. */
+const isValueForm = (form: string | null): boolean =>
+  form === "const" || form === "let" || form === "var" || form === "enum"
+
 /** What an import specifier lands on, as the graph has it, plus the claim. */
 export type ImportTargetKind =
-  | { kind: "module"; path: string; layer: Layer }
+  | {
+      kind: "module"
+      path: string
+      layer: Layer
+      /**
+       * The declared form of the target's export by name (`const`, `function`,
+       * `class`, …); `null` when it declares no such name. Absent = not known.
+       */
+      exportForm?: (name: string) => string | null
+    }
   | {
       kind: "external"
       package: string | null
@@ -1028,12 +1041,18 @@ export const readModule = ({
       switch (binding.kind) {
         case "import": {
           const target = importTargetOf(binding.import!.specifier)
+          // a covered module's export declared a value, not a function: what
+          // it holds is that file's — not followed, unknown, never a function
+          const form =
+            target.kind === "module"
+              ? (target.exportForm?.(binding.import!.imported) ?? null)
+              : null
           return {
             kind:
               target.kind === "external" &&
               (target.claim === "tech" || target.claim === "reader")
                 ? "tech"
-                : target.kind === "unresolved"
+                : target.kind === "unresolved" || isValueForm(form)
                   ? "unknown"
                   : "function",
             origin: null,

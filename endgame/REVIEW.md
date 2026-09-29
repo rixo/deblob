@@ -35,6 +35,13 @@ the chasing branches lack).
 7. **R-series** (knowledge placement: `__dirname`, pure builtins, value reads of
    unclaimed names) — defaults are the least surprising; skim.
 
+## The experiment worth reading
+
+P5 in GUESSES: the smallest partner package brought to green by hand on a
+scratch copy — 78 → 16, and the 16 are open rulings (T5) or reader limits. The
+canon shape held on real code, cost under an hour, and caught one design error
+of the refactor's own.
+
 ## Numbers
 
 - deblob: 1361 tests, coverage 100, typecheck clean; viewer 55. Self-check 594
