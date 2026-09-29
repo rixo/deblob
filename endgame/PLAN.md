@@ -33,12 +33,12 @@ proves the least new, the partner run tells the most.
    states its hook cut.
 4. **Violations on the map.** `check`'s verdicts in the snapshot; the map shows
    them.
-5. **Partner run.** a partner monorepo's four checked packages, configs rewritten to the
-   ruled shape (locally, never committed there, results never in this repo).
-   What goes red, what goes unknown, what the configs look like.
+5. **Partner run.** a partner monorepo's four checked packages, configs
+   rewritten to the ruled shape (locally, never committed there, results never
+   in this repo). What goes red, what goes unknown, what the configs look like.
 6. **Tests as a subject.** The test rules ([GUESSES.md](GUESSES.md) T1), `.e2e`
-   as a kind, what a test body may do — tried on deblob and the partner, written up
-   in [TESTING.md](TESTING.md).
+   as a kind, what a test body may do — tried on deblob and the partner, written
+   up in [TESTING.md](TESTING.md).
 
 ## Rules of the road
 

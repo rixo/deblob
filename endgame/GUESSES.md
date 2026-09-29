@@ -127,6 +127,19 @@ Anonymous; the partner run's details stay local.
   but it is the first friction a partner meets. No default taken: a consequence
   to confirm or soften.
 
+## deblob's own outside
+
+- **C1 — deblob's own CLI has no router.** A hook is a callback handed to the
+  tech; a CLI's tech is its router (a partner's: cac). deblob parses argv with
+  its own pure model and dispatches by `switch` — neither a tech nor a cut any
+  reader has (ruling 10 cards the switch-dispatch cut; D4 whether a local router
+  can be claimed). Until then `src/drivers/**` stays designated assembly and
+  floods `assembly-builds-only` (≈390 of the self-check's 594). Options: (a) cac
+  as the router — tiny, zero-dep, the `cac()` reader already proven on partners;
+  costs the help/parse-error goldens; (b) a local router claimed as tech (flips
+  D4); (c) the switch cut (ruling 10). Default: none taken — the restructure
+  (06) waits on this. **To rule.**
+
 ## Map
 
 - **M4 — Cycles on the map.** A cycle belongs to no one file; the snapshot's
