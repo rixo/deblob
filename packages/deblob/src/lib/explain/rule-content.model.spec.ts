@@ -25,6 +25,7 @@ describe("RULE_CARDS", () => {
     expect(cardless).toEqual([
       "assembly-builds-only",
       "assembly-driver-only",
+      "driver-reader",
       "wiring-outside-hooks",
       "hook-one-call",
       "driver-calls-services",

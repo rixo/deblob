@@ -89,8 +89,15 @@ const mainWith = (wiring: ReadCall, hooked: ReadCall): FileReading => ({
 })
 
 describe("checkDriver", () => {
-  it("says nothing about a driver that carries no reading", () => {
-    expect(checkDriver(graphOf(null))).toEqual([])
+  it("reds a parsed driver no reader reads, under driver-reader — about the file, no line", () => {
+    expect(checkDriver(graphOf(null))).toEqual([
+      expect.objectContaining({
+        rules: ["driver-reader"],
+        shape: "unread",
+        kind: "driver",
+        line: null,
+      }),
+    ])
   })
 
   it("answers unknown for an argument the reader cannot tell, in the wiring and to a hook's use case", () => {

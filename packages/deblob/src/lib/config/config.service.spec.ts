@@ -1,14 +1,15 @@
 import { describe, expect, it, test } from "vitest"
 
 import type { FlavorResolver } from "../extraction/ports/flavor.port.ts"
-import type { Reader } from "../extraction/ports/reader.port.ts"
+import type { ReaderGroups } from "../extraction/ports/readers.port.ts"
+import type { TestReader } from "../extraction/ports/test-reader.port.ts"
 import { STOCK_FLAVOR_NAME } from "../extraction/stock-flavor.model.ts"
 import {
   ConfigError,
   DEFAULT_INCLUDE,
   EXCLUDE_BASELINE,
 } from "./config.model.ts"
-import type { FlavorRegistry, ReaderRegistry } from "./config.service.ts"
+import type { DefaultReaders, FlavorRegistry } from "./config.service.ts"
 import {
   defineConfig,
   overlayLocalConfig,
@@ -30,25 +31,28 @@ const fakeFlavor = (
 
 const FLAVORS = { [STOCK_FLAVOR_NAME]: () => fakeFlavor() }
 
-const fakeReader = (name: string, files: readonly string[]): Reader => ({
+const fakeTestReader = (
+  name: string,
+  include?: readonly string[],
+): TestReader => ({
   name,
-  files,
-  kinds: ["test"],
+  ...(include ? { include } : {}),
   claims: () => false,
-  exempts: [],
   roleOf: () => null,
 })
 
-/** Two stock readers with invented names and bindings. */
-const READERS: ReaderRegistry = {
-  "fake-runner": () => fakeReader("fake-runner", ["**/*.fakespec.ts"]),
-  "fake-plain": () => fakeReader("fake-plain", ["**/*.fakescript"]),
+/** The defaults, one invented reader per group that has one. */
+const READERS: ReaderGroups = {
+  language: [{ name: "fake-language", globals: ["SomeMadeUpGlobal"] }],
+  host: [],
+  test: [fakeTestReader("fake-runner")],
+  driver: [],
 }
 
 const resolve = (
   raw: unknown,
   flavors: FlavorRegistry = FLAVORS,
-  readers: ReaderRegistry = READERS,
+  readers: DefaultReaders = READERS,
 ) =>
   resolveConfig(raw, {
     root: "/fixture-root",
@@ -233,96 +237,95 @@ describe("resolveConfig — tsconfig & alias", () => {
   })
 })
 
-describe("resolveConfig — the outside kinds: designations, configLoads, driverTech", () => {
-  it("defaults every designation to a matcher that matches nothing, configLoads to none, driverTech to false", () => {
+describe("resolveConfig — the outside kinds: designations, configLoads", () => {
+  it("defaults every designation to a matcher that matches nothing, configLoads to none", () => {
     const resolved = resolve({})
-    for (const matches of [
-      resolved.isAssembly,
-      resolved.isDriver,
-      resolved.isBoot,
-    ]) {
+    for (const matches of [resolved.isAssembly, resolved.isBoot]) {
       expect(matches("src/anything.ts")).toBe(false)
     }
     expect(resolved.configLoads).toEqual([])
-    expect(resolved.driverTech("some-made-up-pkg")).toBe(false)
   })
 
   it("compiles each designation key to its own glob matcher", () => {
     const resolved = resolve({
       assembly: ["src/wire/**"],
-      drivers: ["src/routes/**/+page.svelte"],
       boot: ["src/entry.ts"],
     })
     expect(resolved.isAssembly("src/wire/app.ts")).toBe(true)
-    expect(resolved.isDriver("src/routes/home/+page.svelte")).toBe(true)
-    expect(resolved.isDriver("src/routes/home/Card.svelte")).toBe(false)
     expect(resolved.isBoot("src/entry.ts")).toBe(true)
   })
 
   it("rejects a non-array designation, naming the key", () => {
-    for (const key of ["drivers", "boot"]) {
-      expect(() => resolve({ [key]: "src/**" })).toThrowError(
-        new RegExp(`"${key}" must be an array of strings`),
+    expect(() => resolve({ boot: "src/**" })).toThrowError(
+      /"boot" must be an array of strings/,
+    )
+  })
+
+  it("rejects the gone tests key with a teaching error naming the test group", () => {
+    expect(() => resolve({ tests: ["e2e/**"] })).toThrowError(
+      /"tests" is gone.*readers: \{ test: \[goodEnoughTests/s,
+    )
+  })
+
+  it("rejects the gone drivers and driverTech keys, naming the driver group", () => {
+    for (const key of ["drivers", "driverTech"]) {
+      expect(() => resolve({ [key]: ["x"] })).toThrowError(
+        /"drivers" and "driverTech" are gone.*readers: \{ driver/s,
       )
     }
   })
-
-  it("rejects the gone tests key with a teaching error naming the runner's binding", () => {
-    expect(() => resolve({ tests: ["e2e/**"] })).toThrowError(
-      /"tests" is gone.*readers: \{ "good-enough-tests"/s,
-    )
-  })
 })
 
-describe("resolveConfig — readers: the stock bindings, config's first", () => {
-  it("defaults to the stock readers in registry order, their builtin bindings intact", () => {
-    const resolved = resolve({})
-    expect(resolved.readers.map((reader) => reader.name)).toEqual([
-      "fake-runner",
-      "fake-plain",
-    ])
-    expect(resolved.readers[0]?.files).toEqual(["**/*.fakespec.ts"])
+describe("resolveConfig — readers: four groups, a written one replaces its defaults", () => {
+  it("defaults every group to the injected defaults", () => {
+    expect(resolve({}).readers).toBe(READERS)
   })
 
-  it("places a configured binding, the named stock reader over the config's globs, before every builtin", () => {
-    const resolved = resolve({
-      readers: { "fake-plain": ["src/routes/**"], "fake-runner": ["e2e/**"] },
-    })
+  it("replaces a written group whole and keeps the others' defaults", () => {
+    const cli = { name: "some-cli", claims: () => true }
+    const resolved = resolve({ readers: { driver: [cli], test: [] } })
+    expect(resolved.readers.driver).toEqual([cli])
+    expect(resolved.readers.test).toEqual([])
+    expect(resolved.readers.language).toBe(READERS.language)
+  })
+
+  it("folds a bound host's pure builtins into pure", () => {
+    const host = { name: "some-host", claims: () => true, pure: ["host:str"] }
     expect(
-      resolved.readers.map((reader) => [reader.name, reader.files]),
-    ).toEqual([
-      ["fake-plain", ["src/routes/**"]],
-      ["fake-runner", ["e2e/**"]],
-      ["fake-runner", ["**/*.fakespec.ts"]],
-      ["fake-plain", ["**/*.fakescript"]],
-    ])
-    // the reader's own shape rides along — the binding is the only override
-    expect(resolved.readers[0]?.kinds).toEqual(["test"])
+      resolve({ pure: ["some-lib"], readers: { host: [host] } }).pure,
+    ).toEqual(["some-lib", "host:str"])
   })
 
-  it("rejects an unknown reader name, naming the known ones; rejects malformed shapes, naming the key", () => {
-    expect(() =>
-      resolve({ readers: { "some-made-up": ["x/**"] } }),
-    ).toThrowError(
-      /unknown reader "some-made-up".*known readers: fake-runner, fake-plain/,
+  it("rejects an unknown group, a non-object, and a group of non-readers, naming the key", () => {
+    expect(() => resolve({ readers: { framework: [] } })).toThrowError(
+      /unknown reader group "framework".*language, host, test, driver/,
     )
     expect(() => resolve({ readers: ["x/**"] })).toThrowError(
-      /"readers" must be an object/,
+      /"readers" must be an object of reader groups/,
     )
-    expect(() => resolve({ readers: { "fake-plain": "x/**" } })).toThrowError(
-      /"readers" entry "fake-plain" must be an array of strings/,
+    expect(() => resolve({ readers: { driver: ["x/**"] } })).toThrowError(
+      /"readers.driver" must be an array of readers/,
     )
   })
 
-  it("covers a script extension, a designated file, or a file a reader binds — nothing else", () => {
+  it("covers a script extension, a designated file, or a file a driver or test reader's written binding names — nothing else", () => {
     const resolved = resolve({
-      drivers: ["src/routes/**/+page.svelte"],
-      readers: { "fake-plain": ["src/widgets/**/*.vue"] },
+      assembly: ["src/wire/*.json"],
+      readers: {
+        driver: [
+          {
+            name: "pages",
+            include: ["src/routes/**/+page.svelte"],
+            claims: () => false,
+          },
+        ],
+        test: [fakeTestReader("stories", ["src/**/*.story.vue"])],
+      },
     })
     expect(resolved.covers("src/app.ts")).toBe(true)
+    expect(resolved.covers("src/wire/app.json")).toBe(true)
     expect(resolved.covers("src/routes/home/+page.svelte")).toBe(true)
-    expect(resolved.covers("src/widgets/card.vue")).toBe(true)
-    expect(resolved.covers("src/a.fakespec.ts")).toBe(true)
+    expect(resolved.covers("src/card.story.vue")).toBe(true)
     expect(resolved.covers("src/routes/home/Card.svelte")).toBe(false)
     expect(resolved.covers("src/notes.md")).toBe(false)
   })
@@ -356,14 +359,6 @@ describe("resolveConfig — readers: the stock bindings, config's first", () => 
     expect(() => resolve({ configLoads: 42 })).toThrowError(
       /"configLoads" must be a "<file>#<name>" string or an array/,
     )
-  })
-
-  it("compiles driverTech to a specifier matcher — the external grammar, any pattern matches", () => {
-    const { driverTech } = resolve({ driverTech: ["cac", "@made-up/*"] })
-    expect(driverTech("cac")).toBe(true)
-    expect(driverTech("@made-up/server")).toBe(true)
-    expect(driverTech("@made-up/server/deep")).toBe(false)
-    expect(driverTech("node:http")).toBe(false)
   })
 })
 

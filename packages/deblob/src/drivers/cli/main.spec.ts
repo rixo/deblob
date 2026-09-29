@@ -345,7 +345,7 @@ describe("main", () => {
       expect(code).toBe(2)
       expect(out).toBe("")
       expect(err).toBe(
-        'src/main.ts is designated "assembly" and "boot" in deblob config — a file has one kind; narrow the globs\n',
+        'src/main.ts is claimed by the "assembly" designation (assembly) and the "boot" designation (boot) — a file has one kind; narrow the globs\n',
       )
     })
 
@@ -577,7 +577,9 @@ describe("main", () => {
         cwd: here("__fixtures__/twice-designated"),
       })
       expect(code).toBe(0)
-      expect(err).toContain('designated "assembly" and "boot"')
+      expect(err).toContain(
+        'the "assembly" designation (assembly) and the "boot" designation (boot)',
+      )
       expect(out).toContain("config error (details on stderr)")
       expect(out).not.toContain("% blob")
     })

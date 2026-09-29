@@ -38,7 +38,7 @@ const fakeFlavor = (): FlavorResolver => ({
 
 const FLAVORS = { [STOCK_FLAVOR_NAME]: () => fakeFlavor() }
 /** No stock reader: the loader's cases are about the load, not the binding. */
-const READERS = {}
+const READERS = { language: [], host: [], test: [], driver: [] }
 
 /** The assembly sequence (main's loadFor), composed here for the fixture cases. */
 const load = async (cwd: string) => {

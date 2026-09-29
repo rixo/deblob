@@ -15,13 +15,9 @@ import { resolve } from "node:path"
 import picomatch from "picomatch"
 
 import type { Layer } from "../extraction/graph.model.ts"
-import {
-  LAYERS,
-  specifierMatcher,
-  specifierPattern,
-} from "../extraction/graph.model.ts"
+import { LAYERS, specifierPattern } from "../extraction/graph.model.ts"
 import type { FlavorResolver } from "../extraction/ports/flavor.port.ts"
-import type { Reader } from "../extraction/ports/reader.port.ts"
+import type { ReaderGroups } from "../extraction/ports/readers.port.ts"
 import { STOCK_FLAVOR_NAME } from "../extraction/stock-flavor.model.ts"
 import {
   ConfigError,
@@ -58,14 +54,15 @@ export type DeblobConfig = {
    */
   boot?: readonly string[]
   /**
-   * Reader bindings — reader name → globs (root-relative POSIX) for files a
-   * stock reader reads on top of its builtin binding; a configured binding
-   * comes before every builtin one. A reader of one kind designates that kind
-   * by binding: `{ "good-enough-tests": ["e2e/**"] }` makes the e2e tree test
-   * files, read with the runner's exemptions, next to the `*.spec.*` naming the
-   * runner binds by itself. Default: `{}`.
+   * The readers, by concern: `language` (default `[js(), ts()]`), `host`
+   * (default `[]` — `node()` is shipped, bound by the project), `test` (default
+   * `[goodEnoughTests()]`), `driver` (default `[]`). Each entry is a reader
+   * instance — a stock factory called, or an inline object of the group's
+   * interface — bound by `include`/`exclude`. A group written replaces its
+   * defaults whole; readers of one group stack on a file, the first written
+   * winning a role.
    */
-  readers?: Readonly<Record<string, readonly string[]>>
+  readers?: Partial<ReaderGroups>
   /**
    * The config loads: the use cases an assembly may await, `"<file>#<name>"` —
    * the service file whose factory built the instance, root-relative, and the
@@ -74,14 +71,6 @@ export type DeblobConfig = {
    * itself depends on, its result a tech value from then on. Default: `[]`.
    */
   configLoads?: string | readonly string[]
-  /**
-   * The driver's tech beyond what the stock techs claim: specifier patterns
-   * (same two-wildcard grammar as `external`) over packages a driver may import
-   * as the technology it listens to — a parser, a server, a framework no
-   * reading knows yet. Only widens the driver's import right: a service
-   * importing the same package is red as ever. Default: `[]`.
-   */
-  driverTech?: readonly string[]
   /**
    * Coverage globs, root-relative. Full-scan model: every covered file is a
    * graph node, orphans included. Default: `["**"]` — under-coverage is a
@@ -194,13 +183,9 @@ export type ResolvedConfig = {
    * default.
    */
   isAssembly: (path: string) => boolean
-  isDriver: (path: string) => boolean
   isBoot: (path: string) => boolean
-  /**
-   * The readers in precedence order: the configured bindings first, each a
-   * stock reader over the config's globs, then every stock reader as shipped.
-   */
-  readers: readonly Reader[]
+  /** The readers by group, each group the config's or the defaults. */
+  readers: ReaderGroups
   /**
    * Coverage's gate, applied to what `include`/`exclude` yield: a script
    * extension, or a designation glob, or a reader binding — a file of an
@@ -209,8 +194,6 @@ export type ResolvedConfig = {
   covers: (path: string) => boolean
   /** Normalized `configLoads`: one entry per declared load. */
   configLoads: readonly { file: string; name: string }[]
-  /** Compiled `driverTech` matcher — any declared pattern matches. */
-  driverTech: (specifier: string) => boolean
   include: readonly string[]
   exclude: readonly string[]
   pure: readonly string[]
@@ -247,19 +230,17 @@ export type ResolvedConfig = {
 export type FlavorRegistry = Readonly<Record<string, () => FlavorResolver>>
 
 /**
- * Stock readers, name → factory, in the order they bind by default — injected
- * by assembly like the flavors (readers are adapters).
+ * The default readers, one array per group — injected by assembly like the
+ * flavors (readers are adapters).
  */
-export type ReaderRegistry = Readonly<Record<string, () => Reader>>
+export type DefaultReaders = ReaderGroups
 
 const KNOWN_KEYS = [
   "flavor",
   "assembly",
-  "drivers",
   "boot",
   "readers",
   "configLoads",
-  "driverTech",
   "include",
   "exclude",
   "pure",
@@ -282,15 +263,7 @@ const isStringArray = (value: unknown): value is readonly string[] =>
 
 const stringArrayKey = (
   raw: Record<string, unknown>,
-  key:
-    | "assembly"
-    | "drivers"
-    | "boot"
-    | "driverTech"
-    | "include"
-    | "exclude"
-    | "pure"
-    | "external",
+  key: "assembly" | "boot" | "include" | "exclude" | "pure" | "external",
 ): readonly string[] | undefined => {
   const value = raw[key]
   if (value === undefined) return undefined
@@ -308,34 +281,53 @@ const designationOf = (
 ): ((path: string) => boolean) =>
   globs.length > 0 ? picomatch([...globs]) : () => false
 
+const READER_GROUPS = ["language", "host", "test", "driver"] as const
+
 /**
- * `readers` validated and composed: each configured binding is the named stock
- * reader over the config's globs, in written order, then every stock reader as
- * shipped — precedence is position.
+ * `readers` validated and composed: an object of the four groups, each an array
+ * of reader instances; a group written replaces its defaults, one left out
+ * keeps them. A reader is checked for its name only — the config is TypeScript,
+ * each group typed by its interface.
  */
-const readersOf = (value: unknown, registry: ReaderRegistry): Reader[] => {
-  const stock = Object.values(registry).map((factory) => factory())
-  if (value === undefined) return stock
+const readersOf = (value: unknown, defaults: DefaultReaders): ReaderGroups => {
+  if (value === undefined) return defaults
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new ConfigError(
-      `config key "readers" must be an object of reader name → array of globs`,
+      `config key "readers" must be an object of reader groups — { language, host, test, driver }, each an array of readers (node(), goodEnoughTests(), …)`,
     )
   }
-  const configured = Object.entries(value).map(([name, globs]) => {
-    const factory = registry[name]
-    if (!factory) {
+  const record = value as Record<string, unknown>
+  for (const key of Object.keys(record)) {
+    if (!(READER_GROUPS as readonly string[]).includes(key)) {
       throw new ConfigError(
-        `unknown reader "${name}" under config key "readers" — known readers: ${Object.keys(registry).join(", ")}`,
+        `unknown reader group "${key}" under config key "readers" — groups: ${READER_GROUPS.join(", ")}`,
       )
     }
-    if (!isStringArray(globs)) {
+  }
+  const groupOf = <G extends keyof ReaderGroups>(group: G): ReaderGroups[G] => {
+    const entries = record[group]
+    if (entries === undefined) return defaults[group]
+    if (
+      !Array.isArray(entries) ||
+      !entries.every(
+        (entry) =>
+          typeof entry === "object" &&
+          entry !== null &&
+          typeof (entry as { name?: unknown }).name === "string",
+      )
+    ) {
       throw new ConfigError(
-        `config key "readers" entry "${name}" must be an array of strings (globs)`,
+        `config key "readers.${group}" must be an array of readers — a stock factory called (node(), goodEnoughTests()) or an object with a name`,
       )
     }
-    return { ...factory(), files: globs }
-  })
-  return [...configured, ...stock]
+    return entries as ReaderGroups[G]
+  }
+  return {
+    language: groupOf("language"),
+    host: groupOf("host"),
+    test: groupOf("test"),
+    driver: groupOf("driver"),
+  }
 }
 
 /**
@@ -591,7 +583,7 @@ export const resolveConfig = (
     configPath: string | null
     localPath: string | null
     flavors: FlavorRegistry
-    readers: ReaderRegistry
+    readers: DefaultReaders
   },
 ): ResolvedConfig => {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
@@ -610,7 +602,12 @@ export const resolveConfig = (
   }
   if ("tests" in record) {
     throw new ConfigError(
-      `config key "tests" is gone — a test file is one the test reader's binding names (*.spec.*, *.test.*, __tests__/); bind other paths with readers: { "good-enough-tests": [...] }`,
+      `config key "tests" is gone — the flavor names test files (*.spec.*, *.test.*, *.e2e.*); bind other paths with readers: { test: [goodEnoughTests({ include: [...] })] }`,
+    )
+  }
+  if ("driverTech" in record || "drivers" in record) {
+    throw new ConfigError(
+      `config keys "drivers" and "driverTech" are gone — a driver's tech is what a driver reader bound to it claims; bind one under readers: { driver: [...] }`,
     )
   }
 
@@ -644,16 +641,25 @@ export const resolveConfig = (
     ...EXCLUDE_BASELINE,
     ...(stringArrayKey(record, "exclude") ?? []),
   ]
-  const pure = stringArrayKey(record, "pure") ?? []
+  const readers = readersOf(record["readers"], context.readers)
+  // a bound host's pure builtins are pure like a `pure` entry (GUESS: R5)
+  const pure = [
+    ...(stringArrayKey(record, "pure") ?? []),
+    ...readers.host.flatMap((host) => host.pure ?? []),
+  ]
   const typeOnlyExempt =
     (record["typeOnlyExempt"] as boolean | undefined) ??
     flavor.typeOnlyExempt ??
     true
   const isAssembly = designationOf(stringArrayKey(record, "assembly") ?? [])
-  const isDriver = designationOf(stringArrayKey(record, "drivers") ?? [])
   const isBoot = designationOf(stringArrayKey(record, "boot") ?? [])
-  const readers = readersOf(record["readers"], context.readers)
-  const bound = picomatch(readers.flatMap((reader) => [...reader.files]))
+  // a driver or test reader's written binding names files of its own —
+  // `.svelte` pages under a framework's reader
+  const bound = designationOf(
+    [...readers.driver, ...readers.test].flatMap((reader) => [
+      ...(reader.include ?? []),
+    ]),
+  )
 
   return {
     root: context.root,
@@ -662,17 +668,14 @@ export const resolveConfig = (
     flavor,
     flavorName,
     isAssembly,
-    isDriver,
     isBoot,
     readers,
     covers: (path) =>
       hasCoverageExtension(path) ||
       isAssembly(path) ||
-      isDriver(path) ||
       isBoot(path) ||
       bound(path),
     configLoads: configLoadsOf(record["configLoads"]),
-    driverTech: specifierMatcher(stringArrayKey(record, "driverTech") ?? []),
     include,
     exclude,
     pure,

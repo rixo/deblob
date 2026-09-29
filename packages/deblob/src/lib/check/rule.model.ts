@@ -46,6 +46,7 @@ export const RULE_IDS = [
   "assembly-builds-only",
   "assembly-driver-only",
   // driver rules
+  "driver-reader",
   "wiring-outside-hooks",
   "hook-one-call",
   "driver-calls-services",

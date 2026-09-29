@@ -12,20 +12,22 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
 
 - **R1 — Package entry for the reader factories.** (S07:161-163, chosen at cp4.)
   Default: subpath `deblob/readers`, beside `defineConfig` at `deblob`. Status:
-  parked.
+  taken — `src/readers.ts`, `package.json` exports.
 - **R2 — Who brings the parser.** (S07 ruling 11, root board.) Default: the core
   parses ES/TS with oxc; `js`/`ts` bring knowledge, not a parser. A framework
   reader that needs one (`.svelte`) is out of endgame. Status: parked.
 - **R3 — `pure`: knowledge or neighbour.** (Root board, S07:357.) Default: stays
   a top-level key, a premise beside the readers. Status: parked.
 - **R4 — `good-enough-tests` stays the default test reader.** (S07 ruling 7,
-  chapter PLAN.) Default: yes. Status: parked.
+  chapter PLAN.) Default: yes. Status: taken — `readers.assembly.ts`.
 - **R5 — Where `PURE_BUILTINS` goes** (`node:path`, `node:querystring`; not in
   the cp3 move list). Default: the `node` reader, as pure builtins it claims.
-  Status: parked.
+  Status: taken — `node-reader.adapter.ts`; config folds a bound host's pure
+  list into `pure`, so `node:path` is pure only where `node` is bound.
 - **R6 — `__dirname`/`__filename` with `node` unbound.** (Canon presumes a
   location, S07 moves `LOCATION_GLOBALS` to `node`.) Default: follows the move —
-  a location where `node` is bound, unclaimed elsewhere. Status: parked.
+  a location where `node` is bound, unclaimed elsewhere. Status: taken —
+  `node-reader.adapter.ts`.
 - **R7 — Ambient members of intrinsics** (`Date.now`, `Math.random`). Default:
   `js` lists them as ambient. Status: parked (no `ambient-access` detector yet).
 - **R8 — Effect-free tech calls.** (Canon :1113-1116, no slot in the host
@@ -33,6 +35,10 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   Status: parked.
 - **R9 — TypeScript engine** (`ts` brings it, `noTsc` option). Default: not
   built in endgame; syntax proves. Status: parked.
+- **R11 — A value read of a free name nobody claims** (`x = window.y` with no
+  host bound). Default: read as the tech's value, as before; only a call on it
+  is `unclaimed`. So `stable-root` still reds such a read at a service's root,
+  as a read of the machine. Status: taken — `reading.model.ts` `evaluate`.
 - **R10 — Disagreement between knowledge sources** (reader, engine, unit).
   Default: moot without the engine. Status: parked.
 
@@ -43,7 +49,8 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   cuts nothing of its own — the stock cut (every callback handed to claimed tech
   is a hook). Status: parked.
 - **D2 — Declared externals and uncovered files as a driver's tech.** Default:
-  unclaimed, red, unless a bound reader claims them. Status: parked.
+  unclaimed, red, unless a bound reader claims them. Status: taken —
+  `extraction.service.ts` `claimOf`.
 - **D3 — Adapters' own tech** (`node:fs`, `process.env` in an adapter). Default:
   not judged — adapters touch anything, as today. Status: parked.
 - **D4 — A reader claiming a project file as tech** (a local router). Default:
@@ -52,6 +59,24 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   is written. Status: parked.
 - **D6 — Entry points nothing imports** (`+page.svelte`, `entryPoints`).
   Default: out of endgame. Status: parked.
+
+- **D7 — Who reads a driver whose tech is the host alone** (a plain Node CLI on
+  `process.argv`/`process.on`). Found by the CLI golden: `node()` is a host
+  reader, no stock driver reader claims nothing, and `plain-ts` — the reader
+  that did it by default — is gone (ruling 2, 6). Default: a stock
+  `hostDriver()` driver reader, claiming nothing of its own, shipped not
+  defaulted — the host readers bound to the file claim its tech. It is
+  `plain-ts` again, opt-in. Status: taken — `host-driver-reader.adapter.ts`.
+  **To rule**: accept `hostDriver`, or give host readers a way to read drivers,
+  or something else.
+- **D8 — A callback handed to an unclaimed callee.** Found writing the rows:
+  `process.on(…, cb)` with no host bound gave four reds for one missing premise
+  (the call, then the callback's use case read inline as "outside any hook",
+  plus two argument reds). Default: cut as a hook like a tech callee's — the
+  missing premise is red once, at the call. Likewise an unread driver's imports
+  are not also `driver-calls-services` (ruling 14's spirit: one fix, one red).
+  Status: taken — `reading.model.ts` hook cut, `driver.model.ts` wiring args,
+  `layers.model.ts` driver cell.
 
 ## Tests
 
@@ -63,6 +88,12 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   Status: parked.
 - **T3 — Configurable flavors** (can test patterns be overridden). Default: no,
   fixed `*.spec.*`/`*.test.*`/`*.e2e.*`. Status: parked.
+
+- **T4 — The corpus fills `driver: [hostDriver()]` too** (ruling 13 fills only
+  `node`). A transition on endgame's side, same "not the pattern" comment: rows
+  whose driver's tech is the host would each need a binding otherwise. Rows that
+  used `driverTech` now bind an inline reader claiming their package. Status:
+  taken — `cases.assembly.ts`.
 
 ## Leftovers carried as-is
 

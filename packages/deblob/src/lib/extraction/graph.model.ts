@@ -202,6 +202,11 @@ export type ModuleNode = {
    * across files — its parameters unknown, its one reading `reading`.
    */
   readings: readonly WorldReading[]
+  /**
+   * A driver a reader counts as blob on purpose (`blobDriver`): unread, counted
+   * as blob, the driver's inbound seal kept.
+   */
+  asBlob?: true
 }
 
 /** One binding of an exported function: the site, and what it handed. */
@@ -300,7 +305,11 @@ export type CalleeKind =
   | { kind: "model"; path: string; name: string }
   | { kind: "forbidden-import"; layer: "ports" | "boot" | "test"; path: string }
   | { kind: "tech"; package: string | null }
-  | { kind: "unclaimed"; package: string }
+  /**
+   * What no bound reader claims: a package, or a free name (`free`) — the name
+   * standing where the package would.
+   */
+  | { kind: "unclaimed"; package: string; free?: true }
   | { kind: "language" }
   /**
    * A local function the reader does not see whole — exported, passed as a
@@ -590,21 +599,13 @@ export type FileReading = {
   driverValues: readonly { name: string; path: string; span: Span }[]
 }
 
-/**
- * The shipped builtin baseline: Node builtins are concrete by default; this
- * curated set is the pure exception — string-only, deterministic modules.
- */
-export const PURE_BUILTINS: ReadonlySet<string> = new Set([
-  "node:path",
-  "node:querystring",
-])
-
 export type ExternalPurity = "pure" | "concrete" | "unclassified"
 
 /**
  * The purity trichotomy of an external leaf: a resolved file outside coverage
  * is concrete; a declared external is what `pure` says, concrete otherwise; a
- * builtin is concrete unless curated or declared pure; a package is pure only
+ * builtin is concrete unless declared pure — by `pure`, or by a bound host
+ * reader's pure list, which config folds into `pure`; a package is pure only
  * when declared, unclassified otherwise — purity is declared, not presumed.
  */
 export const externalPurityOf = (
@@ -614,8 +615,7 @@ export const externalPurityOf = (
   const pkg = target.package
   if (pkg === null) return "concrete"
   if (target.declared) return pure.has(pkg) ? "pure" : "concrete"
-  if (pkg.startsWith("node:"))
-    return PURE_BUILTINS.has(pkg) || pure.has(pkg) ? "pure" : "concrete"
+  if (pkg.startsWith("node:")) return pure.has(pkg) ? "pure" : "concrete"
   return pure.has(pkg) ? "pure" : "unclassified"
 }
 
@@ -668,6 +668,12 @@ export type ImportEdge = {
    * `require()`).
    */
   names: readonly string[]
+  /**
+   * An external edge's claim, for its importer: its own driver or test reader's
+   * (`reader`), a bound host's builtin (`tech`), pure (`model`), or nobody's.
+   * Absent on a module edge.
+   */
+  claim?: "reader" | "tech" | "model" | "unclaimed"
 }
 
 /** A specifier that failed resolution — surfaced, never dropped. */

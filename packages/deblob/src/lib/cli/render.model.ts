@@ -158,9 +158,9 @@ const outsideImportWords = (
         ? "a boot imports its one driver and nothing else; the driver imports what it needs"
         : "nothing imports a boot: importing it starts the program; import its driver instead"
     case "driver-calls-services":
-      return targetClass === "unclassified"
-        ? `a package nothing declares as a driver's tech; declare it in "driverTech", or a service uses it through a port`
-        : "a driver imports no model; the service that needs it imports it"
+      return targetClass === "pure"
+        ? "a driver imports no model; the service that needs it imports it"
+        : "no reader bound to this driver claims it as its tech; bind the reader whose tech it is, or a service uses it through a port"
     case "assembly-builds-only":
       return targetClass === "unclassified"
         ? `unclassified, and an assembly imports no concrete tech; list it under "pure" if it qualifies, or an adapter wraps it`
@@ -341,7 +341,9 @@ const driverCallWords = (callee: CalleeKind): string => {
     case "local":
       return `calls ${callee.name}, a function of the driver — ${CALLS_SERVICES}; a model function, called by a service`
     case "unclaimed":
-      return `calls ${callee.package}, a package nothing claims — ${CALLS_SERVICES}; declare it in driverTech, or it is a service's concern`
+      return callee.free === true
+        ? `calls ${callee.package}, a name no reader bound here claims — ${CALLS_SERVICES}; bind the reader whose tech it is (node() for Node's), or it is a service's concern`
+        : `calls ${callee.package}, a package no reader bound here claims — ${CALLS_SERVICES}; bind the driver reader whose tech it is, or it is a service's concern`
     case "forbidden-import":
       return `calls ${forbiddenImportName(callee)} — ${CALLS_SERVICES}; what it shares moves out of it, and a use case of the service does it`
     default:
@@ -367,6 +369,10 @@ const driverDefinitionWords = (
 const driverMessage = (violation: DriverViolation): string => {
   const line = `line ${violation.line}`
   switch (violation.shape) {
+    case "unread":
+      return violation.kind === "test"
+        ? `no test reader reads this test file — its premises do not cover it; bind one under readers.test (goodEnoughTests() is the default a written group drops)`
+        : `no driver reader reads this driver — its premises do not cover it; bind the reader of its tech under readers.driver, or blobDriver({ include }) to count it as blob on purpose`
     case "call": {
       const name = calleeName(violation.callee)
       if (violation.unknown !== null)

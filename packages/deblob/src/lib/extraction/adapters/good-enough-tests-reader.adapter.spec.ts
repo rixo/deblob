@@ -3,14 +3,10 @@ import { describe, expect, it } from "vitest"
 import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.adapter.ts"
 
 describe("createGoodEnoughTestsReader", () => {
-  it("binds the test naming, reads the test kind only, claims the runners it knows by package, exempts the four", () => {
+  it("binds the flavor's test files by default, claims the runners it knows by package, exempts the four", () => {
     const reader = createGoodEnoughTestsReader()
     expect(reader.name).toBe("good-enough-tests")
-    expect(reader.files).toEqual([
-      "**/*.{spec,test}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
-      "**/__tests__/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
-    ])
-    expect(reader.kinds).toEqual(["test"])
+    expect(reader.include).toBeUndefined()
     expect(reader.claims("vitest")).toBe(true)
     expect(reader.claims("@jest/globals")).toBe(true)
     expect(reader.claims("node:test")).toBe(true)
@@ -23,6 +19,15 @@ describe("createGoodEnoughTestsReader", () => {
       "services-only",
       "definitions",
     ])
+  })
+
+  it("takes include and exclude over its default binding", () => {
+    expect(
+      createGoodEnoughTestsReader({
+        include: ["e2e/**"],
+        exclude: ["e2e/x.ts"],
+      }),
+    ).toMatchObject({ include: ["e2e/**"], exclude: ["e2e/x.ts"] })
   })
 
   describe("roleOf", () => {

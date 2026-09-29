@@ -25,7 +25,7 @@ const configAt = (root: string, raw: unknown = {}): ResolvedConfig =>
     configPath: null,
     localPath: null,
     flavors: STOCK_FLAVORS,
-    readers: {},
+    readers: { language: [], host: [], test: [], driver: [] },
   })
 
 const node = (path: string): ModuleNode => ({

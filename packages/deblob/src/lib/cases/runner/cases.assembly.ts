@@ -31,8 +31,9 @@ import { resolveConfig } from "../../config/config.service.ts"
 import { createFsResolver } from "../../extraction/adapters/fs-resolver.adapter.ts"
 import { createOxcEngine } from "../../extraction/adapters/oxc-extraction.adapter.ts"
 import { createPackageMetaReader } from "../../extraction/adapters/package-meta.adapter.ts"
-import { createPlainTsReader } from "../../extraction/adapters/plain-ts-reader.adapter.ts"
-import { createGoodEnoughTestsReader } from "../../extraction/adapters/good-enough-tests-reader.adapter.ts"
+import { createHostDriverReader } from "../../extraction/adapters/host-driver-reader.adapter.ts"
+import { createNodeReader } from "../../extraction/adapters/node-reader.adapter.ts"
+import { createDefaultReaders } from "../../extraction/readers.assembly.ts"
 import {
   STOCK_FLAVORS,
   classifyStockEntry,
@@ -48,11 +49,6 @@ import { createRunner } from "./runner.service.ts"
 /** Where a case's tree sits — an absolute root the memory adapter answers for. */
 export const CASE_ROOT = "/case"
 
-const STOCK_READERS = {
-  "good-enough-tests": createGoodEnoughTestsReader,
-  "plain-ts": createPlainTsReader,
-}
-
 const DETECTORS: Record<
   Exclude<CheckName, "surface">,
   (graph: ImportGraph, config: ResolvedConfig) => Violation[]
@@ -62,7 +58,6 @@ const DETECTORS: Record<
     checkLayers(graph, {
       pure: config.pure,
       typeOnlyExempt: config.typeOnlyExempt,
-      driverTech: config.driverTech,
     }),
   private: (graph) => checkPrivate(graph),
   barrels: (graph) => checkBarrels(graph),
@@ -116,7 +111,17 @@ export const assembleCase = (files: Case["files"]) => {
         configPath: null,
         localPath: null,
         flavors: STOCK_FLAVORS,
-        readers: STOCK_READERS,
+        // NOT THE PATTERN — do not copy. The rows are married to the node
+        // host today, so the corpus fills `host` where a row writes none; a
+        // row writing its own replaces it like any config (04/07 ruling 13).
+        // A second entry without `node` comes with the gate's sweep. The
+        // `driver` fill is endgame's own transition (GUESS: T4): a row's
+        // driver is read as a host-only driver unless the row binds its own.
+        readers: {
+          ...createDefaultReaders(),
+          host: [createNodeReader()],
+          driver: [createHostDriverReader()],
+        },
       })
       const { extractGraph } = createExtraction({
         engine,
@@ -130,14 +135,12 @@ export const assembleCase = (files: Case["files"]) => {
         root: CASE_ROOT,
         files: covered,
         isAssembly: resolved.isAssembly,
-        isDriver: resolved.isDriver,
         isBoot: resolved.isBoot,
         external: resolved.external,
         externalLayerOf: async (specifier) =>
           resolved.externalLayers(specifier) ??
           (await packageMeta.layerOf(specifier)),
         pure: resolved.pure,
-        driverTech: resolved.driverTech,
         configLoads: resolved.configLoads,
       })
       const unresolved = graph.unresolved.filter((entry) => entry.literal)

@@ -14,10 +14,26 @@ type NodeSpec = {
   isPrivate?: boolean
 }
 
+/**
+ * A reading with nothing in it: the file is read, its imports judged by the
+ * cells.
+ */
+const READ = {
+  tech: "some-made-up-reader",
+  exempts: [],
+  root: [],
+  hooks: [],
+  functions: [],
+  open: [],
+  driverValues: [],
+} as const
+
 type EdgeSpec = {
   from: string
   to: EdgeTarget
   kind?: EdgeKind
+  /** Who claims an external edge, for its importer; extraction's word. */
+  claim?: "reader" | "tech" | "model" | "unclaimed"
 }
 
 const graph = (
@@ -37,18 +53,21 @@ const graph = (
         runtimeContent: [],
         symbols: [],
         internalDeclarations: 0,
-        reading: null,
+        // a file read by some reader: an unread driver's imports are
+        // `driver-reader`'s, not the cells' (its own test below)
+        reading: READ,
         readings: [],
       },
     ]),
   ),
-  edges: edges.map(({ from, to, kind }) => ({
+  edges: edges.map(({ from, to, kind, claim }) => ({
     from,
     to,
     kind: kind ?? "runtime",
     form: "static",
     reExport: false,
     names: [],
+    ...(claim ? { claim } : {}),
   })),
   unresolved: [],
   broken: [],
@@ -423,12 +442,12 @@ describe("checkLayers", () => {
       expect(checkLayers(g, { pure: ["luxon"] })).toEqual([])
     })
 
-    it("stays green for a curated pure builtin from model", () => {
+    it("stays green for a bound host's pure builtin from model — config folds it into pure", () => {
       const g = graph(
         { "a/x.model.ts": { layer: "model", serviceRoot: "a" } },
         [{ from: "a/x.model.ts", to: lib("node:path") }],
       )
-      expect(checkLayers(g)).toEqual([])
+      expect(checkLayers(g, { pure: ["node:path"] })).toEqual([])
     })
 
     it("treats a `pure`-declared builtin as pure — builtin specifiers are ratified `pure` entries", () => {
@@ -1036,6 +1055,8 @@ describe("checkLayers", () => {
           },
           edges,
         ),
+        // Node bound, as the corpus binds it: its pure builtins folded in
+        { pure: ["node:path"] },
       )
 
     it("fires the seal or the quarantine when a driver imports a composition unit or blob", () => {
@@ -1186,12 +1207,16 @@ describe("checkLayers", () => {
       ).toEqual([])
     })
 
-    it("fires on externals: a driver's package nothing declares or a pure one, a boot's any, an assembly's concrete or unclassified", () => {
+    it("fires on externals: a driver's package no bound reader claims or a pure one, a boot's any, an assembly's concrete or unclassified", () => {
       expect(
         outside([
-          { from: "src/cli.driver.ts", to: lib("some-made-up-parser") },
-          { from: "src/cli.driver.ts", to: lib("node:path") },
-          { from: "src/cli.driver.ts", to: lib("node:fs") },
+          {
+            from: "src/cli.driver.ts",
+            to: lib("some-made-up-parser"),
+            claim: "unclaimed",
+          },
+          { from: "src/cli.driver.ts", to: lib("node:path"), claim: "model" },
+          { from: "src/cli.driver.ts", to: lib("node:fs"), claim: "tech" },
           { from: "src/cli.boot.ts", to: lib("node:process") },
           { from: "src/cli.assembly.ts", to: lib("node:fs") },
           { from: "src/cli.assembly.ts", to: lib("some-made-up-lib") },
@@ -1210,13 +1235,15 @@ describe("checkLayers", () => {
       ])
     })
 
-    it("stays green on a package `driverTech` declares — the driver's tech", () => {
+    it("stays green on a package the driver's own reader claims — its tech", () => {
       const g = graph({ "src/cli.driver.ts": { layer: "driver" } }, [
-        { from: "src/cli.driver.ts", to: lib("some-made-up-parser") },
+        {
+          from: "src/cli.driver.ts",
+          to: lib("some-made-up-parser"),
+          claim: "reader",
+        },
       ])
-      expect(
-        checkLayers(g, { driverTech: (s) => s === "some-made-up-parser" }),
-      ).toEqual([])
+      expect(checkLayers(g)).toEqual([])
     })
   })
 
@@ -1295,7 +1322,7 @@ describe("checkLayers", () => {
           { from: "main.spec.ts", to: lib("node:path") },
         ],
       )
-      expect(checkLayers(g)).toEqual([])
+      expect(checkLayers(g, { pure: ["node:path"] })).toEqual([])
     })
 
     it("keeps an all-blob graph clean — the brownfield ground state", () => {

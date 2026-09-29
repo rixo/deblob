@@ -170,24 +170,28 @@ describe("ts-suffixes-factories flavor", () => {
     })
   })
 
-  it("leaves test naming to the test runner's binding: a spec file is blob to the flavor, filed under its service", () => {
+  it("names test files — .spec, .test, .e2e — filed under their service; __tests__ alone names nothing", () => {
     const result = classify([
       "icons/icons.model.spec.ts",
       "icons/loader.test.ts",
       "icons/icons.model.ts",
       "icons/ports/icon-source.spec.ts",
       "icons/private/scoring.test.ts",
+      "icons/render.e2e.ts",
+      "icons/__tests__/helpers.ts",
     ])
-    expect(result.get("icons/icons.model.spec.ts")?.layer).toBe("blob")
-    expect(result.get("icons/loader.test.ts")?.layer).toBe("blob")
+    expect(result.get("icons/icons.model.spec.ts")?.layer).toBe("test")
+    expect(result.get("icons/loader.test.ts")?.layer).toBe("test")
+    expect(result.get("icons/render.e2e.ts")?.layer).toBe("test")
+    expect(result.get("icons/__tests__/helpers.ts")?.layer).toBe("blob")
     expect(result.get("icons/icons.model.spec.ts")?.serviceRoot).toBe("icons")
     expect(result.get("icons/ports/icon-source.spec.ts")).toEqual({
-      layer: "blob",
+      layer: "test",
       serviceRoot: "icons",
       isPrivate: false,
     })
     expect(result.get("icons/private/scoring.test.ts")).toEqual({
-      layer: "blob",
+      layer: "test",
       serviceRoot: "icons",
       isPrivate: true,
     })
@@ -196,7 +200,7 @@ describe("ts-suffixes-factories flavor", () => {
   it("does not let a spec file's layered stem mark a service root", () => {
     const result = classify(["icons/icons.service.spec.ts", "icons/util.ts"])
     expect(result.get("icons/util.ts")?.serviceRoot).toBe(null)
-    expect(result.get("icons/icons.service.spec.ts")?.layer).toBe("blob")
+    expect(result.get("icons/icons.service.spec.ts")?.layer).toBe("test")
   })
 
   it("keeps .svelte and unknown suffixes blob", () => {

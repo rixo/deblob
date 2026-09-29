@@ -1,119 +1,114 @@
 import { describe, expect, it } from "vitest"
 
-import type { Layer } from "./graph.model.ts"
-import type { Binding } from "./recognition.model.ts"
 import { createRecognition } from "./recognition.model.ts"
 
-type Named = Binding & { name: string }
+const PAGE = "src/routes/home/+page.ts"
+const HELPER = "src/routes/home/helper.ts"
+const CLI = "src/cli.driver.ts"
 
-/** A reader's binding as recognition sees it: globs and the kinds it reads. */
-const binding = (
-  name: string,
-  kinds: readonly Layer[],
-  files: readonly string[],
-): Named => ({ name, kinds, files })
-
-const SPEC_FILE = "made-up/deep/thing.spec.ts"
-const PLAIN_FILE = "made-up/deep/thing.ts"
-
-const runner = binding("made-up-runner", ["test"], ["**/*.spec.ts"])
-const plain = binding(
-  "made-up-plain",
-  ["assembly", "driver", "boot"],
-  ["**/*.ts"],
-)
+const pages = { name: "made-up-pages", include: ["src/routes/**/+page.ts"] }
+const stories = { name: "made-up-stories", include: ["src/**/+page.ts"] }
+const cli = { name: "made-up-cli" }
 
 describe("createRecognition", () => {
   describe("kindOf", () => {
     it("takes the flavor's word when nothing claims the file", () => {
-      const { kindOf } = createRecognition({ readers: [plain] })
-      expect(kindOf(PLAIN_FILE, "service")).toBe("service")
+      const { kindOf } = createRecognition({ driver: [pages], test: [] })
+      expect(kindOf(HELPER, "service")).toBe("service")
+      expect(kindOf(HELPER, "blob")).toBe("blob")
     })
 
-    it("puts one config designation over the flavor's word", () => {
+    it("gives a blob file the kind of the group whose written binding names it, or a designation's", () => {
       const { kindOf } = createRecognition({
-        readers: [plain],
-        isDriver: (path) => path === PLAIN_FILE,
+        driver: [pages],
+        test: [],
+        isAssembly: (path) => path === HELPER,
       })
-      expect(kindOf(PLAIN_FILE, "service")).toBe("driver")
-      expect(kindOf("made-up/other.ts", "service")).toBe("service")
+      expect(kindOf(PAGE, "blob")).toBe("driver")
+      expect(kindOf(HELPER, "blob")).toBe("assembly")
     })
 
-    it("designates by a single-kind reader's binding wherever the file sits — over every config designation, a conflict included", () => {
+    it("lets a binding agree with the flavor", () => {
       const { kindOf } = createRecognition({
-        readers: [runner, plain],
-        isAssembly: () => true,
-        isBoot: () => true,
+        driver: [{ name: "made-up-cli", include: ["src/*.driver.ts"] }],
+        test: [],
       })
-      expect(kindOf(SPEC_FILE, "service")).toBe("test")
+      expect(kindOf(CLI, "driver")).toBe("driver")
     })
 
-    it("designates nothing by a reader of several kinds — its match leaves the file to the config designations and the flavor", () => {
-      const { kindOf } = createRecognition({
-        readers: [plain],
-        isBoot: (path) => path === PLAIN_FILE,
-      })
-      expect(kindOf(PLAIN_FILE, "model")).toBe("boot")
-      expect(kindOf("made-up/other.ts", "model")).toBe("model")
+    it("gives no kind by a binding left to its default: it reads the flavor's own files only", () => {
+      const { kindOf } = createRecognition({ driver: [cli], test: [] })
+      expect(kindOf(PAGE, "blob")).toBe("blob")
     })
 
-    it("designates by the first matching single-kind binding, readers in the order given", () => {
-      const other = binding("made-up-other", ["driver"], ["**/*.spec.ts"])
-      expect(
-        createRecognition({ readers: [other, runner] }).kindOf(
-          SPEC_FILE,
-          "service",
-        ),
-      ).toBe("driver")
-      expect(
-        createRecognition({ readers: [runner, other] }).kindOf(
-          SPEC_FILE,
-          "service",
-        ),
-      ).toBe("test")
-    })
-
-    it("throws an ExtractionError on two config designations on one file, naming the file and both keys, config's key names", () => {
-      const { kindOf } = createRecognition({
-        readers: [plain],
-        isAssembly: () => true,
-        isDriver: () => false,
-        isBoot: () => true,
-      })
-      expect(() => kindOf(PLAIN_FILE, "service")).toThrow(
+    it("throws an ExtractionError when a binding disagrees with the flavor, naming the file, the flavor's kind and the claim", () => {
+      const { kindOf } = createRecognition({ driver: [pages], test: [] })
+      expect(() => kindOf(PAGE, "service")).toThrow(
         expect.objectContaining({
           name: "ExtractionError",
           code: "designation-conflict",
-          message: `${PLAIN_FILE} is designated "assembly" and "boot" in deblob config — a file has one kind; narrow the globs`,
+          message: `${PAGE} is named service by the flavor, but driver reader "made-up-pages" makes it driver — the flavor names the kind, a binding only adds one to an unnamed file; narrow the globs`,
+        }),
+      )
+    })
+
+    it("throws when readers of two groups, or a reader and a designation, claim one blob file", () => {
+      const { kindOf } = createRecognition({
+        driver: [pages],
+        test: [stories],
+        isBoot: () => true,
+      })
+      expect(() => kindOf(PAGE, "blob")).toThrow(
+        expect.objectContaining({
+          code: "designation-conflict",
+          message: `${PAGE} is claimed by driver reader "made-up-pages" (driver) and test reader "made-up-stories" (test) and the "boot" designation (boot) — a file has one kind; narrow the globs`,
         }),
       )
     })
   })
 
-  describe("readerOf", () => {
-    it("returns the first reader, in the order given, whose binding matches the path and whose kinds hold the kind", () => {
-      const { readerOf } = createRecognition({ readers: [runner, plain] })
-      expect(readerOf(SPEC_FILE, "test")).toBe(runner)
-      expect(readerOf(PLAIN_FILE, "driver")).toBe(plain)
+  describe("driverReadersOf", () => {
+    it("returns every driver reader that reads the file, in the order written — they stack", () => {
+      const wide = { name: "made-up-wide", include: ["src/**"] }
+      const { driverReadersOf } = createRecognition({
+        driver: [cli, wide, pages],
+        test: [],
+      })
+      expect(driverReadersOf(CLI, "driver")).toEqual([cli, wide])
+      // the page is a driver by `pages`' binding: `cli`, left to its default,
+      // reads the flavor's drivers only
+      expect(driverReadersOf(PAGE, "blob")).toEqual([wide, pages])
     })
 
-    it("passes over a binding that matches the path but does not read the kind — the kinds filter", () => {
-      // plain TS bound over the spec naming, first — the file is still a test
-      // file, and plain TS reads no test, so it falls to the runner
-      const wide = binding(
-        "made-up-wide",
-        ["assembly", "driver", "boot"],
-        ["**/*.spec.ts"],
-      )
-      const { readerOf } = createRecognition({ readers: [wide, runner] })
-      expect(readerOf(SPEC_FILE, "test")).toBe(runner)
-      expect(readerOf(SPEC_FILE, "driver")).toBe(wide)
+    it("leaves out an excluded file, and answers nothing for a kind other than driver", () => {
+      const { driverReadersOf } = createRecognition({
+        driver: [{ name: "made-up-cli", exclude: [CLI] }],
+        test: [],
+      })
+      expect(driverReadersOf(CLI, "driver")).toEqual([])
+      expect(driverReadersOf("src/other.assembly.ts", "assembly")).toEqual([])
     })
+  })
 
-    it("returns null when no reader binds the file for that kind — recognized and open", () => {
-      const { readerOf } = createRecognition({ readers: [runner] })
-      expect(readerOf(PLAIN_FILE, "driver")).toBeNull()
-      expect(readerOf(SPEC_FILE, "driver")).toBeNull()
+  describe("testReadersOf", () => {
+    it("returns the test readers of a test file, the default binding reading every one", () => {
+      const runner = { name: "made-up-runner" }
+      const { testReadersOf } = createRecognition({
+        driver: [],
+        test: [runner],
+      })
+      expect(testReadersOf("src/a.spec.ts", "test")).toEqual([runner])
+      expect(testReadersOf("src/a.driver.ts", "driver")).toEqual([])
+    })
+  })
+
+  describe("boundOf", () => {
+    it("binds every file by default, a written binding narrowing it", () => {
+      const all = { name: "made-up-js" }
+      const back = { name: "made-up-host", include: ["server/**"] }
+      const { boundOf } = createRecognition({ driver: [], test: [] })
+      expect(boundOf([all, back], "server/app.ts")).toEqual([all, back])
+      expect(boundOf([all, back], "web/app.ts")).toEqual([all])
     })
   })
 })

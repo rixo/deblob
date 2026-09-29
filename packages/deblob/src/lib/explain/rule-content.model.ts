@@ -59,6 +59,7 @@ export const RULE_CARDS: Readonly<Record<RuleId, readonly string[]>> = {
   // its pinned URL
   "assembly-builds-only": [],
   "assembly-driver-only": [],
+  "driver-reader": [],
   "wiring-outside-hooks": [],
   "hook-one-call": [],
   "driver-calls-services": [],

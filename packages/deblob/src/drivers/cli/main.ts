@@ -61,10 +61,7 @@ import {
   overlayLocalConfig,
   resolveConfig,
 } from "../../lib/config/config.service.ts"
-import type {
-  ReaderRegistry,
-  ResolvedConfig,
-} from "../../lib/config/config.service.ts"
+import type { ResolvedConfig } from "../../lib/config/config.service.ts"
 import {
   createConfigLoader,
   importConfigDefault,
@@ -76,8 +73,7 @@ import { createOxcResolver } from "../../lib/extraction/adapters/oxc-resolver.ad
 import { createNodeFs } from "../../lib/fs/adapters/node-fs.adapter.ts"
 import type { Fs } from "../../lib/fs/fs.port.ts"
 import { createPackageMetaReader } from "../../lib/extraction/adapters/package-meta.adapter.ts"
-import { createPlainTsReader } from "../../lib/extraction/adapters/plain-ts-reader.adapter.ts"
-import { createGoodEnoughTestsReader } from "../../lib/extraction/adapters/good-enough-tests-reader.adapter.ts"
+import { createDefaultReaders } from "../../lib/extraction/readers.assembly.ts"
 import {
   classifyStockEntry,
   STOCK_FLAVORS,
@@ -95,15 +91,6 @@ import type { FlavorClassification } from "../../lib/extraction/ports/flavor.por
 import { createRecognition } from "../../lib/extraction/recognition.model.ts"
 import { INDEX as VIEWER_INDEX } from "../../lib/view/bundle.model.ts"
 import { serve } from "../serve/main.ts"
-
-/**
- * The stock readers, in the order they bind by default: the test runner before
- * plain TS, so its naming designates the test kind first.
- */
-const STOCK_READERS: ReaderRegistry = {
-  "good-enough-tests": createGoodEnoughTestsReader,
-  "plain-ts": createPlainTsReader,
-}
 
 const VERSION = (
   JSON.parse(
@@ -168,7 +155,6 @@ const DETECTORS: Record<
     checkLayers(graph, {
       pure: config.pure,
       typeOnlyExempt: config.typeOnlyExempt,
-      driverTech: config.driverTech,
     }),
   private: (graph) => checkPrivate(graph),
   barrels: (graph) => checkBarrels(graph),
@@ -230,7 +216,7 @@ const loadFor = async (
         configPath: null,
         localPath: null,
         flavors: STOCK_FLAVORS,
-        readers: STOCK_READERS,
+        readers: createDefaultReaders(),
       },
     )
   }
@@ -249,7 +235,7 @@ const loadFor = async (
     configPath,
     localPath,
     flavors: STOCK_FLAVORS,
-    readers: STOCK_READERS,
+    readers: createDefaultReaders(),
   })
 }
 
@@ -286,9 +272,9 @@ const runStatus = async (
   // its one failure (a file under two designation keys) is the user's, told
   // on stderr like a config error — bare stays 0
   const { kindOf } = createRecognition({
-    readers: config.readers,
+    driver: config.readers.driver,
+    test: config.readers.test,
     isAssembly: config.isAssembly,
-    isDriver: config.isDriver,
     isBoot: config.isBoot,
   })
   let blobByPath: ReadonlyMap<string, boolean>
@@ -453,7 +439,6 @@ const runCheck = async (
       root: config.root,
       files,
       isAssembly: config.isAssembly,
-      isDriver: config.isDriver,
       isBoot: config.isBoot,
       external: config.external,
       // the consumer patch wins over producer fields — reviewer of record
@@ -461,7 +446,6 @@ const runCheck = async (
         config.externalLayers(specifier) ??
         (await packageMeta.layerOf(specifier)),
       pure: config.pure,
-      driverTech: config.driverTech,
     })
   } catch (error) {
     // extraction's own failures are the user's to fix: message, exit 2;

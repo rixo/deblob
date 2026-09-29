@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest"
 import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import { createOxcResolver } from "./adapters/oxc-resolver.adapter.ts"
-import { createPlainTsReader } from "./adapters/plain-ts-reader.adapter.ts"
-import { createGoodEnoughTestsReader } from "./adapters/good-enough-tests-reader.adapter.ts"
+import { createNodeReader } from "./adapters/node-reader.adapter.ts"
+import { createDefaultReaders } from "./readers.assembly.ts"
 import { createTsSuffixesFactoriesFlavor } from "./adapters/ts-suffixes-factories-flavor.adapter.ts"
 import { createExtraction } from "./extraction.service.ts"
 import { useCaseLevels } from "./levels.model.ts"
@@ -38,15 +38,19 @@ const levelsOf = async (files: readonly string[] = FILES) => {
     engine: createOxcEngine({ fs: createNodeFs() }),
     resolver: createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
     flavor: createTsSuffixesFactoriesFlavor(),
-    readers: [createPlainTsReader(), createGoodEnoughTestsReader()],
+    readers: {
+      ...createDefaultReaders(),
+      host: [createNodeReader()],
+      // the fixture drivers' tech: a package no stock reader knows
+      driver: [
+        {
+          name: "made-up-parser",
+          claims: (specifier) => specifier === "some-made-up-parser",
+        },
+      ],
+    },
   })
-  return useCaseLevels(
-    await extraction.extractGraph({
-      root,
-      files,
-      driverTech: (specifier) => specifier === "some-made-up-parser",
-    }),
-  )
+  return useCaseLevels(await extraction.extractGraph({ root, files }))
 }
 
 describe("useCaseLevels", () => {

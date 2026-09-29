@@ -1347,7 +1347,7 @@ describe("renderCheckResults", () => {
             callee: { kind: "unclaimed", package: "picocolors" },
             where: "wiring",
           },
-          `calls picocolors, a package nothing claims — ${CALLS_SERVICES}; declare it in driverTech, or it is a service's concern`,
+          `calls picocolors, a package no reader bound here claims — ${CALLS_SERVICES}; bind the driver reader whose tech it is, or it is a service's concern`,
         ],
         [
           "driver-calls-services",
@@ -1638,7 +1638,7 @@ describe("renderCheckResults", () => {
           ["driver-calls-services"],
           "driver",
           "unclassified",
-          'a package nothing declares as a driver\'s tech; declare it in "driverTech", or a service uses it through a port',
+          "no reader bound to this driver claims it as its tech; bind the reader whose tech it is, or a service uses it through a port",
         ],
         [
           ["driver-calls-services"],

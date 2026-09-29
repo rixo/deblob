@@ -14,10 +14,7 @@ import {
   importConfigDefault,
 } from "../lib/config/adapters/loader.adapter.ts"
 import { createCoverageScan } from "../lib/config/adapters/scan.adapter.ts"
-import type {
-  ReaderRegistry,
-  ResolvedConfig,
-} from "../lib/config/config.service.ts"
+import type { ResolvedConfig } from "../lib/config/config.service.ts"
 import {
   overlayLocalConfig,
   resolveConfig,
@@ -25,8 +22,7 @@ import {
 import { createOxcEngine } from "../lib/extraction/adapters/oxc-extraction.adapter.ts"
 import { createOxcResolver } from "../lib/extraction/adapters/oxc-resolver.adapter.ts"
 import { createPackageMetaReader } from "../lib/extraction/adapters/package-meta.adapter.ts"
-import { createPlainTsReader } from "../lib/extraction/adapters/plain-ts-reader.adapter.ts"
-import { createGoodEnoughTestsReader } from "../lib/extraction/adapters/good-enough-tests-reader.adapter.ts"
+import { createDefaultReaders } from "../lib/extraction/readers.assembly.ts"
 import {
   classifyStockEntry,
   STOCK_FLAVORS,
@@ -36,12 +32,6 @@ import type { ImportGraph } from "../lib/extraction/graph.model.ts"
 import { createNodeFs } from "../lib/fs/adapters/node-fs.adapter.ts"
 import { createFsReadmeTexts } from "../lib/snapshot/adapters/fs-readme-texts.adapter.ts"
 import type { ProjectSource } from "../lib/snapshot/ports/project-source.port.ts"
-
-/** The stock readers, in the CLI's order: the test runner before plain TS. */
-const STOCK_READERS: ReaderRegistry = {
-  "good-enough-tests": createGoodEnoughTestsReader,
-  "plain-ts": createPlainTsReader,
-}
 
 export const createProjectSource = (): ProjectSource => {
   const fs = createNodeFs()
@@ -62,7 +52,7 @@ export const createProjectSource = (): ProjectSource => {
           configPath: null,
           localPath: null,
           flavors: STOCK_FLAVORS,
-          readers: STOCK_READERS,
+          readers: createDefaultReaders(),
         },
       )
     }
@@ -82,7 +72,7 @@ export const createProjectSource = (): ProjectSource => {
       configPath,
       localPath,
       flavors: STOCK_FLAVORS,
-      readers: STOCK_READERS,
+      readers: createDefaultReaders(),
     })
   }
 
@@ -129,7 +119,6 @@ export const extractionFor =
       root: config.root,
       files,
       isAssembly: config.isAssembly,
-      isDriver: config.isDriver,
       isBoot: config.isBoot,
       external: config.external,
       // the consumer patch wins over producer fields — reviewer of record
@@ -137,6 +126,5 @@ export const extractionFor =
         config.externalLayers(specifier) ??
         (await packageMeta.layerOf(specifier)),
       pure: config.pure,
-      driverTech: config.driverTech,
     })
   }

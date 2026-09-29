@@ -19,12 +19,21 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * checkpoint 6, a sub-driver's hook imported since checkpoint 7. Each red's way
  * out is in the step's SPEC (the driver table); a red with no way out is the
  * finding. A hook is a function handed to a tech callee — here the parser,
- * `cac`, declared as the driver's tech. Every tree is legal under every other
+ * `cac`, claimed by the driver's reader. Every tree is legal under every other
  * rule, or its other red marked.
  */
 
-/** The parser as the driver's tech, declared. */
-const CONFIG = { driverTech: ["cac"] } as const
+/**
+ * A driver reader for the fixture's own tech — a package no stock reader knows:
+ * it claims the packages named, and reads with the stock cut.
+ */
+const readerOf = (...packages: readonly string[]) => ({
+  name: packages.join("+"),
+  claims: (specifier: string) => packages.includes(specifier),
+})
+
+/** The parser as the driver's tech, claimed by the driver's reader. */
+const CONFIG = { readers: { driver: [readerOf("cac")] } }
 
 /** The CLI service, its assembly, and the parser package. */
 const CLI = {
@@ -59,7 +68,7 @@ const ROWS: readonly Row[] = [
     // one use-case call". A call on the server is the tech's whatever its
     // name (ruled 2026-09-26).
     name: "a route registered with get is a hook like any other: its handler holds the one use case",
-    config: { driverTech: ["express"] },
+    config: { readers: { driver: [readerOf("express")] } },
     files: {
       ...CLI,
       "node_modules/express/package.json": JSON.stringify({
@@ -431,9 +440,9 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // canon: "or what the project declares as tech".
-    name: "the same package, declared as the driver's tech, is green",
-    config: { driverTech: ["cac", "picocolors"] },
+    // canon: a driver's tech is what the readers bound to it claim.
+    name: "the same package, claimed by the driver's reader, is green",
+    config: { readers: { driver: [readerOf("cac", "picocolors")] } },
     files: {
       ...CLI,
       "node_modules/picocolors/package.json": JSON.stringify({

@@ -58,11 +58,15 @@ const baseOf = (dir: string): string => {
 }
 
 /**
- * The suffix's word; test naming is not this flavor's — a test file is one the
- * test runner's binding names (canon: "spec files by the test globs"), and a
- * `.spec.ts` file reads blob here until recognition asks the reader.
+ * Test naming — `*.spec.*`, `*.test.*`, `*.e2e.*` over the script extensions.
+ * The flavor names every kind (04/07 ruling 5); a file under `__tests__/` with
+ * no such name is blob.
  */
+const TEST_SUFFIX = /\.(?:spec|test|e2e)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
+
+/** The suffix's word: a test name first, then the layer suffix. */
 const layerOf = (path: string): FlavorLayer => {
+  if (TEST_SUFFIX.test(path)) return "test"
   const match = LAYER_SUFFIX.exec(path)
   if (!match) return "blob"
   // the regex alternation and the record keys are the same set

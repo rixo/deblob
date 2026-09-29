@@ -47,7 +47,16 @@ const CLI = {
   `,
 } as const
 
-const CONFIG = { driverTech: ["cac"] } as const
+/**
+ * A driver reader for the fixture's own tech — a package no stock reader knows:
+ * it claims the packages named, and reads with the stock cut.
+ */
+const readerOf = (...packages: readonly string[]) => ({
+  name: packages.join("+"),
+  claims: (specifier: string) => packages.includes(specifier),
+})
+
+const CONFIG = { readers: { driver: [readerOf("cac")] } }
 
 const ROWS: readonly Row[] = [
   {

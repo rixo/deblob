@@ -13,6 +13,10 @@ import type {
   ReadStatement,
 } from "./graph.model.ts"
 import type { ImportTargetKind, ReadInput } from "./reading.model.ts"
+import { createJsReader } from "./adapters/js-reader.adapter.ts"
+import { createNodeReader } from "./adapters/node-reader.adapter.ts"
+import { createTsReader } from "./adapters/ts-reader.adapter.ts"
+import { knowledgeOf } from "./knowledge.model.ts"
 import { readModule } from "./reading.model.ts"
 
 const fixture = (name: string): string =>
@@ -110,6 +114,21 @@ const extractions = new Map(
  */
 const TRACKING = { layer: "test" } as const
 
+/** What the readers the corpus binds know: `js`, `ts`, and `node`. */
+const NODE_KNOWLEDGE = knowledgeOf(
+  [createJsReader(), createTsReader()],
+  [createNodeReader()],
+)
+
+/**
+ * A globals-mode runner's host: `describe`, `it`, `test` as free names — what a
+ * host reader of such a runner would claim.
+ */
+const GLOBALS_RUNNER_KNOWLEDGE = knowledgeOf(
+  [createJsReader(), createTsReader()],
+  [createNodeReader(), { globals: ["describe", "it", "test"] }],
+)
+
 /** Test factory: a fixture read as the given kind with the given tech. */
 const read = (
   name: string,
@@ -122,8 +141,9 @@ const read = (
     program: extraction.program,
     source: extraction.source,
     layer: "driver",
-    tech: { name: "plain-ts", exempts: [] },
+    tech: { name: "core", exempts: [] },
     importTargetOf: (specifier) => TARGETS[specifier] ?? { kind: "unresolved" },
+    knowledge: NODE_KNOWLEDGE,
     ...overrides,
   })
 }
@@ -167,7 +187,7 @@ describe("readModule", () => {
         [null, true, 0],
       ])
       expect(reading.root).toEqual([])
-      expect(reading.tech).toBe("plain-ts")
+      expect(reading.tech).toBe("core")
     })
 
     it("gives each import target its one callee kind, and the language and the host theirs — the kinds table", () => {
@@ -212,8 +232,13 @@ describe("readModule", () => {
       // `JSON.stringify`, `new Map()`: the language
       expect(callee(24)).toEqual({ kind: "language" })
       expect(callee(25)).toEqual({ kind: "language" })
-      // an unbound tag, `process.on`: the host is the tech
-      expect(callee(26)).toEqual({ kind: "tech", package: null })
+      // an unbound tag nobody claims: unclaimed, the name where the package
+      // would be; `process.on`: the host is the tech
+      expect(callee(26)).toEqual({
+        kind: "unclaimed",
+        package: "tag",
+        free: true,
+      })
       expect(callee(56)).toEqual({ kind: "tech", package: null })
       // a call on a tech value is the tech's, whatever its name
       // (`process.argv.slice(2)`): the name cannot prove what the value is
@@ -443,8 +468,8 @@ describe("readModule", () => {
         "const:frozen:computed",
         "call:factory",
         "call:factory",
-        "call:tech",
-        "call:tech",
+        "call:unclaimed",
+        "call:unclaimed",
         "control:other:2",
         "control:other:1",
         "control:other:1",
@@ -458,6 +483,7 @@ describe("readModule", () => {
       const reading = read("root-forms.ts", {
         layer: "test",
         tech: { name: "good-enough-tests", exempts: ["registration"] },
+        knowledge: GLOBALS_RUNNER_KNOWLEDGE,
       })
       expect(reading.exempts).toEqual(["registration"])
       expect(reading.functions.map((fn) => fn.name)).toEqual(["fn", "declared"])
@@ -524,11 +550,24 @@ describe("readModule", () => {
     })
 
     it("maps a free `describe`, a globals-mode runner, to no role — the host's, not the reader's (tripwire)", () => {
-      const reading = read("root-forms.ts", { layer: "test", tech: TESTS })
+      const reading = read("root-forms.ts", {
+        layer: "test",
+        tech: TESTS,
+        knowledge: GLOBALS_RUNNER_KNOWLEDGE,
+      })
       expect(rolesOf(reading.hooks).map(([, role]) => role)).toEqual([
         null,
         null,
       ])
+    })
+
+    it("cuts a hook on a free `describe` nobody claims too: its registration unclaimed, red once there (GUESS: D8)", () => {
+      const reading = read("root-forms.ts", { layer: "test", tech: TESTS })
+      expect(reading.hooks[0]?.registeredBy.callee).toEqual({
+        kind: "unclaimed",
+        package: "describe",
+        free: true,
+      })
     })
 
     it("gives no role for a tech with none (tripwire)", () => {
@@ -582,6 +621,7 @@ describe("readModule", () => {
         layer: "model",
         tech: null,
         importTargetOf: () => ({ kind: "unresolved" }),
+        knowledge: NODE_KNOWLEDGE,
       })
       const index = reading.root.findIndex(
         (statement) =>
@@ -1196,7 +1236,7 @@ describe("readModule", () => {
       "factory src/thing.service.ts", // createThing()
       "tech some-tech", // work()
       "tech host", // process.exit()
-      "tech host", // siteOnly(): helper's scope binds it nowhere
+      "unclaimed", // siteOnly(): helper's scope binds it nowhere, nobody claims it
       "factory src/thing.service.ts", // const thing = createThing()
       "use-case run of createThing", // thing.run()
       "use-case run of createThing", // if (mode) thing.run()

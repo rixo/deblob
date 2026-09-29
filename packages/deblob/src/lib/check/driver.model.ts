@@ -130,7 +130,27 @@ const judgeDriver = (
   graph: ImportGraph,
 ): DriverViolation[] => {
   const reading = node.reading
-  if (reading === null) return []
+  if (reading === null) {
+    // a driver or test file no reader reads: its premises do not cover it —
+    // red, its way out a binding (04/07 ruling 8, 14); one a reader counts as
+    // blob on purpose, or one the engine could not parse, is not this rule's
+    if (!node.parsed || node.asBlob === true) return []
+    return [
+      {
+        check: "driver",
+        ruleset: "arch",
+        rules: ["driver-reader"],
+        file: node.path,
+        serviceRoot: node.serviceRoot,
+        line: null,
+        unknown: null,
+        subject: { line: 1, column: 1, start: 0, end: 0 },
+        cause: null,
+        shape: "unread",
+        kind: node.layer === "test" ? "test" : "driver",
+      },
+    ]
+  }
   const exempts = new Set<Exemption>(reading.exempts)
   const violations: DriverViolation[] = []
   const report = (
@@ -191,8 +211,13 @@ const judgeDriver = (
             judgeCallee(call, "wiring")
             for (const arg of call.args) {
               if (arg.received || isHandable(arg)) continue
-              // a function handed to the tech is a hook
-              if (arg.kind === "function" && call.callee.kind === "tech")
+              // a function handed to the tech is a hook — and to what nobody
+              // claims, cut the same (GUESS: D8): the call's red says it once
+              if (
+                arg.kind === "function" &&
+                (call.callee.kind === "tech" ||
+                  call.callee.kind === "unclaimed")
+              )
                 continue
               const shape: Shape = {
                 shape: "argument",

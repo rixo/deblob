@@ -395,8 +395,11 @@ export type DriverViolation = {
   file: string
   /** Grouping key; `null` = the `blob` bucket. */
   serviceRoot: string | null
-  /** 1-indexed line of the offending statement. */
-  line: number
+  /**
+   * 1-indexed line of the offending statement; `null` for the file
+   * (`driver-reader`).
+   */
+  line: number | null
   /** `null`: the red is proven; else what the reader could not see. */
   unknown: UnknownCondition | null
   /** What the violation is about, in its file. */
@@ -471,6 +474,14 @@ export type DriverViolation = {
       /** A root driver's wiring function taking a parameter. */
       shape: "parameter"
       name: string | null
+    }
+  | {
+      /**
+       * A driver or test file no reader reads (`driver-reader`): about the
+       * file, no line.
+       */
+      shape: "unread"
+      kind: "driver" | "test"
     }
 )
 

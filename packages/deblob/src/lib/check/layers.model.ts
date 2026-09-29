@@ -32,12 +32,6 @@ export type CheckLayersOptions = {
    * binding every kind — knobs only tighten canon.
    */
   typeOnlyExempt?: boolean
-  /**
-   * The project's `driverTech` matcher: the packages a driver imports as its
-   * tech. Absent = none. A reader's own claims are not consulted: no reader
-   * binding driver files claims a package today.
-   */
-  driverTech?: (specifier: string) => boolean
 }
 
 /**
@@ -216,7 +210,6 @@ export const checkLayers = (
 ): LayersViolation[] => {
   const pure = new Set(options.pure ?? [])
   const typeOnlyExempt = options.typeOnlyExempt ?? true
-  const driverTech = options.driverTech ?? (() => false)
   const violations: LayersViolation[] = []
 
   for (const edge of graph.edges) {
@@ -278,14 +271,18 @@ export const checkLayers = (
       )
       continue
     }
-    // a driver's tech is what its reading claims or `driverTech` declares; a
-    // builtin or a file outside coverage is concrete, the tech by the
-    // reading's table; a pure package is model. Its types are free.
+    // a driver's tech is what the readers bound to it claim — its own
+    // reader's packages, a bound host's builtins; a pure package is model,
+    // anything else unclaimed (04/07 ruling 8). Its types are free. A driver
+    // no reader reads has no claims to judge by: `driver-reader` names its
+    // one fix (ruling 14), and one counted as blob is judged by nothing.
     if (importerLayer === "driver") {
+      const unread = importer.parsed && importer.reading === null
       if (
+        !unread &&
         !typeEdge &&
-        externalClass !== "concrete" &&
-        !driverTech(edge.to.specifier)
+        edge.claim !== "reader" &&
+        edge.claim !== "tech"
       )
         violations.push(
           matrixCell(importer, edge, externalClass, ["driver-calls-services"]),

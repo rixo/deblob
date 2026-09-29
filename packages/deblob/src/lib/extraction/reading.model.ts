@@ -37,6 +37,7 @@ import type {
   UnknownCondition,
   ValueKind,
 } from "./graph.model.ts"
+import type { Knowledge } from "./knowledge.model.ts"
 
 /** What an import specifier lands on, as the graph has it, plus the claim. */
 export type ImportTargetKind =
@@ -45,9 +46,10 @@ export type ImportTargetKind =
       kind: "external"
       package: string | null
       /**
-       * Tech: `driverTech`, or a concrete builtin; `reader`: the file's own
-       * reader's claim — tech too, and the one a registration calls into;
-       * model: pure.
+       * `reader`: the file's own driver or test reader's claim — tech, and the
+       * one a registration calls into; `tech`: a bound host reader's builtin;
+       * `model`: pure (`pure`, or a host's pure builtin); `unclaimed`: no bound
+       * reader claims it (04/07 ruling 8).
        */
       claim: "reader" | "tech" | "model" | "unclaimed"
       /**
@@ -75,6 +77,11 @@ export type ReadInput = {
   } | null
   importTargetOf: (specifier: string) => ImportTargetKind
   /**
+   * What the language and host readers bound to the file know about the names
+   * it does not bind.
+   */
+  knowledge: Knowledge
+  /**
    * The flavor's word on an export name — a factory or not — where the file
    * kind does not decide: a model export, a pure package's export, a local
    * function. Absent = nothing is a factory by name (step 01's reading).
@@ -91,99 +98,6 @@ export type ReadInput = {
   /** The declared config loads, `<file>#<name>` split. */
   configLoads?: readonly { file: string; name: string }[]
 }
-
-/**
- * ECMAScript's global intrinsics (ECMA-262 § 19, plus ECMA-402's `Intl`): a
- * closed set the specification defines, so enumerating it is the operation.
- * Everything a host adds — `process`, `document`, `fetch`, `Bun` — is tech by
- * complement, and needs no entry.
- */
-const LANGUAGE_GLOBALS: ReadonlySet<string> = new Set([
-  "globalThis",
-  "Infinity",
-  "NaN",
-  "undefined",
-  "eval",
-  "isFinite",
-  "isNaN",
-  "parseFloat",
-  "parseInt",
-  "decodeURI",
-  "decodeURIComponent",
-  "encodeURI",
-  "encodeURIComponent",
-  "AggregateError",
-  "Array",
-  "ArrayBuffer",
-  "Atomics",
-  "BigInt",
-  "BigInt64Array",
-  "BigUint64Array",
-  "Boolean",
-  "DataView",
-  "Date",
-  "Error",
-  "EvalError",
-  "FinalizationRegistry",
-  "Float16Array",
-  "Float32Array",
-  "Float64Array",
-  "Function",
-  "Int8Array",
-  "Int16Array",
-  "Int32Array",
-  "Iterator",
-  "JSON",
-  "Map",
-  "Math",
-  "Number",
-  "Object",
-  "Promise",
-  "Proxy",
-  "RangeError",
-  "ReferenceError",
-  "Reflect",
-  "RegExp",
-  "Set",
-  "SharedArrayBuffer",
-  "String",
-  "Symbol",
-  "SyntaxError",
-  "TypeError",
-  "Uint8Array",
-  "Uint8ClampedArray",
-  "Uint16Array",
-  "Uint32Array",
-  "URIError",
-  "WeakMap",
-  "WeakRef",
-  "WeakSet",
-  "Intl",
-  // the function-local pseudo-binding, language too
-  "arguments",
-])
-
-/**
- * A module's own location — CommonJS's names for it, and the members of
- * `import.meta` that hold it. Canon: presumed not a read of the machine, the
- * module's identity fixed at load; what else `import.meta` carries (`env`) is.
- */
-const LOCATION_GLOBALS: ReadonlySet<string> = new Set([
-  "__dirname",
-  "__filename",
-])
-const LOCATION_META: ReadonlySet<string> = new Set([
-  "url",
-  "dirname",
-  "filename",
-])
-
-/** The intrinsics whose value is a literal, not a computation. */
-const LITERAL_GLOBALS: ReadonlySet<string> = new Set([
-  "undefined",
-  "NaN",
-  "Infinity",
-])
 
 type AstNode = Record<string, unknown> & {
   type: string
@@ -288,25 +202,6 @@ const PRIMITIVE_TYPE_KEYWORDS = new Set([
   "TSTemplateLiteralType",
 ])
 
-/** The standard readonly wrappers, by name at the type's top. */
-const READONLY_TYPE_NAMES = new Set([
-  "Readonly",
-  "ReadonlyArray",
-  "ReadonlyMap",
-  "ReadonlySet",
-])
-
-/** The standard types whose values carry mutators, by name. */
-const MUTABLE_TYPE_NAMES: ReadonlySet<string> = new Set([
-  "Array",
-  "Map",
-  "Set",
-  "WeakMap",
-  "WeakSet",
-  "Date",
-  "Record",
-])
-
 const typeArgumentsOf = (type: AstNode): AstNode[] => {
   const args = type["typeArguments"] as AstNode | undefined
   return isNode(args) ? (args["params"] as AstNode[]) : []
@@ -327,6 +222,7 @@ const typeNameText = (name: AstNode): string =>
 const membersImmutability = (
   literal: AstNode,
   wrapped: boolean,
+  k: Knowledge,
 ): Immutability =>
   allOf(
     (literal["members"] as AstNode[]).map((member) => {
@@ -336,7 +232,7 @@ const membersImmutability = (
             return mutableBy(member.type)
           const annotation = member["typeAnnotation"]
           return isNode(annotation)
-            ? typeImmutability(annotation["typeAnnotation"] as AstNode)
+            ? typeImmutability(annotation["typeAnnotation"] as AstNode, k)
             : unknownFor({ kind: "type-form", form: "TSPropertySignature" })
         }
         case "TSMethodSignature":
@@ -365,13 +261,13 @@ const membersImmutability = (
  * mutators — and a type literal with a member not readonly. Unknown: a named
  * type (no alias resolution) and every form not read.
  */
-const typeImmutability = (type: AstNode): Immutability => {
+const typeImmutability = (type: AstNode, k: Knowledge): Immutability => {
   if (PRIMITIVE_TYPE_KEYWORDS.has(type.type)) return READONLY
   switch (type.type) {
     case "TSFunctionType":
       return READONLY
     case "TSTypeLiteral":
-      return membersImmutability(type, false)
+      return membersImmutability(type, false, k)
     case "TSArrayType":
     case "TSTupleType":
       return mutableBy(type.type)
@@ -380,29 +276,30 @@ const typeImmutability = (type: AstNode): Immutability => {
       if (typeName.type !== "Identifier")
         return unknownFor({ kind: "type-name", name: typeNameText(typeName) })
       const name = typeName["name"] as string
-      if (MUTABLE_TYPE_NAMES.has(name))
+      if (k.typeName(name) === "mutable")
         return mutableBy("TSTypeReference", name)
-      if (!READONLY_TYPE_NAMES.has(name))
+      if (k.typeName(name) !== "readonly")
         return unknownFor({ kind: "type-name", name })
       const args = typeArgumentsOf(type)
       if (args.length === 0)
         return { proof: "broken", reason: `${name} without its type arguments` }
-      if (name !== "Readonly") return allOf(args.map(typeImmutability))
+      if (name !== "Readonly")
+        return allOf(args.map((part) => typeImmutability(part, k)))
       const inner = args[0] as AstNode
       if (inner.type === "TSTypeLiteral")
-        return membersImmutability(inner, true)
+        return membersImmutability(inner, true, k)
       if (inner.type === "TSArrayType")
-        return typeImmutability(inner["elementType"] as AstNode)
+        return typeImmutability(inner["elementType"] as AstNode, k)
       if (
         inner.type === "TSTypeReference" &&
         (inner["typeName"] as AstNode)["name"] === "Record"
       ) {
         const recordArgs = typeArgumentsOf(inner)
         return recordArgs.length === 2
-          ? typeImmutability(recordArgs[1] as AstNode)
+          ? typeImmutability(recordArgs[1] as AstNode, k)
           : { proof: "broken", reason: "Record without its value type" }
       }
-      return typeImmutability(inner)
+      return typeImmutability(inner, k)
     }
     case "TSTypeOperator": {
       const operator = type["operator"] as string
@@ -414,14 +311,20 @@ const typeImmutability = (type: AstNode): Immutability => {
       // oxc refuses `readonly` over anything but an array or a tuple
       const operand = type["typeAnnotation"] as AstNode
       return operand.type === "TSArrayType"
-        ? typeImmutability(operand["elementType"] as AstNode)
-        : allOf((operand["elementTypes"] as AstNode[]).map(typeImmutability))
+        ? typeImmutability(operand["elementType"] as AstNode, k)
+        : allOf(
+            (operand["elementTypes"] as AstNode[]).map((part) =>
+              typeImmutability(part, k),
+            ),
+          )
     }
     case "TSParenthesizedType":
-      return typeImmutability(type["typeAnnotation"] as AstNode)
+      return typeImmutability(type["typeAnnotation"] as AstNode, k)
     case "TSUnionType":
     case "TSIntersectionType":
-      return allOf((type["types"] as AstNode[]).map(typeImmutability))
+      return allOf(
+        (type["types"] as AstNode[]).map((part) => typeImmutability(part, k)),
+      )
     default:
       return unknownFor({
         kind: "type-form",
@@ -437,21 +340,13 @@ const isConstAssertion = (type: AstNode): boolean =>
 
 /** What a name read in an initializer is bound to, as far as the reader knows. */
 type Names = {
+  /** What the language readers bound to the file know. */
+  knowledge: Knowledge
   /** Bound to an immutable value. */
   isImmutable: (name: string) => boolean
   /** The initializer it is bound to, when the reader can hold it for sure. */
   initOf: (name: string) => AstNode | null
 }
-
-/** The standard constructors whose instances carry mutators. */
-const MUTABLE_CONSTRUCTORS: ReadonlySet<string> = new Set([
-  "Array",
-  "Map",
-  "Set",
-  "WeakMap",
-  "WeakSet",
-  "Date",
-])
 
 /** A callee as written, for a message: `createTable`, `Math.max`. */
 const calleeText = (callee: AstNode): string | null => {
@@ -505,7 +400,7 @@ const initializerImmutability = (node: AstNode, names: Names): Immutability => {
           inner.type === "ObjectExpression" ||
           inner.type === "ArrayExpression" ||
           (inner.type === "NewExpression" &&
-            MUTABLE_CONSTRUCTORS.has(
+            names.knowledge.isMutableConstructor(
               (inner["callee"] as AstNode)["name"] as string,
             ))
         )
@@ -521,7 +416,10 @@ const initializerImmutability = (node: AstNode, names: Names): Immutability => {
     case "TSTypeAssertion": {
       const type = node["typeAnnotation"] as AstNode
       if (isConstAssertion(type)) return READONLY
-      return typedAs(typeImmutability(type), of(node["expression"]))
+      return typedAs(
+        typeImmutability(type, names.knowledge),
+        of(node["expression"]),
+      )
     }
     case "ParenthesizedExpression":
     case "TSSatisfiesExpression":
@@ -533,7 +431,7 @@ const initializerImmutability = (node: AstNode, names: Names): Immutability => {
       return unknownFor({ kind: "value", form: "MemberExpression", name: null })
     case "NewExpression": {
       const callee = calleeText(node["callee"] as AstNode)
-      return callee !== null && MUTABLE_CONSTRUCTORS.has(callee)
+      return callee !== null && names.knowledge.isMutableConstructor(callee)
         ? mutableBy("NewExpression", callee)
         : unknownFor({ kind: "call-result", callee, construct: true })
     }
@@ -614,7 +512,9 @@ const declaratorImmutability = (
   const value = initializerImmutability(declarator["init"] as AstNode, names)
   const annotation = annotationOf(id)
   const typed =
-    annotation === null ? value : typedAs(typeImmutability(annotation), value)
+    annotation === null
+      ? value
+      : typedAs(typeImmutability(annotation, names.knowledge), value)
   if (id.type === "Identifier" || typed.proof === "readonly") return typed
   return unknownFor({ kind: "value", form: id.type, name: null })
 }
@@ -841,10 +741,17 @@ export const readModule = ({
   layer,
   tech,
   importTargetOf,
+  knowledge,
   isFactory = () => false,
   paramKinds,
   configLoads = [],
 }: ReadInput): FileReading => {
+  /** A free name the language defines: a literal or a computation. */
+  const isOwnName = (name: string): boolean => {
+    const free = knowledge.freeName(name)
+    return free === "literal" || free === "language"
+  }
+
   // --- spans -------------------------------------------------------------
   const lineStarts = [0]
   for (let i = 0; i < source.length; i += 1) {
@@ -1462,8 +1369,7 @@ export const readModule = ({
     if (root.type === "Identifier") {
       const name = root["name"] as string
       const binding = lookup(scope, name)
-      if (binding === null)
-        return LANGUAGE_GLOBALS.has(name) ? "computed" : "tech"
+      if (binding === null) return isOwnName(name) ? "computed" : "tech"
       return resolveBinding(binding).kind
     }
     if (root.type === "ObjectPattern" || root.type === "ArrayPattern")
@@ -1528,9 +1434,13 @@ export const readModule = ({
       const name = root["name"] as string
       const binding = lookup(scope, name)
       if (binding === null) {
-        if (LANGUAGE_GLOBALS.has(name)) return { kind: "language" }
-        // a host global: the host is the tech, and so is any call on it
-        return { kind: "tech", package: null }
+        const free = knowledge.freeName(name)
+        // a host's free name: the host is the tech, and so is any call on it;
+        // a name no bound reader claims is nobody's (04/07 ruling 8)
+        if (free === "host") return { kind: "tech", package: null }
+        if (free === "unclaimed")
+          return { kind: "unclaimed", package: name, free: true }
+        return { kind: "language" }
       }
       // called on, through its members or itself: its receiver — the call is
       // judged as a call
@@ -1967,7 +1877,13 @@ export const readModule = ({
       if (isFunctionNode(inner)) {
         args.push(plainArg("function", arg))
         if (!emitting) continue
-        if (callee.kind === "tech" && tech !== null)
+        // a callback handed to what nobody claims is cut as a hook too: the
+        // missing premise is red once, at the call (GUESS: D8), never again
+        // as the callback's calls read into the wiring
+        if (
+          (callee.kind === "tech" || callee.kind === "unclaimed") &&
+          tech !== null
+        )
           body.hooks.push(readHook(inner, registeredBy, roleOf(calleeNode)))
         else readInline(inner, callee, registeredBy.span)
         continue
@@ -2316,9 +2232,11 @@ export const readModule = ({
         const name = node["name"] as string
         const binding = lookup(scope, name)
         if (binding === null) {
-          if (LITERAL_GLOBALS.has(name)) return literal
-          if (LANGUAGE_GLOBALS.has(name) || LOCATION_GLOBALS.has(name))
-            return computed
+          const free = knowledge.freeName(name)
+          if (free === "literal") return literal
+          if (free === "language" || free === "location") return computed
+          // GUESS: R11 — a value read of a name nobody claims reads as the
+          // tech's; the call on it is where `unclaimed` shows
           countRead(emitting)
           return { kind: "tech", origin: null, path: [] }
         }
@@ -2337,7 +2255,7 @@ export const readModule = ({
           const name = root["name"] as string
           const binding = lookup(scope, name)
           if (binding === null) {
-            rootValue = LANGUAGE_GLOBALS.has(name)
+            rootValue = isOwnName(name)
               ? computed
               : { kind: "tech", origin: null, path: [] }
             if (rootValue.kind === "tech") countRead(emitting)
@@ -2366,7 +2284,7 @@ export const readModule = ({
           rootValue = evaluateCall(root, { kind: "member" }, emitting)
         } else if (
           root.type === "MetaProperty" &&
-          LOCATION_META.has(members[0] as string)
+          knowledge.isLocationMeta(members[0] as string)
         ) {
           // the module's own location, not a read of the machine
           rootValue = computed
@@ -2643,7 +2561,7 @@ export const readModule = ({
           ? mutableBy("static", name)
           : annotation === null
             ? held
-            : typedAs(typeImmutability(annotation), held),
+            : typedAs(typeImmutability(annotation, knowledge), held),
       storesMachineRead,
       storedCall: isNode(value) ? storedCallOf(value) : null,
       inlined: frame !== null,
@@ -2678,6 +2596,7 @@ export const readModule = ({
       return binding === null || binding.path.length > 0 ? null : binding.init
     }
     return {
+      knowledge,
       initOf,
       isImmutable: (name) => {
         const binding = definitionOf(name)
