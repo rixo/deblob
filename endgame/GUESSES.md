@@ -121,6 +121,18 @@ Anonymous; the partner run's details stay local.
   are no callback handed to the tech: the stock cut reads the methods as
   definitions, `driver-hooks-only` red. D1's own cut is owed for these.
 
+- **P4 — `node:path` in a driver is red.** A bound host's pure builtin is model;
+  a driver imports no model. So every CLI that resolves a path reds. Consistent
+  with canon (a driver computes nothing — the path math belongs in a service),
+  but it is the first friction a partner meets. No default taken: a consequence
+  to confirm or soften.
+
+## Map
+
+- **M4 — Cycles on the map.** A cycle belongs to no one file; the snapshot's
+  verdicts leave it out. Default: left out. Status: taken — `snapshot.model.ts`
+  `verdictsOf`.
+
 ## Leftovers carried as-is
 
 Not touched by endgame, listed so nobody reads their absence as a ruling:

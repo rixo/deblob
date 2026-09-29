@@ -40,6 +40,7 @@ const snapshotAt = (
   modules: FAKE_MODULES,
   edges: [],
   unresolved: [],
+  verdicts: [],
   map: {
     modules: [],
     edges: [],
@@ -101,7 +102,7 @@ test("the snapshot's project, provenance, counts, and the services with their fi
     target.querySelector("h1")?.textContent?.replace(/\s+/g, " ").trim(),
   ).toBe("FAKE_PKG /FAKE_ROOT")
   expect(target.textContent).toContain("FAKE_PROV")
-  expect(textsOf(target, "dd")).toEqual(["3", "42", "33", "1"])
+  expect(textsOf(target, "dd")).toEqual(["3", "42", "33", "1", "0"])
   expect(textsOf(target, "h2")).toEqual(["src/lib/fake", "top level"])
   expect(textsOf(target, "h3")).toEqual(["model", "service", "blob"])
   expect(textsOf(target, "li")).toEqual([

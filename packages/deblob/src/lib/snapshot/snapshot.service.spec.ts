@@ -129,6 +129,7 @@ describe("createSnapshotService", () => {
       ],
       edges: [],
       unresolved: [],
+      verdicts: [],
     })
   })
 
@@ -273,6 +274,7 @@ describe("serveSnapshots", () => {
         modules: [],
         edges: [],
         unresolved: [],
+        verdicts: [],
         map: {
           modules: [],
           edges: [],

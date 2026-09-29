@@ -27,6 +27,7 @@ const snapshotOf = (root: string): Snapshot => ({
   modules: [],
   edges: [],
   unresolved: [],
+  verdicts: [],
   map: {
     modules: [],
     edges: [],

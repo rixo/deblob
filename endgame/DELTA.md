@@ -29,7 +29,15 @@ leaves when its branch integrates it.
 - **P1, the exclude baseline anchored** — also owed to main: the shipped
   baseline has the bug.
 
+- **One check runner** (`check/checks.model.ts`): the detector table the CLI and
+  the corpus each copied, and the snapshot now uses.
+- A driver counted as blob (`blobDriver`) counts as blob in the stats.
+
 ## viewer
 
+- **`Snapshot.verdicts`** (milestone 4): the graph checks' violations, file by
+  file, with the message as `check` prints it; the `#debug` outline lists them
+  and counts them. The design's pages untouched — the ask is in
+  [DESIGN-ASK.md](DESIGN-ASK.md).
 - The viewer's server (`drivers/wiring.ts`) builds its readers from
   `readers.assembly.ts`, the same defaults as the CLI.

@@ -65,6 +65,20 @@ export type UnresolvedRef = {
   readonly literal: boolean
 }
 
+/**
+ * One violation the checks report, as `deblob check` prints it: the file, the
+ * line (`null` for the file itself), the rules it cites, whether the reader
+ * could not tell (unknown), and the message. A cycle, which belongs to no one
+ * file, is not listed (GUESS: M4 — the map owes cycles a shape of their own).
+ */
+export type Verdict = {
+  readonly file: string
+  readonly line: number | null
+  readonly rules: readonly string[]
+  readonly unknown: boolean
+  readonly message: string
+}
+
 /** The bare status numbers, as the CLI prints them. */
 export type SnapshotStats = {
   readonly files: number
@@ -84,6 +98,8 @@ export type Snapshot = {
   readonly modules: readonly ModuleRef[]
   readonly edges: readonly EdgeRef[]
   readonly unresolved: readonly UnresolvedRef[]
+  /** What the graph checks report, file by file (endgame milestone 4). */
+  readonly verdicts: readonly Verdict[]
   /** What the design's map draws (step 09 SPEC § API). */
   readonly map: MapData
 }

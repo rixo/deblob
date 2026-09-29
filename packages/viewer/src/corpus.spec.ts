@@ -37,7 +37,11 @@ test.each(Object.entries(corpus))(
       ),
     )
     expect(new Set(listed)).toEqual(roots)
-    expect(target.querySelectorAll("li").length).toBe(snapshot.modules.length)
+    // a file's item, its verdicts nested under it aside
+    expect(target.querySelectorAll("li:not([data-unknown])").length).toBe(
+      snapshot.modules.length,
+    )
+    expect(statOf(target, "violations")).toBe(String(snapshot.verdicts.length))
 
     expect(statOf(target, "files")).toBe(String(snapshot.stats.files))
     expect(statOf(target, "bytes")).toBe(String(snapshot.stats.bytes))

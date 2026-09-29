@@ -12,15 +12,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { checkAssembly } from "../../lib/check/assembly.model.ts"
-import { checkBarrels } from "../../lib/check/barrels.model.ts"
-import { checkBoot } from "../../lib/check/boot.model.ts"
-import { checkDag } from "../../lib/check/dag.model.ts"
-import { checkDriver } from "../../lib/check/driver.model.ts"
-import { checkLayers } from "../../lib/check/layers.model.ts"
-import { checkModules } from "../../lib/check/modules.model.ts"
-import { checkPorts } from "../../lib/check/ports.model.ts"
-import { checkPrivate } from "../../lib/check/private.model.ts"
+import { runGraphCheck } from "../../lib/check/checks.model.ts"
 import { checkSurface, tallySurface } from "../../lib/check/surface.model.ts"
 import type {
   PackageSurface,
@@ -144,26 +136,6 @@ const colorsFor = (io: MainIo, noColor: boolean): Colors => {
   if (noColor || (io.env["NO_COLOR"] ?? "") !== "") return NO_COLORS
   if ((io.env["FORCE_COLOR"] ?? "") !== "") return ANSI_COLORS
   return io.stdout.isTTY === true ? ANSI_COLORS : NO_COLORS
-}
-
-const DETECTORS: Record<
-  Exclude<CheckName, "surface">,
-  (graph: ImportGraph, config: ResolvedConfig) => Violation[]
-> = {
-  dag: (graph) => checkDag(graph),
-  layers: (graph, config) =>
-    checkLayers(graph, {
-      pure: config.pure,
-      typeOnlyExempt: config.typeOnlyExempt,
-    }),
-  private: (graph) => checkPrivate(graph),
-  barrels: (graph) => checkBarrels(graph),
-  ports: (graph) => checkPorts(graph),
-  modules: (graph, config) =>
-    checkModules(graph, { mutableModuleState: config.mutableModuleState }),
-  assembly: (graph) => checkAssembly(graph),
-  driver: (graph) => checkDriver(graph),
-  boot: (graph) => checkBoot(graph),
 }
 
 /**
@@ -460,7 +432,7 @@ const runCheck = async (
   const violations = action.checks.flatMap((check) =>
     check === "surface"
       ? surfaceReport.violations
-      : DETECTORS[check](graph, config),
+      : runGraphCheck(check, graph, config),
   )
   const sizes = await deps.scan.statSizes(config.root, files)
   const stats: GraphStats = {
@@ -469,7 +441,9 @@ const runCheck = async (
       sizes.map(({ path, size }) => ({
         size,
         // every covered file is a graph node — extraction's contract
-        blob: (graph.modules.get(path) as ModuleNode).layer === "blob",
+        blob:
+          (graph.modules.get(path) as ModuleNode).layer === "blob" ||
+          (graph.modules.get(path) as ModuleNode).asBlob === true,
       })),
     ),
     services: serviceCountOf(

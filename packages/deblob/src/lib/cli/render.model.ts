@@ -34,7 +34,7 @@ import type { ExplainEntry } from "../explain/rule-content.model.ts"
 import { KNOWN_CHECKS } from "./cli.model.ts"
 
 /** Everything but dag renders as service → file → tagged message lines. */
-type FileViolation = Exclude<Violation, DagViolation>
+export type FileViolation = Exclude<Violation, DagViolation>
 
 /** One fix, in a file: a lead and the violations it removes with it. */
 type FileGroup = { lead: FileViolation; riders: readonly FileViolation[] }
@@ -241,6 +241,13 @@ const surfaceMessage = (
       ? `${lead} — an unlabeled entry over ${violation.frontLayer}; the layer must be visible in the surface`
       : `${lead} — an unlabeled entry fronting ${violation.frontLayer} (${prefix}${violation.fronts}); the layer must be visible in the surface`
 }
+
+/**
+ * One violation's message, as `check` prints it after the kind — no path
+ * prefix, no rule slugs: the snapshot's verdicts carry those apart.
+ */
+export const violationMessage = (violation: FileViolation): string =>
+  messageOf(violation, "")
 
 const messageOf = (violation: FileViolation, prefix: string): string => {
   switch (violation.check) {

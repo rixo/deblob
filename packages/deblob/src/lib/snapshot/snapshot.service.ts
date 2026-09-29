@@ -1,8 +1,8 @@
 /**
  * Snapshots of projects, and the protocol that serves them. `snapshotOf(root)`
- * is the CLI's check sequence minus the detectors, on the project at `root`
- * exactly, folded into the viewer's contract. `serveSnapshots` is the protocol
- * in one place.
+ * is the CLI's check sequence — the graph checks included, `surface` aside — on
+ * the project at `root` exactly, folded into the viewer's contract.
+ * `serveSnapshots` is the protocol in one place.
  */
 
 import type {
@@ -12,6 +12,7 @@ import type {
   Snapshot,
 } from "@deblob/viewer/snapshot.model"
 
+import { GRAPH_CHECKS, runGraphCheck } from "../check/checks.model.ts"
 import { isConfigError } from "../config/config.model.ts"
 import type { ResolvedConfig } from "../config/config.service.ts"
 import type { ImportGraph } from "../extraction/graph.model.ts"
@@ -88,6 +89,9 @@ export const createSnapshotService = ({
       sizes,
       name,
       generatedAt: source.now(),
+      violations: GRAPH_CHECKS.flatMap((check) =>
+        runGraphCheck(check, graph, config),
+      ),
     })
     return {
       snapshot: { ...rows, map: await mapOf(config.root, rows) },

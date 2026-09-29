@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { outlineOf } from "./lib/snapshot/outline.model.ts"
+  import { outlineOf, verdictsByFile } from "./lib/snapshot/outline.model.ts"
   import type { SnapshotSource } from "./lib/snapshot/snapshot-source.port.ts"
 
   let { source }: { source: SnapshotSource } = $props()
@@ -28,7 +28,9 @@
     </p>
   {/if}
   {#if $source.snapshot !== null}
-    {@const { project, stats, modules, generatedAt } = $source.snapshot}
+    {@const { project, stats, modules, generatedAt, verdicts } =
+      $source.snapshot}
+    {@const byFile = verdictsByFile(verdicts)}
     <header>
       <h1>
         {#if project.name !== null}
@@ -50,6 +52,8 @@
         <dd data-stat="blobPercent">{stats.blobPercent}</dd>
         <dt>services</dt>
         <dd data-stat="services">{stats.services}</dd>
+        <dt>violations</dt>
+        <dd data-stat="violations">{verdicts.length}</dd>
       </dl>
     </header>
     {#each outlineOf(modules) as service (service.root)}
@@ -65,7 +69,21 @@
           <h3>{layer}</h3>
           <ul>
             {#each files as file (file.path)}
-              <li><code>{file.path}</code></li>
+              <li>
+                <code>{file.path}</code>
+                {#if byFile.has(file.path)}
+                  <ul data-verdicts>
+                    {#each byFile.get(file.path) ?? [] as verdict, index (index)}
+                      <li data-unknown={verdict.unknown}>
+                        {verdict.line === null
+                          ? ""
+                          : `line ${verdict.line} `}{verdict.message}
+                        <small>({verdict.rules.join(", ")})</small>
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+              </li>
             {/each}
           </ul>
         {/each}

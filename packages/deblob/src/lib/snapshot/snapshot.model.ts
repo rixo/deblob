@@ -9,12 +9,15 @@ import type {
   MapData,
   ModuleRef,
   Snapshot,
+  Verdict,
 } from "@deblob/viewer/snapshot.model"
 
+import type { Violation } from "../check/violation.model.ts"
 import {
   provenanceOf,
   serviceCountOf,
   sizeStatsOf,
+  violationMessage,
 } from "../cli/render.model.ts"
 import type { ResolvedConfig } from "../config/config.service.ts"
 import type {
@@ -22,6 +25,10 @@ import type {
   ImportGraph,
   ModuleNode,
 } from "../extraction/graph.model.ts"
+
+/** Blob by kind, or a driver a reader counts as blob on purpose. */
+const isBlob = (node: ModuleNode): boolean =>
+  node.layer === "blob" || node.asBlob === true
 
 /**
  * A config path as the project sees it — relative to its root when under it, as
@@ -84,6 +91,25 @@ const edgeRefOf = ({
 })
 
 /**
+ * The checks' violations as verdicts, in report order. A cycle is not a file's
+ * (GUESS: M4); a violation without a line is about its file.
+ */
+const verdictsOf = (violations: readonly Violation[]): Verdict[] =>
+  violations.flatMap((violation) =>
+    violation.check === "dag"
+      ? []
+      : [
+          {
+            file: violation.file,
+            line: "line" in violation ? violation.line : null,
+            rules: violation.rules,
+            unknown: "unknown" in violation && violation.unknown !== null,
+            message: violationMessage(violation),
+          },
+        ],
+  )
+
+/**
  * The fold of one extraction run: the snapshot, its map's rows (modules and
  * edges with their symbol level) and nothing else of the map yet — the call
  * stacks and the READMEs are fed after.
@@ -98,6 +124,7 @@ export const snapshotFrom = ({
   sizes,
   name,
   generatedAt,
+  violations,
 }: {
   config: Pick<
     ResolvedConfig,
@@ -107,13 +134,16 @@ export const snapshotFrom = ({
   sizes: readonly { path: string; size: number }[]
   name: string | null
   generatedAt: string
+  /** What the graph checks reported on the run's graph. */
+  violations: readonly Violation[]
 }): SnapshotRows => {
   const modules = [...graph.modules.values()]
   const { totalBytes, blobPercent } = sizeStatsOf(
     sizes.map(({ path, size }) => ({
       size,
-      // every covered file is a graph node — extraction's contract
-      blob: (graph.modules.get(path) as ModuleNode).layer === "blob",
+      // every covered file is a graph node — extraction's contract; a driver
+      // a reader counts as blob is blob
+      blob: isBlob(graph.modules.get(path) as ModuleNode),
     })),
   )
   return {
@@ -138,6 +168,7 @@ export const snapshotFrom = ({
     modules: modules.map(moduleRefOf),
     edges: graph.edges.map(edgeRefOf),
     unresolved: graph.unresolved,
+    verdicts: verdictsOf(violations),
     // the map's rows: the same modules and edges, their symbol level added
     map: {
       modules: modules.map((node) => ({

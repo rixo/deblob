@@ -20,6 +20,7 @@ const snapshotOf = (
   modules: [],
   edges: [],
   unresolved: [],
+  verdicts: [],
   map: {
     modules: [
       {
@@ -125,6 +126,7 @@ describe("buildViewerProps", () => {
       project: snapshot.project,
       stats: snapshot.stats,
       unresolved: snapshot.unresolved,
+      verdicts: snapshot.verdicts,
       modules: snapshot.map.modules,
       edges: snapshot.map.edges,
       ...sequence(),

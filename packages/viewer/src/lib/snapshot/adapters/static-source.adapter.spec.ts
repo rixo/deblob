@@ -19,6 +19,7 @@ const FAKE_SNAPSHOT: Snapshot = {
   ],
   edges: [],
   unresolved: [],
+  verdicts: [],
   map: {
     modules: [],
     edges: [],

@@ -96,6 +96,7 @@ describe("snapshotFrom", () => {
       sizes: FAKE_SIZES,
       name: "FAKE_PKG",
       generatedAt: "1999-12-31T23:59:59.000Z",
+      violations: [],
     })
     expect(snapshot).toEqual({
       generatedAt: "1999-12-31T23:59:59.000Z",
@@ -146,6 +147,7 @@ describe("snapshotFrom", () => {
         },
       ],
       unresolved: FAKE_GRAPH.unresolved,
+      verdicts: [],
       map: {
         modules: snapshot.modules.map((module) => ({
           ...module,
@@ -168,6 +170,80 @@ describe("snapshotFrom", () => {
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot)
   })
 
+  test("folds the checks' violations into verdicts: a line or the file, unknown or proven, the message as check prints it; a cycle left out", () => {
+    const span = { line: 3, column: 1, start: 0, end: 0 }
+    const { verdicts } = snapshotFrom({
+      config: {
+        root: "/FAKE_ROOT",
+        configPath: null,
+        localPath: null,
+        flavorName: "FAKE_FLAVOR",
+      },
+      graph: {
+        root: "/FAKE_ROOT",
+        modules: new Map(),
+        edges: [],
+        unresolved: [],
+        broken: [],
+      },
+      sizes: [],
+      name: null,
+      generatedAt: "1999-12-31T23:59:59.000Z",
+      violations: [
+        {
+          check: "dag",
+          ruleset: "arch",
+          rules: ["no-service-cycle"],
+          cycle: ["a", "b"],
+          kind: "service",
+        } as never,
+        {
+          check: "driver",
+          ruleset: "arch",
+          rules: ["driver-reader"],
+          file: "src/cli.driver.ts",
+          serviceRoot: null,
+          line: null,
+          unknown: null,
+          subject: span,
+          cause: null,
+          shape: "unread",
+          kind: "driver",
+        },
+        {
+          check: "driver",
+          ruleset: "arch",
+          rules: ["driver-calls-services"],
+          file: "src/cli.driver.ts",
+          serviceRoot: null,
+          line: 3,
+          unknown: { kind: "callee" },
+          subject: span,
+          cause: null,
+          shape: "call",
+          callee: { kind: "unknown" },
+          where: "wiring",
+        },
+      ],
+    })
+    expect(verdicts).toEqual([
+      {
+        file: "src/cli.driver.ts",
+        line: null,
+        rules: ["driver-reader"],
+        unknown: false,
+        message: expect.stringContaining("no driver reader reads this driver"),
+      },
+      {
+        file: "src/cli.driver.ts",
+        line: 3,
+        rules: ["driver-calls-services"],
+        unknown: true,
+        message: expect.stringContaining("may call what a driver may not"),
+      },
+    ])
+  })
+
   test("a configless run says so; a config outside the root keeps its path", () => {
     const configless = snapshotFrom({
       config: {
@@ -186,6 +262,7 @@ describe("snapshotFrom", () => {
       sizes: [],
       name: null,
       generatedAt: "1999-12-31T23:59:59.000Z",
+      violations: [],
     })
     expect(configless.project).toEqual({
       root: "/FAKE_ROOT",
@@ -216,6 +293,7 @@ describe("snapshotFrom", () => {
       sizes: [],
       name: null,
       generatedAt: "1999-12-31T23:59:59.000Z",
+      violations: [],
     })
     expect(elsewhere.project.provenance).toBe(
       "/FAKE_ELSEWHERE/deblob.config.ts (flavor: FAKE_FLAVOR)",

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest"
 
-import { outlineOf } from "./outline.model.ts"
+import { outlineOf, verdictsByFile } from "./outline.model.ts"
 import type { Layer, ModuleRef } from "./snapshot.model.ts"
 
 const file = (
@@ -50,4 +50,24 @@ test("no top-level files: no null service", () => {
 
 test("nothing: nothing", () => {
   expect(outlineOf([])).toEqual([])
+})
+
+test("verdictsByFile groups the verdicts by file, in report order", () => {
+  const verdict = (file: string, message: string) => ({
+    file,
+    line: 1,
+    rules: ["stable-root"],
+    unknown: false,
+    message,
+  })
+  const grouped = verdictsByFile([
+    verdict("a.ts", "first"),
+    verdict("b.ts", "other"),
+    verdict("a.ts", "second"),
+  ])
+  expect(grouped.get("a.ts")?.map(({ message }) => message)).toEqual([
+    "first",
+    "second",
+  ])
+  expect(grouped.has("c.ts")).toBe(false)
 })

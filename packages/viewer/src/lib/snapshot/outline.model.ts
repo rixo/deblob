@@ -4,7 +4,12 @@
  * layers in `LAYERS` order, empty ones omitted; files in snapshot order.
  */
 
-import { LAYERS, type Layer, type ModuleRef } from "./snapshot.model.ts"
+import {
+  LAYERS,
+  type Layer,
+  type ModuleRef,
+  type Verdict,
+} from "./snapshot.model.ts"
 
 export type OutlineLayer = {
   readonly layer: Layer
@@ -38,4 +43,19 @@ export const outlineOf = (
   return topLevel.length === 0
     ? services
     : [...services, { root: null, layers: layersOf(topLevel) }]
+}
+
+/**
+ * Each file's verdicts, in report order: what the outline lists under the file.
+ * A file with none is absent.
+ */
+export const verdictsByFile = (
+  verdicts: readonly Verdict[],
+): ReadonlyMap<string, readonly Verdict[]> => {
+  const byFile = new Map<string, Verdict[]>()
+  for (const verdict of verdicts) {
+    const known = byFile.get(verdict.file) ?? []
+    byFile.set(verdict.file, [...known, verdict])
+  }
+  return byFile
 }

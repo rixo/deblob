@@ -10,15 +10,7 @@
 
 import { join } from "node:path"
 
-import { checkAssembly } from "../../check/assembly.model.ts"
-import { checkBarrels } from "../../check/barrels.model.ts"
-import { checkBoot } from "../../check/boot.model.ts"
-import { checkDag } from "../../check/dag.model.ts"
-import { checkDriver } from "../../check/driver.model.ts"
-import { checkLayers } from "../../check/layers.model.ts"
-import { checkModules } from "../../check/modules.model.ts"
-import { checkPorts } from "../../check/ports.model.ts"
-import { checkPrivate } from "../../check/private.model.ts"
+import { runGraphCheck } from "../../check/checks.model.ts"
 import type { PackageSurface } from "../../check/surface.model.ts"
 import { checkSurface } from "../../check/surface.model.ts"
 import type { Violation } from "../../check/violation.model.ts"
@@ -48,26 +40,6 @@ import { createRunner } from "./runner.service.ts"
 
 /** Where a case's tree sits — an absolute root the memory adapter answers for. */
 export const CASE_ROOT = "/case"
-
-const DETECTORS: Record<
-  Exclude<CheckName, "surface">,
-  (graph: ImportGraph, config: ResolvedConfig) => Violation[]
-> = {
-  dag: (graph) => checkDag(graph),
-  layers: (graph, config) =>
-    checkLayers(graph, {
-      pure: config.pure,
-      typeOnlyExempt: config.typeOnlyExempt,
-    }),
-  private: (graph) => checkPrivate(graph),
-  barrels: (graph) => checkBarrels(graph),
-  ports: (graph) => checkPorts(graph),
-  modules: (graph, config) =>
-    checkModules(graph, { mutableModuleState: config.mutableModuleState }),
-  assembly: (graph) => checkAssembly(graph),
-  driver: (graph) => checkDriver(graph),
-  boot: (graph) => checkBoot(graph),
-}
 
 const runSurface = (
   graph: ImportGraph,
@@ -157,7 +129,7 @@ export const assembleCase = (files: Case["files"]) => {
         violations: checks.flatMap((name) =>
           name === "surface"
             ? runSurface(graph, resolved, surface)
-            : DETECTORS[name](graph, resolved),
+            : runGraphCheck(name, graph, resolved),
         ),
         broken: graph.broken,
       }
