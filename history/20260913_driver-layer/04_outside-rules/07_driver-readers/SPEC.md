@@ -263,6 +263,22 @@ Second round:
     A test file is a driver in its own right (`test-is-outside`), so the slug
     covers it.
 
+### Checkpoint 1, landed
+
+Canon as § Canon says, and beyond it:
+
+- "Tech" is pinned in § Terminology, where "service" already is.
+- `driver-reader` got its canon text: first in § Driver's rule list and in the
+  Summary's driver rules, with its anchor. Its registration in the code waits
+  for checkpoint 5; the anchors test only checks registered slugs.
+- The recognition paragraph ended "unclaimed is what blob means", about a file
+  no layer is declared for. With "unclaimed" now the word for a name no reading
+  claims, it reads "undeclared is what blob means".
+- "Ruled for plain-TypeScript drivers" under `hook-one-call` became "ruled for
+  the stock cut".
+- `stable-root`'s red calls gain "or something no reading claims", beside the
+  tech; the reading that declares a call effect-free is the one that claims it.
+
 ## Testing
 
 The gate is the corpus: rows red first, stamped by rixo while red, then built

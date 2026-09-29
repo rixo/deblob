@@ -77,6 +77,19 @@ Two distinct meanings depending on context:
 Context usually makes it obvious which meaning is intended; when it doesn't,
 this document is explicit.
 
+**Tech** has two meanings:
+
+- **The tech** — what a driver listens to and an adapter calls: the argument
+  parser, the server, the test runner, the host (`process`, `document`). What
+  counts as tech is what a reading claims — the argument parser's package for
+  its reading, `process` for the host's — and nothing else: a package or a name
+  no reading claims is not tech, it is unclaimed.
+- **A tech value** — what the tech hands the program: the event a hook receives,
+  `process` handed whole, what a declared load returns.
+
+A layer allowed side effects — an adapter, a blob — is not "tech"; it is said so
+where it matters.
+
 ---
 
 ## Hexagonal architecture
@@ -247,10 +260,10 @@ Outside it, inward to outward:
 - **Boot** (`.boot.ts`) — the entry. Imports one driver and calls its wiring
   function once, at module root, with no arguments. The one module whose
   evaluation performs a call. One right: start, one call to its one driver.
-- **Test** (files matched by the test globs) — assembly and driver in one, by
-  the shape of the test tech. Imports anything, blob included; defines anything;
-  imported by nothing (`test-is-outside`). Shared test code is not test kind: it
-  is an adapter, an assembly, a model or a driver, by what it is.
+- **Test** (`.spec`, `.test`, `.e2e`) — assembly and driver in one, by the shape
+  of the test tech. Imports anything, blob included; defines anything; imported
+  by nothing (`test-is-outside`). Shared test code is not test kind: it is an
+  adapter, an assembly, a model or a driver, by what it is.
 
 Suffixless files are blob — no layer declaration, no layer guarantees.
 
@@ -494,13 +507,15 @@ asserts on what its fakes recorded, so a test factory hands them back (see
 [The test factory pattern](#the-test-factory-pattern)). The corollary is that an
 assembly that returns adapters can only be called by tests.
 
-How the checker reads it: by callee file kind and by result flow. A callee from
-a service, adapter, assembly or blob file is a factory by construction; its
-result may only be passed on or returned, never branched on, computed with, or
-member-accessed — a declared load's result, a tech value, is the one that may be
-read. In a model file, the flavor's word tells a factory from a function (the
-stock flavor's `create*`): a model factory is called on those same terms, a
-model function is not called at all.
+How the checker reads it: by the flavor's kind, with no reader bound — an
+assembly listens to no tech, so there is nothing for a reader to claim or cut —
+then by callee file kind and by result flow. A callee from a service, adapter,
+assembly or blob file is a factory by construction; its result may only be
+passed on or returned, never branched on, computed with, or member-accessed — a
+declared load's result, a tech value, is the one that may be read. In a model
+file, the flavor's word tells a factory from a function (the stock flavor's
+`create*`): a model factory is called on those same terms, a model function is
+not called at all.
 
 What the rules do not guarantee: that a stateful service is built once. Two
 drivers calling the same assembly get two instances — valid, visible on the map
@@ -530,36 +545,47 @@ the framework mounts the component.
 What "one hook" is depends on the tech: a `.command().action()` callback on a
 CLI, a route handler, a `test()` body, an event handler in a component. So are
 what counts as a call, a definition, or wiring. So each technology comes with a
-**reading**: how its driver files are recognized, which packages are its tech,
-how its files are cut into hooks, and which driver rules it exempts. The driver
-rules are ascribed through that reading; in the checker it is one adapter per
-tech, as the flavor is one per naming convention. The reading is also the limit
-of the rules: a callback it does not cut — a middleware, a `beforeEach`, an
-effect it does not know — is not a hook and is not judged. Lenient by default,
-on purpose: a tech the checker half knows must not turn a codebase red for what
-it does not understand. What a reading leaves uncut is that tech's open part,
-stated in the reading, not a rule. The rules themselves assume one shape only —
-a hook is a function the tech is handed and calls back — and the stock
-plain-TypeScript reading cuts exactly that shape, the host's globals (`process`,
-`document`) and the packages declared as tech being the tech. A technology whose
-hooks are not handed callbacks — a route file the framework loads, a handler
-written in markup, a decorated method — is its own reading's to cut, and until
-one exists its drivers are judged only as far as a reading cuts them.
-Plain-TypeScript drivers carry the `.driver.ts` suffix; a tech's own files are
-declared by glob — spec files by the test globs, framework entry points by the
-framework's patterns. Web drivers are open, research in progress; the one thing
-claimed for them is the recognition rule: a component matching the declared
-driver globs may import an assembly, any other component doing so is a
-violation. What the codebase imports lands in the graph, whatever its extension:
-a file of an unruled tech, matching no driver glob and read by no reader, is
-blob until one is bound to it — the suffix rule reads `.ts` files, so nothing
-claims such a file, and unclaimed is what blob means. It is seen and counted
-like any other blob, since the honest report is that the tool cannot read it
-yet, not that it is absent. Matching a coverage glob is not itself enough to
-pull a file in; being imported is.
+**reading**: which files are its own, which packages and names are its tech, how
+its files are cut into hooks, and which driver rules it exempts. The driver
+rules are ascribed through that reading; in the checker it is a reader, bound to
+its files by glob, as the flavor is one per naming convention. A driver's tech
+is what the readers bound to it claim, and nothing else: the host's names
+(`process`, `document`) are tech where a host's reader is bound, and an import
+or a name no bound reader claims is unclaimed. A driver no reader reads is red
+(`driver-reader`): no driver rule can be judged without the reading, and the way
+out is binding one.
+
+The rules assume one shape — a hook is a function the tech is handed and calls
+back — and the stock cut is exactly that: every callback handed to a claimed
+tech is a hook. There is no open part: a reader relaxes a rule only by an
+exemption stated with its reason, for a role the tech gives a hook (a test
+runner's registration, say). A technology whose hooks are not handed callbacks —
+a route file the framework loads, a handler written in markup, a decorated
+method — needs a reader with a cut of its own; until one exists, the stock cut
+is all its drivers get.
+
+A file's kind comes from the flavor's name: `.driver.ts`, and test files by
+`.spec`, `.test`, `.e2e`. A reader's binding gives a kind only to a file the
+flavor leaves blob — a framework's entry point, `+page.svelte` — or agrees with
+the flavor; a binding that names a file differently from the flavor is a config
+error. The kind does not make the file read: a `.driver.ts` file still needs its
+reader. Web drivers are open, research in progress; the one thing claimed for
+them is the recognition rule: a component a driver reader binds may import an
+assembly, any other component doing so is a violation. What the codebase imports
+lands in the graph, whatever its extension: a file of an unruled tech, bound by
+no reader, is blob until one is bound to it — the suffix rule reads `.ts` files,
+so no layer is declared for such a file, and undeclared is what blob means. It
+is seen and counted like any other blob, since the honest report is that the
+tool cannot read it yet, not that it is absent. Matching a coverage glob is not
+itself enough to pull a file in; being imported is.
 
 The driver rules make thin the only legal shape:
 
+- **`driver-reader`** — a driver is read by a reader bound to its tech. A driver
+  file or a test file no reader reads is red: every rule below is judged through
+  the reading, so none of them can be judged without it. The way out is binding
+  a reader; a driver the project does not want read yet is bound to a reader
+  that counts it as blob, on purpose, and it stays imported only as a driver.
 - **`wiring-outside-hooks`** — outside its hooks, a driver only wires: assembly
   calls, tech setup (the parser, the server, the mount), sub-driver
   registration. Arguments are tech values, instances, literals. Wiring is done
@@ -585,15 +611,15 @@ The driver rules make thin the only legal shape:
   use case. The exit code is part of its job: the service sets it through a
   port, the hook handing `process` down unchanged; the rendering too, through
   the io port. This is the rule that closes the loop; the others exist to make
-  it unavoidable. Ruled for plain-TypeScript drivers; a web reading says where
-  the line sits when the view model is the tech's.
+  it unavoidable. Ruled for the stock cut; a reader with a cut of its own says
+  where the line sits when the view model is the tech's.
 - **`driver-calls-services`** — a driver calls use cases, assembly factories,
   sub-driver wiring functions, and its own tech. Never an adapter: an adapter
   call from a hook is an effect no contract covers. Never a model: parsing and
-  rendering are use cases of a service. A driver's tech is what its reading
-  claims, or what the project declares as tech for a technology no reading knows
-  yet; an external import neither claims is a violation whose resolution is the
-  declaration, and a pure library is model and red regardless.
+  rendering are use cases of a service. A driver's tech is what the readers
+  bound to it claim; an import or a name no bound reader claims is unclaimed,
+  and red — the way out is a reader that claims it — and a pure library is model
+  and red regardless.
 - **`driver-hooks-only`** — the only definitions in a driver are its hooks and
   at most one wiring function: a root driver's `main()`, which takes nothing and
   reads its tech itself, or a sub-driver's
@@ -691,7 +717,8 @@ The CLI's boot is `cli.boot.ts`. A single-page app's boot calls the driver's
 `main()` that mounts the root component. A framework that loads route files
 itself, or a test runner that loads spec files, is a boot outside the program,
 so those drivers have none in the tree. The boot is the exemption `stable-root`
-needs to hold everywhere else.
+needs to hold everywhere else. The checker reads a boot by the flavor's kind (or
+the config's designation), with no reader bound: it touches no tech.
 
 ### Visibility: public by default, private by intention
 
@@ -985,15 +1012,15 @@ needs tooling that knows service boundaries.
   driver in one** — the setup builds units with fixtures (test-purpose adapters,
   same isolation rules), the test bodies are hooks, registered by calls at
   module root that the test tech owns (`stable-root` exempts the registration,
-  not mutable state). Recognized by the configured test globs. It imports
-  anything, blob included; it defines anything; the hook count and services-only
-  do not apply; nothing imports it. Shared test code gets none of this and is
-  placed by what it is: a fake or in-memory implementation is an adapter, a test
-  factory an assembly function, a data builder model, and a matcher, fixture or
-  shared hook registered on the runner a driver whose wiring function the spec
-  file calls with the tech. Test edges count for rights and coverage, never for
-  use-case level. End-to-end tests are neither: users of the shipped drivers,
-  outside the graph.
+  not mutable state). Named by the flavor (`.spec`, `.test`, `.e2e`) and read by
+  a test reader. It imports anything, blob included; it defines anything; the
+  hook count and services-only do not apply; nothing imports it. Shared test
+  code gets none of this and is placed by what it is: a fake or in-memory
+  implementation is an adapter, a test factory an assembly function, a data
+  builder model, and a matcher, fixture or shared hook registered on the runner
+  a driver whose wiring function the spec file calls with the tech. Test edges
+  count for rights and coverage, never for use-case level. End-to-end tests are
+  neither: users of the shipped drivers, outside the graph.
 
 **Assembly rules** (detail in
 [Assembly — the composition root](#assembly--the-composition-root)):
@@ -1014,6 +1041,10 @@ needs tooling that knows service boundaries.
 **Driver rules** (detail in
 [Driver — the outermost layer](#driver--the-outermost-layer)):
 
+- <a id="driver-reader"></a>`driver-reader` — **A driver is read by a reader
+  bound to its tech** — a driver or a test file no reader reads is red, since no
+  other driver rule can be judged without the reading; the way out is binding a
+  reader, or one that counts the file as blob on purpose.
 - <a id="wiring-outside-hooks"></a>`wiring-outside-hooks` — **Outside its hooks,
   a driver only wires** — assembly calls, tech setup, sub-driver registration;
   arguments are tech values, instances, literals.
@@ -1076,25 +1107,26 @@ needs tooling that knows service boundaries.
   over the value: `Object.freeze` cannot lock a Map, so a codebase without the
   types has no way to write one — and such a codebase turns this half off in
   config anyway (`mutableModuleState: true`), which lifts the bindings and
-  nothing else. And a call that reaches the tech, runs a use case, or goes into
-  a local function of a file whose layer may touch the tech — an adapter's, a
-  blob's — where the reader cannot rule the side effect out. A property read is
-  presumed free of side effects and a call is not: `if (process.env["X"])` at
-  root is green, `process.cwd()` at root is red, stored or not, until the tech's
-  reading declares that call effect-free — and the config setting, being about
-  state, does not lift it. And a root statement that is neither of those and
-  still does something when the module is evaluated: an assignment, a `delete`,
-  and their like — whatever sits at root runs on import, so a statement that
-  only makes sense at run time is a side effect at load time. A `throw` is not
-  one: it creates no state and touches nothing outside, and a crash on import is
-  the author's call to make. What decides it — an environment read, say — is
-  judged where it sits, by its layer. Root calls are the lane the first two
-  targets use to get around the rule, not the crime: a factory call at root is
-  not itself the violation, what it binds is, when that binding is not provably
-  immutable. Exemptions, by contrast, are a closed list, since an open set of
-  escapes is a hole: two shapes are exempt by kind, the boot's one call and a
-  spec file's registration calls into the runner. Assembly and driver need no
-  exception — each builds inside its function.
+  nothing else. And a call that reaches the tech or something no reading claims,
+  runs a use case, or goes into a local function of a file whose layer is
+  allowed side effects — an adapter's, a blob's — where the reader cannot rule
+  the side effect out. A property read is presumed free of side effects and a
+  call is not: `if (process.env["X"])` at root is green, `process.cwd()` at root
+  is red, stored or not, until the reading that claims it declares that call
+  effect-free — and the config setting, being about state, does not lift it. And
+  a root statement that is neither of those and still does something when the
+  module is evaluated: an assignment, a `delete`, and their like — whatever sits
+  at root runs on import, so a statement that only makes sense at run time is a
+  side effect at load time. A `throw` is not one: it creates no state and
+  touches nothing outside, and a crash on import is the author's call to make.
+  What decides it — an environment read, say — is judged where it sits, by its
+  layer. Root calls are the lane the first two targets use to get around the
+  rule, not the crime: a factory call at root is not itself the violation, what
+  it binds is, when that binding is not provably immutable. Exemptions, by
+  contrast, are a closed list, since an open set of escapes is a hole: two
+  shapes are exempt by kind, the boot's one call and a spec file's registration
+  calls into the runner. Assembly and driver need no exception — each builds
+  inside its function.
 
 ---
 
