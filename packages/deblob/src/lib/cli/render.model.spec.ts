@@ -1351,6 +1351,15 @@ describe("renderCheckResults", () => {
         ],
         [
           "driver-calls-services",
+          {
+            shape: "call",
+            callee: { kind: "unclaimed", package: "process", free: true },
+            where: "wiring",
+          },
+          `calls process, a name no reader bound here claims — ${CALLS_SERVICES}; bind the reader whose tech it is (node() for Node's), or it is a service's concern`,
+        ],
+        [
+          "driver-calls-services",
           { shape: "call", callee: { kind: "language" }, where: "hook" },
           `calls the language — ${CALLS_SERVICES}; a use case of the service does it`,
         ],
@@ -1466,6 +1475,19 @@ describe("renderCheckResults", () => {
         ],
       ] as const)("formats %s, %o as: %s", (rule, shape, words) => {
         expect(message(driver(rule, shape))).toContain(`line 7 ${words}`)
+      })
+
+      it("says an unread driver or test file's fix, about the file, no line", () => {
+        expect(
+          message(driver("driver-reader", { shape: "unread", kind: "driver" })),
+        ).toContain(
+          "driver   no driver reader reads this driver — its premises do not cover it; bind the reader of its tech under readers.driver, or blobDriver({ include }) to count it as blob on purpose (driver-reader)",
+        )
+        expect(
+          message(driver("driver-reader", { shape: "unread", kind: "test" })),
+        ).toContain(
+          "driver   no test reader reads this test file — its premises do not cover it; bind one under readers.test (goodEnoughTests() is the default a written group drops) (driver-reader)",
+        )
       })
 
       it("says what the reader could not see, in a call and in an argument", () => {

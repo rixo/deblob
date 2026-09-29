@@ -24,6 +24,11 @@ leaves when its branch integrates it.
 - Not done from S07: the READMEs (`config/`, `extraction/`, `check/`), the
   ports' headers beyond the new files, the `06_unknown-verdict` notes.
 
+- **Stock readers for partner techs** (milestone 3): `cac` (driver),
+  `playwright` (test), `vite`, `astro` (driver, claims only — D1).
+- **P1, the exclude baseline anchored** — also owed to main: the shipped
+  baseline has the bug.
+
 ## viewer
 
 - The viewer's server (`drivers/wiring.ts`) builds its readers from

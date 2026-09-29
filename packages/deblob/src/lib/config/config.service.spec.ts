@@ -289,10 +289,11 @@ describe("resolveConfig — readers: four groups, a written one replaces its def
     expect(resolved.readers.language).toBe(READERS.language)
   })
 
-  it("folds a bound host's pure builtins into pure", () => {
+  it("folds a bound host's pure builtins into pure — a host with none adds none", () => {
     const host = { name: "some-host", claims: () => true, pure: ["host:str"] }
+    const bare = { name: "other-host", claims: () => true }
     expect(
-      resolve({ pure: ["some-lib"], readers: { host: [host] } }).pure,
+      resolve({ pure: ["some-lib"], readers: { host: [host, bare] } }).pure,
     ).toEqual(["some-lib", "host:str"])
   })
 

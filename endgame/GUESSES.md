@@ -95,6 +95,32 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   used `driverTech` now bind an inline reader claiming their package. Status:
   taken — `cases.assembly.ts`.
 
+- **T5 — `stable-root` over a test file's root.** Row tables at a spec's root
+  (`const rows: Row[] = [...]`) read red or unknown: deblob's own corpus and a
+  partner codebase's specs alike. Is a test file's root judged by `stable-root`,
+  like any module's, or exempt as a test's definitions are? Default: judged, as
+  today. Status: parked — to rule with T1.
+
+## Partner findings
+
+Anonymous; the partner run's details stay local.
+
+- **P1 — The exclude baseline swallowed a source unit named `build`.**
+  `**/build/**` (and `**/dist/**`, `**/coverage/**`) in the non-removable
+  baseline dropped `src/lib/build/` — a service — out of coverage; its imports
+  then read as an unclassified package. A bug in the shipped line too (0.0.6 has
+  the same baseline). Default: anchor the build outputs at the config root
+  (`dist/**`, `build/**`, `coverage/**`). Status: taken — `config.model.ts`.
+  **To carry to main.**
+- **P2 — A CLI entry designated `assembly` floods `assembly-builds-only`.**
+  Every partner package had its CLI (a cac parser, services built in hooks)
+  under `assembly`. With a driver reader bound instead, the same file reads as a
+  driver and its reds speak the driver rules. No default to take: it is what the
+  ruled config buys; noted as the migration step a user must know.
+- **P3 — Framework hook objects** (a Vite plugin's `{ name, transform() {} }`)
+  are no callback handed to the tech: the stock cut reads the methods as
+  definitions, `driver-hooks-only` red. D1's own cut is owed for these.
+
 ## Leftovers carried as-is
 
 Not touched by endgame, listed so nobody reads their absence as a ruling:

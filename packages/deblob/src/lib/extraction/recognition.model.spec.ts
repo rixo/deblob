@@ -102,6 +102,18 @@ describe("createRecognition", () => {
     })
   })
 
+  describe("an empty include", () => {
+    it("binds nothing, the default notwithstanding", () => {
+      const none = { name: "made-up-none", include: [] }
+      const { driverReadersOf, kindOf } = createRecognition({
+        driver: [none],
+        test: [],
+      })
+      expect(driverReadersOf(CLI, "driver")).toEqual([])
+      expect(kindOf(PAGE, "blob")).toBe("blob")
+    })
+  })
+
   describe("boundOf", () => {
     it("binds every file by default, a written binding narrowing it", () => {
       const all = { name: "made-up-js" }

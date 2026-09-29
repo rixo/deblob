@@ -37,14 +37,18 @@ export const DEFAULT_INCLUDE: readonly string[] = ["**"]
  * a generator not on it enters coverage until excluded by hand. Dot-dir members
  * are already dead via the hidden-path rule; listed for explicitness. The local
  * overlay is machine state, gitignored and unreviewed: never project code, or
- * one commit would measure differently on two machines.
+ * one commit would measure differently on two machines. The build outputs
+ * (`dist`, `build`, `coverage`) are anchored at the root: a common word, a
+ * source unit may bear it (`src/lib/build/`, the build use case's service), and
+ * a baseline that cannot be removed must not swallow one (GUESS: P1, found on a
+ * partner codebase). A nested package's own outputs are its config's.
  */
 export const EXCLUDE_BASELINE: readonly string[] = [
   "**/node_modules/**",
   "**/.git/**",
-  "**/dist/**",
-  "**/build/**",
-  "**/coverage/**",
+  "dist/**",
+  "build/**",
+  "coverage/**",
   "**/.svelte-kit/**",
   "**/.next/**",
   "**/.nuxt/**",
