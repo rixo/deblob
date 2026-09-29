@@ -100,7 +100,7 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // Added in endgame (E1): an import was read as a function whatever the
+    // Added in longshot (E1): an import was read as a function whatever the
     // target declared. A constant another file exports holds a value the
     // reader does not follow: unknown, never "a function". The truth is a
     // literal — green; the reader cannot see it yet.

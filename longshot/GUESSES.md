@@ -1,8 +1,8 @@
-# Endgame — the holes
+# Longshot — the holes
 
-Every point the rulings leave open, the default endgame took, and where it lives
-in code (`// GUESS: <id>`). A ruling replaces a default here first. Status:
-`taken` (in code), `parked` (not needed yet, no code depends on it).
+Every point the rulings leave open, the default longshot took, and where it
+lives in code (`// GUESS: <id>`). A ruling replaces a default here first.
+Status: `taken` (in code), `parked` (not needed yet, no code depends on it).
 
 Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
 (`PLAN.md` = chapter PLAN, `04_outside-rules/07_driver-readers/SPEC.md` = S07),
@@ -15,7 +15,7 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   taken — `src/readers.ts`, `package.json` exports.
 - **R2 — Who brings the parser.** (S07 ruling 11, root board.) Default: the core
   parses ES/TS with oxc; `js`/`ts` bring knowledge, not a parser. A framework
-  reader that needs one (`.svelte`) is out of endgame. Status: parked.
+  reader that needs one (`.svelte`) is out of longshot. Status: parked.
 - **R3 — `pure`: knowledge or neighbour.** (Root board, S07:357.) Default: stays
   a top-level key, a premise beside the readers. Status: parked.
 - **R4 — `good-enough-tests` stays the default test reader.** (S07 ruling 7,
@@ -34,7 +34,7 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   interface.) Default: an optional list on the host reader, empty in `node`.
   Status: parked.
 - **R9 — TypeScript engine** (`ts` brings it, `noTsc` option). Default: not
-  built in endgame; syntax proves. Status: parked.
+  built in longshot; syntax proves. Status: parked.
 - **R11 — A value read of a free name nobody claims** (`x = window.y` with no
   host bound). Default: read as the tech's value, as before; only a call on it
   is `unclaimed`. So `stable-root` still reds such a read at a service's root,
@@ -58,7 +58,7 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
 - **D5 — Standard stacks without a config** (`--node`). Default: none, a config
   is written. Status: parked.
 - **D6 — Entry points nothing imports** (`+page.svelte`, `entryPoints`).
-  Default: out of endgame. Status: parked.
+  Default: out of longshot. Status: parked.
 
 - **D7 — Who reads a driver whose tech is the host alone** (a plain Node CLI on
   `process.argv`/`process.on`). Found by the CLI golden: `node()` is a host
@@ -90,7 +90,7 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   fixed `*.spec.*`/`*.test.*`/`*.e2e.*`. Status: parked.
 
 - **T4 — The corpus fills `driver: [hostDriver()]` too** (ruling 13 fills only
-  `node`). A transition on endgame's side, same "not the pattern" comment: rows
+  `node`). A transition on longshot's side, same "not the pattern" comment: rows
   whose driver's tech is the host would each need a binding otherwise. Rows that
   used `driverTech` now bind an inline reader claiming their package. Status:
   taken — `cases.assembly.ts`.
@@ -166,7 +166,7 @@ Anonymous; the partner run's details stay local.
 
 ## Leftovers carried as-is
 
-Not touched by endgame, listed so nobody reads their absence as a ruling:
+Not touched by longshot, listed so nobody reads their absence as a ruling:
 canon's "the syntax proves" vs engine inference; the `??` hook miss;
 `main() + 1` / `void main()` in boot; the reading spec's fate; public by
 importer count; readonly laundered after the root; property-read strict mode;

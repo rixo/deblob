@@ -1,6 +1,6 @@
-# Endgame — the delta
+# Longshot — the delta
 
-What `endgame` has that the chasing branches lack, by target branch. An entry
+What `longshot` has that the chasing branches lack, by target branch. An entry
 leaves when its branch integrates it.
 
 ## driver-layer

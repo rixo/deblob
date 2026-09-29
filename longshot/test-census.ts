@@ -4,17 +4,17 @@
 import {
   createProjectSource,
   extractionFor,
-} from "/home/rixo/projects/deblob.endgame/packages/deblob/src/drivers/wiring.ts"
+} from "/home/rixo/projects/deblob.longshot/packages/deblob/src/drivers/wiring.ts"
 import {
   GRAPH_CHECKS,
   runGraphCheck,
-} from "/home/rixo/projects/deblob.endgame/packages/deblob/src/lib/check/checks.model.ts"
+} from "/home/rixo/projects/deblob.longshot/packages/deblob/src/lib/check/checks.model.ts"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import type {
   ReadHook,
   ReadStatement,
-} from "/home/rixo/projects/deblob.endgame/packages/deblob/src/lib/extraction/graph.model.ts"
+} from "/home/rixo/projects/deblob.longshot/packages/deblob/src/lib/extraction/graph.model.ts"
 
 type Tally = Record<string, number>
 const bump = (t: Tally, k: string, n = 1) => {

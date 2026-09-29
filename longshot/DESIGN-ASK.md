@@ -1,4 +1,4 @@
-# Endgame — what the map is handed now, for the design side
+# Longshot — what the map is handed now, for the design side
 
 To relay into their `data/FROM-DEBLOB.md` when the next pull happens; nothing of
 theirs was edited (drop-in stays whole).

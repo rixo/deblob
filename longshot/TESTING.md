@@ -1,4 +1,4 @@
-# Endgame — how tests live with the layers, in practice
+# Longshot — how tests live with the layers, in practice
 
 Milestone 6. Measured, not ruled: a census of every test file's hooks
 ([test-census.ts](test-census.ts), over the extraction) on deblob, the viewer

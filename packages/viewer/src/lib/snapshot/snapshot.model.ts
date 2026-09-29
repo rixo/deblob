@@ -98,7 +98,7 @@ export type Snapshot = {
   readonly modules: readonly ModuleRef[]
   readonly edges: readonly EdgeRef[]
   readonly unresolved: readonly UnresolvedRef[]
-  /** What the graph checks report, file by file (endgame milestone 4). */
+  /** What the graph checks report, file by file (longshot milestone 4). */
   readonly verdicts: readonly Verdict[]
   /** What the design's map draws (step 09 SPEC § API). */
   readonly map: MapData

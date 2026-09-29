@@ -87,7 +87,7 @@ export const assembleCase = (files: Case["files"]) => {
         // host today, so the corpus fills `host` where a row writes none; a
         // row writing its own replaces it like any config (04/07 ruling 13).
         // A second entry without `node` comes with the gate's sweep. The
-        // `driver` fill is endgame's own transition (GUESS: T4): a row's
+        // `driver` fill is longshot's own transition (GUESS: T4): a row's
         // driver is read as a host-only driver unless the row binds its own.
         readers: {
           ...createDefaultReaders(),
