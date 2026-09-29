@@ -54,7 +54,11 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
 - **D3 — Adapters' own tech** (`node:fs`, `process.env` in an adapter). Default:
   not judged — adapters touch anything, as today. Status: parked.
 - **D4 — A reader claiming a project file as tech** (a local router). Default:
-  no. Status: parked.
+  no — a GUESS, canon never limited claims to packages. **Ruled 2026-09-29 (with
+  C1): yes, and the claimed file stays judged by its own layer** — being claimed
+  as tech tells the driver's reader what the driver listens to, it gives the
+  file no pass. How it is judged: to find by experiment. Status: ruled, not
+  built.
 - **D5 — Standard stacks without a config** (`--node`). Default: none, a config
   is written. Status: parked.
 - **D6 — Entry points nothing imports** (`+page.svelte`, `entryPoints`).
@@ -152,11 +156,14 @@ Anonymous; the partner run's details stay local.
   its own pure model and dispatches by `switch` — neither a tech nor a cut any
   reader has (ruling 10 cards the switch-dispatch cut; D4 whether a local router
   can be claimed). Until then `src/drivers/**` stays designated assembly and
-  floods `assembly-builds-only` (≈390 of the self-check's 594). Options: (a) cac
-  as the router — tiny, zero-dep, the `cac()` reader already proven on partners;
-  costs the help/parse-error goldens; (b) a local router claimed as tech (flips
-  D4); (c) the switch cut (ruling 10). Default: none taken — the restructure
-  (06) waits on this. **To rule.**
+  floods `assembly-builds-only` (≈480 of the self-check's 601). Options: (a) cac
+  as the router — fits partners, not deblob's CLI (help topics, uneven
+  subcommands); (b) a local router claimed as tech (flips D4); (c) the switch
+  cut (ruling 10). **Ruled 2026-09-29: (b)**, the router file judged by its own
+  layer (D4). How it is judged — its layer, a model calling a function handed to
+  it — is not ruled: longshot writes the router, runs the rules, suggests. The
+  switch at `drivers/cli/main.ts:530` goes; a `cli.driver.ts` registers one hook
+  per command. Status: ruled, not built.
 
 ## Map
 

@@ -4,6 +4,35 @@ Where to look, what to rule. Everything else is in [GUESSES.md](GUESSES.md)
 (every hole, the default taken, where it lives) and [DELTA.md](DELTA.md) (what
 the chasing branches lack).
 
+## Talk-through (started 2026-09-29 evening) — RESUME HERE
+
+Nothing is settled in bulk: each hole is talked through, one item or a small
+related group at a time. The rush's shape (integration, review after the fact)
+is itself an item, last. Red on first contact is intended — a red count is
+judged on whether each red is right, never on its volume.
+
+Ruled so far:
+
+- **C1** — (b): deblob's CLI gets a local router, claimed as tech by a custom
+  reader; the router file stays judged by its own layer (being claimed gives it
+  no pass). How it is judged (its layer, a model calling a handed function) is
+  not ruled — longshot experiments and suggests. D4 flips accordingly.
+
+Agenda, in order:
+
+1. **T1 + T5** — what a test body may do; a test file's root and `stable-root`.
+   Prepare first: a red/clean table of real snippets per option (root row tables
+   and fixtures; `if`/`switch` vs `??`/`?.` shaping; loops; the rare writes),
+   deblob's and anonymized partner shapes, census counts beside them
+   ([TESTING.md](TESTING.md)).
+2. **D7 + D8** — `hostDriver()`; one red per missing premise.
+3. **P-series** — P1's fix shape; P4's message and way out (P2, P5 are notes).
+4. **Integration** — longshot's code ported to driver-layer (src 43 files
+   +1307/−525, tests 34 files +955/−358, 18 `GUESS:` markers); the golden gate
+   still validated row by row, ranked by doubt.
+5. **The rush itself** — shape, finish line, what is reviewed after the fact
+   ("longshot + replay review", floated, not ruled).
+
 ## Read first
 
 1. `git log --oneline ecbfa15..longshot` — six commits, one per milestone, each
@@ -16,9 +45,10 @@ the chasing branches lack).
 
 ## To rule, by leverage
 
-1. **C1 — deblob's own CLI has no router.** Blocks the self-restructure and ≈390
-   of the self-check's 594. (a) cac, (b) a local router claimed, (c) the switch
-   cut. The one decision the longshot could not take for you.
+1. **C1 — deblob's own CLI has no router.** RULED (b), see the talk-through
+   above. Blocks the self-restructure and ≈390 of the self-check's 594. (a) cac,
+   (b) a local router claimed, (c) the switch cut. The one decision the longshot
+   could not take for you.
 2. **P1 — a bug in the shipped baseline.** `**/build/**` swallows a source unit
    named `build`. Fixed in longshot (anchored at the root); owed to main, any
    release. Confirm the fix's shape.
