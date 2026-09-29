@@ -27,14 +27,18 @@
   ],
   "dependencies": {
     "@oxc-project/types": "0.140.0",
+    "chokidar": "5.0.0",
     "oxc-parser": "0.140.0",
     "oxc-resolver": "11.24.2",
     "picomatch": "^4.0.5",
-    "tinyglobby": "^0.2.17"
+    "tinyglobby": "^0.2.17",
+    "ws": "8.21.3"
   },
   "devDependencies": {
+    "@deblob/viewer": "workspace:*",
     "@types/node": "^24.3.0",
     "@types/picomatch": "^4.0.3",
+    "@types/ws": "8.18.1",
     "@vitest/coverage-v8": "^4.1.10",
     "npm-run-all2": "^9.0.2",
     "typescript": "7.0.2",
@@ -42,12 +46,17 @@
   },
   "scripts": {
     "build": "run-s build:*",
+    "build:clean": "node --eval \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build:content": "node scripts/build-content.ts",
     "build:ts": "tsc -p tsconfig.build.json",
+    "build:viewer": "node scripts/build-viewer.ts",
     "check": "node src/drivers/cli/bin.ts check",
     "prepack": "pnpm build",
+    "serve": "node src/drivers/serve/bin.ts",
+    "snapshot": "node src/drivers/snapshot/bin.ts",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:pack": "node scripts/verify-pack.ts"
   }
 }

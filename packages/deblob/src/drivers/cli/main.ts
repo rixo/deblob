@@ -8,7 +8,7 @@
  * `deblob` is informational by contract — always 0, even over a broken config.
  */
 
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -36,6 +36,7 @@ import {
   isRuleNumber,
   parseCli,
   rulesForTopic,
+  DEFAULT_VIEW_PORT,
   KNOWN_CHECKS,
 } from "../../lib/cli/cli.model.ts"
 import {
@@ -50,12 +51,16 @@ import {
   renderBroken,
   renderUnresolved,
   renderUnverified,
+  serviceCountOf,
   sizeStatsOf,
   SURFACE_NOT_CLAIMED,
 } from "../../lib/cli/render.model.ts"
 import type { Colors, GraphStats } from "../../lib/cli/render.model.ts"
-import { asConfigError } from "../../lib/config/config.model.ts"
-import { resolveConfig } from "../../lib/config/config.service.ts"
+import { asConfigErrorOrRethrow } from "../../lib/config/config.model.ts"
+import {
+  overlayLocalConfig,
+  resolveConfig,
+} from "../../lib/config/config.service.ts"
 import type {
   ReaderRegistry,
   ResolvedConfig,
@@ -88,6 +93,8 @@ import type {
 } from "../../lib/extraction/graph.model.ts"
 import type { FlavorClassification } from "../../lib/extraction/ports/flavor.port.ts"
 import { createRecognition } from "../../lib/extraction/recognition.model.ts"
+import { INDEX as VIEWER_INDEX } from "../../lib/view/bundle.model.ts"
+import { serve } from "../serve/main.ts"
 
 /**
  * The stock readers, in the order they bind by default: the test runner before
@@ -129,6 +136,17 @@ export type MainIo = {
   stdout: Writer
   stderr: Writer
   env: Readonly<Record<string, string | undefined>>
+  /**
+   * The world saying stop — ctrl-c, from the bin shim. Only the verbs that keep
+   * running listen to it; every other verb is done before it could fire.
+   */
+  signal: AbortSignal
+  /**
+   * Where the built viewer sits — resolved by the bin shim, like every other
+   * fact about the world this runs in, and the whole of what SPEC 05's
+   * packaging ruling touches. Only `view` reads it.
+   */
+  bundle: string
 }
 
 /** The sort wherever output orders rules — the summary's display order. */
@@ -190,10 +208,6 @@ const resolveOptionsFor = (
   ]),
 })
 
-/** Distinct service roots over the covered set — what the layer rules govern. */
-const serviceCountOf = (roots: Iterable<string | null>): number =>
-  new Set([...roots].filter((root) => root !== null)).size
-
 /**
  * The load → resolve sequence — assembly's own job (arch §Assembly: read
  * config, instantiate, wire), composed here from the loader adapter and the
@@ -204,24 +218,36 @@ const loadFor = async (
   parsed: ParsedCli,
   loader: Deps["loader"],
 ): Promise<ResolvedConfig> => {
-  const configPath =
+  const found =
     parsed.config === null
       ? await loader.discoverConfig(io.cwd)
       : await loader.explicitConfigPath(io.cwd, parsed.config)
-  if (configPath === null) {
+  if (found === null) {
     return resolveConfig(
       {},
       {
         root: resolve(io.cwd),
         configPath: null,
+        localPath: null,
         flavors: STOCK_FLAVORS,
         readers: STOCK_READERS,
       },
     )
   }
-  return resolveConfig(await importConfigDefault(configPath), {
-    root: dirname(configPath),
+  const { root, configPath, localPath } = found
+  const base = configPath === null ? {} : await importConfigDefault(configPath)
+  const raw =
+    localPath === null
+      ? base
+      : overlayLocalConfig(
+          base,
+          await importConfigDefault(localPath),
+          localPath,
+        )
+  return resolveConfig(raw, {
+    root,
     configPath,
+    localPath,
     flavors: STOCK_FLAVORS,
     readers: STOCK_READERS,
   })
@@ -237,7 +263,7 @@ const runStatus = async (
   try {
     config = await loadFor(io, parsed, deps.loader)
   } catch (error) {
-    io.stderr.write(`${asConfigError(error).message}\n`)
+    io.stderr.write(`${asConfigErrorOrRethrow(error).message}\n`)
     io.stdout.write(
       renderBareStatus(
         {
@@ -295,7 +321,7 @@ const runStatus = async (
   try {
     surface = await deps.loader.readPackageSurface(config.root)
   } catch (error) {
-    io.stderr.write(`${asConfigError(error).message}\n`)
+    io.stderr.write(`${asConfigErrorOrRethrow(error).message}\n`)
     surface = null
   }
   io.stdout.write(
@@ -303,9 +329,16 @@ const runStatus = async (
       {
         version: VERSION,
         provenance: provenanceOf(
-          config.configPath === null
-            ? null
-            : relative(io.cwd, config.configPath),
+          {
+            configPath:
+              config.configPath === null
+                ? null
+                : relative(io.cwd, config.configPath),
+            localPath:
+              config.localPath === null
+                ? null
+                : relative(io.cwd, config.localPath),
+          },
           config.flavorName,
         ),
         stats: {
@@ -333,6 +366,42 @@ const runStatus = async (
 }
 
 /**
+ * The viewer, served with the data half over one port, until ctrl-c. The config
+ * is not read here: the server reads it to list the projects, and a project
+ * that cannot be read is the CLI's error to present — the same line `check`
+ * prints, exit 2, nothing listening.
+ */
+const runView = async (
+  io: MainIo,
+  action: Extract<ParsedCli["action"], { command: "view" }>,
+): Promise<number> => {
+  if (!existsSync(join(io.bundle, VIEWER_INDEX))) {
+    io.stderr.write(
+      `the viewer bundle is missing at ${io.bundle} — this install cannot serve the page\n`,
+    )
+    return 2
+  }
+  let close: () => Promise<void>
+  try {
+    ;({ close } = await serve({
+      cwd: io.cwd,
+      port: action.port ?? DEFAULT_VIEW_PORT,
+      bundle: io.bundle,
+      stdout: io.stdout,
+      stderr: io.stderr,
+    }))
+  } catch (error) {
+    io.stderr.write(`${asConfigErrorOrRethrow(error).message}\n`)
+    return 2
+  }
+  await new Promise<void>((resolve) => {
+    io.signal.addEventListener("abort", () => resolve(), { once: true })
+  })
+  await close()
+  return 0
+}
+
+/**
  * Graph paths are config-root-relative; the terminal resolves clicks from cwd.
  * This is the hop between the two — `""` when they coincide (the common run).
  */
@@ -356,7 +425,7 @@ const runCheck = async (
     tsconfigPath = await deps.loader.tsconfigPathOf(config)
     surface = await deps.loader.readPackageSurface(config.root)
   } catch (error) {
-    io.stderr.write(`${asConfigError(error).message}\n`)
+    io.stderr.write(`${asConfigErrorOrRethrow(error).message}\n`)
     return 2
   }
 
@@ -514,6 +583,8 @@ export const main = async (io: MainIo): Promise<number> => {
       return runStatus(io, parsed, colors, deps)
     case "check":
       return runCheck(io, parsed, action, colors, deps)
+    case "view":
+      return runView(io, action)
     case "explain": {
       const rules = new Set<RuleId>()
       const unknown = action.topics.filter((topic) => {

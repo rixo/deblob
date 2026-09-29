@@ -54,6 +54,12 @@
   step carries the gate questions — trigger → use-case table at the spec gate,
   owning suites read per trigger at the test gate, "the driver sequences
   nothing" in the guide.
+- **Viewer** — chapter in flight: `history/20260912_viewer/` (opened 2026-09-12
+  on branch `viewer`; chapter PLAN carries the decisions — SPA on Vite, two
+  packages, snapshot stream, WebSocket — and the open questions).
+  `@deblob/viewer`, launched as `deblob view`. Grew out of the two spikes and
+  the graph-as-product card (`future/graph-as-product/`), which stays: the query
+  family and the product reframe are not absorbed by the viewer.
 - **Review-slicing skill** — dogfooded 2026-07-23 on step-10's own diff, verdict
   positive (better, more engaging review — rixo). Graduation next, a fresh
   session: chapter in the skills lineage; first ruling = name (the
@@ -76,6 +82,16 @@
   output (the flavor's `serviceRoot`, the graph vocabulary, the CLI's "N
   services" line and its goldens, the READMEs); the skills' placement cards and
   the memory notes. Prose lands everywhere in the same step as the slug.
+- **`asExtractionError` hides its rethrow** (2026-09-22) — the name reads as a
+  cast, and the function throws whatever is not an `ExtractionError`. rixo
+  rejected the same name on the config side 2026-09-17
+  (`asConfigError(e).message` was "anti-obvious": the rethrow is the point and
+  the name does not say it), and `asConfigError` became `asConfigErrorOrRethrow`
+  on the `viewer` branch. The twin in `lib/extraction/graph.model.ts` was born
+  on `driver-layer` with the old pattern. Rename to
+  `asExtractionErrorOrRethrow`, its call sites in the CLI's `main.ts`, its spec;
+  one mechanical commit. Found at the rebase of `viewer` onto `driver-layer`,
+  left alone there on purpose.
 
 ### Ideas
 

@@ -15,7 +15,7 @@ import type { ResolvedConfig } from "../config.service.ts"
 export const createCoverageScan = ({
   fs,
 }: {
-  fs: Pick<Fs, "glob" | "stat">
+  fs: Pick<Fs, "glob" | "globDirs" | "stat">
 }) => {
   /** Root-relative POSIX paths, sorted — `extractGraph`'s `files` input. */
   const scanCoverage = async (
@@ -26,6 +26,22 @@ export const createCoverageScan = ({
       ignore: config.exclude,
     })
     return paths.filter(config.covers).sort()
+  }
+
+  /**
+   * The directories coverage spans: the same patterns matched against
+   * directories, pruned the same way — a directory under `include` is listed
+   * whether or not it holds a covered file yet. Root-relative POSIX paths, no
+   * trailing slash, sorted; the root itself is not among them.
+   */
+  const scanCoverageDirs = async (
+    config: Pick<ResolvedConfig, "root" | "include" | "exclude">,
+  ): Promise<readonly string[]> => {
+    const dirs = await fs.globDirs(config.include, {
+      cwd: config.root,
+      ignore: config.exclude,
+    })
+    return dirs.sort()
   }
 
   /**
@@ -45,5 +61,5 @@ export const createCoverageScan = ({
       }),
     )
 
-  return { scanCoverage, statSizes }
+  return { scanCoverage, scanCoverageDirs, statSizes }
 }

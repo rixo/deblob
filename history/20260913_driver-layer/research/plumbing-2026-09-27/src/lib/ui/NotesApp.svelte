@@ -18,7 +18,11 @@
 </form>
 
 <label>
-  <input type="checkbox" checked={$view.pinnedOnly} onchange={(event) => ui.filter(event)} /> pinned only
+  <input
+    type="checkbox"
+    checked={$view.pinnedOnly}
+    onchange={(event) => ui.filter(event)}
+  /> pinned only
 </label>
 
 {#if $view.error}<p role="alert">{$view.error}</p>{/if}

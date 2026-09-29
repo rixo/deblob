@@ -14,5 +14,5 @@
     "skipLibCheck": true
   },
   "include": ["src", "vitest.config.ts"],
-  "exclude": ["src/**/__fixtures__"]
+  "exclude": ["src/**/__fixtures__", "src/spike"]
 }

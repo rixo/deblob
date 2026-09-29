@@ -16,10 +16,18 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm --filter deblob typecheck
+      # the viewer's bundle comes first: deblob's build copies it into dist/,
+      # which is what `deblob view` serves (SPEC 05's packaging ruling)
+      - run: pnpm --filter @deblob/viewer typecheck
+      - run: pnpm --filter @deblob/viewer build
       - run: pnpm --filter deblob build
       - run: pnpm --filter deblob test
       # dogfood: the CLI gates its own architecture (01's promise, landed at 09)
       - run: pnpm --filter deblob check
+      # the packed package serves the viewer — the packaging proven, not asserted
+      - run: pnpm --filter deblob verify:pack
+      - run: pnpm --filter @deblob/viewer test
+      - run: pnpm --filter @deblob/viewer check
 
   # musl smoke: the napi platform matrix ships linux-*-musl bindings; the
   # recurring downstream Alpine failures are package-manager artifacts, not

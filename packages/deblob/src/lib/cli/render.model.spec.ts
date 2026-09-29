@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import { groupByFix } from "../check/grouping.model.ts"
 import type { RuleId } from "../check/rule.model.ts"
@@ -27,6 +27,7 @@ import {
   renderBroken,
   renderUnresolved,
   renderUnverified,
+  serviceCountOf,
   sizeStatsOf,
   SURFACE_NOT_CLAIMED,
 } from "./render.model.ts"
@@ -1932,12 +1933,37 @@ describe("SURFACE_NOT_CLAIMED", () => {
   })
 })
 
+describe("provenanceOf", () => {
+  test("names every file the run read, joined with +, or the defaults", () => {
+    const flavor = "ts-suffixes-factories"
+    expect(provenanceOf({ configPath: null, localPath: null }, flavor)).toBe(
+      "no config (defaults)",
+    )
+    expect(
+      provenanceOf({ configPath: "deblob.config.ts", localPath: null }, flavor),
+    ).toBe("deblob.config.ts (flavor: ts-suffixes-factories)")
+    expect(
+      provenanceOf(
+        { configPath: "deblob.config.ts", localPath: "deblob.local.ts" },
+        flavor,
+      ),
+    ).toBe("deblob.config.ts + deblob.local.ts (flavor: ts-suffixes-factories)")
+    // a lone overlay is a configless project that still read a file
+    expect(
+      provenanceOf({ configPath: null, localPath: "deblob.local.ts" }, flavor),
+    ).toBe("deblob.local.ts (flavor: ts-suffixes-factories)")
+  })
+})
+
 describe("renderBareStatus", () => {
   it("renders the fiction's block with the full check-list hint", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
-        provenance: provenanceOf("deblob.config.ts", "ts-suffixes-factories"),
+        provenance: provenanceOf(
+          { configPath: "deblob.config.ts", localPath: null },
+          "ts-suffixes-factories",
+        ),
         stats: {
           files: 1872,
           totalBytes: 4404019,
@@ -1959,6 +1985,7 @@ describe("renderBareStatus", () => {
         "  deblob check [what...]      run architecture checks",
         "                              (dag · layers · private · barrels · ports · surface · modules · assembly · driver · boot)",
         "  deblob explain <topic...>   explain rules or checks",
+        "  deblob view                 open the viewer on this project",
         "  deblob --help               full help",
         "",
       ].join("\n"),
@@ -1969,7 +1996,10 @@ describe("renderBareStatus", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
-        provenance: provenanceOf(null, "ts-suffixes-factories"),
+        provenance: provenanceOf(
+          { configPath: null, localPath: null },
+          "ts-suffixes-factories",
+        ),
         stats: {
           files: 1,
           totalBytes: 2048,
@@ -1990,7 +2020,10 @@ describe("renderBareStatus", () => {
     const output = renderBareStatus(
       {
         version: "0.0.1",
-        provenance: provenanceOf(null, "ts-suffixes-factories"),
+        provenance: provenanceOf(
+          { configPath: null, localPath: null },
+          "ts-suffixes-factories",
+        ),
         stats: {
           files: 4,
           totalBytes: 2048,
@@ -2036,6 +2069,14 @@ describe("sizeStatsOf", () => {
       ]),
     ).toEqual({ totalBytes: 1000, blobPercent: 90 })
     expect(sizeStatsOf([])).toEqual({ totalBytes: 0, blobPercent: 0 })
+  })
+
+  test("serviceCountOf counts distinct roots, blob (null) never counts", () => {
+    expect(
+      serviceCountOf(["src/FAKE_A", null, "src/FAKE_B", "src/FAKE_A", null]),
+    ).toBe(2)
+    expect(serviceCountOf([null, null])).toBe(0)
+    expect(serviceCountOf([])).toBe(0)
   })
 })
 

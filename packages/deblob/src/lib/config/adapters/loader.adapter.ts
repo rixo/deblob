@@ -1,11 +1,13 @@
 /**
- * Config loading — the filesystem walk over the fs port, plus the one platform
- * call no port reads: native `import()` of the config file (Node strips types
- * from `.ts` configs; erasable syntax only). Assembly (CLI main) calls these
- * and pipes the raw value through `resolveConfig` itself; the adapter never
- * sees the resolution.
+ * Config loading — the filesystem walk over the fs port, plus the platform
+ * calls no port reads: native `import()` of the config and local files (Node
+ * strips types from `.ts` ones; erasable syntax only) and the `stat` that tells
+ * an edited file from an unchanged one. Assembly (CLI main) calls these and
+ * pipes the raw value through `resolveConfig` itself; the adapter never sees
+ * the resolution.
  */
 
+import { stat } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
@@ -21,6 +23,22 @@ const CONFIG_FILENAMES = [
   "deblob.config.mjs",
 ]
 
+/** The machine-local overlay, beside the config — never committed. */
+const LOCAL_FILENAMES = [
+  "deblob.local.ts",
+  "deblob.local.mts",
+  "deblob.local.js",
+  "deblob.local.mjs",
+] as const
+
+/** What discovery found in one directory: at least one of the two files. */
+export type DiscoveredConfig = {
+  /** The directory holding the files — the config root. */
+  root: string
+  configPath: string | null
+  localPath: string | null
+}
+
 /**
  * The fs-reading half, over the port. `importConfigDefault` stays outside: a
  * platform call, no port reads it.
@@ -31,23 +49,57 @@ export const createConfigLoader = ({
   fs: Pick<Fs, "exists" | "readFile">
 }) => {
   /**
-   * Upward walk from `cwd`, nearest config wins — placement freedom with the
-   * no-inheritance ban intact: one config, never a stack. Two config files in
-   * one directory is ambiguity, not precedence.
+   * The one file of `names` in `dir`, or null; two or more is ambiguity, not
+   * precedence — `what` names the kind in the message.
    */
-  const discoverConfig = async (cwd: string): Promise<string | null> => {
-    for (let dir = resolve(cwd); ;) {
-      const found = await Promise.all(
-        CONFIG_FILENAMES.map((name) => fs.exists(join(dir, name))),
+  const oneOf = async (
+    dir: string,
+    names: readonly string[],
+    what: string,
+  ): Promise<string | null> => {
+    const found = await Promise.all(
+      names.map((name) => fs.exists(join(dir, name))),
+    )
+    const present = names.filter((_, index) => found[index])
+    if (present.length > 1) {
+      throw new ConfigError(
+        `${dir} contains ${present.join(" and ")} — keep exactly one ${what} per directory`,
       )
-      const present = CONFIG_FILENAMES.filter((_, index) => found[index])
-      const [single] = present
-      if (present.length > 1) {
-        throw new ConfigError(
-          `${dir} contains ${present.join(" and ")} — keep exactly one deblob config per directory`,
-        )
-      }
-      if (single) return join(dir, single)
+    }
+    const [single] = present
+    return single === undefined ? null : join(dir, single)
+  }
+
+  /** The overlay beside a config file, when present. */
+  const localConfigBeside = (dir: string): Promise<string | null> =>
+    oneOf(dir, LOCAL_FILENAMES, "deblob local file")
+
+  /**
+   * The config in one directory, exactly — no walk: a directory that is a
+   * project by declaration (a viewer's listed project, a script's cwd) is its
+   * own root, its own files or nothing, never an ancestor's.
+   */
+  const configAt = async (dir: string): Promise<DiscoveredConfig | null> => {
+    const root = resolve(dir)
+    const configPath = await oneOf(root, CONFIG_FILENAMES, "deblob config")
+    const localPath = await localConfigBeside(root)
+    if (!configPath && !localPath) return null
+    return { root, configPath, localPath }
+  }
+
+  /**
+   * Upward walk from `cwd`, nearest wins — placement freedom with the
+   * no-inheritance ban intact: one directory, never a stack. The walk stops at
+   * the first directory holding a config file or a local file: a lone local
+   * file is a configless project with an overlay, never ignored. Two config
+   * files, or two local files, in one directory is ambiguity, not precedence.
+   */
+  const discoverConfig = async (
+    cwd: string,
+  ): Promise<DiscoveredConfig | null> => {
+    for (let dir = resolve(cwd); ;) {
+      const found = await configAt(dir)
+      if (found !== null) return found
       const parent = dirname(dir)
       if (parent === dir) return null
       dir = parent
@@ -56,19 +108,20 @@ export const createConfigLoader = ({
 
   /**
    * `-c/--config`: exact file, discovery walk skipped; missing = teaching
-   * error.
+   * error. The overlay is still looked up beside it.
    */
   const explicitConfigPath = async (
     cwd: string,
     path: string,
-  ): Promise<string> => {
+  ): Promise<DiscoveredConfig> => {
     const configPath = resolve(cwd, path)
     if (!(await fs.exists(configPath))) {
       throw new ConfigError(
         `--config points at ${path}, which does not exist (resolved from ${cwd})`,
       )
     }
-    return configPath
+    const root = dirname(configPath)
+    return { root, configPath, localPath: await localConfigBeside(root) }
   }
 
   /**
@@ -122,6 +175,37 @@ export const createConfigLoader = ({
   }
 
   /**
+   * The package.json at `root`, parsed — `null` when there is none; a manifest
+   * that does not parse fails naming it. The one read both manifest readers
+   * share.
+   */
+  const readManifest = async (
+    root: string,
+  ): Promise<Record<string, unknown> | null> => {
+    const manifestPath = join(root, "package.json")
+    const text = await fs.readFile(manifestPath)
+    if (text === null) return null
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text)
+    } catch (error) {
+      throw new ConfigError(`failed to parse ${manifestPath}`, { cause: error })
+    }
+    return typeof parsed === "object" && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : {}
+  }
+
+  /**
+   * The package's `name` at `root` — what a project is called when it is a
+   * package; `null` without a manifest or without a string name.
+   */
+  const readPackageName = async (root: string): Promise<string | null> => {
+    const name = (await readManifest(root))?.["name"]
+    return typeof name === "string" ? name : null
+  }
+
+  /**
    * The package's own surface claim — package.json at the config root: `deblob`
    * field presence, its `blob` carve-outs and `assembly` designations, plus the
    * exports map flattened to subpath → target paths. `null` = no package.json
@@ -133,19 +217,8 @@ export const createConfigLoader = ({
   const readPackageSurface = async (
     root: string,
   ): Promise<PackageSurface | null> => {
-    const manifestPath = join(root, "package.json")
-    const text = await fs.readFile(manifestPath)
-    if (text === null) return null
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(text)
-    } catch (error) {
-      throw new ConfigError(`failed to parse ${manifestPath}`, { cause: error })
-    }
-    const manifest =
-      typeof parsed === "object" && parsed !== null
-        ? (parsed as Record<string, unknown>)
-        : {}
+    const manifest = await readManifest(root)
+    if (manifest === null) return null
     const field = manifest["deblob"]
     if (field === undefined) return null
     if (typeof field !== "object" || field === null || Array.isArray(field)) {
@@ -180,23 +253,31 @@ export const createConfigLoader = ({
   }
 
   return {
+    configAt,
     discoverConfig,
     explicitConfigPath,
     tsconfigPathOf,
+    readPackageName,
     readPackageSurface,
   }
 }
 
-/** Native import of the config file; returns its default export, raw. */
+/**
+ * Native import of a config or local file; returns its default export, raw. The
+ * URL carries the file's mtime: Node caches a module by URL, so an edited file
+ * is a new URL and imports fresh, an unchanged one answers from the cache. Only
+ * the file itself: a module it imports stays cached.
+ */
 export const importConfigDefault = async (
   configPath: string,
 ): Promise<unknown> => {
   let module: Record<string, unknown>
   try {
-    module = (await import(pathToFileURL(configPath).href)) as Record<
-      string,
-      unknown
-    >
+    // nanoseconds, an integer: a fractional ms (`?v=…042.0232`) reads as a file
+    // extension to Vite's transform, which then parses a .ts config as JS
+    const { mtimeNs } = await stat(configPath, { bigint: true })
+    const url = `${pathToFileURL(configPath).href}?v=${mtimeNs}`
+    module = (await import(url)) as Record<string, unknown>
   } catch (error) {
     throw new ConfigError(configImportErrorMessage(error, configPath), {
       cause: error,

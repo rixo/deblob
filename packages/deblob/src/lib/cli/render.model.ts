@@ -1087,14 +1087,21 @@ export const renderUnverified = (
   return `${lines.join("\n")}\n`
 }
 
-/** `deblob.config.ts (flavor: ts-suffixes-factories)` / `no config (defaults)` */
+/**
+ * `deblob.config.ts (flavor: ts-suffixes-factories)` / `no config (defaults)`;
+ * the overlay joins with `+` when present — a run under a local file says so.
+ */
 export const provenanceOf = (
-  configPath: string | null,
+  paths: { configPath: string | null; localPath: string | null },
   flavorName: string,
-): string =>
-  configPath === null
+): string => {
+  const files = [paths.configPath, paths.localPath].filter(
+    (path) => path !== null,
+  )
+  return files.length === 0
     ? "no config (defaults)"
-    : `${configPath} (flavor: ${flavorName})`
+    : `${files.join(" + ")} (flavor: ${flavorName})`
+}
 
 /** `125952` → `123kb`, `5242880` → `5mb` — the headline's size unit. */
 export const formatSize = (bytes: number): string => {
@@ -1127,6 +1134,10 @@ export const sizeStatsOf = (
   totalBytes: entries.reduce((sum, entry) => sum + entry.size, 0),
   blobPercent: blobPercentOf(entries),
 })
+
+/** Distinct service roots over the covered set — what the layer rules govern. */
+export const serviceCountOf = (roots: Iterable<string | null>): number =>
+  new Set([...roots].filter((root) => root !== null)).size
 
 export type BareStatus = {
   version: string
@@ -1173,6 +1184,7 @@ export const renderBareStatus = (status: BareStatus, colors: Colors): string =>
     "  deblob check [what...]      run architecture checks",
     `                              (${KNOWN_CHECKS.join(" · ")})`,
     "  deblob explain <topic...>   explain rules or checks",
+    "  deblob view                 open the viewer on this project",
     "  deblob --help               full help",
     "",
   ].join("\n")
@@ -1241,6 +1253,7 @@ Usage
   deblob check [what...]       run architecture checks (default: all)
   deblob explain <topic...>    explain rules or checks (service-purity,
                                layers, ...)
+  deblob view                  serve the viewer on this project
 
 Checks
   dag        service dependencies form a DAG; no module-level runtime
@@ -1260,6 +1273,7 @@ Checks
 
 Options
   -c, --config <path>    config file (default: nearest deblob.config.ts)
+  --port <n>             view only: the port to serve on (default 3615)
   --no-color             plain output (NO_COLOR is honored too)
   -h, --help             show this help
   -v, --version          print version

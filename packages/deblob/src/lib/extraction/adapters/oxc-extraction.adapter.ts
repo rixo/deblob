@@ -1,5 +1,6 @@
 import { dirname } from "node:path"
 
+import type { ExportImportName, ImportName } from "oxc-parser"
 import { parseSync } from "oxc-parser"
 
 import type { Fs } from "../../fs/fs.port.ts"
@@ -146,6 +147,22 @@ const collectRuntimeContent = (program: AstNode): RuntimeEntry[] => {
   return entries
 }
 
+/** An import entry's name as the target exports it. */
+const importedName = (name: ImportName): string =>
+  name.kind === "Default"
+    ? "default"
+    : name.kind === "NamespaceObject"
+      ? "*"
+      : (name.name as string)
+
+/**
+ * A re-export entry's name as the target exports it; `*` for a star (`export
+ * *`, `export * as ns`). An entry with a source always names something: only a
+ * local export has none.
+ */
+const reExportedName = (name: ExportImportName): string =>
+  name.kind === "Name" ? (name.name as string) : "*"
+
 /** The parser over oxc: a string in, the ESTree program out. */
 export const createOxcEngine = ({
   fs,
@@ -180,6 +197,7 @@ export const createOxcEngine = ({
           typeOnly: false,
           form: "static",
           reExport: false,
+          name: null,
           literal: true,
         })
         continue
@@ -190,6 +208,7 @@ export const createOxcEngine = ({
           typeOnly: entry.isType,
           form: "static",
           reExport: false,
+          name: importedName(entry.importName),
           literal: true,
         })
       }
@@ -203,6 +222,7 @@ export const createOxcEngine = ({
           typeOnly: entry.isType,
           form: "static",
           reExport: true,
+          name: reExportedName(entry.importName),
           literal: true,
         })
       }
@@ -224,6 +244,7 @@ export const createOxcEngine = ({
               typeOnly: false,
               form: "dynamic",
               reExport: false,
+              name: null,
               literal: true,
             }
           : {
@@ -231,6 +252,7 @@ export const createOxcEngine = ({
               typeOnly: false,
               form: "dynamic",
               reExport: false,
+              name: null,
               literal: false,
             },
       )
@@ -245,6 +267,7 @@ export const createOxcEngine = ({
           typeOnly: false,
           form: "require",
           reExport: false,
+          name: null,
           literal,
         })
       }
@@ -259,6 +282,7 @@ export const createOxcEngine = ({
       // the reader's input, dropped by the caller once read
       program: result.program,
       source,
+      comments: result.comments,
     }
   }
 

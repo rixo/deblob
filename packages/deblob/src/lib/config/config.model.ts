@@ -24,7 +24,7 @@ export const isConfigError = (error: unknown): error is ConfigError =>
  * The runner's catch filter: config errors are handled (message + exit code),
  * anything else is a bug and keeps flying.
  */
-export const asConfigError = (error: unknown): ConfigError => {
+export const asConfigErrorOrRethrow = (error: unknown): ConfigError => {
   if (isConfigError(error)) return error
   throw error
 }
@@ -35,7 +35,9 @@ export const DEFAULT_INCLUDE: readonly string[] = ["**"]
  * Non-removable: user `exclude` appends, never replaces — re-including
  * `node_modules` in the graph is not a flavor. A measured list, honestly open:
  * a generator not on it enters coverage until excluded by hand. Dot-dir members
- * are already dead via the hidden-path rule; listed for explicitness.
+ * are already dead via the hidden-path rule; listed for explicitness. The local
+ * overlay is machine state, gitignored and unreviewed: never project code, or
+ * one commit would measure differently on two machines.
  */
 export const EXCLUDE_BASELINE: readonly string[] = [
   "**/node_modules/**",
@@ -46,6 +48,7 @@ export const EXCLUDE_BASELINE: readonly string[] = [
   "**/.svelte-kit/**",
   "**/.next/**",
   "**/.nuxt/**",
+  "**/deblob.local.*",
 ]
 
 /**

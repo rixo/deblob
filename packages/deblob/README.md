@@ -16,6 +16,7 @@ deblob                       project status + discovery
 deblob check [what...]       run architecture checks (default: all)
 deblob explain <topic...>    explain rules or checks (service-purity,
                              layers, ...)
+deblob view                  serve the viewer on this project
 ```
 
 - **`deblob`** prints the inventory — file count, total size, blob %
@@ -46,6 +47,20 @@ deblob explain <topic...>    explain rules or checks (service-purity,
   pasteable `deblob explain service-purity private-sealed no-service-cycle`.
   `deblob check --explain` appends the explanation of every rule that fired; a
   CI log becomes self-teaching in one run.
+- **`deblob view`** serves the viewer — the extracted codebase in a browser — on
+  `http://127.0.0.1:3615` (`--port` to move it), and follows the code: save a
+  covered file and the page updates, no reload. The bundle ships inside this
+  package, so there is nothing to install and nothing to build. Which projects
+  it lists comes from config (`view.projects`), never from the command line;
+  with no list it shows the project you ran it in. Ctrl-C stops it; it exits 0.
+  The page is a map of the project, **experimental**: call stacks only on a tree
+  the tracer can read (deblob's own, today, with `typescript` installed), and
+  each save redraws it from its default view. The plain outline is at `/#debug`.
+  It answers its own page and nothing else: the data channel refuses a handshake
+  from any other origin, so no page you happen to have open elsewhere in the
+  browser can read your file tree through it. A client that is not a browser has
+  to say where it is from — `wscat --origin http://127.0.0.1:3615` — and a
+  refusal prints one line saying which origin was turned away.
 
 Violations cite their rule and print the offending edge:
 
@@ -80,7 +95,7 @@ export default defineConfig({
 })
 ```
 
-The eleven keys, all optional:
+The twelve keys, all optional:
 
 | Key              | Default                   | Meaning                                                                                                                             |
 | ---------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -95,10 +110,17 @@ The eleven keys, all optional:
 | `external`       | `[]`                      | Specifier patterns the environment provides with nothing on disk (`$theme:**`, `cloudflare:*`) — matches are leaves, never resolved |
 | `externalLayers` | `{}`                      | Specifier pattern → layer: cross-package identity declared by hand; wins over a producer's `deblob` field — `blob` revokes a claim  |
 | `build`          | `"dist"`                  | The output directory mirroring `src/` one-to-one, so `surface` reaches source through built exports; `{ mirror: {…} }` for several  |
+| `view`           | `{ projects: [] }`        | The viewer's projects: directories, each a deblob project of its own, relative to the declaring file — a monorepo root lists them   |
 
 Discovery walks upward from cwd; the nearest config wins and its directory
-becomes the project root. No merging, no inheritance. `-c/--config <path>`
-overrides the walk.
+becomes the project root. No merging, no inheritance across directories. One
+overlay in the same directory: a `deblob.local.{ts,mts,js,mjs}` beside the
+config holds the same keys and wins per key (arrays and objects replace, never
+merge) — the machine-local part of a config, gitignored by convention, never
+analyzed as project code, named in the bare status line whenever it was read.
+`-c/--config <path>` overrides the walk. A long-running process (`deblob view`)
+reads an edited config or local file as edited; a module either one imports
+stays cached until a restart.
 
 A declared `pure` entry is trusted, not verified — the guarantee is only as good
 as the config review. Unlisted third-party imported from a pure layer fires as

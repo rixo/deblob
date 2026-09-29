@@ -1,11 +1,11 @@
 import { execFileSync, execSync } from "node:child_process"
 import { readFileSync } from "node:fs"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { beforeAll, describe, expect, it, test } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, test } from "vitest"
 
 import { main } from "./main.ts"
 
@@ -41,6 +41,8 @@ const run = async (
     cwd: string
     env: Record<string, string>
     isTTY: boolean
+    signal: AbortSignal
+    bundle: string
   }> = {},
 ): Promise<RunResult> => {
   let out = ""
@@ -54,6 +56,8 @@ const run = async (
     },
     stderr: { write: (chunk: string) => (err += chunk) },
     env: options.env ?? {},
+    signal: options.signal ?? new AbortController().signal,
+    bundle: options.bundle ?? here("__fixtures__/NO_SUCH_BUNDLE"),
   })
   return { code, out, err }
 }
@@ -514,6 +518,34 @@ describe("main", () => {
       }
     })
 
+    test("a local overlay beside the config: provenance names both files", async () => {
+      const temp = await mkdtemp(join(tmpdir(), "deblob-bare-local-"))
+      try {
+        await writeFile(join(temp, "deblob.config.ts"), "export default {}\n")
+        await writeFile(join(temp, "deblob.local.ts"), "export default {}\n")
+        const { code, out } = await run([], { cwd: temp })
+        expect(code).toBe(0)
+        expect(out).toContain(
+          "deblob.config.ts + deblob.local.ts (flavor: ts-suffixes-factories)",
+        )
+      } finally {
+        await rm(temp, { recursive: true, force: true })
+      }
+    })
+
+    test("a lone local file: configless with an overlay, provenance names it", async () => {
+      const temp = await mkdtemp(join(tmpdir(), "deblob-bare-lone-local-"))
+      try {
+        await writeFile(join(temp, "deblob.local.ts"), "export default {}\n")
+        const { code, out } = await run([], { cwd: temp })
+        expect(code).toBe(0)
+        expect(out).toContain("deblob.local.ts (flavor: ts-suffixes-factories)")
+        expect(out).not.toContain("deblob.config.ts")
+      } finally {
+        await rm(temp, { recursive: true, force: true })
+      }
+    })
+
     test("a declaring package: the claim tallied at scan speed — claimed, not checked", async () => {
       const { code, out, err } = await run([], { cwd: billingDir })
       expect(code).toBe(0)
@@ -618,5 +650,88 @@ describe("bin shim (child process smoke)", () => {
     expect(check.stderr.replace(/\n +/g, " ")).toMatch(
       /deblob\.config\.ts is written as ESM but loaded as CommonJS.*rename it deblob\.config\.mts.*"type": "module"/s,
     )
+  })
+})
+
+describe("view", () => {
+  const FAKE_INDEX = "<!doctype html>FAKE VIEWER"
+
+  const bundleDir = async (): Promise<string> => {
+    const dir = await mkdtemp(join(tmpdir(), "deblob-view-"))
+    viewTemps.push(dir)
+    await writeFile(join(dir, "index.html"), FAKE_INDEX)
+    return dir
+  }
+
+  /** Runs `view` until the caller stops it: the URL line is the handshake. */
+  const serving = async (
+    options: { cwd: string; bundle: string; argv?: string[] } = {
+      cwd: cleanDir,
+      bundle: "",
+    },
+  ) => {
+    const stopping = new AbortController()
+    let out = ""
+    let err = ""
+    const done = main({
+      argv: options.argv ?? ["view", "--port", "0"],
+      cwd: options.cwd,
+      stdout: { write: (chunk: string) => (out += chunk) },
+      stderr: { write: (chunk: string) => (err += chunk) },
+      env: {},
+      signal: stopping.signal,
+      bundle: options.bundle,
+    })
+    for (let waited = 0; waited < 5000 && out === "" && err === ""; waited++) {
+      await new Promise((resolve) => setTimeout(resolve, 1))
+    }
+    return {
+      out,
+      err,
+      stop: async () => {
+        stopping.abort()
+        return done
+      },
+    }
+  }
+
+  const viewTemps: string[] = []
+  afterAll(async () => {
+    for (const dir of viewTemps.splice(0)) {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("an install without the bundle says so and serves nothing, exit 2", async () => {
+    const { code, out, err } = await run(["view"])
+    expect(code).toBe(2)
+    expect(out).toBe("")
+    expect(err).toMatch(/viewer bundle is missing at .*NO_SUCH_BUNDLE/)
+  })
+
+  test("serves the page over the project until the signal, exit 0", async () => {
+    const bundle = await bundleDir()
+    const { out, err, stop } = await serving({ cwd: cleanDir, bundle })
+    expect(err).toBe("")
+    const url = /(http:\/\/127\.0\.0\.1:\d+)/.exec(out)?.[1] as string
+    expect(out).toBe(`deblob view: ${url} — 1 project(s), ctrl-c to stop\n`)
+    expect(await (await fetch(url)).text()).toBe(FAKE_INDEX)
+    await expect(stop()).resolves.toBe(0)
+    // the port is gone with it
+    await expect(fetch(url)).rejects.toThrow()
+  })
+
+  test("a config it cannot read is the line check prints, exit 2", async () => {
+    const bundle = await bundleDir()
+    // no --port: the default is read, and a config that fails is read before
+    // anything binds, so nothing listens on it
+    const { out, err, stop } = await serving({
+      cwd: brokenConfigDir,
+      bundle,
+      argv: ["view"],
+    })
+    expect(out).toBe("")
+    expect(err).toContain("deblob.config.ts")
+    await expect(stop()).resolves.toBe(2)
   })
 })

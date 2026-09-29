@@ -9,6 +9,7 @@
 import type { Program } from "@oxc-project/types"
 
 import type { EdgeForm, RuntimeEntry } from "../graph.model.ts"
+import type { SourceComment } from "../symbols.model.ts"
 
 /** One import occurrence in a file, one entry per specifier reference. */
 export type ImportRecord = {
@@ -24,6 +25,12 @@ export type ImportRecord = {
    * fact `layer-in-path` reads; plain imports never set it.
    */
   reExport: boolean
+  /**
+   * The name this occurrence binds, as the target exports it: the imported
+   * name, `default`, `*` for a namespace import or a star re-export. `null`
+   * when it binds none: a side-effect import, `import()`, `require()`.
+   */
+  name: string | null
   /**
    * False when `specifier` is a non-literal dynamic-import expression —
    * unresolvable by construction; it must surface as a diagnostic, never reach
@@ -49,6 +56,8 @@ export type FileExtraction = {
   program: Program
   /** The text the tree was parsed from — spans resolve to lines through it. */
   source: string
+  /** Every comment of the file, source order — docs are read from them. */
+  comments: readonly SourceComment[]
 }
 
 /** A supported file that does not parse: what the parser said. */
