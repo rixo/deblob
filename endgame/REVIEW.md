@@ -49,3 +49,20 @@ of the refactor's own.
 - Partner packages: green on 0.0.6; 86–1,050 on driver-layer's unreleased
   outside rules; 78–484 on endgame with ruled configs, the CLI entries read as
   drivers.
+
+## Try it
+
+From any project directory, endgame's CLI from source (the viewer bundle is
+built into `packages/deblob/dist/viewer`):
+
+```sh
+EG=~/projects/deblob.endgame/packages/deblob/src/drivers/cli/bin.ts
+node $EG check          # the ruled rules
+node $EG view           # the map; the #debug outline lists the verdicts
+```
+
+A config in the ruled shape imports the readers from endgame's source:
+`import { cac, node } from "<endgame>/packages/deblob/src/readers.ts"`, then
+`readers: { host: [node()], driver: [cac({ include: ["src/cli.ts"] })] }`. The
+partner copies with such configs sit in the session scratchpad (`setup.sh`
+rebuilds them; nothing is written under the partner's tree).
