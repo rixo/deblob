@@ -18,14 +18,11 @@ import { createChokidarWatcher } from "../../lib/snapshot/adapters/chokidar-watc
 import { createWsChannel } from "../../lib/snapshot/adapters/ws-channel.adapter.ts"
 import { allowsHandshake } from "../../lib/snapshot/handshake.model.ts"
 import type { Report } from "../../lib/snapshot/ports/report.port.ts"
-import {
-  createSnapshotService,
-  serveSnapshots,
-} from "../../lib/snapshot/snapshot.service.ts"
+import { serveSnapshots } from "../../lib/snapshot/snapshot.service.ts"
 import { createFsBundle } from "../../lib/view/adapters/fs-bundle.adapter.ts"
 import { createViewService } from "../../lib/view/view.service.ts"
-import { createSpikeMapFeed } from "../../spike/map-feed/map-feed.adapter.ts"
-import { createProjectSource, extractionFor } from "../../app.assembly.ts"
+import { createSnapshotsAssembly } from "../../app.assembly.ts"
+import { createNodeFs } from "../../lib/fs/adapters/node-fs.adapter.ts"
 import type { Terminal } from "../../lib/terminal/terminal.port.ts"
 import { createProcessTerminal } from "../../lib/terminal/adapters/process-terminal.adapter.ts"
 import type { ServeApp } from "./serve.service.ts"
@@ -60,12 +57,8 @@ export const serve = async (
   const report: Report = (error) => {
     io.stderr.write(`${inspect(error)}\n`)
   }
-  const { runOf, projectsOf, watchSetFor } = createSnapshotService({
-    source: createProjectSource(),
-    extractionFor,
-    // spike code, shipped: the experimental map (step 09 SPEC § Shipping)
-    feed: createSpikeMapFeed(),
-  })
+  const { runOf, projectsOf, watchSetFor } =
+    createSnapshotsAssembly(createNodeFs())
   const projects = await projectsOf(io.cwd)
   const server = createServer()
   const { channel, close: closeChannel } = createWsChannel({

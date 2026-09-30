@@ -108,3 +108,24 @@ export const configImportErrorMessage = (
   }
   return `failed to load ${configPath}`
 }
+
+/**
+ * The package's own exports map and field, as its manifest claims them — the
+ * `deblob` field, and the exports map it covers.
+ */
+export type PackageSurface = {
+  /** Subpaths with their target paths — root-relative, conditions flattened. */
+  subpaths: readonly {
+    subpath: string
+    targets: readonly string[]
+  }[]
+  /** The field's `blob` carve-outs — subpath patterns, as written. */
+  blob: readonly string[]
+  /**
+   * The field's `assembly` designations — subpath patterns, as written. A
+   * designation, never a fact about a file (in-set it is config too): nothing
+   * to verify at home, a carve-out like `blob`; abroad the subpath is sealed to
+   * the consumer's wiring.
+   */
+  assembly: readonly string[]
+}

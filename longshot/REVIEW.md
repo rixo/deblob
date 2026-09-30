@@ -25,7 +25,12 @@ Agenda, in order:
    and fixtures; `if`/`switch` vs `??`/`?.` shaping; loops; the rare writes),
    deblob's and anonymized partner shapes, census counts beside them
    ([TESTING.md](TESTING.md)).
-2. **D7 + D8** — `hostDriver()`; one red per missing premise.
+2. **D7 + D8** — `hostDriver()`; one red per missing premise. With **L4**
+   (process-start drivers: `app.run()` in a root driver reads "a use case
+   outside any hook" — D7's other half). 2b. **L-series** — L5 (the server:
+   adapter from the CLI's standpoint, driver from its own), L7 (what makes a
+   function an assembly's). L3 closed (a reader limit, fixed); L8 is a bug owed
+   to driver-layer, no ruling needed.
 3. **P-series** — P1's fix shape; P4's message and way out (P2, P5 are notes).
 4. **Integration** — longshot's code ported to driver-layer (src 43 files
    +1307/−525, tests 34 files +955/−358, 18 `GUESS:` markers); the golden gate

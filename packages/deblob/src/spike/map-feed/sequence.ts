@@ -26,9 +26,9 @@ import { createRequire } from "node:module"
 import { readFileSync } from "node:fs"
 import { dirname, join, relative, resolve as resolvePath } from "node:path"
 
-import { createProjectSource } from "../../app.assembly.ts"
+import { createConfigAssembly } from "../../app.assembly.ts"
 import { createNodeFs } from "../../lib/fs/adapters/node-fs.adapter.ts"
-import { createConfigLoader } from "../../lib/config/adapters/loader.adapter.ts"
+import { createTsconfigLocator } from "../../lib/extraction/adapters/oxc-resolver.adapter.ts"
 
 const require_ = createRequire(import.meta.url)
 const { parseSync } = require_("oxc-parser")
@@ -38,10 +38,11 @@ export async function sequenceSnapshot(
   rootArg: string,
   fine: any,
 ): Promise<any> {
-  const source = createProjectSource()
-  const config: any = await source.loadConfigAt(resolvePath(rootArg))
+  const config: any = await createConfigAssembly(createNodeFs()).loadConfigAt(
+    resolvePath(rootArg),
+  )
   const root: string = config.root
-  const tsconfigPath = await createConfigLoader({
+  const tsconfigPath = await createTsconfigLocator({
     fs: createNodeFs(),
   }).tsconfigPathOf(config)
   // the resolver adapter's settings (oxc-resolver.adapter.ts), sync for the probe

@@ -8,11 +8,13 @@ both builds and fires.
 
 ## API
 
-- `runner.service.ts` — `createRunner({ check })` → `judge(row)`: collects the
-  row's markers, asks the check port for the violations under the row's config
-  and checks, resolves to the verdict: the match and the expected failures still
-  failing. `Case` and `Row` (`markers.model.ts`) are what a spec hands it;
-  `AS_MARKED` is the match a row asserts.
+- `runner.service.ts` — `createRunner({ config, judge, root })` → `judge(row)`:
+  collects the row's markers, resolves the row's config at the case's root (the
+  config unit's `resolve`), runs the product's own judge (`check`'s, the one
+  `deblob check` runs) with the row's checks, fails a case a literal import of
+  which does not resolve, resolves to the verdict: the match and the expected
+  failures still failing. `Case` and `Row` (`markers.model.ts`) are what a spec
+  hands it; `AS_MARKED` is the match a row asserts.
 - `markers.model.ts` — the marker grammar and the match.
   `// red: <slug>[, <slug>]* [-- <why>]`: one group per slug, a repeated slug
   counts twice; slugs joined by `+` are one group, one fix
@@ -56,9 +58,11 @@ both builds and fires.
   reverse; `reportedOf` reduces a group to what a marker claims, and names every
   file that closes a cycle. `stripMarkers` is the grammar's inverse, for a
   corpus author who wants the same tree claiming green.
-- `cases.assembly.ts` — `assembleCase(files)` → `{ judge, check }`: the memory
-  adapters built from the tree, the real chain wired over them, the runner over
-  it. Returns the check port too, for a spec that wants the violations.
+- `cases.assembly.ts` — `assembleCase(files)` → `{ judge }`: the memory adapters
+  built from the tree (placed at `CASE_ROOT`, `markers.model.ts`), the product's
+  config unit and judge over them, the runner over those. Until the placement
+  recut it wired its own copy of the chain — the copy that honoured
+  `configLoads` while the CLI's did not.
 
 ## Ports
 

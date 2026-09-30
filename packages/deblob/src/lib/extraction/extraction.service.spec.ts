@@ -25,7 +25,7 @@ import {
 import type { DriverReader } from "./ports/driver-reader.port.ts"
 import type { ReaderGroups } from "./ports/readers.port.ts"
 import type { ExtractionEngine } from "./ports/extraction.port.ts"
-import type { Resolver } from "./ports/resolver.port.ts"
+import type { Resolver, Resolvers } from "./ports/resolver.port.ts"
 
 /** A parsed nothing — what a fake engine hands the reader. */
 const EMPTY_PROGRAM = {
@@ -72,6 +72,11 @@ const driverOver = (include: readonly string[]): DriverReader => ({
   claims: () => false,
 })
 
+/** Every config resolved by the one resolver given — the specs' own fixed lens. */
+const resolversOf = (resolver: Resolver): Resolvers => ({
+  resolverFor: async () => resolver,
+})
+
 const extractFixture = ({
   fixture,
   files,
@@ -85,11 +90,19 @@ const extractFixture = ({
   const root = fixtureRoot(fixture)
   const extraction = createExtraction({
     engine: createOxcEngine({ fs }),
-    resolver: createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
-    flavor: createTsSuffixesFactoriesFlavor(),
-    readers: { ...FIXTURE_READERS, ...readers },
+    resolvers: resolversOf(
+      createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
+    ),
   })
-  return extraction.extractGraph({ root, files, ...designations })
+  return extraction.extractGraph({
+    config: {
+      root,
+      flavor: createTsSuffixesFactoriesFlavor(),
+      readers: { ...FIXTURE_READERS, ...readers },
+      ...designations,
+    },
+    files,
+  })
 }
 
 const FORMS_FILES = [
@@ -659,14 +672,18 @@ describe("extractGraph over the resolution fixture", () => {
     const root = fixtureRoot("resolution")
     const extraction = createExtraction({
       engine: createOxcEngine({ fs }),
-      resolver: createOxcResolver({
-        alias: { "some-made-up-alias": [`${root}src/app`] },
-      }),
-      flavor: createTsSuffixesFactoriesFlavor(),
-      readers: FIXTURE_READERS,
+      resolvers: resolversOf(
+        createOxcResolver({
+          alias: { "some-made-up-alias": [`${root}src/app`] },
+        }),
+      ),
     })
     const graph = await extraction.extractGraph({
-      root,
+      config: {
+        root,
+        flavor: createTsSuffixesFactoriesFlavor(),
+        readers: FIXTURE_READERS,
+      },
       files: [...RESOLUTION_FILES, "src/uses-made-up-alias.ts"],
     })
     expect(edgesFrom(graph, "src/uses-made-up-alias.ts")).toEqual([
@@ -736,13 +753,15 @@ describe("extractGraph — declared external specifiers", () => {
     const { engine, resolver, resolved } = fakeEngine(imports)
     const graph = await createExtraction({
       engine,
-      resolver,
-      flavor: createTsSuffixesFactoriesFlavor(),
-      readers: FIXTURE_READERS,
+      resolvers: resolversOf(resolver),
     }).extractGraph({
-      root: "/made-up-root",
+      config: {
+        root: "/made-up-root",
+        flavor: createTsSuffixesFactoriesFlavor(),
+        readers: FIXTURE_READERS,
+        ...(external ? { external } : {}),
+      },
       files: Object.keys(imports),
-      ...(external ? { external } : {}),
     })
     return { graph, resolved }
   }
@@ -850,13 +869,15 @@ describe("extractGraph failure modes", () => {
   it("throws when the flavor breaks its totality contract", async () => {
     const extraction = createExtraction({
       engine: createOxcEngine({ fs }),
-      resolver: createOxcResolver(),
-      flavor: { classify: () => new Map() },
-      readers: FIXTURE_READERS,
+      resolvers: resolversOf(createOxcResolver()),
     })
     await expect(
       extraction.extractGraph({
-        root: fixtureRoot("forms"),
+        config: {
+          root: fixtureRoot("forms"),
+          flavor: { classify: () => new Map() },
+          readers: FIXTURE_READERS,
+        },
         files: ["src/dep.ts"],
       }),
     ).rejects.toThrow(/flavor broke its contract/)
@@ -904,14 +925,16 @@ describe("externalLayerOf — the crossed layer carrier on external leaves", () 
     }
     return createExtraction({
       engine,
-      resolver,
-      flavor: createTsSuffixesFactoriesFlavor(),
-      readers: FIXTURE_READERS,
+      resolvers: resolversOf(resolver),
     }).extractGraph({
-      root: "/made-up-root",
+      config: {
+        root: "/made-up-root",
+        flavor: createTsSuffixesFactoriesFlavor(),
+        readers: FIXTURE_READERS,
+        ...(external ? { external } : {}),
+        ...(externalLayerOf ? { externalLayers: externalLayerOf } : {}),
+      },
       files: ["src/a.model.ts"],
-      ...(external ? { external } : {}),
-      ...(externalLayerOf ? { externalLayerOf } : {}),
     })
   }
 
@@ -1004,15 +1027,19 @@ describe("the reading on the graph — the reading fixture", () => {
     const root = fixtureRoot("reading")
     const extraction = createExtraction({
       engine: createOxcEngine({ fs }),
-      resolver: createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
-      flavor: createTsSuffixesFactoriesFlavor(),
-      readers: { ...READING_READERS, ...readers },
+      resolvers: resolversOf(
+        createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
+      ),
     })
     return extraction.extractGraph({
-      root,
+      config: {
+        root,
+        flavor: createTsSuffixesFactoriesFlavor(),
+        readers: { ...READING_READERS, ...readers },
+        pure: ["pure-made-up-lib"],
+        configLoads,
+      },
       files: READING_FILES,
-      pure: ["pure-made-up-lib"],
-      configLoads,
     })
   }
 
@@ -1434,13 +1461,17 @@ describe("the reading on the graph — the reading fixture", () => {
     const root = fixtureRoot("reading")
     const extraction = createExtraction({
       engine: createOxcEngine({ fs }),
-      resolver: createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
-      flavor: createTsSuffixesFactoriesFlavor(),
-      readers: READING_READERS,
+      resolvers: resolversOf(
+        createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
+      ),
     })
     // only cli.driver.ts calls it once other.driver.ts is left out
     const single = await extraction.extractGraph({
-      root,
+      config: {
+        root,
+        flavor: createTsSuffixesFactoriesFlavor(),
+        readers: READING_READERS,
+      },
       files: READING_FILES.filter((file) => file !== "src/other.driver.ts"),
     })
     const [register] = readingOf(single, "src/sub.driver.ts").functions
@@ -1473,11 +1504,18 @@ describe("the reading on the graph — the reading fixture", () => {
     const stock = createTsSuffixesFactoriesFlavor()
     const extraction = createExtraction({
       engine: createOxcEngine({ fs }),
-      resolver: createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
-      flavor: { classify: (files) => stock.classify(files) },
-      readers: FIXTURE_READERS,
+      resolvers: resolversOf(
+        createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
+      ),
     })
-    const graph = await extraction.extractGraph({ root, files: READING_FILES })
+    const graph = await extraction.extractGraph({
+      config: {
+        root,
+        flavor: { classify: (files) => stock.classify(files) },
+        readers: FIXTURE_READERS,
+      },
+      files: READING_FILES,
+    })
     const [assembly] = readingOf(graph, "src/cli.assembly.ts").functions
     expect(callsOf(assembly?.body ?? [])[3]?.callee).toEqual({
       kind: "model",

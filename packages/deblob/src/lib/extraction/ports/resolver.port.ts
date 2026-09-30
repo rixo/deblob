@@ -17,3 +17,17 @@ export interface Resolver {
    */
   resolve(fromAbsolutePath: string, specifier: string): Promise<Resolution>
 }
+
+/**
+ * A resolver per config: its tsconfig (declared, disabled, or discovered at the
+ * root — whether one exists is the adapter's fs fact) and its aliases. A
+ * declared tsconfig that does not exist is a `ConfigError`: declared means
+ * load-bearing.
+ */
+export interface Resolvers {
+  resolverFor(options: {
+    root: string
+    tsconfig: string | false | undefined
+    alias: Readonly<Record<string, readonly string[]>>
+  }): Promise<Resolver>
+}

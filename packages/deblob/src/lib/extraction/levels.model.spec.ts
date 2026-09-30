@@ -34,9 +34,13 @@ const FILES = [
 
 /** Test factory: the reading fixture's graph, with or without the second driver. */
 const levelsOf = async (files: readonly string[] = FILES) => {
+  const resolver = createOxcResolver({ tsconfigPath: `${root}tsconfig.json` })
   const extraction = createExtraction({
     engine: createOxcEngine({ fs: createNodeFs() }),
-    resolver: createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
+    resolvers: { resolverFor: async () => resolver },
+  })
+  const config = {
+    root,
     flavor: createTsSuffixesFactoriesFlavor(),
     readers: {
       ...createDefaultReaders(),
@@ -45,12 +49,12 @@ const levelsOf = async (files: readonly string[] = FILES) => {
       driver: [
         {
           name: "made-up-parser",
-          claims: (specifier) => specifier === "some-made-up-parser",
+          claims: (specifier: string) => specifier === "some-made-up-parser",
         },
       ],
     },
-  })
-  return useCaseLevels(await extraction.extractGraph({ root, files }))
+  }
+  return useCaseLevels(await extraction.extractGraph({ config, files }))
 }
 
 describe("useCaseLevels", () => {

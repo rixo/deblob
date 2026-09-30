@@ -33,4 +33,10 @@ describe("createMemoryFs", () => {
     const fs = createMemoryFs({ "/made-up-root/a.ts": "" })
     expect([...fs.files.keys()]).toEqual(["/made-up-root/a.ts"])
   })
+
+  it("places a tree written relative to a root under it", async () => {
+    const fs = createMemoryFs({ "src/a.ts": "A" }, { root: "/made-up-root" })
+    expect([...fs.files.keys()]).toEqual(["/made-up-root/src/a.ts"])
+    expect(await fs.readFile("/made-up-root/src/a.ts")).toBe("A")
+  })
 })

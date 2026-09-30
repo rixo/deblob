@@ -1,4 +1,8 @@
-import { STOCK_FLAVOR_NAME } from "../stock-flavor.model.ts"
+import {
+  LAYER_BY_SUFFIX,
+  STOCK_FLAVOR_NAME,
+  classifyStockEntry,
+} from "../stock-flavor.model.ts"
 import type { FlavorLayer } from "../graph.model.ts"
 import type {
   FlavorClassification,
@@ -11,21 +15,6 @@ import type {
  * (`ports/`, `private/`, …) attributing to their nearest real service
  * directory.
  */
-
-/**
- * Suffix → kind, inside and outside the hexagon alike. The outside kinds
- * (assembly, driver, boot) are named by suffix like the inside ones; a
- * framework that owns the file name declares its files by config glob instead.
- */
-const LAYER_BY_SUFFIX: Readonly<Record<string, FlavorLayer>> = {
-  model: "model",
-  port: "ports",
-  service: "service",
-  adapter: "adapters",
-  assembly: "assembly",
-  driver: "driver",
-  boot: "boot",
-}
 
 const LAYER_SUFFIX =
   /\.(model|port|service|adapter|assembly|driver|boot)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
@@ -91,25 +80,6 @@ const nearestRootOf = (
 }
 
 /**
- * The stock naming rule over an exports subpath or specifier tail — the
- * cross-package half of the flavor (`classifyEntry`): extensionless suffix
- * matching on the tail segment. `./checkout.service`, `checkout.service.js`,
- * `nested/checkout.service.d.ts` all say service; an unsuffixed tail (the bare
- * root included) claims nothing. Exported by name so assembly can wire the
- * boundary lookup without holding a resolver instance.
- */
-export const classifyStockEntry = (subpath: string): FlavorLayer | null => {
-  const tail = subpath.slice(subpath.lastIndexOf("/") + 1)
-  const extensionless = tail
-    .replace(/\.d\.(?:ts|mts|cts)$/, "")
-    .replace(/\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/, "")
-  const dot = extensionless.lastIndexOf(".")
-  if (dot === -1) return null
-  // the record keys are the suffix set — one lookup, no second list to drift
-  return LAYER_BY_SUFFIX[extensionless.slice(dot + 1)] ?? null
-}
-
-/**
  * The stock naming rule over an export name — the "factories" half of this
  * flavor's name, the implementation guide's `create<Name><Kind>`: `create`
  * followed by a capital. Not `create` alone, not `createdAt`. `init<Name>` is
@@ -122,14 +92,17 @@ export const isStockFactoryName = (name: string): boolean =>
   FACTORY_NAME.test(name)
 
 /**
- * Stock flavor registry — name → factory, injected into `resolveConfig` by
- * assembly (a flavor is an adapter; neither the model nor another adapter may
- * import one). One entry today; a second stock flavor gets its own adapter
- * file, and the map moves to whoever may import them both.
+ * Stock flavor registry — name → factory, built by assembly and injected into
+ * the config unit (a flavor is an adapter; neither the model nor another
+ * adapter may import one). A factory, not a constant: an assembly hands on what
+ * it builds. One entry today; a second stock flavor gets its own adapter file,
+ * and the registry moves to whoever may import them both.
  */
-export const STOCK_FLAVORS: Readonly<Record<string, () => FlavorResolver>> = {
+export const createStockFlavors = (): Readonly<
+  Record<string, () => FlavorResolver>
+> => ({
   [STOCK_FLAVOR_NAME]: () => createTsSuffixesFactoriesFlavor(),
-}
+})
 
 export const createTsSuffixesFactoriesFlavor = (): FlavorResolver => ({
   classifyEntry: classifyStockEntry,

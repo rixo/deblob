@@ -34,25 +34,9 @@ import type {
   Layer,
 } from "../extraction/graph.model.ts"
 import { exportsKeyFor } from "../extraction/exports-map.model.ts"
+import { specifierMatcher } from "../extraction/graph.model.ts"
+import type { PackageSurface } from "../config/config.model.ts"
 import type { SurfaceViolation } from "./violation.model.ts"
-
-/** The package's own exports map and field, parsed by the loader adapter. */
-export type PackageSurface = {
-  /** Subpaths with their target paths — root-relative, conditions flattened. */
-  subpaths: readonly {
-    subpath: string
-    targets: readonly string[]
-  }[]
-  /** The field's `blob` carve-outs — subpath patterns, as written. */
-  blob: readonly string[]
-  /**
-   * The field's `assembly` designations — subpath patterns, as written. A
-   * designation, never a fact about a file (in-set it is config too): nothing
-   * to verify at home, a carve-out like `blob`; abroad the subpath is sealed to
-   * the consumer's wiring.
-   */
-  assembly: readonly string[]
-}
 
 export type CheckSurfaceOptions = {
   /**
@@ -100,6 +84,22 @@ export type ResolveSurfaceOptions = Pick<
   CheckSurfaceOptions,
   "mirror" | "disclosed"
 >
+
+/**
+ * The reach options for a package's claim under a config: the build mirror, and
+ * both carve-outs of the field — retracted (`blob`) and designated-wiring
+ * (`assembly`) subpaths alike. What a check and a bare tally share.
+ */
+export const surfaceOptionsFor = (
+  config: { mirror: Readonly<Record<string, string>> },
+  surface: PackageSurface | null,
+): ResolveSurfaceOptions => ({
+  mirror: config.mirror,
+  disclosed: specifierMatcher([
+    ...(surface?.blob ?? []),
+    ...(surface?.assembly ?? []),
+  ]),
+})
 
 /**
  * One concrete subpath the covered set reaches: every module any of its targets

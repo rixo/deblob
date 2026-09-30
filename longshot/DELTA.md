@@ -36,6 +36,23 @@ leaves when its branch integrates it.
   `drivers/` bullet, canon's "a bin, a server, an app" wording (collides with
   `apps/`).
 
+- **Placement recut** (`longshot/placement-recut/SPEC.md`, driver-layer's
+  `09_placement-debt-recut` taken early). The check chain wired once:
+  `createConfigService` (load use cases, `resolve(raw, root)`) over
+  `ConfigFiles`/`Manifest`/`Coverage` ports; the extraction service built once,
+  `extractGraph({ config, files })`, `Resolvers` and `PackageClaims` factory
+  ports, the tsconfig lookup in the resolvers adapter (`tsconfig-missing`
+  extraction error); `lib/check/check.service.ts` `createJudge`; the CLI, the
+  corpus runner (`createRunner({ config, judge, root })`, the `Check` port gone)
+  and the snapshot (`ProjectSource` gone, `ReadmeTexts`/`Clock` ports) on it;
+  `app.assembly.ts` builders. `PackageSurface` → `config.model.ts`,
+  `classifyStockEntry` → `stock-flavor.model.ts`, `createStockFlavors()`,
+  `createMemoryFs(files, { root })`, `CASE_ROOT` → `markers.model.ts`. The
+  assembly judge: a same-file factory call builds (L3). Behaviour change: the
+  manifest is read only when `surface` runs.
+- **Bug owed to driver-layer regardless: `configLoads` ignored by the CLI**
+  (L8). Its proof (fixture + CLI test) carries over as is.
+
 - **Stock readers for partner techs** (milestone 3): `cac` (driver),
   `playwright` (test), `vite`, `astro` (driver, claims only — D1).
 - **P1, the exclude baseline anchored** — also owed to main: the shipped

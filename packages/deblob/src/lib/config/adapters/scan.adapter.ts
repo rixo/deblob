@@ -11,12 +11,13 @@ import { join } from "node:path"
 
 import type { Fs } from "../../fs/fs.port.ts"
 import type { ResolvedConfig } from "../config.service.ts"
+import type { Coverage } from "../ports/coverage.port.ts"
 
 export const createCoverageScan = ({
   fs,
 }: {
   fs: Pick<Fs, "glob" | "globDirs" | "stat">
-}) => {
+}): Coverage => {
   /** Root-relative POSIX paths, sorted — `extractGraph`'s `files` input. */
   const scanCoverage = async (
     config: Pick<ResolvedConfig, "root" | "include" | "exclude" | "covers">,

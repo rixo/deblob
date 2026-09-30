@@ -37,7 +37,7 @@ inline until it is too big to read; where a bigger tree goes is ruled then. An
 outlier reaches for `check.run` and is a test of its own.
 
 `runner/` is the machinery, a unit of its own with its README: the marker
-grammar, the runner service over a check port, the assembly front that wires the
-chain over a tree of strings. The corpus files sit in no service — nothing here
-but the runner carries a layer suffix — so they open no edge in the service DAG;
-the runner imports downward only.
+grammar, the runner service over the product's own judge, the assembly front
+that wires the chain over a tree of strings. The corpus files sit in no service
+— nothing here but the runner carries a layer suffix — so they open no edge in
+the service DAG; the runner imports downward only.

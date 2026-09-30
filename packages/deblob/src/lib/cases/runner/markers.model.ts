@@ -57,6 +57,9 @@ import type { Violation } from "../../check/violation.model.ts"
 import type { BrokenSite } from "../../extraction/graph.model.ts"
 import type { CheckName } from "../../check/checks.model.ts"
 
+/** Where a case's tree sits — an absolute root its paths are relative to. */
+export const CASE_ROOT = "/case"
+
 /** A tree of strings under a config, the checks to run over it. */
 export type Case = {
   /** Root-relative path → source; a `package.json` is the surface's claim. */

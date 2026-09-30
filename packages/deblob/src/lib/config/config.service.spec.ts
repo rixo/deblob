@@ -11,10 +11,12 @@ import {
 } from "./config.model.ts"
 import type { DefaultReaders, FlavorRegistry } from "./config.service.ts"
 import {
+  createConfigService,
   defineConfig,
   overlayLocalConfig,
   resolveConfig,
 } from "./config.service.ts"
+import type { ConfigFiles } from "./ports/config-files.port.ts"
 
 const fakeFlavor = (
   overrides: Partial<FlavorResolver> = {},
@@ -696,5 +698,96 @@ describe("overlayLocalConfig", () => {
     expect(() => overlayLocalConfig(42, {}, LOCAL)).toThrowError(
       /deblob config must be an object/,
     )
+  })
+})
+
+describe("createConfigService", () => {
+  /**
+   * Config files held in memory: one project at `/made-up/project`, its config
+   * and overlay exporting what the test says; `-c` finds the one file named.
+   */
+  const filesWith = (exports: Record<string, unknown>): ConfigFiles => {
+    const found = (path: string | null, local: string | null) => ({
+      root: "/made-up/project",
+      configPath: path,
+      localPath: local,
+    })
+    const configPath =
+      "/made-up/project/deblob.config.ts" in exports
+        ? "/made-up/project/deblob.config.ts"
+        : null
+    const localPath =
+      "/made-up/project/deblob.local.ts" in exports
+        ? "/made-up/project/deblob.local.ts"
+        : null
+    const here =
+      configPath === null && localPath === null
+        ? null
+        : found(configPath, localPath)
+    return {
+      discoverConfig: async () => here,
+      configAt: async (dir) => (dir === "/made-up/project" ? here : null),
+      explicitConfigPath: async (cwd, path) => found(`${cwd}/${path}`, null),
+      importConfigDefault: async (path) => exports[path],
+    }
+  }
+
+  const serviceOver = (exports: Record<string, unknown>) =>
+    createConfigService({
+      files: filesWith(exports),
+      flavors: FLAVORS,
+      readers: READERS,
+    })
+
+  it("loads the config discovered from a directory, its overlay applied", async () => {
+    const config = await serviceOver({
+      "/made-up/project/deblob.config.ts": { include: ["src/**"], pure: ["a"] },
+      "/made-up/project/deblob.local.ts": { pure: ["b"] },
+    }).loadConfig("/made-up/project/src")
+    expect(config.root).toBe("/made-up/project")
+    expect(config.include).toEqual(["src/**"])
+    expect(config.pure).toEqual(["b"])
+    expect(config.localPath).toBe("/made-up/project/deblob.local.ts")
+  })
+
+  it("roots the defaults at the directory when no file is found", async () => {
+    const service = serviceOver({})
+    const found = await service.loadConfig("/made-up/elsewhere")
+    expect([found.root, found.configPath]).toEqual(["/made-up/elsewhere", null])
+    const exact = await service.loadConfigAt("/made-up/elsewhere")
+    expect(exact.root).toBe("/made-up/elsewhere")
+  })
+
+  it("loads a directory's own config exactly", async () => {
+    const config = await serviceOver({
+      "/made-up/project/deblob.config.ts": { include: ["lib/**"] },
+    }).loadConfigAt("/made-up/project")
+    expect(config.include).toEqual(["lib/**"])
+  })
+
+  it("loads the file a command line names", async () => {
+    const config = await serviceOver({
+      "/made-up/named.config.ts": { include: ["named/**"] },
+    }).loadConfigNamed("/made-up", "named.config.ts")
+    expect(config.configPath).toBe("/made-up/named.config.ts")
+    expect(config.include).toEqual(["named/**"])
+  })
+
+  it("resolves a config given as a value at a root, no file behind it", () => {
+    const config = serviceOver({}).resolve({ include: ["x/**"] }, "/made-up")
+    expect([config.root, config.configPath, config.localPath]).toEqual([
+      "/made-up",
+      null,
+      null,
+    ])
+    expect(config.include).toEqual(["x/**"])
+  })
+
+  it("fails loud on what resolution refuses, whatever the source", async () => {
+    await expect(
+      serviceOver({
+        "/made-up/project/deblob.config.ts": { pureLibs: [] },
+      }).loadConfig("/made-up/project"),
+    ).rejects.toThrow(ConfigError)
   })
 })

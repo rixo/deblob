@@ -7,7 +7,14 @@ import { fileURLToPath } from "node:url"
 
 import { afterAll, beforeAll, describe, expect, it, test } from "vitest"
 
-import { createProjectSource, extractionFor } from "../../app.assembly.ts"
+import {
+  createConfigAssembly,
+  createJudgeAssembly,
+} from "../../app.assembly.ts"
+import { createConfigLoader } from "../../lib/config/adapters/loader.adapter.ts"
+import { createCoverageScan } from "../../lib/config/adapters/scan.adapter.ts"
+import { createFsReadmeTexts } from "../../lib/snapshot/adapters/fs-readme-texts.adapter.ts"
+import { createSystemClock } from "../../lib/snapshot/adapters/system-clock.adapter.ts"
 import { createNodeFs } from "../../lib/fs/adapters/node-fs.adapter.ts"
 import { createSnapshotService } from "../../lib/snapshot/snapshot.service.ts"
 import { createRouter } from "../../lib/router/router.model.ts"
@@ -198,6 +205,17 @@ describe("registerCommands", () => {
   })
 
   describe("deblob check", () => {
+    test("a use case the config declares in configLoads may be awaited by an assembly — the key reaches the check", async () => {
+      // the drift the placement recut removes: the corpus passed configLoads
+      // to extraction, the CLI did not, and told the user to declare what was
+      // declared
+      const { code, out } = await run(["check", "assembly"], {
+        cwd: here("__fixtures__/config-loads"),
+      })
+      expect(out).not.toContain("configLoads")
+      expect(code).toBe(0)
+    })
+
     test("violating repo: grouped listing golden, exit 1", async () => {
       const { code, out } = await run(["check"])
       expect(code).toBe(1)
@@ -825,10 +843,16 @@ describe("self-extract", () => {
   const deblobRoot = packageRoot
 
   test("snapshots this package with the numbers `deblob check` reports", async () => {
-    const source = createProjectSource()
+    const fs = createNodeFs()
+    const config = createConfigAssembly(fs)
+    const scan = createCoverageScan({ fs })
     const { snapshotOf } = createSnapshotService({
-      source,
-      extractionFor,
+      config,
+      coverage: scan,
+      manifest: createConfigLoader({ fs }),
+      readmes: createFsReadmeTexts({ fs }),
+      clock: createSystemClock(),
+      judge: createJudgeAssembly(fs),
       // no call stack: the rows are about everything but the map
       feed: {
         sequenceOf: async () => ({
@@ -841,8 +865,8 @@ describe("self-extract", () => {
     const snapshot = await snapshotOf(deblobRoot)
 
     // the live scan's directories span every covered file — the watch set
-    const dirs = await source.scanCoverageDirs(
-      await source.loadConfig(deblobRoot),
+    const dirs = await scan.scanCoverageDirs(
+      await config.loadConfig(deblobRoot),
     )
     for (const { path } of snapshot.modules) {
       const dir = path.slice(0, path.lastIndexOf("/"))

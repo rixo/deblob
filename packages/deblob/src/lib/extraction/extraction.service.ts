@@ -1,4 +1,4 @@
-import { relative, resolve, sep } from "node:path"
+import { join, relative, resolve, sep } from "node:path"
 
 import type {
   BrokenSite,
@@ -32,7 +32,8 @@ import type { DriverReader } from "./ports/driver-reader.port.ts"
 import type { HostReader } from "./ports/host-reader.port.ts"
 import type { ReaderGroups } from "./ports/readers.port.ts"
 import type { TestReader } from "./ports/test-reader.port.ts"
-import type { Resolver } from "./ports/resolver.port.ts"
+import type { PackageClaims } from "./ports/package-claims.port.ts"
+import type { Resolvers } from "./ports/resolver.port.ts"
 import type { ImportTargetKind } from "./reading.model.ts"
 import { brokenLinesOf, readModule } from "./reading.model.ts"
 import { symbolLevelOf } from "./symbols.model.ts"
@@ -166,14 +167,13 @@ const paramKindsOf = (
   return byName
 }
 
-export const createExtraction = ({
-  engine,
-  resolver,
-  flavor,
-  readers,
-}: {
-  engine: ExtractionEngine
-  resolver: Resolver
+/**
+ * A config's reading part — what extraction reads off a resolved config; the
+ * resolved config satisfies it whole. Per call: the service is built once and
+ * serves every config (the placement recut).
+ */
+export type ExtractionConfig = Designations & {
+  root: string
   flavor: FlavorResolver
   /**
    * The readers by group, defaults already filled: a driver or test file is
@@ -181,47 +181,81 @@ export const createExtraction = ({
    * unread (`driver-reader`); language and host readers give the knowledge.
    */
   readers: ReaderGroups
+  /** Declared tsconfig (`false` = none, absent = discover at the root). */
+  tsconfig?: string | false | undefined
+  /** Resolution aliases, absolute. */
+  alias?: Readonly<Record<string, readonly string[]>>
+  /**
+   * Declared externals — returns the matching declared pattern, or `null`. A
+   * hit is a leaf known by declaration (the environment provides it, nothing on
+   * disk) and never reaches the resolver; the pattern becomes the leaf's purity
+   * identity. Absent = nothing is declared.
+   */
+  external?: (specifier: string) => string | null
+  /**
+   * The consumer's `externalLayers` patch: the crossed layer of an external
+   * leaf, winning over the producer's own `deblob` field (read through the
+   * package claims). Absent = no patch.
+   */
+  externalLayers?: (specifier: string) => Layer | null
+  /**
+   * `pure` entries, the bound host readers' pure builtins folded in — model to
+   * the reader, red in a driver.
+   */
+  pure?: readonly string[]
+  /**
+   * The declared config loads, split: the file must be covered — a load names a
+   * service file of this project, a miss is a config mistake.
+   */
+  configLoads?: readonly { file: string; name: string }[]
+}
+
+export const createExtraction = ({
+  engine,
+  resolvers,
+  packageClaims,
+}: {
+  engine: ExtractionEngine
+  /** A resolver per config: its tsconfig and aliases. */
+  resolvers: Resolvers
+  /**
+   * The producers' own `deblob` fields, read through the run's resolver; absent
+   * = no producer claims, only the consumer's patch.
+   */
+  packageClaims?: PackageClaims
 }) => {
   const extractGraph = async ({
-    root,
+    config,
     files,
-    isAssembly,
-    isBoot,
-    external,
-    externalLayerOf,
-    pure = [],
-    configLoads = [],
-  }: Designations & {
-    root: string
-    /** Coverage set: paths relative to `root`, POSIX-style. */
+  }: {
+    config: ExtractionConfig
+    /** Coverage set: paths relative to the config root, POSIX-style. */
     files: readonly string[]
-    /**
-     * Declared externals — returns the matching declared pattern, or `null`. A
-     * hit is a leaf known by declaration (the environment provides it, nothing
-     * on disk) and never reaches the resolver; the pattern becomes the leaf's
-     * purity identity. Absent = nothing is declared.
-     */
-    external?: (specifier: string) => string | null
-    /**
-     * The crossed layer identity of an external leaf — composed by assembly
-     * from the consumer's `externalLayers` patch and producer `deblob` fields.
-     * Consulted uniformly for every external leaf, declared ones included;
-     * absent = no claims, every leaf stays `layer: null`.
-     */
-    externalLayerOf?: (
-      specifier: string,
-    ) => Layer | null | Promise<Layer | null>
-    /**
-     * `pure` entries, the bound host readers' pure builtins folded in — model
-     * to the reader, red in a driver.
-     */
-    pure?: readonly string[]
-    /**
-     * The declared config loads, split: the file must be covered — a load names
-     * a service file of this project, a miss is a config mistake.
-     */
-    configLoads?: readonly { file: string; name: string }[]
   }): Promise<ImportGraph> => {
+    const {
+      root,
+      flavor,
+      readers,
+      isAssembly,
+      isBoot,
+      external,
+      pure = [],
+      configLoads = [],
+    } = config
+    const resolver = await resolvers.resolverFor({
+      root,
+      tsconfig: config.tsconfig,
+      alias: config.alias ?? {},
+    })
+    const claims = packageClaims?.readerFor({
+      resolve: resolver.resolve,
+      anchor: join(root, "package.json"),
+    })
+    // the consumer patch wins over producer fields — reviewer of record
+    const externalLayerOf = async (specifier: string): Promise<Layer | null> =>
+      config.externalLayers?.(specifier) ??
+      (await claims?.layerOf(specifier)) ??
+      null
     const pureSet = new Set(pure)
     const classifications = flavor.classify(files)
     const fileSet = new Set(files)

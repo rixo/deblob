@@ -193,10 +193,12 @@ Anonymous; the partner run's details stay local.
   shape the plumbing research's gate had. Input for T1, no default taken.
 - **L3 — An app's process assembly delegates to its test-facing one.**
   `createCliAssembly(process)` calls `createCliOver(terminal, install)` — "calls
-  createCliOver, which builds nothing"; same in serve and snapshot. And
-  `viewer: { serve }` hands a function. Open: one assembly taking the adapters
-  from its caller (but a driver may not build adapters), or the reader following
-  an assembly function's return.
+  createCliOver, which builds nothing"; same in serve and snapshot. **Found in
+  the placement recut: a reader limit, not design.** Canon's "a factory call
+  builds, any layer's — an assembly's included" held for an imported assembly
+  function only; a same-file sibling reached the judge as `local`. Fixed
+  (`assembly.model.ts` `judgeCall`), two rows in `cases/assembly.spec.ts`.
+  Status: taken. `viewer: { serve }` handing a function stays, with L5.
 - **L4 — A driver whose event is the process starting** (serve, snapshot):
   `app.run()` in the root driver reads "the use case run outside any hook". D7's
   other half: a host-only driver with no callback to hand. Open.
@@ -204,6 +206,19 @@ Anonymous; the partner run's details stay local.
   the request listener is a hook with its translation inline, `node:http` in an
   assembly, a use case run. From the CLI's standpoint the server is its `Viewer`
   port's adapter; from its own, a driver. Carried as-is.
+- **L7 — What makes a function an assembly's.** Every function at an assembly's
+  root reads green at its definition, whatever its name, but a call to one not
+  named as a factory reads red (`storeAt(cwd)` — row in
+  `cases/assembly.spec.ts`). One of the two is wrong: either a root helper is no
+  assembly function (red where defined, the call riding with it — one fix, one
+  red), or every root function is one (the call green). Default: as the reader
+  answers today, recorded, not chosen. Status: to rule.
+- **L8 — `configLoads` dropped by the CLI** (a bug, not a guess). The chain was
+  wired three times; only the corpus passed `configLoads` to extraction, so
+  `deblob check` told a user to declare a load they had declared. On
+  driver-layer too. Fixed by the placement recut (one judge); proof in
+  `apps/cli/__fixtures__/config-loads` and its CLI test. **To carry to
+  driver-layer** with its own fix, whatever the recut's fate there.
 - **L6 — The map's call sequence for deblob** reads missing: the spike tracer
   hand-reads a `switch` in `main.ts`, which is gone; the snapshot service shows
   `sequenceMissing` as designed. Teaching the tracer the router's hooks is its

@@ -2,9 +2,20 @@
 
 The detectors: each one reads the classified import graph and returns structured
 violations. All pure — graph in, values out, no IO, no prose, no ordering beyond
-determinism. Rendering happens in `cli`, wiring in the driver.
+determinism. One service, the judge, runs them over a project. Rendering happens
+in `report`, wiring in assembly.
 
 ## API
+
+- `check.service.ts` — `createJudge({ coverage, manifest, extraction })` →
+  `judge(config, checks?)`: the chain every run is — the package's claim read
+  (only when `surface` is among the checks), the covered files scanned, the
+  graph extracted, the checks named run (every check by default) — resolving to
+  `{ files, graph, surface, surfaceReport, violations }`. One use case for the
+  CLI's `check`, the corpus runner and the snapshot; the config arrives
+  resolved, each caller loading its own way.
+  `surfaceOptionsFor(config, surface)` (`surface.model.ts`) is the reach options
+  a check and a bare tally share.
 
 One function per check, all over `ImportGraph` from `extraction`:
 

@@ -63,21 +63,22 @@ describe("assembleCase", () => {
     }
 
     it("reports through layers, barrels and surface when every check runs", async () => {
-      const { check } = assembleCase(files)
-      const { violations } = await check.run({ config: {} })
-      expect(new Set(violations.map((violation) => violation.check))).toEqual(
-        new Set(["layers", "barrels", "surface"]),
-      )
+      const { judge } = assembleCase(files)
+      // unmarked, every report is unexpected: the barrel's layer-in-path twice
+      // (barrels, and surface through the exports map), and the layers cell
+      // for a barrel importing a service, runtime-import its hint
+      expect((await judge({ files })).unexpected).toEqual([
+        "src/index.ts layer-in-path",
+        "src/index.ts layer-in-path",
+        "src/index.ts runtime-import",
+        "src/index.ts service-assembly-only",
+      ])
     })
 
     it("reports through the checks named, alone", async () => {
-      const { check } = assembleCase(files)
-      const { violations } = await check.run({
-        config: {},
-        checks: ["barrels"],
-      })
-      expect(violations.map((violation) => violation.check)).toEqual([
-        "barrels",
+      const { judge } = assembleCase(files)
+      expect((await judge({ files, checks: ["barrels"] })).unexpected).toEqual([
+        "src/index.ts layer-in-path",
       ])
     })
   })

@@ -14,6 +14,8 @@ import type { Fs } from "../../fs/fs.port.ts"
 import type { FlavorLayer } from "../graph.model.ts"
 import { exportsKeyFor, exportsSubpathsOf } from "../exports-map.model.ts"
 import { packageNameOf, specifierMatcher } from "../graph.model.ts"
+import type { PackageClaims } from "../ports/package-claims.port.ts"
+import { classifyStockEntry } from "../stock-flavor.model.ts"
 import type { Resolver } from "../ports/resolver.port.ts"
 
 /**
@@ -140,3 +142,21 @@ export const createPackageMetaReader = ({
 
   return { layerOf }
 }
+
+/**
+ * A package-meta reader per run, anchored at the consumer's root; a producer's
+ * field claims by the stock naming rule, whatever flavor is local.
+ */
+export const createPackageClaims = ({
+  fs,
+}: {
+  fs: Pick<Fs, "readFile">
+}): PackageClaims => ({
+  readerFor: ({ resolve, anchor }) =>
+    createPackageMetaReader({
+      fs,
+      resolve,
+      anchor,
+      classifyEntry: classifyStockEntry,
+    }),
+})

@@ -55,22 +55,24 @@ unparsed one, has none: recognized and open.
 
 ## API
 
-- `createExtraction({ engine, resolver, flavor, readers? })` →
-  `{ extractGraph }`.
-  `extractGraph({ root, files, isAssembly?, isDriver?, isBoot?, external?, externalLayerOf?, pure?, driverTech?, configLoads? })`
-  classifies the files through the flavor, parses each through the engine,
-  resolves every specifier, and resolves to the graph — async since the engine
-  reads through the fs port; `externalLayerOf` may answer with a promise (the
-  package-meta reader does). The three designation matchers are the config's
-  globs for the kinds a framework names itself; recognition
-  (`recognition.model.ts`, shared with the bare status) takes the most specific
-  claim first — a reader of one kind designates it by binding (the test runner's
-  naming makes a test file wherever it sits), then one designation wins over the
-  flavor's word, and two designations on one file throw with the file and both
-  keys named. `external` names specifiers the environment provides (a hit is a
-  leaf, never resolved); `externalLayerOf` answers the layer an external leaf
-  carries, composed by assembly from the consumer's `externalLayers` and
-  producer `deblob` fields. `readers` are the readers in precedence order
+- `createExtraction({ engine, resolvers, packageClaims? })` →
+  `{ extractGraph }`, built once for every config (the placement recut).
+  `extractGraph({ config, files })` takes the config's reading part
+  (`ExtractionConfig`: root, flavor, readers, designations, `tsconfig`, `alias`,
+  `external`, `externalLayers`, `pure`, `configLoads` — a resolved config
+  satisfies it whole), gets a resolver for the config's tsconfig and aliases
+  from `resolvers`, a package claims reader anchored at the root from
+  `packageClaims`, classifies the files through the flavor, parses each through
+  the engine, resolves every specifier, and resolves to the graph. The three
+  designation matchers are the config's globs for the kinds a framework names
+  itself; recognition (`recognition.model.ts`, shared with the bare status)
+  takes the most specific claim first — a reader of one kind designates it by
+  binding (the test runner's naming makes a test file wherever it sits), then
+  one designation wins over the flavor's word, and two designations on one file
+  throw with the file and both keys named. `external` names specifiers the
+  environment provides (a hit is a leaf, never resolved); an external leaf
+  carries the layer the consumer's `externalLayers` patch names, else the
+  producer's own `deblob` field. `readers` are the readers in precedence order
   (config's bindings first, then the stock ones): the first whose binding
   matches a file and whose kinds hold its kind reads it; `pure` and `driverTech`
   are what the reading resolves a driver's externals against; `configLoads` are
@@ -238,8 +240,19 @@ unparsed one, has none: recognized and open.
   `.driver`, `.boot`; test naming is not the flavor's, see the test runner),
   service roots from where the hexagon's own suffixed files sit — an
   outside-kind file marks none — grouping directories collapsed to their nearest
-  real service; `classifyStockEntry` is the same rule over a specifier tail.
-  `STOCK_FLAVORS` is the registry assembly injects into config resolution.
+  real service; its suffix table and `classifyStockEntry` (the same rule over a
+  specifier tail) live in `stock-flavor.model.ts`, where `check` and the package
+  claims read them. `createStockFlavors()` builds the registry assembly injects
+  into the config unit.
+- `adapters/oxc-resolver.adapter.ts` — `createOxcResolver`, and
+  `createOxcResolvers({ fs })` behind the `Resolvers` port: a resolver per
+  config, its tsconfig located by `createTsconfigLocator` (declared must exist —
+  `tsconfig-missing`, an `ExtractionError` like `load-file-not-covered`; `false`
+  disables; absent discovers at the root). `fs-resolver.adapter.ts` —
+  `createFsResolvers({ fs })`, the corpus's, one convention resolver for every
+  config.
+- `adapters/package-meta.adapter.ts` — `createPackageClaims({ fs })` behind the
+  `PackageClaims` port: a package-meta reader per run, by the stock rule.
 - `adapters/plain-ts-reader.adapter.ts` — the plain-TypeScript reader: binds
   every script file, reads the assembly, driver and boot ones among them; claims
   nothing (builtins and host globals are tech by the reading's table,

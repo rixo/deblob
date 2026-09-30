@@ -12,13 +12,16 @@ import type {
   Snapshot,
 } from "@deblob/viewer/snapshot.model"
 
-import { GRAPH_CHECKS, runGraphCheck } from "../check/checks.model.ts"
+import type { Judge } from "../check/check.service.ts"
+import { GRAPH_CHECKS } from "../check/checks.model.ts"
 import { isConfigError } from "../config/config.model.ts"
-import type { ResolvedConfig } from "../config/config.service.ts"
-import type { ImportGraph } from "../extraction/graph.model.ts"
+import type { ConfigService } from "../config/config.service.ts"
+import type { Coverage } from "../config/ports/coverage.port.ts"
+import type { Manifest } from "../config/ports/manifest.port.ts"
 import type { Channel } from "./ports/channel.port.ts"
+import type { Clock } from "./ports/clock.port.ts"
 import type { MapFeed } from "./ports/map-feed.port.ts"
-import type { ProjectSource } from "./ports/project-source.port.ts"
+import type { ReadmeTexts } from "./ports/readme-texts.port.ts"
 import type { Report } from "./ports/report.port.ts"
 import type { Watch, Watcher } from "./ports/watch.port.ts"
 import type { SnapshotRows } from "./snapshot.model.ts"
@@ -34,15 +37,21 @@ export type ProjectRun = {
 }
 
 export const createSnapshotService = ({
-  source,
-  extractionFor,
+  config: configs,
+  coverage,
+  manifest,
+  readmes: readmeTexts,
+  clock,
+  judge,
   feed,
 }: {
-  source: ProjectSource
-  /** The extraction composed for one config: the engine, the flavor, the claims. */
-  extractionFor: (
-    config: ResolvedConfig,
-  ) => (files: readonly string[]) => Promise<ImportGraph>
+  config: Pick<ConfigService, "loadConfig" | "loadConfigAt">
+  coverage: Pick<Coverage, "scanCoverageDirs" | "statSizes">
+  manifest: Pick<Manifest, "readPackageName">
+  readmes: ReadmeTexts
+  clock: Clock
+  /** The CLI's own check sequence: scan, extract, the graph checks. */
+  judge: Pick<Judge, "judge">
   feed: MapFeed
 }) => {
   /**
@@ -53,7 +62,7 @@ export const createSnapshotService = ({
    * read has no such excuse: its failure is the run's.
    */
   const mapOf = async (root: string, rows: SnapshotRows): Promise<MapData> => {
-    const texts = await source.readmeTextsOf(
+    const texts = await readmeTexts.readmeTextsOf(
       root,
       readmeDirsOf(rows.modules.map(({ path }) => path)),
     )
@@ -76,22 +85,18 @@ export const createSnapshotService = ({
 
   /** The project at `root` exactly — its config, or defaults — run once. */
   const runOf = async (root: string): Promise<ProjectRun> => {
-    const config = await source.loadConfigAt(root)
-    // sorted: the scan's order is the filesystem's, the snapshot's is fixed
-    const files = [...(await source.scanCoverage(config))].sort()
-    const graph = await extractionFor(config)(files)
-    const sizes = await source.sizesOf(config.root, files)
-    const name = await source.manifestNameOf(config.root)
-    const dirs = await source.scanCoverageDirs(config)
+    const config = await configs.loadConfigAt(root)
+    const { files, graph, violations } = await judge.judge(config, GRAPH_CHECKS)
+    const sizes = await coverage.statSizes(config.root, files)
+    const name = await manifest.readPackageName(config.root)
+    const dirs = await coverage.scanCoverageDirs(config)
     const rows = snapshotFrom({
       config,
       graph,
       sizes,
       name,
-      generatedAt: source.now(),
-      violations: GRAPH_CHECKS.flatMap((check) =>
-        runGraphCheck(check, graph, config),
-      ),
+      generatedAt: clock.now(),
+      violations,
     })
     return {
       snapshot: { ...rows, map: await mapOf(config.root, rows) },
@@ -110,8 +115,8 @@ export const createSnapshotService = ({
    * directory for its own entries.
    */
   const watchSetFor = async (root: string): Promise<readonly string[]> => {
-    const config = await source.loadConfigAt(root)
-    return watchSetOf(config.root, await source.scanCoverageDirs(config))
+    const config = await configs.loadConfigAt(root)
+    return watchSetOf(config.root, await coverage.scanCoverageDirs(config))
   }
 
   /**
@@ -121,13 +126,13 @@ export const createSnapshotService = ({
    * by declaration: `snapshotOf` reads it exactly, never an ancestor.
    */
   const projectsOf = async (dir: string): Promise<ProjectRef[]> => {
-    const config = await source.loadConfig(dir)
+    const config = await configs.loadConfig(dir)
     const roots =
       config.view.projects.length === 0 ? [config.root] : config.view.projects
     return Promise.all(
       roots.map(async (root) => ({
         root,
-        name: await source.manifestNameOf(root),
+        name: await manifest.readPackageName(root),
       })),
     )
   }

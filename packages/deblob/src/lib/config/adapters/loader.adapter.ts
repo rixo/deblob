@@ -2,19 +2,24 @@
  * Config loading — the filesystem walk over the fs port, plus the platform
  * calls no port reads: native `import()` of the config and local files (Node
  * strips types from `.ts` ones; erasable syntax only) and the `stat` that tells
- * an edited file from an unchanged one. Assembly (CLI main) calls these and
- * pipes the raw value through `resolveConfig` itself; the adapter never sees
- * the resolution.
+ * an edited file from an unchanged one. Two ports: the config files (the config
+ * service's load use cases pipe what they find through `resolveConfig`; the
+ * adapter never sees the resolution) and the manifest.
  */
 
 import { stat } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
-import type { PackageSurface } from "../../check/surface.model.ts"
 import { exportsSubpathsOf } from "../../extraction/exports-map.model.ts"
 import type { Fs } from "../../fs/fs.port.ts"
+import type { PackageSurface } from "../config.model.ts"
 import { ConfigError, configImportErrorMessage } from "../config.model.ts"
+import type {
+  ConfigFiles,
+  DiscoveredConfig,
+} from "../ports/config-files.port.ts"
+import type { Manifest } from "../ports/manifest.port.ts"
 
 const CONFIG_FILENAMES: readonly string[] = [
   "deblob.config.ts",
@@ -31,23 +36,15 @@ const LOCAL_FILENAMES = [
   "deblob.local.mjs",
 ] as const
 
-/** What discovery found in one directory: at least one of the two files. */
-export type DiscoveredConfig = {
-  /** The directory holding the files — the config root. */
-  root: string
-  configPath: string | null
-  localPath: string | null
-}
-
 /**
- * The fs-reading half, over the port. `importConfigDefault` stays outside: a
- * platform call, no port reads it.
+ * The fs-reading half over the fs port; `importConfigDefault`, a platform call
+ * no port reads, joins it on the config files' port.
  */
 export const createConfigLoader = ({
   fs,
 }: {
   fs: Pick<Fs, "exists" | "readFile">
-}) => {
+}): ConfigFiles & Manifest => {
   /**
    * The one file of `names` in `dir`, or null; two or more is ambiguity, not
    * precedence — `what` names the kind in the message.
@@ -122,29 +119,6 @@ export const createConfigLoader = ({
     }
     const root = dirname(configPath)
     return { root, configPath, localPath: await localConfigBeside(root) }
-  }
-
-  /**
-   * The tsconfig feeding resolution — a filesystem fact, resolved here, not in
-   * the pure config service. Explicit path must exist (declared means
-   * load-bearing), `false` disables, `undefined` discovers `tsconfig.json` at
-   * the config root. `null` = the resolver runs tsconfig-less.
-   */
-  const tsconfigPathOf = async (config: {
-    root: string
-    tsconfig: string | false | undefined
-  }): Promise<string | null> => {
-    if (config.tsconfig === false) return null
-    if (typeof config.tsconfig === "string") {
-      if (!(await fs.exists(config.tsconfig))) {
-        throw new ConfigError(
-          `config key "tsconfig" points at ${config.tsconfig}, which does not exist`,
-        )
-      }
-      return config.tsconfig
-    }
-    const fallback = join(config.root, "tsconfig.json")
-    return (await fs.exists(fallback)) ? fallback : null
   }
 
   /** The field's two pattern lists: `blob` retracts, `assembly` seals. */
@@ -256,7 +230,7 @@ export const createConfigLoader = ({
     configAt,
     discoverConfig,
     explicitConfigPath,
-    tsconfigPathOf,
+    importConfigDefault,
     readPackageName,
     readPackageSurface,
   }

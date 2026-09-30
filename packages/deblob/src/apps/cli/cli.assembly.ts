@@ -5,7 +5,12 @@
  * test.
  */
 
-import { createProjectSource } from "../../app.assembly.ts"
+import {
+  createConfigAssembly,
+  createJudgeAssembly,
+} from "../../app.assembly.ts"
+import { createConfigLoader } from "../../lib/config/adapters/loader.adapter.ts"
+import { createCoverageScan } from "../../lib/config/adapters/scan.adapter.ts"
 import { createContentReader } from "../../lib/explain/adapters/content.adapter.ts"
 import { createNodeFs } from "../../lib/fs/adapters/node-fs.adapter.ts"
 import { createProcessTerminal } from "../../lib/terminal/adapters/process-terminal.adapter.ts"
@@ -21,7 +26,10 @@ export const createCliOver = (terminal: Terminal, install: Install): Cli => {
   const fs = createNodeFs()
   return createCli({
     terminal,
-    project: createProjectSource(),
+    config: createConfigAssembly(fs),
+    judge: createJudgeAssembly(fs),
+    coverage: createCoverageScan({ fs }),
+    manifest: createConfigLoader({ fs }),
     content: createContentReader({ fs }),
     install,
     fs,

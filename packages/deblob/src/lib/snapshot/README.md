@@ -10,26 +10,27 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
 
 ## API
 
-- `createSnapshotService({ source, extractionFor, feed })` →
-  `{ runOf, snapshotOf, projectsOf, watchSetFor }`. `runOf(root)` →
+- `createSnapshotService({ config, coverage, manifest, readmes, clock, judge, feed })`
+  → `{ runOf, snapshotOf, projectsOf, watchSetFor }`. `runOf(root)` →
   `{ snapshot, watchSet }`: the project at `root` exactly — its own config or
   the defaults, never an ancestor's (a listed directory is the project; rixo,
-  2026-09-16) — the coverage scan (sorted, so the snapshot's order is fixed),
-  the extraction composed for that config, the sizes, the manifest name, then
-  the fold, then the map — and the watch set for the next run: the root and
-  every directory coverage spans, absolute. `snapshotOf(root)` is the snapshot
-  alone. The map (`snapshot.map`, what the design's map draws) starts from the
-  fold's own rows — modules and edges with the symbol level extraction gives
-  them — then the READMEs of the root and every directory holding a covered
-  file, read by the source and turned into blocks (`readme.model.ts`), and the
-  call stacks over the rows, fed by `feed`. A tree the call tracer cannot read
-  still gets its map: `sequence: null`, and `sequenceMissing` holds the tracer's
-  message. A README that cannot be read fails the run. `projectsOf(dir)`: the
-  projects a viewer at `dir` shows — the config of the project containing `dir`
-  (discovery, as the CLI) names them in `view.projects`, or that project alone —
-  each root with its manifest name. `watchSetFor(root)` is that same set read
-  ahead of a run — the config and the directories, without the extraction — for
-  a caller that must watch before it runs.
+  2026-09-16) — judged by the graph checks (`check`'s judge: the coverage scan,
+  sorted so the snapshot's order is fixed, the extraction, the checks), the
+  sizes, the manifest name, then the fold, then the map — and the watch set for
+  the next run: the root and every directory coverage spans, absolute.
+  `snapshotOf(root)` is the snapshot alone. The map (`snapshot.map`, what the
+  design's map draws) starts from the fold's own rows — modules and edges with
+  the symbol level extraction gives them — then the READMEs of the root and
+  every directory holding a covered file, read through `readmes` and turned into
+  blocks (`readme.model.ts`), and the call stacks over the rows, fed by `feed`.
+  A tree the call tracer cannot read still gets its map: `sequence: null`, and
+  `sequenceMissing` holds the tracer's message. A README that cannot be read
+  fails the run. `projectsOf(dir)`: the projects a viewer at `dir` shows — the
+  config of the project containing `dir` (discovery, as the CLI) names them in
+  `view.projects`, or that project alone — each root with its manifest name.
+  `watchSetFor(root)` is that same set read ahead of a run — the config and the
+  directories, without the extraction — for a caller that must watch before it
+  runs.
 - `serveSnapshots({ channel, projects, runOf, watchSetFor, watcher, report })`:
   the protocol in one place. On connect: `projects`, and nothing else — nothing
   runs and nothing is watched before the client's first `select` (the client
@@ -78,22 +79,20 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
 
 ## Ports
 
-- `ports/project-source.port.ts` — `ProjectSource`: `loadConfig(dir)` (the
-  project containing `dir`, discovery), `loadConfigAt(root)` (the project at
-  `root` exactly), `scanCoverage(config)`, `scanCoverageDirs(config)` (the
-  directories coverage spans — the watch set), `sizesOf(root, files)`,
-  `manifestNameOf(root)`, `readmeTextsOf(root, dirs)` (each directory's
-  `README.md`, `.` = the root, absent when there is none), `now()`. What a
-  snapshot needs from the world, as functions the driver composes from the CLI's
-  own sequence; promise-only.
+- The world, each by its port (the placement recut dissolved `ProjectSource`,
+  one bag only an assembly reading five instances' fields could fill): the
+  config unit's service and its `Coverage` and `Manifest` ports, `check`'s
+  judge, and two of its own — `ports/readme-texts.port.ts` (`ReadmeTexts`:
+  `readmeTextsOf(root, dirs)`, each directory's `README.md`, `.` = the root,
+  absent when there is none) and `ports/clock.port.ts` (`Clock`: `now()`).
 - `ports/channel.port.ts` — `Channel`: `onClient(handler)`; a `ChannelClient`
   has `send(message)`, `onMessage(handler)` and `onClose(handler)`. Handlers
   return promises the adapter awaits.
 - `ports/map-feed.port.ts` — `MapFeed`: `sequenceOf(root, rows)`, the call
   stacks over the map's rows; throws an `Error` saying why when the tracer
   cannot read the tree. The tracer is spike code: it stays behind a port until
-  it graduates. The symbol level (extraction) and the READMEs (the project
-  source) already did (step 09 checkpoint 3).
+  it graduates. The symbol level (extraction) and the READMEs already did (step
+  09 checkpoint 3).
 - `ports/report.port.ts` — `Report`: `(error) => void`, where the server's own
   failures go; the driver decides presentation.
 - `ports/watch.port.ts` — `Watcher`: `watch(dirs, onChange)` → `Watch` with
@@ -132,21 +131,22 @@ one place `deblob` depends on the viewer. The viewer never imports `deblob`.
   the live sets, and with `hold()` keeps `watch` and `update` pending until it
   releases them — a real watcher's time to come up.
 - `adapters/memory-project-source.adapter.ts` —
-  `createMemoryProjectSource({ projects, now })`: the world in memory, projects
-  keyed by directory, each with its README texts if it has any; an unknown
-  directory fails like a missing project.
-- `adapters/fs-readme-texts.adapter.ts` — `createFsReadmeTexts({ fs })` →
-  `{ readmeTextsOf }`: each directory's `README.md` through the fs port, left
-  out when nothing is there.
+  `createMemoryProjectSource({ projects, now })`: the world in memory — one
+  object standing behind the config loading, `Coverage`, `Manifest`'s name,
+  `ReadmeTexts` and `Clock` — projects keyed by directory, each with its README
+  texts if it has any; an unknown directory fails like a missing project.
+- `adapters/system-clock.adapter.ts` — `createSystemClock()`, the machine's.
+- `adapters/fs-readme-texts.adapter.ts` — `createFsReadmeTexts({ fs })`, the
+  `ReadmeTexts` port: each directory's `README.md` through the fs port, left out
+  when nothing is there.
 
 The live map feed is spike code, shipped with the experimental map (step 09):
 `src/spike/map-feed/map-feed.adapter.ts`, the spike's tracer behind the port —
 it reads deblob's own CLI only, and needs `typescript` at run time.
 
-The live project source is composed by `src/app.assembly.ts` from the config
-service's adapters (`loader.adapter.ts` — `readPackageName(root)` is the
-manifest name — and `scan.adapter.ts`), `fs-readme-texts.adapter.ts` and the
-extraction service — shared by the three apps, owned by none.
+The live service is built by `src/app.assembly.ts` (`createSnapshotsAssembly`)
+over the disk — shared by the serve app and the snapshot script, owned by
+neither.
 
 ## The apps it serves (`src/apps/`)
 

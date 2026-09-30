@@ -1,12 +1,12 @@
 import { describe, expect, it, test } from "vitest"
 
-import { classifyStockEntry } from "../extraction/adapters/ts-suffixes-factories-flavor.adapter.ts"
+import { classifyStockEntry } from "../extraction/stock-flavor.model.ts"
 import type {
   EdgeTarget,
   ImportGraph,
   Layer,
 } from "../extraction/graph.model.ts"
-import type { PackageSurface } from "./surface.model.ts"
+import type { PackageSurface } from "../config/config.model.ts"
 import { checkSurface, resolveSurface, tallySurface } from "./surface.model.ts"
 
 type NodeSpec = {

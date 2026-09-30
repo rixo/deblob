@@ -20,10 +20,11 @@ verdicts as text).
   config error; bare `deblob` is always 0.
 - `cli.assembly.ts` — `createCliOver(terminal, install)` (the tests' way in) and
   `createCliAssembly(process)`.
-- Ports: `project.port.ts` (config, manifest claim, coverage, sizes, graph),
-  `install.port.ts` (version, content and bundle roots); `Viewer` is
-  `lib/view`'s. Adapter: `adapters/install.adapter.ts`, anchored at the package
-  root.
+- Collaborators: the config unit (load), `check`'s judge (the check chain,
+  shared with the corpus and the snapshot), `Coverage` and `Manifest` for the
+  bare status; its own port `install.port.ts` (version, content and bundle
+  roots); `Viewer` is `lib/view`'s. Adapter: `adapters/install.adapter.ts`,
+  anchored at the package root.
 - `cli.model.ts` — `parseCli(line)`: the grammar, usage errors as values;
   `rulesForTopic`, `isRuleNumber`. `help.model.ts` — `HELP`, `CHECK_HELP`.
 

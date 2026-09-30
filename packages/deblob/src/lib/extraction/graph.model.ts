@@ -37,12 +37,13 @@ export const LAYERS: readonly Layer[] = [
 ]
 
 /**
- * Extraction's failure vocabulary. One code today: the config designated one
- * file under two kinds — the user's to fix, so the driver presents it. A parse
- * failure is the next candidate and still throws bare.
+ * Extraction's failure vocabulary — each code a config mistake the user fixes,
+ * so the front presents it: one file designated under two kinds, a
+ * `configLoads` file outside coverage, a declared tsconfig that does not exist.
+ * A parse failure is the next candidate and still throws bare.
  */
 export type ExtractionErrorCode =
-  "designation-conflict" | "load-file-not-covered"
+  "designation-conflict" | "load-file-not-covered" | "tsconfig-missing"
 
 export class ExtractionError extends Error {
   override name = "ExtractionError"

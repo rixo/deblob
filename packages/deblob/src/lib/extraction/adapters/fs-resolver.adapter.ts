@@ -13,7 +13,7 @@ import { dirname, extname, isAbsolute, join, resolve } from "node:path"
 
 import type { Fs } from "../../fs/fs.port.ts"
 import { packageNameOf } from "../graph.model.ts"
-import type { Resolution, Resolver } from "../ports/resolver.port.ts"
+import type { Resolution, Resolver, Resolvers } from "../ports/resolver.port.ts"
 
 const EXTENSIONS: readonly string[] = [
   ".ts",
@@ -124,4 +124,17 @@ export const createFsResolver = ({
   }
 
   return { resolve: resolveSpecifier }
+}
+
+/**
+ * The fs resolver for every config: it reads no tsconfig and no alias — the
+ * corpus's trees resolve by convention alone.
+ */
+export const createFsResolvers = ({
+  fs,
+}: {
+  fs: Pick<Fs, "exists" | "stat" | "readFile">
+}): Resolvers => {
+  const resolver = createFsResolver({ fs })
+  return { resolverFor: async () => resolver }
 }

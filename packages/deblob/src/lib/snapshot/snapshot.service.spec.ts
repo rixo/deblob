@@ -6,10 +6,12 @@ import type { ModuleRef, Snapshot } from "@deblob/viewer/snapshot.model"
 import { ConfigError } from "../config/config.model.ts"
 import type { ResolvedConfig } from "../config/config.service.ts"
 import { resolveConfig } from "../config/config.service.ts"
-import { STOCK_FLAVORS } from "../extraction/adapters/ts-suffixes-factories-flavor.adapter.ts"
+import { createStockFlavors } from "../extraction/adapters/ts-suffixes-factories-flavor.adapter.ts"
 import type { ImportGraph, ModuleNode } from "../extraction/graph.model.ts"
 import { createMemoryChannel } from "./adapters/memory-channel.adapter.ts"
+import type { MemoryProjectSource } from "./adapters/memory-project-source.adapter.ts"
 import { createMemoryProjectSource } from "./adapters/memory-project-source.adapter.ts"
+import { createJudge } from "../check/check.service.ts"
 import { createMemoryWatcher } from "./adapters/memory-watcher.adapter.ts"
 import { createMemoryReport } from "./adapters/memory-report.adapter.ts"
 import type { MapFeed } from "./ports/map-feed.port.ts"
@@ -22,7 +24,7 @@ const configAt = (root: string, raw: unknown = {}): ResolvedConfig =>
     root,
     configPath: null,
     localPath: null,
-    flavors: STOCK_FLAVORS,
+    flavors: createStockFlavors(),
     readers: { language: [], host: [], test: [], driver: [] },
   })
 
@@ -86,15 +88,41 @@ describe("createSnapshotService", () => {
     now: "1999-12-31T23:59:59.000Z",
   })
 
+  /**
+   * The snapshot's world over a memory source: every port the source, the judge
+   * real over it, the extraction the test's (`graphOf` by default).
+   */
+  const worldOver = (
+    source: MemoryProjectSource,
+    extract: (
+      config: ResolvedConfig,
+      files: readonly string[],
+    ) => Promise<ImportGraph> = (_config, files) => graphOf(files),
+  ) => ({
+    config: source,
+    coverage: source,
+    manifest: source,
+    readmes: source,
+    clock: source,
+    judge: createJudge({
+      coverage: source,
+      // the graph checks read no claim: surface is not among them
+      manifest: { readPackageSurface: async () => null },
+      extraction: {
+        extractGraph: async ({ config, files }) =>
+          extract(config as ResolvedConfig, files),
+      },
+    }),
+  })
+
   test("snapshotOf: load, scan, extract over the sorted files, fold", async () => {
     const seen: { config: ResolvedConfig; files: readonly string[] }[] = []
     const { snapshotOf } = createSnapshotService({
-      source: memorySource,
-      feed: plainFeed(),
-      extractionFor: (config) => (files) => {
+      ...worldOver(memorySource, (config, files) => {
         seen.push({ config, files })
         return graphOf(files)
-      },
+      }),
+      feed: plainFeed(),
     })
     // the map has rows of its own, below
     const { map: _map, ...snapshot } = await snapshotOf("/FAKE_ROOT")
@@ -163,9 +191,8 @@ describe("createSnapshotService", () => {
     it("reads the READMEs of the root and every directory holding a file, as blocks, and feeds the call stacks the fold's map rows", async () => {
       const { feed, asked } = recordingFeed(async () => FAKE_SEQUENCE)
       const { runOf } = createSnapshotService({
-        source: memorySource,
+        ...worldOver(memorySource),
         feed,
-        extractionFor: () => graphOf,
       })
       const { snapshot } = await runOf("/FAKE_ROOT")
       const rows = foldRows(snapshot.modules)
@@ -183,9 +210,8 @@ describe("createSnapshotService", () => {
         throw new Error("FAKE_TRACER_MISS")
       })
       const { runOf } = createSnapshotService({
-        source: memorySource,
+        ...worldOver(memorySource),
         feed,
-        extractionFor: () => graphOf,
       })
       const { snapshot } = await runOf("/FAKE_ROOT")
       expect(snapshot.map).toEqual({
@@ -198,14 +224,13 @@ describe("createSnapshotService", () => {
 
     it("fails the run when the READMEs cannot be read: a bug, not a tree the map cannot draw", async () => {
       const run = createSnapshotService({
-        source: {
-          ...memorySource,
+        ...worldOver(memorySource),
+        readmes: {
           readmeTextsOf: async () => {
             throw new Error("FAKE_BUG in readmeTextsOf")
           },
         },
         feed: plainFeed(),
-        extractionFor: () => graphOf,
       }).runOf("/FAKE_ROOT")
       await expect(run).rejects.toThrow("FAKE_BUG in readmeTextsOf")
     })
@@ -213,11 +238,10 @@ describe("createSnapshotService", () => {
 
   test("watchSetFor: the root and the directories coverage spans, no extraction", async () => {
     const { watchSetFor } = createSnapshotService({
-      source: memorySource,
-      feed: plainFeed(),
-      extractionFor: () => () => {
+      ...worldOver(memorySource, () => {
         throw new Error("the set is read without running the extraction")
-      },
+      }),
+      feed: plainFeed(),
     })
     expect(await watchSetFor("/FAKE_ROOT")).toEqual([
       "/FAKE_ROOT",
@@ -227,9 +251,8 @@ describe("createSnapshotService", () => {
 
   test("projectsOf: the config's view.projects, or the project alone; names, null without one", async () => {
     const { projectsOf } = createSnapshotService({
-      source: memorySource,
+      ...worldOver(memorySource),
       feed: plainFeed(),
-      extractionFor: () => graphOf,
     })
     expect(await projectsOf("/FAKE_ROOT")).toEqual([
       { root: "/FAKE_ROOT", name: "FAKE_PKG" },

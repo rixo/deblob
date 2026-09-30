@@ -40,6 +40,17 @@ proves the least new, the partner run tells the most.
    as a kind, what a test body may do — tried on deblob and the partner, written
    up in [TESTING.md](TESTING.md).
 
+Added 2026-09-30, after the talk-through opened (each with its own SPEC,
+`## Why` first — the reasons, for whoever integrates):
+
+7. **Apps layout** ([apps-layout/SPEC.md](apps-layout/SPEC.md)). One folder per
+   app under `src/apps/`, what no single app owns in `src/lib/`; deblob's CLI on
+   its own router (C1 (b), D4).
+8. **Placement recut** ([placement-recut/SPEC.md](placement-recut/SPEC.md)). The
+   check chain wired once — driver-layer's step 09, taken early because the
+   copies had drifted into a product bug (L8) and because the T1+T5 dossier
+   should judge specs on their final shape.
+
 ## Rules of the road
 
 - Commits land on `longshot` in this clone only; `origin` is the local deblob,

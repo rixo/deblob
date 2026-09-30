@@ -100,6 +100,44 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // Added in longshot (L3): canon's "a factory call builds, any layer's —
+    // an assembly's included" held for an imported assembly function only; a
+    // sibling in the same file read as a local call, red. One app's process
+    // assembly delegating to its test-facing one is the shape.
+    name: "an assembly function calling its sibling in the same file builds, as an imported one does",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        export const createNotesOver = (store: { root: string; ready: boolean }) => ({
+          notes: createNotes({ store }),
+        })
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) =>
+          createNotesOver(createFsStore(cwd))
+      `,
+    },
+  },
+  {
+    // The same call, to a sibling not named as a factory: red at the call,
+    // its result handed on red with it. Its definition reads green — every
+    // function at an assembly's root counts as an assembly function today,
+    // whatever its name (GUESS: L7, what makes a function an assembly's).
+    name: "a sibling helper not named as a factory: its call red, the value it hands on red with it",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        const storeAt = (cwd: string) => createFsStore(cwd)
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => ({
+          // red: assembly-builds-only + assembly-builds-only -- the helper called, its value handed on
+          notes: createNotes({ store: storeAt(cwd) }),
+        })
+      `,
+    },
+  },
+  {
     // Added in longshot (E1): an import was read as a function whatever the
     // target declared. A constant another file exports holds a value the
     // reader does not follow: unknown, never "a function". The truth is a

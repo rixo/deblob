@@ -6,7 +6,7 @@ import { afterAll, describe, expect, it } from "vitest"
 
 import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
 import type { Resolution } from "../ports/resolver.port.ts"
-import { classifyStockEntry } from "./ts-suffixes-factories-flavor.adapter.ts"
+import { classifyStockEntry } from "../stock-flavor.model.ts"
 import { createPackageMetaReader } from "./package-meta.adapter.ts"
 
 const roots: string[] = []

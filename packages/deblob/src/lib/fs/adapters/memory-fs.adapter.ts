@@ -2,8 +2,12 @@
  * The fs port over a record of path → content: a tree of strings, no disk. A
  * directory exists when a file sits under it, or when `dirs` names it — the way
  * to hold an empty one; `glob` is picomatch over the file keys, the same dot
- * rule as the node adapter's. The files are exposed for assertions.
+ * rule as the node adapter's. With `root`, the keys are relative to it — a tree
+ * written as a project's files, placed where the root says. The files are
+ * exposed for assertions, as absolute paths.
  */
+
+import { join } from "node:path"
 
 import picomatch from "picomatch"
 
@@ -11,9 +15,14 @@ import type { Fs } from "../fs.port.ts"
 
 export const createMemoryFs = (
   files: Readonly<Record<string, string>>,
-  { dirs = [] }: { dirs?: readonly string[] } = {},
+  { dirs = [], root }: { dirs?: readonly string[]; root?: string } = {},
 ): Fs & { readonly files: ReadonlyMap<string, string> } => {
-  const map = new Map(Object.entries(files))
+  const map = new Map(
+    Object.entries(files).map(([path, content]) => [
+      root === undefined ? path : join(root, path),
+      content,
+    ]),
+  )
   const encoder = new TextEncoder()
   const hasFile = (path: string): boolean => map.has(path)
   const hasDir = (path: string): boolean => {

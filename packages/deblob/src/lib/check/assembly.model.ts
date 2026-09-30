@@ -57,6 +57,10 @@ const judgeCall = (call: ReadCall): Verdict => {
   switch (call.callee.kind) {
     case "factory":
       return "green"
+    // an assembly function of the same file — the one definition an assembly
+    // holds — builds like one imported (found by longshot's apps, L3)
+    case "local":
+      return call.callee.factory ? "green" : "red"
     case "use-case":
       return call.load === null ? "red" : "green"
     case "unknown":

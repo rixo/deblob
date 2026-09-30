@@ -1,10 +1,27 @@
 # config
 
 `deblob.config.ts` as data: discovered, loaded, validated loudly, and resolved
-into everything a run consumes. Resolution is pure; loading and scanning are
-adapters over the platform; assembly owns the load → resolve sequence.
+into everything a run consumes. Resolution is pure; loading is this unit's use
+case (`createConfigService`), over the `ConfigFiles` port the loader adapter
+implements; scanning is an adapter behind the `Coverage` port. Until the
+placement recut the load → resolve sequence sat in each caller's assembly, and
+the copies drifted.
 
 ## API
+
+- `createConfigService({ files, flavors, readers })` — the load use cases:
+  `loadConfig(dir)` (the nearest config walking up), `loadConfigAt(root)` (that
+  directory exactly, never an ancestor's), `loadConfigNamed(cwd, path)` (`-c`),
+  each importing what it finds, applying the local overlay and resolving, the
+  defaults rooted at the directory when nothing is found; and
+  `resolve(raw, root)`, a config given as a value (the corpus rows).
+- Ports: `ports/config-files.port.ts` — `ConfigFiles` (`discoverConfig`,
+  `configAt`, `explicitConfigPath`, `importConfigDefault`);
+  `ports/manifest.port.ts` — `Manifest` (`readPackageName`,
+  `readPackageSurface`); `ports/coverage.port.ts` — `Coverage` (`scanCoverage`,
+  `scanCoverageDirs`, `statSizes`). `PackageSurface`, the manifest's claim, is a
+  model type (`config.model.ts`): the check unit reads it, and a model may not
+  import a port.
 
 - `DeblobConfig` (`config.service.ts`) — the authoring contract, all keys
   optional: `flavor`, the three designations `assembly`, `drivers`, `boot`
@@ -55,17 +72,18 @@ adapters over the platform; assembly owns the load → resolve sequence.
   `deblob.local.{ts,mts,js,mjs}` (two of either kind in one directory is
   ambiguity) and reports the root and both paths (either may be absent, never
   both), `explicitConfigPath` honors `-c` and looks the overlay up beside the
-  explicit file, `tsconfigPathOf` finds the tsconfig feeding resolution,
-  `readPackageSurface(root)` reads the package's own `deblob` field and exports
-  map for the surface check — a key this version cannot honor, a malformed
-  `blob`, or a field without an exports map fail loud there. Outside the
-  factory, `importConfigDefault` loads a config or local file through native
-  `import()` (Node strips types; erasable syntax only): a platform call no port
-  reads. Its URL carries the file's mtime, so in a long-running process an
-  edited file loads as edited and an unchanged one answers from Node's cache.
-  Two limits: a module the file imports stays cached (an edit there needs a
-  restart), and a filesystem with coarse timestamps (FAT, some network mounts)
-  can miss the second of two saves close together.
+  explicit file, `readPackageSurface(root)` reads the package's own `deblob`
+  field and exports map for the surface check — a key this version cannot honor,
+  a malformed `blob`, or a field without an exports map fail loud there. It
+  implements `ConfigFiles` and `Manifest`; `importConfigDefault`, also exported
+  alone, loads a config or local file through native `import()` (Node strips
+  types; erasable syntax only). The tsconfig lookup moved to extraction's
+  resolvers adapter: it is resolution's fs fact. Its URL carries the file's
+  mtime, so in a long-running process an edited file loads as edited and an
+  unchanged one answers from Node's cache. Two limits: a module the file imports
+  stays cached (an edit there needs a restart), and a filesystem with coarse
+  timestamps (FAT, some network mounts) can miss the second of two saves close
+  together.
 - `adapters/scan.adapter.ts` — `createCoverageScan({ fs })`:
   `scanCoverage(config)` globs the governed subtree through the port under the
   full-scan model (every covered file is a graph node, orphans included, hidden

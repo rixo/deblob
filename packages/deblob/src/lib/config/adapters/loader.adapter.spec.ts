@@ -18,7 +18,6 @@ const {
   configAt,
   discoverConfig,
   explicitConfigPath,
-  tsconfigPathOf,
   readPackageName,
   readPackageSurface,
 } = createConfigLoader({ fs: createNodeFs() })
@@ -281,51 +280,6 @@ describe("the local overlay — deblob.local.ts beside the config", () => {
     await expect(load(root)).rejects.toThrowError(
       /unknown key "SOME_MADE_UP_KEY" in .*deblob\.local\.ts/,
     )
-  })
-})
-
-describe("tsconfigPathOf", () => {
-  const roots: string[] = []
-  const makeRoot = async (withTsconfig: boolean): Promise<string> => {
-    const root = await mkdtemp(join(tmpdir(), "deblob-tsconfig-"))
-    roots.push(root)
-    if (withTsconfig) await writeFile(join(root, "tsconfig.json"), "{}\n")
-    return root
-  }
-  afterAll(() =>
-    Promise.all(
-      roots.map((root) => rm(root, { recursive: true, force: true })),
-    ),
-  )
-
-  it("discovers tsconfig.json at the root when undeclared", async () => {
-    const root = await makeRoot(true)
-    expect(await tsconfigPathOf({ root, tsconfig: undefined })).toBe(
-      join(root, "tsconfig.json"),
-    )
-  })
-
-  it("yields null when undeclared and the root has none", async () => {
-    const root = await makeRoot(false)
-    expect(await tsconfigPathOf({ root, tsconfig: undefined })).toBeNull()
-  })
-
-  it("disables discovery on false, even when the file exists", async () => {
-    const root = await makeRoot(true)
-    expect(await tsconfigPathOf({ root, tsconfig: false })).toBeNull()
-  })
-
-  it("returns a declared path that exists", async () => {
-    const root = await makeRoot(true)
-    const declared = join(root, "tsconfig.json")
-    expect(await tsconfigPathOf({ root, tsconfig: declared })).toBe(declared)
-  })
-
-  it("throws a teaching error on a declared-but-missing path — declared means load-bearing", async () => {
-    const root = await makeRoot(false)
-    await expect(
-      tsconfigPathOf({ root, tsconfig: join(root, "tsconfig.json") }),
-    ).rejects.toThrowError(/"tsconfig".*does not exist/s)
   })
 })
 

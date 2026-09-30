@@ -7,7 +7,22 @@
  */
 
 import type { ResolvedConfig } from "../../config/config.service.ts"
-import type { ProjectSource } from "../ports/project-source.port.ts"
+import type { Coverage } from "../../config/ports/coverage.port.ts"
+import type { Manifest } from "../../config/ports/manifest.port.ts"
+import type { Clock } from "../ports/clock.port.ts"
+import type { ReadmeTexts } from "../ports/readme-texts.port.ts"
+
+/**
+ * Every port of the snapshot's world at once — one object stands behind the
+ * config loading, the coverage, the manifest, the READMEs and the clock.
+ */
+export type MemoryProjectSource = {
+  loadConfig(dir: string): Promise<ResolvedConfig>
+  loadConfigAt(root: string): Promise<ResolvedConfig>
+} & Coverage &
+  Pick<Manifest, "readPackageName"> &
+  ReadmeTexts &
+  Clock
 
 export type MemoryProject = {
   config: ResolvedConfig
@@ -28,7 +43,7 @@ export const createMemoryProjectSource = ({
 }: {
   projects: Readonly<Record<string, MemoryProject>>
   now: string
-}): ProjectSource => {
+}): MemoryProjectSource => {
   const projectAt = (dir: string): MemoryProject => {
     const project = projects[dir]
     if (project === undefined) {
@@ -40,9 +55,10 @@ export const createMemoryProjectSource = ({
     // no hierarchy in memory: a directory is a project or nothing
     loadConfig: async (dir) => projectAt(dir).config,
     loadConfigAt: async (root) => projectAt(root).config,
-    scanCoverage: async (config) => projectAt(config.root).files,
+    // sorted, as the disk's scan answers
+    scanCoverage: async (config) => [...projectAt(config.root).files].sort(),
     scanCoverageDirs: async (config) => projectAt(config.root).dirs,
-    sizesOf: async (root, files) => {
+    statSizes: async (root, files) => {
       const { sizes } = projectAt(root)
       return files.map((path) => {
         const size = sizes[path]
@@ -52,7 +68,7 @@ export const createMemoryProjectSource = ({
         return { path, size }
       })
     },
-    manifestNameOf: async (root) => projects[root]?.name ?? null,
+    readPackageName: async (root) => projects[root]?.name ?? null,
     readmeTextsOf: async (root, dirs) => {
       const readmes = projectAt(root).readmes ?? {}
       return Object.fromEntries(

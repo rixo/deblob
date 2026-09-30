@@ -4,11 +4,13 @@
  * fs port — which is why resolution is a port of its own.
  */
 
-import { dirname } from "node:path"
+import { dirname, join } from "node:path"
 
 import { ResolverFactory } from "oxc-resolver"
 
-import type { Resolution, Resolver } from "../ports/resolver.port.ts"
+import { ExtractionError } from "../graph.model.ts"
+import type { Fs } from "../../fs/fs.port.ts"
+import type { Resolution, Resolver, Resolvers } from "../ports/resolver.port.ts"
 
 export const createOxcResolver = ({
   tsconfigPath,
@@ -70,4 +72,52 @@ export const createOxcResolver = ({
   }
 
   return { resolve }
+}
+
+/**
+ * The tsconfig feeding resolution — a filesystem fact: an explicit path must
+ * exist (declared means load-bearing), `false` disables, `undefined` discovers
+ * `tsconfig.json` at the config root; `null` = the resolver runs tsconfig-less.
+ * A declared one missing is the config's mistake, raised where resolution needs
+ * it — as a `configLoads` file outside coverage is.
+ */
+export const createTsconfigLocator = ({ fs }: { fs: Pick<Fs, "exists"> }) => ({
+  tsconfigPathOf: async ({
+    root,
+    tsconfig,
+  }: {
+    root: string
+    tsconfig: string | false | undefined
+  }): Promise<string | null> => {
+    if (tsconfig === false) return null
+    if (typeof tsconfig === "string") {
+      if (!(await fs.exists(tsconfig))) {
+        throw new ExtractionError(
+          "tsconfig-missing",
+          `config key "tsconfig" points at ${tsconfig}, which does not exist`,
+        )
+      }
+      return tsconfig
+    }
+    const fallback = join(root, "tsconfig.json")
+    return (await fs.exists(fallback)) ? fallback : null
+  },
+})
+
+/** A resolver per config over the real disk: its tsconfig, its aliases. */
+export const createOxcResolvers = ({
+  fs,
+}: {
+  fs: Pick<Fs, "exists">
+}): Resolvers => {
+  const { tsconfigPathOf } = createTsconfigLocator({ fs })
+  return {
+    resolverFor: async ({ root, tsconfig, alias }) => {
+      const tsconfigPath = await tsconfigPathOf({ root, tsconfig })
+      return createOxcResolver({
+        ...(tsconfigPath === null ? {} : { tsconfigPath }),
+        alias,
+      })
+    },
+  }
 }

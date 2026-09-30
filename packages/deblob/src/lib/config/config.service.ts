@@ -4,10 +4,12 @@
  * holds a live `FlavorResolver` (a port shape the model may not know —
  * `inward-deps`, surfaced by our own first self-check). Pure all the same: raw
  * value in, resolved value out, `ConfigError` with teaching messages. Loading
- * (discovery walk, native import) and scanning stay in the adapters; assembly
- * owns the load → resolve sequence (arch §Assembly, literally) and injects the
- * stock flavor registry — a flavor is an adapter, and neither this service nor
- * another adapter may import one.
+ * is this unit's use case too (`createConfigService`): the files found and
+ * imported through the `ConfigFiles` port, the raw value resolved here. It
+ * lived in assembly until the placement recut — once per caller, and the copies
+ * drifted. Assembly injects the stock flavor registry and the default readers —
+ * a flavor is an adapter, and neither this service nor another adapter may
+ * import one.
  */
 
 import { resolve } from "node:path"
@@ -19,6 +21,10 @@ import { LAYERS, specifierPattern } from "../extraction/graph.model.ts"
 import type { FlavorResolver } from "../extraction/ports/flavor.port.ts"
 import type { ReaderGroups } from "../extraction/ports/readers.port.ts"
 import { STOCK_FLAVOR_NAME } from "../extraction/stock-flavor.model.ts"
+import type {
+  ConfigFiles,
+  DiscoveredConfig,
+} from "./ports/config-files.port.ts"
 import {
   ConfigError,
   DEFAULT_INCLUDE,
@@ -690,3 +696,72 @@ export const resolveConfig = (
     view: viewOf(record["view"], context.root),
   }
 }
+
+/**
+ * Loading a config, the use cases every run starts with: the files found — a
+ * walk up, one directory exactly, a file named — imported, the local overlay
+ * applied, the value resolved; the defaults rooted at the directory when no
+ * file is found. And a config given as a value (the corpus rows), resolved at a
+ * root with no file behind it.
+ */
+export const createConfigService = ({
+  files,
+  flavors,
+  readers,
+}: {
+  files: ConfigFiles
+  flavors: FlavorRegistry
+  readers: DefaultReaders
+}) => {
+  const resolveAt = (
+    raw: unknown,
+    at: Omit<DiscoveredConfig, "root"> & { root: string },
+  ): ResolvedConfig => resolveConfig(raw, { ...at, flavors, readers })
+
+  /** What was found, loaded and resolved — or the defaults rooted at `dir`. */
+  const configFrom = async (
+    found: DiscoveredConfig | null,
+    dir: string,
+  ): Promise<ResolvedConfig> => {
+    if (found === null)
+      return resolveAt(
+        {},
+        { root: resolve(dir), configPath: null, localPath: null },
+      )
+    const { configPath, localPath } = found
+    const base =
+      configPath === null ? {} : await files.importConfigDefault(configPath)
+    const raw =
+      localPath === null
+        ? base
+        : overlayLocalConfig(
+            base,
+            await files.importConfigDefault(localPath),
+            localPath,
+          )
+    return resolveAt(raw, found)
+  }
+
+  return {
+    /** The project containing `dir`: the nearest config walking up. */
+    loadConfig: async (dir: string): Promise<ResolvedConfig> =>
+      configFrom(await files.discoverConfig(dir), dir),
+    /**
+     * The project at `root` exactly — never an ancestor's (rixo, 2026-09-16: a
+     * listed directory is the project, discovery stops at it).
+     */
+    loadConfigAt: async (root: string): Promise<ResolvedConfig> =>
+      configFrom(await files.configAt(root), root),
+    /** The config file at `path` (`-c`), resolved from `cwd`. */
+    loadConfigNamed: async (
+      cwd: string,
+      path: string,
+    ): Promise<ResolvedConfig> =>
+      configFrom(await files.explicitConfigPath(cwd, path), cwd),
+    /** A config given as a value, rooted at `root`, no file behind it. */
+    resolve: (raw: unknown, root: string): ResolvedConfig =>
+      resolveAt(raw, { root, configPath: null, localPath: null }),
+  }
+}
+
+export type ConfigService = ReturnType<typeof createConfigService>

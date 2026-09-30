@@ -11,31 +11,29 @@
 
 import { join, relative, resolve, sep } from "node:path"
 
-import type { CheckName } from "../../lib/check/checks.model.ts"
-import { KNOWN_CHECKS, runGraphCheck } from "../../lib/check/checks.model.ts"
+import type { Judge, Judgement } from "../../lib/check/check.service.ts"
+import { KNOWN_CHECKS } from "../../lib/check/checks.model.ts"
 import { groupByFix } from "../../lib/check/grouping.model.ts"
 import type { RuleId } from "../../lib/check/rule.model.ts"
 import { ruleOrder } from "../../lib/check/rule.model.ts"
-import { checkSurface, tallySurface } from "../../lib/check/surface.model.ts"
-import type {
-  PackageSurface,
-  ResolveSurfaceOptions,
-  SurfaceReport,
+import {
+  surfaceOptionsFor,
+  tallySurface,
 } from "../../lib/check/surface.model.ts"
+import type { PackageSurface } from "../../lib/config/config.model.ts"
 import {
   asConfigErrorOrRethrow,
   isConfigError,
 } from "../../lib/config/config.model.ts"
-import type { ResolvedConfig } from "../../lib/config/config.service.ts"
-import type { ContentReader } from "../../lib/explain/content.port.ts"
-import {
-  asExtractionError,
-  specifierMatcher,
-} from "../../lib/extraction/graph.model.ts"
 import type {
-  ImportGraph,
-  ModuleNode,
-} from "../../lib/extraction/graph.model.ts"
+  ConfigService,
+  ResolvedConfig,
+} from "../../lib/config/config.service.ts"
+import type { Coverage } from "../../lib/config/ports/coverage.port.ts"
+import type { Manifest } from "../../lib/config/ports/manifest.port.ts"
+import type { ContentReader } from "../../lib/explain/content.port.ts"
+import { asExtractionError } from "../../lib/extraction/graph.model.ts"
+import type { ModuleNode } from "../../lib/extraction/graph.model.ts"
 import type { FlavorClassification } from "../../lib/extraction/ports/flavor.port.ts"
 import { createRecognition } from "../../lib/extraction/recognition.model.ts"
 import type { Fs } from "../../lib/fs/fs.port.ts"
@@ -65,7 +63,6 @@ import {
 } from "./cli.model.ts"
 import { CHECK_HELP, HELP } from "./help.model.ts"
 import type { Install } from "./install.port.ts"
-import type { Project } from "./project.port.ts"
 import type { Viewer } from "../../lib/view/ports/viewer.port.ts"
 
 /** The sort wherever output orders rules — the summary's display order. */
@@ -81,22 +78,10 @@ const pathPrefixOf = (cwd: string, root: string): string => {
   return hop === "" ? "" : `${hop.split(sep).join("/")}/`
 }
 
-/** The reach half of the surface options — what bare tallies with. */
-const resolveOptionsFor = (
-  config: ResolvedConfig,
-  surface: PackageSurface | null,
-): ResolveSurfaceOptions => ({
-  mirror: config.mirror,
-  // both carve-outs: retracted and designated-wiring subpaths alike
-  disclosed: specifierMatcher([
-    ...(surface?.blob ?? []),
-    ...(surface?.assembly ?? []),
-  ]),
-})
-
 /**
- * An error the user must fix — extraction's, or a config's (the tsconfig is
- * read with the graph) — to present; anything else is a bug and keeps flying.
+ * An error the user must fix — extraction's, or a config's (the manifest's
+ * claim and the tsconfig are read with the graph) — to present; anything else
+ * is a bug and keeps flying.
  */
 const asUserError = (error: unknown): Error =>
   isConfigError(error) ? error : asExtractionError(error)
@@ -110,14 +95,21 @@ type Line = readonly string[]
 
 export const createCli = ({
   terminal,
-  project,
+  config: configs,
+  judge,
+  coverage,
+  manifest,
   content,
   install,
   fs,
   viewer,
 }: {
   terminal: Terminal
-  project: Project
+  config: Pick<ConfigService, "loadConfig" | "loadConfigNamed">
+  judge: Pick<Judge, "judge">
+  /** Bare status reads coverage and sizes without extracting. */
+  coverage: Pick<Coverage, "scanCoverage" | "statSizes">
+  manifest: Pick<Manifest, "readPackageSurface">
   content: ContentReader
   install: Install
   fs: Pick<Fs, "exists">
@@ -154,8 +146,8 @@ export const createCli = ({
 
   const loadFor = (parsed: ParsedCli): Promise<ResolvedConfig> =>
     parsed.config === null
-      ? project.loadConfig(terminal.cwd)
-      : project.loadConfigNamed(terminal.cwd, parsed.config)
+      ? configs.loadConfig(terminal.cwd)
+      : configs.loadConfigNamed(terminal.cwd, parsed.config)
 
   const explanationsOf = async (
     rules: Iterable<RuleId>,
@@ -212,7 +204,7 @@ export const createCli = ({
       return unreadable(asConfigErrorOrRethrow(error).message)
     }
 
-    const files = await project.scanCoverage(config)
+    const files = await coverage.scanCoverage(config)
     // classify is total by contract — extraction throws on a gap; bare trusts it
     const classifications = config.flavor.classify(files)
     const classificationOf = (path: string) =>
@@ -238,12 +230,12 @@ export const createCli = ({
       return unreadable(asExtractionError(error).message)
     }
     const isBlob = (path: string): boolean => blobByPath.get(path) === true
-    const sizes = await project.sizesOf(config.root, files)
+    const sizes = await coverage.statSizes(config.root, files)
     // the field's claim, tallied at scan speed — no parse; a field this version
     // cannot read teaches on stderr and the segment is skipped: bare stays 0
     let surface: PackageSurface | null
     try {
-      surface = await project.readPackageSurface(config.root)
+      surface = await manifest.readPackageSurface(config.root)
     } catch (error) {
       terminal.err(`${asConfigErrorOrRethrow(error).message}\n`)
       surface = null
@@ -279,7 +271,7 @@ export const createCli = ({
                 : tallySurface(
                     surface,
                     files,
-                    resolveOptionsFor(config, surface),
+                    surfaceOptionsFor(config, surface),
                   ),
           },
         },
@@ -295,39 +287,22 @@ export const createCli = ({
     const { parsed, action } = found
     const colors = colorsFor(parsed.noColor)
     let config: ResolvedConfig
-    let surface: PackageSurface | null
     try {
       config = await loadFor(parsed)
-      surface = await project.readPackageSurface(config.root)
     } catch (error) {
       terminal.err(`${asConfigErrorOrRethrow(error).message}\n`)
       return 2
     }
-
-    const files = await project.scanCoverage(config)
-    let graph: ImportGraph
+    let judged: Judgement
     try {
-      graph = await project.extractGraph(config, files)
+      judged = await judge.judge(config, action.checks)
     } catch (error) {
       terminal.err(`${asUserError(error).message}\n`)
       return 2
     }
+    const { files, graph, surface, surfaceReport, violations } = judged
     const surfaceRan = action.checks.includes("surface")
-    // `surface` stands apart: it reports unverified entries next to
-    // violations — claims the run cannot certify, the exit-2 lane. No field,
-    // no claim, no check — a null surface yields nothing (additive).
-    const surfaceReport: SurfaceReport = surfaceRan
-      ? checkSurface(graph, surface, {
-          classifyEntry: project.classifyEntry,
-          ...resolveOptionsFor(config, surface),
-        })
-      : { violations: [], unverified: [], checked: 0, disclosed: 0 }
-    const violations = action.checks.flatMap((check: CheckName) =>
-      check === "surface"
-        ? surfaceReport.violations
-        : runGraphCheck(check, graph, config),
-    )
-    const sizes = await project.sizesOf(config.root, files)
+    const sizes = await coverage.statSizes(config.root, files)
     const stats: GraphStats = {
       files: graph.modules.size,
       ...sizeStatsOf(
