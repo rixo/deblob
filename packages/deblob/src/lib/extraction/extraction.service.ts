@@ -316,6 +316,15 @@ export const createExtraction = ({
     ): ImportTargetKind => {
       if (target === null) return { kind: "unresolved" }
       if (target.type === "module") {
+        // a project file the importer's own reader claims is its tech, read
+        // as a claimed package is (GUESS: D4)
+        if (own.some((reader) => reader.claimsFile?.(target.path) === true))
+          return {
+            kind: "external",
+            package: target.path,
+            layer: null,
+            claim: "reader",
+          }
         // a covered module: classify is total, the flavor's word is there
         const classification = classifications.get(
           target.path,
@@ -576,6 +585,31 @@ export const createExtraction = ({
       }
     }
 
+    /**
+     * An edge's claim, for its importer: an external one's, whoever claims it;
+     * a project file's only when the importer's own reader claims it (GUESS:
+     * D4). None otherwise.
+     */
+    const claimOnEdge = (
+      from: string,
+      to: ImportEdge["to"],
+    ): Pick<ImportEdge, "claim"> => {
+      if (to.type === "external")
+        return {
+          claim: claimOf(
+            ownReadersOf(from),
+            recognition.boundOf(readers.host, from),
+            to,
+            to.specifier,
+          ),
+        }
+      return ownReadersOf(from).some(
+        (reader) => reader.claimsFile?.(to.path) === true,
+      )
+        ? { claim: "reader" }
+        : {}
+    }
+
     return {
       root,
       modules,
@@ -585,16 +619,7 @@ export const createExtraction = ({
       edges: [...edges.values()].map((edge) => ({
         ...edge,
         names: [...new Set(edge.names)].sort(),
-        ...(edge.to.type === "external"
-          ? {
-              claim: claimOf(
-                ownReadersOf(edge.from),
-                recognition.boundOf(readers.host, edge.from),
-                edge.to,
-                edge.to.specifier,
-              ),
-            }
-          : {}),
+        ...claimOnEdge(edge.from, edge.to),
       })),
       unresolved,
       broken,

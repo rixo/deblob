@@ -54,8 +54,13 @@ not there, and the read itself.
 
 ## Where it is wired
 
-`drivers/serve/main.ts` instantiates both when it is given a bundle root, and
-its `request` listener only translates node's objects to and from the values
-above — a `null` answer is a bare 404, a throw is reported in full and
-answered 500. The root itself is resolved in `drivers/cli/bin.ts`
-(`bundleRootOf`), the one place that knows where the bundle lives.
+`src/apps/serve/serve.assembly.ts` instantiates both when it is given a bundle
+root, and its `request` listener only translates node's objects to and from the
+values above — a `null` answer is a bare 404, a throw is reported in full and
+answered 500. The root itself is the install's
+(`src/apps/cli/adapters/install.adapter.ts`), the one place that knows where the
+bundle lives.
+
+`ports/viewer.port.ts` — `Viewer`, the viewer served:
+`serve({ cwd, port, bundle, stdout, stderr })` → `{ port, close }`. Two apps use
+it — the CLI's `view` and the serve app — so it is the unit's, not either app's.

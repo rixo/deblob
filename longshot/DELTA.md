@@ -24,6 +24,18 @@ leaves when its branch integrates it.
 - Not done from S07: the READMEs (`config/`, `extraction/`, `check/`), the
   ports' headers beyond the new files, the `06_unknown-verdict` notes.
 
+- **Apps layout + deblob's router** (L1, C1 (b), D4).
+  `src/apps/{cli,serve, snapshot}` (boot, root driver, sub-driver, front
+  service, ports), `src/lib/` gains `router`, `terminal` (port +
+  process/recording adapters), `report` (ex `lib/cli` minus the CLI's grammar
+  and help); `KNOWN_CHECKS`/`CHECK_RULES` to `check/checks.model.ts`;
+  `lib/explain/content.port.ts`; `lib/view/ports/viewer.port.ts`;
+  `src/drivers/wiring.ts` → `src/app.assembly.ts`. `DriverReader.claimsFile`
+  (D4) with three corpus rows. deblob's config: the `src/drivers/**` glob gone,
+  an inline `deblob-router` reader. Not done: `docs/implementation-guide.md`'s
+  `drivers/` bullet, canon's "a bin, a server, an app" wording (collides with
+  `apps/`).
+
 - **Stock readers for partner techs** (milestone 3): `cac` (driver),
   `playwright` (test), `vite`, `astro` (driver, claims only — D1).
 - **P1, the exclude baseline anchored** — also owed to main: the shipped

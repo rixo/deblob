@@ -57,8 +57,16 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   no — a GUESS, canon never limited claims to packages. **Ruled 2026-09-29 (with
   C1): yes, and the claimed file stays judged by its own layer** — being claimed
   as tech tells the driver's reader what the driver listens to, it gives the
-  file no pass. How it is judged: to find by experiment. Status: ruled, not
-  built.
+  file no pass. How it is judged: to find by experiment. Status: taken —
+  `DriverReader.claimsFile(path)`, root-relative; a claimed module reads as a
+  claimed package in the driver's reading, its edge carries `claim: "reader"`
+  and skips the driver's layer cell (`extraction.service.ts`,
+  `layers.model.ts`). Rows in `cases/readers.spec.ts`: claimed = green; the
+  claimed file keeps its own layer's rules (root state red); unclaimed = six
+  reds for one missing premise — D8's cut does not cover a project file's
+  callee, and the message calls the router's `route` "the use case" (two
+  findings, confessed in the row). deblob's router, a model factory, reads clean
+  as its own layer.
 - **D5 — Standard stacks without a config** (`--node`). Default: none, a config
   is written. Status: parked.
 - **D6 — Entry points nothing imports** (`+page.svelte`, `entryPoints`).
@@ -163,7 +171,43 @@ Anonymous; the partner run's details stay local.
   layer (D4). How it is judged — its layer, a model calling a function handed to
   it — is not ruled: longshot writes the router, runs the rules, suggests. The
   switch at `drivers/cli/main.ts:530` goes; a `cli.driver.ts` registers one hook
-  per command. Status: ruled, not built.
+  per command. Status: built — `lib/router/router.model.ts` (flags win, first
+  command word, `otherwise`; no arity: the front rereads the line and tells a
+  value spelling a command, `-c check`), `apps/cli/commands.driver.ts` one hook
+  per command, `cli.service.ts` the front service. Both CLI driver files read
+  clean.
+
+- **L1 — Where an app lives** (talked through 2026-09-30, to try). One folder
+  per app under `src/apps/` (boot, root driver, sub-drivers, front service, its
+  ports and adapters, what only that app speaks); `src/lib/` holds what no
+  single app owns, genre code included (the router, the terminal kernel, the
+  verdicts as text); what the apps share and none owns sits at `src/` root
+  (`app.assembly.ts`). A recipe, never a check. Status: taken — deblob's three
+  apps moved, `src/drivers/` and its glob gone (601 → 269 on the self-check,
+  most of the drop the glob's `assembly-builds-only`). What it caught: the
+  snapshot unit's spec drove the CLI (a lib unit depending on an app — `dag`
+  reported the cycle); the parity test moved to the CLI's gate.
+- **L2 — The gate registers the sub-driver in every test.** The CLI's gate
+  (`commands.driver.spec.ts`) builds a fresh router and calls `registerCommands`
+  per test — 63 `sub-driver-wiring` reds, a test body being a hook. The same
+  shape the plumbing research's gate had. Input for T1, no default taken.
+- **L3 — An app's process assembly delegates to its test-facing one.**
+  `createCliAssembly(process)` calls `createCliOver(terminal, install)` — "calls
+  createCliOver, which builds nothing"; same in serve and snapshot. And
+  `viewer: { serve }` hands a function. Open: one assembly taking the adapters
+  from its caller (but a driver may not build adapters), or the reader following
+  an assembly function's return.
+- **L4 — A driver whose event is the process starting** (serve, snapshot):
+  `app.run()` in the root driver reads "the use case run outside any hook". D7's
+  other half: a host-only driver with no callback to hand. Open.
+- **L5 — The server composition** (`apps/serve/serve.assembly.ts`, 32 groups):
+  the request listener is a hook with its translation inline, `node:http` in an
+  assembly, a use case run. From the CLI's standpoint the server is its `Viewer`
+  port's adapter; from its own, a driver. Carried as-is.
+- **L6 — The map's call sequence for deblob** reads missing: the spike tracer
+  hand-reads a `switch` in `main.ts`, which is gone; the snapshot service shows
+  `sequenceMissing` as designed. Teaching the tracer the router's hooks is its
+  own piece of work.
 
 ## Map
 

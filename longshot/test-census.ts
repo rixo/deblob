@@ -4,7 +4,7 @@
 import {
   createProjectSource,
   extractionFor,
-} from "/home/rixo/projects/deblob.longshot/packages/deblob/src/drivers/wiring.ts"
+} from "/home/rixo/projects/deblob.longshot/packages/deblob/src/app.assembly.ts"
 import {
   GRAPH_CHECKS,
   runGraphCheck,

@@ -10,12 +10,11 @@
 
 import { join } from "node:path"
 
-import { runGraphCheck } from "../../check/checks.model.ts"
+import type { CheckName } from "../../check/checks.model.ts"
+import { KNOWN_CHECKS, runGraphCheck } from "../../check/checks.model.ts"
 import type { PackageSurface } from "../../check/surface.model.ts"
 import { checkSurface } from "../../check/surface.model.ts"
 import type { Violation } from "../../check/violation.model.ts"
-import type { CheckName } from "../../cli/cli.model.ts"
-import { KNOWN_CHECKS } from "../../cli/cli.model.ts"
 import { createConfigLoader } from "../../config/adapters/loader.adapter.ts"
 import { createCoverageScan } from "../../config/adapters/scan.adapter.ts"
 import type { ResolvedConfig } from "../../config/config.service.ts"

@@ -6,7 +6,7 @@
  */
 
 import type { Violation } from "../../../check/violation.model.ts"
-import type { CheckName } from "../../../cli/cli.model.ts"
+import type { CheckName } from "../../../check/checks.model.ts"
 import type { BrokenSite } from "../../../extraction/graph.model.ts"
 
 export interface Check {

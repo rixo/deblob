@@ -26,7 +26,7 @@ import { createRequire } from "node:module"
 import { readFileSync } from "node:fs"
 import { dirname, join, relative, resolve as resolvePath } from "node:path"
 
-import { createProjectSource } from "../../drivers/wiring.ts"
+import { createProjectSource } from "../../app.assembly.ts"
 import { createNodeFs } from "../../lib/fs/adapters/node-fs.adapter.ts"
 import { createConfigLoader } from "../../lib/config/adapters/loader.adapter.ts"
 
@@ -127,7 +127,7 @@ export async function sequenceSnapshot(
 
   // ---- the misrepresentation: our CLI as a driver ------------------------------
 
-  const DRIVER_MODULE = "src/drivers/cli/main.ts"
+  const DRIVER_MODULE = "src/apps/cli/commands.driver.ts"
   /** Hand-read from src/lib/cli/cli.model.ts (CliAction, parseCli, strayFlags). */
   const HOOKS: {
     name: string

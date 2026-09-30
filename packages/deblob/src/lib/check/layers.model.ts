@@ -223,6 +223,9 @@ export const checkLayers = (
     }
 
     if (edge.to.type === "module") {
+      // a project file the driver's own reader claims is its tech, not a
+      // cell to judge (GUESS: D4) — the file is judged by its own layer
+      if (importerLayer === "driver" && edge.claim === "reader") continue
       const target = moduleOf(graph, edge.to.path)
       const cellExempt = typeOnlyExempt && TYPE_EXEMPT_TARGETS.has(target.layer)
       const rules =

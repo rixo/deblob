@@ -13,7 +13,7 @@
     "node": ">=22.18"
   },
   "bin": {
-    "deblob": "./dist/drivers/cli/bin.js"
+    "deblob": "./dist/apps/cli/cli.boot.js"
   },
   "exports": {
     ".": {
@@ -54,10 +54,10 @@
     "build:content": "node scripts/build-content.ts",
     "build:ts": "tsc -p tsconfig.build.json",
     "build:viewer": "node scripts/build-viewer.ts",
-    "check": "node src/drivers/cli/bin.ts check",
+    "check": "node src/apps/cli/cli.boot.ts check",
     "prepack": "pnpm build",
-    "serve": "node src/drivers/serve/bin.ts",
-    "snapshot": "node src/drivers/snapshot/bin.ts",
+    "serve": "node src/apps/serve/serve.boot.ts",
+    "snapshot": "node src/apps/snapshot/snapshot.boot.ts",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",

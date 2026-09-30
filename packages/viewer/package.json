@@ -42,9 +42,9 @@
   },
   "scripts": {
     "build": "vite build",
-    "check": "node ../deblob/src/drivers/cli/bin.ts check",
+    "check": "node ../deblob/src/apps/cli/cli.boot.ts check",
     "dev": "run-p dev:*",
-    "dev:serve": "node --watch ../deblob/src/drivers/serve/bin.ts",
+    "dev:serve": "node --watch ../deblob/src/apps/serve/serve.boot.ts",
     "dev:vite": "vite",
     "test": "vitest run --coverage",
     "test:watch": "vitest",

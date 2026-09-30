@@ -109,8 +109,8 @@ pnpm dev
 ```
 
 Two processes: Vite serving the page, and deblob's data server run from its
-source (`node --watch ../deblob/src/drivers/serve/bin.ts`, port 5175) with this
-package as its cwd. Vite proxies `/deblob/ws` to it — and because the entry
+source (`node --watch ../deblob/src/apps/serve/serve.boot.ts`, port 5175) with
+this package as its cwd. Vite proxies `/deblob/ws` to it — and because the entry
 builds the socket URL from `location.host`, the browser opens it on Vite's own
 origin, which the proxy forwards unchanged. So the data server sees a
 same-origin handshake and applies the same rule `deblob view` does, with no
@@ -176,4 +176,4 @@ repo — and checks what is true of any: it mounts, every service root is listed
 the counts shown are the snapshot's. `vitest.global-setup.ts` regenerates
 `tmp/corpus/deblob.json` on every run by running deblob's snapshot script driver
 as a process; drop other snapshots there by hand: in any deblob project,
-`node <this repo>/packages/deblob/src/drivers/snapshot/bin.ts > <name>.json`.
+`node <this repo>/packages/deblob/src/apps/snapshot/snapshot.boot.ts > <name>.json`.

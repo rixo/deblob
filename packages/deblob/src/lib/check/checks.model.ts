@@ -13,8 +13,63 @@ import { checkLayers } from "./layers.model.ts"
 import { checkModules } from "./modules.model.ts"
 import { checkPorts } from "./ports.model.ts"
 import { checkPrivate } from "./private.model.ts"
+import type { RuleId } from "./rule.model.ts"
 import type { Violation } from "./violation.model.ts"
 import type { ImportGraph } from "../extraction/graph.model.ts"
+
+/** Checks, help order = run order. */
+export const KNOWN_CHECKS = [
+  "dag",
+  "layers",
+  "private",
+  "barrels",
+  "ports",
+  "surface",
+  "modules",
+  "assembly",
+  "driver",
+  "boot",
+] as const
+
+export type CheckName = (typeof KNOWN_CHECKS)[number]
+
+/**
+ * The rules each check cites — `explain <check>` resolves through this, and the
+ * PLAN's coverage table made code. Mirrors the citations the detectors can emit
+ * (pinned against them in the spec).
+ */
+export const CHECK_RULES: Readonly<Record<CheckName, readonly RuleId[]>> = {
+  dag: ["no-service-cycle", "no-runtime-cycle"],
+  layers: [
+    "inward-deps",
+    "service-purity",
+    "blob-quarantine",
+    "service-assembly-only",
+    "adapter-assembly-only",
+    "runtime-import",
+    "public-unit",
+    "assembly-driver-only",
+    "driver-not-imported",
+    "boot-one-call",
+    "test-is-outside",
+    "driver-calls-services",
+    "assembly-builds-only",
+  ],
+  private: ["private-sealed"],
+  barrels: ["layer-in-path"],
+  ports: ["ports-types-only"],
+  surface: ["layer-in-path", "chain-purity"],
+  modules: ["stable-root"],
+  assembly: ["assembly-builds-only"],
+  driver: [
+    "wiring-outside-hooks",
+    "hook-one-call",
+    "driver-calls-services",
+    "driver-hooks-only",
+    "sub-driver-wiring",
+  ],
+  boot: ["boot-one-call"],
+}
 
 /** The graph checks, in the CLI's run order. */
 export const GRAPH_CHECKS = [

@@ -86,7 +86,7 @@ From any project directory, longshot's CLI from source (the viewer bundle is
 built into `packages/deblob/dist/viewer`):
 
 ```sh
-EG=~/projects/deblob.longshot/packages/deblob/src/drivers/cli/bin.ts
+EG=~/projects/deblob.longshot/packages/deblob/src/apps/cli/cli.boot.ts
 node $EG check          # the ruled rules
 node $EG view           # the map; the #debug outline lists the verdicts
 ```

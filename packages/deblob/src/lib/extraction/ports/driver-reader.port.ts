@@ -15,6 +15,12 @@ export interface DriverReader extends ReaderBinding {
   readonly name: string
   /** The packages this technology is: external specifiers it claims as tech. */
   claims(specifier: string): boolean
+  /**
+   * The project files this technology is (a local router), by root-relative
+   * path. Claimed tells the driver's reading what it listens to; the file
+   * itself stays judged by its own layer (GUESS: D4).
+   */
+  claimsFile?(path: string): boolean
   /** Driver rules the tech's shape exempts. */
   readonly exempts?: readonly Exemption[]
   /**

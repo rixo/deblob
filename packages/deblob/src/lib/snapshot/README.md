@@ -143,30 +143,28 @@ The live map feed is spike code, shipped with the experimental map (step 09):
 `src/spike/map-feed/map-feed.adapter.ts`, the spike's tracer behind the port —
 it reads deblob's own CLI only, and needs `typescript` at run time.
 
-The live project source is composed by `src/drivers/wiring.ts` from the config
+The live project source is composed by `src/app.assembly.ts` from the config
 service's adapters (`loader.adapter.ts` — `readPackageName(root)` is the
 manifest name — and `scan.adapter.ts`), `fs-readme-texts.adapter.ts` and the
-extraction service.
+extraction service — shared by the three apps, owned by none.
 
-## Drivers (`src/drivers/`)
+## The apps it serves (`src/apps/`)
 
-- `serve/` — the view server. `serve(io)` is the assembly, with two callers: the
-  projects of the cwd's config, an HTTP server with the channel at `/deblob/ws`,
-  the chokidar watcher (100 ms quiet), the protocol served; its own failures on
-  stderr in full, and it keeps serving. A cwd config it cannot read is not one
-  of those: it throws before anything listens, and each caller presents it. The
-  package script `serve` (run from source, `PORT` in the environment,
-  default 5175) is `main(io)`, the dev cycle's data half alone: the config's
-  message on stderr and exit 2, or serving until SIGINT/SIGTERM and exit 0. The
-  CLI's `view` verb calls the same assembly with a bundle root, and the same
-  server then answers the page and its assets at `/` ([view](../view/README.md))
-  — one port for both, since the channel rides the HTTP server's upgrade. Either
-  way the channel takes `allowsHandshake`, and a refusal is one line on stderr
-  naming the origin — not a bug, so not `report`'s, but a server that turns
-  clients away without a word cannot be debugged.
-- `snapshot/` — the script driver, package script `snapshot`: executed, never
-  imported; cwd in as the project root (exactly, nothing above it), the snapshot
-  as one JSON line on stdout, exit 0; a config error on stderr, exit 2. The
-  viewer's corpus seed.
-- `wiring.ts` — the project source and the extraction composed for the two
-  drivers; the CLI driver keeps its own sequence.
+- `serve/` — the view server. `serve(io)` (`serve.assembly.ts`) is the
+  composition, with two callers: the projects of the cwd's config, an HTTP
+  server with the channel at `/deblob/ws`, the chokidar watcher (100 ms quiet),
+  the protocol served; its own failures on stderr in full, and it keeps serving.
+  A cwd config it cannot read is not one of those: it throws before anything
+  listens, and each caller presents it. The serve app (package script `serve`,
+  `PORT` in the environment, default 5175) is the dev cycle's data half alone:
+  the config's message on stderr and exit 2, or serving until SIGINT/SIGTERM and
+  exit 0. The CLI's `view` calls the same composition with a bundle root, and
+  the same server then answers the page and its assets at `/`
+  ([view](../view/README.md)) — one port for both, since the channel rides the
+  HTTP server's upgrade. Either way the channel takes `allowsHandshake`, and a
+  refusal is one line on stderr naming the origin — not a bug, so not
+  `report`'s, but a server that turns clients away without a word cannot be
+  debugged.
+- `snapshot/` — the snapshot script, package script `snapshot`: cwd in as the
+  project root (exactly, nothing above it), the snapshot as one JSON line on
+  stdout, exit 0; a config error on stderr, exit 2. The viewer's corpus seed.

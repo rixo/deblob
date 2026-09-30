@@ -50,11 +50,99 @@ const ROUTES = `
   }
 `
 
+/**
+ * A driver reader for a router the project writes itself: it claims the file,
+ * no package (GUESS: D4).
+ */
+const LOCAL_ROUTER = {
+  name: "local-router",
+  claims: () => false,
+  claimsFile: (path: string) => path === "src/lib/router/router.model.ts",
+}
+
+/** The project's own router: a model factory, its registrations kept inside. */
+const ROUTER_FILE = {
+  "src/lib/router/router.model.ts": `
+    export const createRouter = () => {
+      const routes = new Map<string, (query: unknown) => unknown>()
+      return {
+        route: (path: string, hook: (query: unknown) => unknown) => {
+          routes.set(path, hook)
+        },
+      }
+    }
+  `,
+} as const
+
+/** A driver over the local router: its hooks cut, one use case each. */
+const LOCAL_ROUTES = `
+  import { createRouter } from "./lib/router/router.model.ts"
+  import { createApp } from "./app.assembly.ts"
+  export const main = () => {
+    const { notes } = createApp()
+    const router = createRouter()
+    router.route("/notes", (query: unknown) => notes.list(query))
+  }
+`
+
 const ROWS: readonly Row[] = [
   {
     name: "a driver over a router the project's reader claims: its hooks cut, the rules as ever",
     config: { readers: { driver: [ROUTER] } },
     files: { ...APP, "src/web.driver.ts": ROUTES },
+  },
+  {
+    name: "a driver over a local router its reader claims as a project file: its hooks cut, the rules as ever",
+    config: { readers: { driver: [LOCAL_ROUTER] } },
+    files: { ...APP, ...ROUTER_FILE, "src/web.driver.ts": LOCAL_ROUTES },
+  },
+  {
+    name: "the same local router no reader claims: a model the driver imports and calls, red",
+    config: { readers: { driver: [ROUTER] } },
+    files: {
+      ...APP,
+      ...ROUTER_FILE,
+      // six reds for one missing premise, as with an unclaimed package's
+      // callee before D8's cut: a project file has no such cut yet, and the
+      // message calls \`route\` a use case (GUESS: D4, both findings)
+      "src/web.driver.ts": `
+        import { createRouter } from "./lib/router/router.model.ts"
+        import { createApp } from "./app.assembly.ts"
+        export const main = () => {
+          const { notes } = createApp()
+          // red: driver-calls-services -- a model's factory, called
+          const router = createRouter()
+          // red: wiring-outside-hooks -- the callback's use case, outside any hook
+          // red: wiring-outside-hooks -- its argument read as computed
+          // red: wiring-outside-hooks -- route, a model's, called in the wiring
+          // red: wiring-outside-hooks -- handed a function
+          router.route("/notes", (query: unknown) => notes.list(query))
+        }
+        // red: driver-calls-services -- the import: a model, not its tech
+      `,
+    },
+  },
+  {
+    name: "a claimed router file keeps every rule of its own layer: its root state is red",
+    config: { readers: { driver: [LOCAL_ROUTER] } },
+    files: {
+      ...APP,
+      "src/lib/router/router.model.ts": `
+        // red: stable-root -- claimed as tech, still a model
+        const routes = new Map<string, (query: unknown) => unknown>()
+        export const route = (path: string, hook: (query: unknown) => unknown) => {
+          routes.set(path, hook)
+        }
+      `,
+      "src/web.driver.ts": `
+        import { route } from "./lib/router/router.model.ts"
+        import { createApp } from "./app.assembly.ts"
+        export const main = () => {
+          const { notes } = createApp()
+          route("/notes", (query: unknown) => notes.list(query))
+        }
+      `,
+    },
   },
   {
     name: "the same driver with no reader bound is red on the file: its premises do not cover it",

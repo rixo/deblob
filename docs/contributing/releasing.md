@@ -17,7 +17,7 @@ Everything before `publish` is rehearsable; only the last step is outward.
    `pnpm test` (100% / four axes bar) and `pnpm check` (self-gate) green in
    `packages/deblob`.
 2. **Bump** — `npm version X.Y.Z --no-git-tag-version` in `packages/deblob`. The
-   bare golden (`src/drivers/cli/__fixtures__/goldens/bare.txt`) carries the
+   bare golden (`src/apps/cli/__fixtures__/goldens/bare.txt`) carries the
    version in its headline and goes red on every bump — update the number, rerun
    `main.spec.ts`. Expected churn, rides the release commit.
 3. **Tarball smoke** — `npm pack`, install the tarball into a scratch project,

@@ -11,6 +11,7 @@ import { join } from "node:path"
 
 import type { RuleId } from "../../check/rule.model.ts"
 import type { Fs } from "../../fs/fs.port.ts"
+import type { ContentReader } from "../content.port.ts"
 import type { ExplainEntry } from "../rule-content.model.ts"
 import {
   RULE_CARDS,
@@ -22,7 +23,11 @@ import {
 const slugOf = (cardPath: string): string =>
   (cardPath.split("/").pop() as string).replace(/\.md$/, "")
 
-export const createContentReader = ({ fs }: { fs: Pick<Fs, "readFile"> }) => {
+export const createContentReader = ({
+  fs,
+}: {
+  fs: Pick<Fs, "readFile">
+}): ContentReader => {
   const shipped = async (path: string): Promise<string> => {
     const text = await fs.readFile(path)
     if (text === null) throw new Error(`shipped content missing: ${path}`)

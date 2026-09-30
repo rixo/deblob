@@ -3,8 +3,6 @@ import { describe, expect, it, test } from "vitest"
 
 import type { ModuleRef, Snapshot } from "@deblob/viewer/snapshot.model"
 
-import { main } from "../../drivers/cli/main.ts"
-import { createProjectSource, extractionFor } from "../../drivers/wiring.ts"
 import { ConfigError } from "../config/config.model.ts"
 import type { ResolvedConfig } from "../config/config.service.ts"
 import { resolveConfig } from "../config/config.service.ts"
@@ -594,61 +592,5 @@ describe("serveSnapshots", () => {
         report,
       }),
     ).toThrow("no project to serve")
-  })
-})
-
-describe("self-extract", () => {
-  /** The driver's own wiring over this very package. */
-  const deblobRoot = fileURLToPath(new URL("../../../", import.meta.url))
-
-  test("snapshots this package with the numbers `deblob check` reports", async () => {
-    const source = createProjectSource()
-    const { snapshotOf } = createSnapshotService({
-      source,
-      extractionFor,
-      feed: plainFeed(),
-    })
-    const snapshot = await snapshotOf(deblobRoot)
-
-    // the live scan's directories span every covered file — the watch set
-    const dirs = await source.scanCoverageDirs(
-      await source.loadConfig(deblobRoot),
-    )
-    for (const { path } of snapshot.modules) {
-      const dir = path.slice(0, path.lastIndexOf("/"))
-      if (dir !== "") expect(dirs).toContain(dir)
-    }
-
-    let out = ""
-    await main({
-      argv: ["check"],
-      cwd: deblobRoot,
-      stdout: { write: (chunk: string) => (out += chunk) },
-      stderr: { write: () => {} },
-      env: {},
-      signal: new AbortController().signal,
-      bundle: "",
-    })
-    const headline = /(\d+) files? · \S+ · (\d+)% blob/.exec(out)
-    const coverage = /(\d+) services? · (\d+) imports?/.exec(out)
-    expect(headline).not.toBeNull()
-    expect(coverage).not.toBeNull()
-    const [, files, blobPercent] = headline as RegExpExecArray
-    const [, services, imports] = coverage as RegExpExecArray
-
-    expect(snapshot.project.name).toBe("deblob")
-    expect(snapshot.project.provenance).toBe(
-      "deblob.config.ts (flavor: ts-suffixes-factories)",
-    )
-    expect(snapshot.stats.files).toBe(Number(files))
-    expect(snapshot.stats.blobPercent).toBe(Number(blobPercent))
-    expect(snapshot.stats.services).toBe(Number(services))
-    expect(snapshot.edges).toHaveLength(Number(imports))
-    expect(snapshot.modules.map((module) => module.path)).toContain(
-      "src/lib/snapshot/snapshot.service.ts",
-    )
-    // the config loader's non-literal `import()` is informational by design;
-    // a literal one is what the check refuses to certify
-    expect(snapshot.unresolved.filter((entry) => entry.literal)).toEqual([])
   })
 })

@@ -11,11 +11,13 @@ export default defineConfig({
       exclude: [
         "src/**/*.spec.ts",
         "src/**/__fixtures__/**",
-        // process glue only — covered by the child-process smoke test; the
-        // ruled e2e-only exception (09 spec), everything else runs in-process
-        "src/drivers/cli/bin.ts",
-        "src/drivers/serve/bin.ts",
-        "src/drivers/snapshot/bin.ts",
+        // process glue only — each app's boot and root driver, covered by the
+        // child-process smoke tests; the ruled e2e-only exception (09 spec),
+        // everything else runs in-process
+        "src/apps/*/*.boot.ts",
+        "src/apps/cli/cli.driver.ts",
+        "src/apps/serve/serve.driver.ts",
+        "src/apps/snapshot/snapshot.driver.ts",
         // throwaway code, rewritten 100% — delete with the directory
         "src/spike/**",
       ],

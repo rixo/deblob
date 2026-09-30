@@ -55,7 +55,7 @@ import { RULE_IDS } from "../../check/rule.model.ts"
 import type { ViolationGroup } from "../../check/grouping.model.ts"
 import type { Violation } from "../../check/violation.model.ts"
 import type { BrokenSite } from "../../extraction/graph.model.ts"
-import type { CheckName } from "../../cli/cli.model.ts"
+import type { CheckName } from "../../check/checks.model.ts"
 
 /** A tree of strings under a config, the checks to run over it. */
 export type Case = {

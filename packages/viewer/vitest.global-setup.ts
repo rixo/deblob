@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url"
 
 const deblobRoot = fileURLToPath(new URL("../deblob/", import.meta.url))
 const snapshotBin = fileURLToPath(
-  new URL("../deblob/src/drivers/snapshot/bin.ts", import.meta.url),
+  new URL("../deblob/src/apps/snapshot/snapshot.boot.ts", import.meta.url),
 )
 const corpusDir = new URL("./tmp/corpus/", import.meta.url)
 

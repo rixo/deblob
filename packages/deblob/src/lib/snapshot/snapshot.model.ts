@@ -18,7 +18,7 @@ import {
   serviceCountOf,
   sizeStatsOf,
   violationMessage,
-} from "../cli/render.model.ts"
+} from "../report/render.model.ts"
 import type { ResolvedConfig } from "../config/config.service.ts"
 import type {
   ImportEdge,

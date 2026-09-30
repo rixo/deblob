@@ -671,7 +671,9 @@ export type ImportEdge = {
   /**
    * An external edge's claim, for its importer: its own driver or test reader's
    * (`reader`), a bound host's builtin (`tech`), pure (`model`), or nobody's.
-   * Absent on a module edge.
+   * On a module edge, `reader` alone, where the importer's own reader claims
+   * the project file as its tech (a local router — GUESS: D4); absent
+   * otherwise.
    */
   claim?: "reader" | "tech" | "model" | "unclaimed"
 }
