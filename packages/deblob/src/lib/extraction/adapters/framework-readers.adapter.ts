@@ -9,22 +9,27 @@ import type { DriverReader } from "../ports/driver-reader.port.ts"
  * object (`{ name, transform() {} }`, a Vite plugin) is no callback handed over
  * — its methods read as definitions, the framework's own cut owed.
  */
-const claimsOf =
-  (name: string, packages: ReadonlySet<string>) =>
-  (binding: ReaderBinding = {}): DriverReader => ({
-    name,
-    ...binding,
-    claims: (specifier) => {
-      const pkg = packageNameOf(specifier)
-      return pkg !== null && packages.has(pkg)
-    },
-  })
+const claimsOf = (
+  name: string,
+  packages: ReadonlySet<string>,
+  binding: ReaderBinding,
+): DriverReader => ({
+  name,
+  ...binding,
+  claims: (specifier) => {
+    const pkg = packageNameOf(specifier)
+    return pkg !== null && packages.has(pkg)
+  },
+})
 
 /** Vite's plugin API: `vite`, and the plugin helpers under it. */
-export const createViteReader = claimsOf("vite", new Set(["vite"]))
+export const createViteReader = (binding: ReaderBinding = {}): DriverReader =>
+  claimsOf("vite", new Set(["vite"]), binding)
 
 /** Astro: `astro` and its virtual modules (`astro:middleware`, `astro:content`). */
-export const createAstroReader = claimsOf(
-  "astro",
-  new Set(["astro", "astro:middleware", "astro:content", "astro:assets"]),
-)
+export const createAstroReader = (binding: ReaderBinding = {}): DriverReader =>
+  claimsOf(
+    "astro",
+    new Set(["astro", "astro:middleware", "astro:content", "astro:assets"]),
+    binding,
+  )

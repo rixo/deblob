@@ -62,7 +62,7 @@ const collectRequires = (
 
 type AstNode = Record<string, unknown>
 
-const ERASABLE_DECLARATIONS = new Set([
+const ERASABLE_DECLARATIONS: ReadonlySet<string> = new Set([
   "TSInterfaceDeclaration",
   "TSTypeAliasDeclaration",
 ])

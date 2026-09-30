@@ -123,7 +123,7 @@ const isNode = (value: unknown): value is AstNode =>
   value !== null &&
   typeof (value as { type?: unknown }).type === "string"
 
-const FUNCTION_TYPES = new Set([
+const FUNCTION_TYPES: ReadonlySet<string> = new Set([
   "ArrowFunctionExpression",
   "FunctionExpression",
 ])
@@ -132,7 +132,7 @@ const isFunctionNode = (node: AstNode | null): node is AstNode =>
   node !== null && FUNCTION_TYPES.has(node.type)
 
 /** Transparent wrappers: the value is the inner expression's. */
-const WRAPPERS = new Set([
+const WRAPPERS: ReadonlySet<string> = new Set([
   "ParenthesizedExpression",
   "TSAsExpression",
   "TSSatisfiesExpression",
@@ -203,7 +203,7 @@ const typedAs = (type: Immutability, value: Immutability): Immutability => {
 }
 
 /** Type keywords whose values are primitives — immutable by nature. */
-const PRIMITIVE_TYPE_KEYWORDS = new Set([
+const PRIMITIVE_TYPE_KEYWORDS: ReadonlySet<string> = new Set([
   "TSStringKeyword",
   "TSNumberKeyword",
   "TSBooleanKeyword",

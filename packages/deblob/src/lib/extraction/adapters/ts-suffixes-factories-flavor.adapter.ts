@@ -17,7 +17,7 @@ import type {
  * (assembly, driver, boot) are named by suffix like the inside ones; a
  * framework that owns the file name declares its files by config glob instead.
  */
-const LAYER_BY_SUFFIX: Record<string, FlavorLayer> = {
+const LAYER_BY_SUFFIX: Readonly<Record<string, FlavorLayer>> = {
   model: "model",
   port: "ports",
   service: "service",
@@ -39,7 +39,7 @@ const ROOT_MARKING_SUFFIX =
   /\.(?:model|port|service|adapter)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
 
 /** Layer/visibility grouping dirs — filing, never service roots. */
-const GROUPING_DIRS = new Set([
+const GROUPING_DIRS: ReadonlySet<string> = new Set([
   "model",
   "ports",
   "service",

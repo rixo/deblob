@@ -60,27 +60,26 @@ const GLOBALS: readonly string[] = [
 ]
 
 /**
- * Every builtin, both spellings: `fs` and `node:fs`; `node:test` is
- * prefix-only.
- */
-const BUILTINS: ReadonlySet<string> = new Set(
-  builtinModules.flatMap((name) =>
-    name.startsWith("node:") ? [name] : [name, `node:${name}`],
-  ),
-)
-
-/**
  * The stock host reader: Node. Its builtin modules are its tech, `node:path`
  * and `node:querystring` the pure ones (string-only, deterministic — GUESS: R5,
  * the curated table moved here from the graph); its free names are tech, and
  * `__dirname`/`__filename` the module's own location (GUESS: R6 — a location
  * where `node` is bound, unclaimed elsewhere). Shipped, bound by the project.
  */
-export const createNodeReader = (binding: ReaderBinding = {}): HostReader => ({
-  name: "node",
-  ...binding,
-  globals: GLOBALS,
-  locations: ["__dirname", "__filename"],
-  claims: (specifier) => BUILTINS.has(specifier),
-  pure: ["node:path", "node:querystring", "path", "querystring"],
-})
+export const createNodeReader = (binding: ReaderBinding = {}): HostReader => {
+  // every builtin, both spellings: `fs` and `node:fs`; `node:test` is
+  // prefix-only
+  const builtins = new Set(
+    builtinModules.flatMap((name) =>
+      name.startsWith("node:") ? [name] : [name, `node:${name}`],
+    ),
+  )
+  return {
+    name: "node",
+    ...binding,
+    globals: GLOBALS,
+    locations: ["__dirname", "__filename"],
+    claims: (specifier) => builtins.has(specifier),
+    pure: ["node:path", "node:querystring", "path", "querystring"],
+  }
+}

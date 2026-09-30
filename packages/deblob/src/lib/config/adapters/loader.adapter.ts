@@ -16,7 +16,7 @@ import { exportsSubpathsOf } from "../../extraction/exports-map.model.ts"
 import type { Fs } from "../../fs/fs.port.ts"
 import { ConfigError, configImportErrorMessage } from "../config.model.ts"
 
-const CONFIG_FILENAMES = [
+const CONFIG_FILENAMES: readonly string[] = [
   "deblob.config.ts",
   "deblob.config.mts",
   "deblob.config.js",

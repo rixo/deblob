@@ -15,7 +15,7 @@ import type { Fs } from "../../fs/fs.port.ts"
 import { packageNameOf } from "../graph.model.ts"
 import type { Resolution, Resolver } from "../ports/resolver.port.ts"
 
-const EXTENSIONS = [
+const EXTENSIONS: readonly string[] = [
   ".ts",
   ".tsx",
   ".mts",
