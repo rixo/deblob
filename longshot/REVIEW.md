@@ -4,7 +4,33 @@ Where to look, what to rule. Everything else is in [GUESSES.md](GUESSES.md)
 (every hole, the default taken, where it lives) and [DELTA.md](DELTA.md) (what
 the chasing branches lack).
 
-## Talk-through (started 2026-09-29 evening) — RESUME HERE
+## Where we are (2026-09-30 night) — RESUME HERE
+
+Done today, in order, each with its SPEC (`## Why` first):
+
+1. **Apps layout** — `src/apps/{cli,serve,snapshot}`, `src/lib/` for what no
+   single app owns (router, terminal, report). Talked through with rixo, built,
+   reasons backfilled in [apps-layout/SPEC.md](apps-layout/SPEC.md).
+2. **Code-debt pass, lib reds** — readonly roots, node's builtins in its
+   factory; what stays in lib code is R9 (reader debt, code left alone).
+3. **Placement recut** — the check chain wired once
+   ([placement-recut/SPEC.md](placement-recut/SPEC.md), decision record). Found
+   L8 (a real bug: the CLI ignored `configLoads`, driver-layer too — owed there
+   regardless), closed L3 (a reader limit, fixed), opened L7.
+
+Self-check 601 → 239. What remains, by owner: tests (~190, wait on T1+T5), L4
+(process-start drivers), L5 (the server), the spike quarantine, R9 unknowns.
+
+Agreed order (rixo, 2026-09-30): align the code first, then judge the tests.
+**Next: the T1+T5 dossier** over the specs as they now stand — per question, the
+options, a red/clean table of real snippets from deblob's specs (the CLI gate
+registering per test, L2, is one), what each option costs and buys, a
+recommendation. Present it; rixo rules; then tests to green. Parked for a later
+talk: my impression of the rules' direction (inside held; holes cluster at entry
+points and tests; ceremony; "write the type out" messages invite bending code to
+the reader).
+
+## Talk-through (started 2026-09-29 evening)
 
 Nothing is settled in bulk: each hole is talked through, one item or a small
 related group at a time. The rush's shape (integration, review after the fact)
