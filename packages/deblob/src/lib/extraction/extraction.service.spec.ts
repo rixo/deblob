@@ -62,14 +62,14 @@ const FIXTURE_READERS: ReaderGroups = {
 /** The reading fixture's driver tech: a parser no stock reader knows. */
 const PARSER: DriverReader = {
   name: "made-up-parser",
-  claims: (specifier) => specifier === "some-made-up-parser",
+  tech: ["some-made-up-parser"],
 }
 
 /** A driver reader bound to the files named, claiming nothing. */
 const driverOver = (include: readonly string[]): DriverReader => ({
   name: "some-made-up-reader",
   include,
-  claims: () => false,
+  tech: [],
 })
 
 /** Every config resolved by the one resolver given — the specs' own fixed lens. */

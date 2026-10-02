@@ -36,6 +36,7 @@ import type { PackageClaims } from "./ports/package-claims.port.ts"
 import type { Resolvers } from "./ports/resolver.port.ts"
 import type { ImportTargetKind } from "./reading.model.ts"
 import { brokenLinesOf, readModule } from "./reading.model.ts"
+import { isTechFile, isTechPackage } from "./tech.model.ts"
 import { symbolLevelOf } from "./symbols.model.ts"
 import type { Designations } from "./recognition.model.ts"
 import { knowledgeOf } from "./knowledge.model.ts"
@@ -306,7 +307,8 @@ export const createExtraction = ({
       target: Extract<EdgeTarget, { type: "external" }>,
       specifier: string,
     ): "reader" | "tech" | "model" | "unclaimed" => {
-      if (own.some((reader) => reader.claims(specifier))) return "reader"
+      if (own.some((reader) => isTechPackage(reader.tech, specifier)))
+        return "reader"
       if (externalPurityOf(target, pureSet) === "pure") return "model"
       const name = target.package ?? specifier
       if (
@@ -352,7 +354,7 @@ export const createExtraction = ({
       if (target.type === "module") {
         // a project file the importer's own reader claims is its tech, read
         // as a claimed package is (GUESS: D4)
-        if (own.some((reader) => reader.claimsFile?.(target.path) === true))
+        if (own.some((reader) => isTechFile(reader.tech, target.path)))
           return {
             kind: "external",
             package: target.path,
@@ -637,8 +639,8 @@ export const createExtraction = ({
             to.specifier,
           ),
         }
-      return ownReadersOf(from).some(
-        (reader) => reader.claimsFile?.(to.path) === true,
+      return ownReadersOf(from).some((reader) =>
+        isTechFile(reader.tech, to.path),
       )
         ? { claim: "reader" }
         : {}

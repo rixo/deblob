@@ -14,6 +14,6 @@ export const createBlobDriverReader = (
   name: "blob-driver",
   include: [],
   ...binding,
-  claims: () => false,
+  tech: [],
   blob: true,
 })

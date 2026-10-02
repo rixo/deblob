@@ -39,7 +39,7 @@ const fakeTestReader = (
 ): TestReader => ({
   name,
   ...(include ? { include } : {}),
-  claims: () => false,
+  tech: [],
   roleOf: () => null,
 })
 
@@ -284,7 +284,7 @@ describe("resolveConfig — readers: four groups, a written one replaces its def
   })
 
   it("replaces a written group whole and keeps the others' defaults", () => {
-    const cli = { name: "some-cli", claims: () => true }
+    const cli = { name: "some-cli", tech: ["some-cli"] }
     const resolved = resolve({ readers: { driver: [cli], test: [] } })
     expect(resolved.readers.driver).toEqual([cli])
     expect(resolved.readers.test).toEqual([])
@@ -311,6 +311,21 @@ describe("resolveConfig — readers: four groups, a written one replaces its def
     )
   })
 
+  it("rejects a driver or test reader whose tech is not a list of strings, naming the reader — a function included", () => {
+    expect(() =>
+      resolve({
+        readers: { driver: [{ name: "some-cli", claims: () => true }] },
+      }),
+    ).toThrowError(
+      /reader "some-cli" under "readers.driver": tech must be an array of strings/,
+    )
+    expect(() =>
+      resolve({ readers: { test: [{ name: "some-runner" }] } }),
+    ).toThrowError(
+      /reader "some-runner" under "readers.test": tech must be an array of strings/,
+    )
+  })
+
   it("covers a script extension, a designated file, or a file a driver or test reader's written binding names — nothing else", () => {
     const resolved = resolve({
       assembly: ["src/wire/*.json"],
@@ -319,7 +334,7 @@ describe("resolveConfig — readers: four groups, a written one replaces its def
           {
             name: "pages",
             include: ["src/routes/**/+page.svelte"],
-            claims: () => false,
+            tech: [],
           },
         ],
         test: [fakeTestReader("stories", ["src/**/*.story.vue"])],

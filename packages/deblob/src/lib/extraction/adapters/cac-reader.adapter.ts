@@ -1,4 +1,3 @@
-import { packageNameOf } from "../graph.model.ts"
 import type { ReaderBinding } from "../recognition.model.ts"
 import type { DriverReader } from "../ports/driver-reader.port.ts"
 
@@ -12,5 +11,5 @@ import type { DriverReader } from "../ports/driver-reader.port.ts"
 export const createCacReader = (binding: ReaderBinding = {}): DriverReader => ({
   name: "cac",
   ...binding,
-  claims: (specifier) => packageNameOf(specifier) === "cac",
+  tech: ["cac"],
 })

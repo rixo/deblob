@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 
+import { isTechPackage } from "../tech.model.ts"
 import {
   createAstroReader,
   createViteReader,
@@ -9,16 +10,16 @@ describe("createViteReader", () => {
   it("claims vite by package, a relative path never", () => {
     const reader = createViteReader({ include: ["src/plugin/**"] })
     expect(reader).toMatchObject({ name: "vite", include: ["src/plugin/**"] })
-    expect(reader.claims("vite")).toBe(true)
-    expect(reader.claims("./vite.ts")).toBe(false)
+    expect(isTechPackage(reader.tech, "vite")).toBe(true)
+    expect(isTechPackage(reader.tech, "./vite.ts")).toBe(false)
   })
 })
 
 describe("createAstroReader", () => {
   it("claims astro, its subpaths and its virtual modules", () => {
     const reader = createAstroReader()
-    expect(reader.claims("astro/middleware")).toBe(true)
-    expect(reader.claims("astro:middleware")).toBe(true)
-    expect(reader.claims("svelte")).toBe(false)
+    expect(isTechPackage(reader.tech, "astro/middleware")).toBe(true)
+    expect(isTechPackage(reader.tech, "astro:middleware")).toBe(true)
+    expect(isTechPackage(reader.tech, "svelte")).toBe(false)
   })
 })

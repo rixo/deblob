@@ -20,8 +20,7 @@ export default defineConfig({
       {
         name: "deblob-router",
         include: ["src/apps/cli/*.driver.ts"],
-        claims: () => false,
-        claimsFile: (path) => path === "src/lib/router/router.model.ts",
+        tech: ["./src/lib/router/router.model.ts"],
       },
     ],
   },

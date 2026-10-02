@@ -1,4 +1,3 @@
-import { packageNameOf } from "../graph.model.ts"
 import type { Role } from "../graph.model.ts"
 import type { ReaderBinding } from "../recognition.model.ts"
 import type { TestReader } from "../ports/test-reader.port.ts"
@@ -31,7 +30,7 @@ export const createPlaywrightReader = (
 ): TestReader => ({
   name: "playwright",
   ...binding,
-  claims: (specifier) => packageNameOf(specifier) === "@playwright/test",
+  tech: ["@playwright/test"],
   exempts: ["registration", "call-count", "services-only", "definitions"],
   // the longest listed name the chain starts with: `test.describe.only` is a
   // group, `test.skip` a verification; own keys only

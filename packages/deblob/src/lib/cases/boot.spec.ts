@@ -53,7 +53,7 @@ const CLI = {
  */
 const readerOf = (...packages: readonly string[]) => ({
   name: packages.join("+"),
-  claims: (specifier: string) => packages.includes(specifier),
+  tech: packages,
 })
 
 const CONFIG = { readers: { driver: [readerOf("cac")] } }

@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest"
 
 import { createCacReader } from "./cac-reader.adapter.ts"
+import { isTechPackage } from "../tech.model.ts"
 
 describe("createCacReader", () => {
   it("claims cac by package, subpaths included, and nothing else", () => {
     const reader = createCacReader()
     expect(reader.name).toBe("cac")
-    expect(reader.claims("cac")).toBe(true)
-    expect(reader.claims("cac/deno")).toBe(true)
-    expect(reader.claims("commander")).toBe(false)
+    expect(isTechPackage(reader.tech, "cac")).toBe(true)
+    expect(isTechPackage(reader.tech, "cac/deno")).toBe(true)
+    expect(isTechPackage(reader.tech, "commander")).toBe(false)
   })
 
   it("takes a binding over its default", () => {

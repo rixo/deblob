@@ -1,4 +1,3 @@
-import { packageNameOf } from "../graph.model.ts"
 import type { Role } from "../graph.model.ts"
 import type { TestReader } from "../ports/test-reader.port.ts"
 import type { ReaderBinding } from "../recognition.model.ts"
@@ -11,7 +10,7 @@ import type { ReaderBinding } from "../recognition.model.ts"
  * not read: a free `describe` is unclaimed to this reader, never the runner —
  * naming a runner's globals is that runner's own reader's work.
  */
-const RUNNERS: ReadonlySet<string> = new Set([
+const RUNNERS: readonly string[] = [
   "vitest",
   "jest",
   "@jest/globals",
@@ -21,7 +20,7 @@ const RUNNERS: ReadonlySet<string> = new Set([
   "ava",
   "uvu",
   "tap",
-])
+]
 
 const SETUP_EACH = { kind: "setup", scope: "each" } as const satisfies Role
 const SETUP_ALL = { kind: "setup", scope: "all" } as const satisfies Role
@@ -68,10 +67,7 @@ export const createGoodEnoughTestsReader = (
 ): TestReader => ({
   name: "good-enough-tests",
   ...binding,
-  claims: (specifier) => {
-    const pkg = packageNameOf(specifier)
-    return pkg !== null && RUNNERS.has(pkg)
-  },
+  tech: RUNNERS,
   exempts: ["registration", "call-count", "services-only", "definitions"],
   // the longest listed name the chain starts with: `it.skip.each` is `it`,
   // `vi.mock` a mock, `vi.fn` none; own keys only (`constructor` is none)

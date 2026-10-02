@@ -19,7 +19,7 @@ import { AS_MARKED } from "./runner/markers.model.ts"
 /** A driver reader for the fixture's own tech: a router no stock reader knows. */
 const ROUTER = {
   name: "made-up-router",
-  claims: (specifier: string) => specifier === "made-up-router",
+  tech: ["made-up-router"],
 }
 
 /** The notes service, its assembly, and the router package. */
@@ -56,8 +56,7 @@ const ROUTES = `
  */
 const LOCAL_ROUTER = {
   name: "local-router",
-  claims: () => false,
-  claimsFile: (path: string) => path === "src/lib/router/router.model.ts",
+  tech: ["./src/lib/router/router.model.ts"],
 }
 
 /** The project's own router: a model factory, its registrations kept inside. */

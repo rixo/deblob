@@ -326,6 +326,15 @@ const readersOf = (value: unknown, defaults: DefaultReaders): ReaderGroups => {
         `config key "readers.${group}" must be an array of readers — a stock factory called (node(), goodEnoughTests()) or an object with a name`,
       )
     }
+    if (group === "driver" || group === "test") {
+      for (const entry of entries as { name: string; tech?: unknown }[]) {
+        if (!isStringArray(entry.tech)) {
+          throw new ConfigError(
+            `reader "${entry.name}" under "readers.${group}": tech must be an array of strings — package names, and project files as "./path" — a declaration, not a function`,
+          )
+        }
+      }
+    }
     return entries as ReaderGroups[G]
   }
   return {

@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest"
 
 import { createPlaywrightReader } from "./playwright-reader.adapter.ts"
+import { isTechPackage } from "../tech.model.ts"
 
 describe("createPlaywrightReader", () => {
   it("claims @playwright/test and exempts what a test file does", () => {
     const reader = createPlaywrightReader({ include: ["tests/**"] })
     expect(reader).toMatchObject({ name: "playwright", include: ["tests/**"] })
-    expect(reader.claims("@playwright/test")).toBe(true)
-    expect(reader.claims("vitest")).toBe(false)
+    expect(isTechPackage(reader.tech, "@playwright/test")).toBe(true)
+    expect(isTechPackage(reader.tech, "vitest")).toBe(false)
     expect(reader.exempts).toHaveLength(4)
   })
 

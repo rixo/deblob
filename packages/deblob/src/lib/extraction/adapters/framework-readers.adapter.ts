@@ -1,4 +1,3 @@
-import { packageNameOf } from "../graph.model.ts"
 import type { ReaderBinding } from "../recognition.model.ts"
 import type { DriverReader } from "../ports/driver-reader.port.ts"
 
@@ -11,25 +10,22 @@ import type { DriverReader } from "../ports/driver-reader.port.ts"
  */
 const claimsOf = (
   name: string,
-  packages: ReadonlySet<string>,
+  packages: readonly string[],
   binding: ReaderBinding,
 ): DriverReader => ({
   name,
   ...binding,
-  claims: (specifier) => {
-    const pkg = packageNameOf(specifier)
-    return pkg !== null && packages.has(pkg)
-  },
+  tech: packages,
 })
 
 /** Vite's plugin API: `vite`, and the plugin helpers under it. */
 export const createViteReader = (binding: ReaderBinding = {}): DriverReader =>
-  claimsOf("vite", new Set(["vite"]), binding)
+  claimsOf("vite", ["vite"], binding)
 
 /** Astro: `astro` and its virtual modules (`astro:middleware`, `astro:content`). */
 export const createAstroReader = (binding: ReaderBinding = {}): DriverReader =>
   claimsOf(
     "astro",
-    new Set(["astro", "astro:middleware", "astro:content", "astro:assets"]),
+    ["astro", "astro:middleware", "astro:content", "astro:assets"],
     binding,
   )

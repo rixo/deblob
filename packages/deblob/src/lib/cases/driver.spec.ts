@@ -29,7 +29,7 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  */
 const readerOf = (...packages: readonly string[]) => ({
   name: packages.join("+"),
-  claims: (specifier: string) => packages.includes(specifier),
+  tech: packages,
 })
 
 /** The parser as the driver's tech, claimed by the driver's reader. */

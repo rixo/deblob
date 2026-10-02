@@ -49,7 +49,7 @@ const levelsOf = async (files: readonly string[] = FILES) => {
       driver: [
         {
           name: "made-up-parser",
-          claims: (specifier: string) => specifier === "some-made-up-parser",
+          tech: ["some-made-up-parser"],
         },
       ],
     },

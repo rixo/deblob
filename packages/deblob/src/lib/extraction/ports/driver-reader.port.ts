@@ -13,14 +13,14 @@ import type { ReaderBinding } from "../recognition.model.ts"
 
 export interface DriverReader extends ReaderBinding {
   readonly name: string
-  /** The packages this technology is: external specifiers it claims as tech. */
-  claims(specifier: string): boolean
   /**
-   * The project files this technology is (a local router), by root-relative
-   * path. Claimed tells the driver's reading what it listens to; the file
-   * itself stays judged by its own layer (GUESS: D4).
+   * What this technology is, declared: package names (`"cac"`, subpaths
+   * included) and project files by root-relative path with a `./` prefix
+   * (`"./src/lib/router/router.service.ts"`). It tells the driver's reading
+   * what the driver listens to; a file named here stays judged by its own layer
+   * (GUESS: D4).
    */
-  claimsFile?(path: string): boolean
+  readonly tech: readonly string[]
   /** Driver rules the tech's shape exempts. */
   readonly exempts?: readonly Exemption[]
   /**

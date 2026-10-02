@@ -14,5 +14,5 @@ export const createHostDriverReader = (
 ): DriverReader => ({
   name: "host-driver",
   ...binding,
-  claims: () => false,
+  tech: [],
 })
