@@ -4,7 +4,15 @@ Where to look, what to rule. Everything else is in [GUESSES.md](GUESSES.md)
 (every hole, the default taken, where it lives) and [DELTA.md](DELTA.md) (what
 the chasing branches lack).
 
-## Where we are (2026-09-30 night) — RESUME HERE
+## Where we are (2026-10-01) — RESUME HERE
+
+**Moved:** the session continues in
+[tests-model/README.md](tests-model/README.md) § RESUME HERE — the tests item
+turned into a canon-wide atomization (rixo ruled it is the work before v1); an
+atom-hunt workflow is running. Below is the previous resume point, kept for the
+agenda.
+
+## Where we were (2026-09-30 night)
 
 Done today, in order, each with its SPEC (`## Why` first):
 

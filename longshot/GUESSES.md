@@ -66,7 +66,13 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   reds for one missing premise — D8's cut does not cover a project file's
   callee, and the message calls the router's `route` "the use case" (two
   findings, confessed in the row). deblob's router, a model factory, reads clean
-  as its own layer.
+  as its own layer. **Amended 2026-10-02 (rixo): the edge skip above goes.** A
+  claim never turns off a layer cell: a claimed file is judged on the edge and
+  in itself by its kind, so a driver imports a claimed service, never a model or
+  adapter; the claim only makes the callbacks handed to it hooks (the reader's
+  job). Claims became a declared list (`./path` for a file), `claimsFile` gone.
+  Built: the list (checkpoint 1); the skip's removal and the router's move to a
+  service are the next checkpoint. See `tests-model/README.md` § RESUME HERE.
 - **D5 — Standard stacks without a config** (`--node`). Default: none, a config
   is written. Status: parked.
 - **D6 — Entry points nothing imports** (`+page.svelte`, `entryPoints`).
