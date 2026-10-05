@@ -289,9 +289,9 @@ const messageOf = (violation: FileViolation, prefix: string): string => {
       return `line ${violation.line} runs on import${via} — a module's evaluation performs no side effect; move it inside a factory or a function`
     }
     case "assembly":
-      return assemblyMessage(violation)
+      return `${assemblyMessage(violation)}${calledFromWords(violation)}`
     case "driver":
-      return driverMessage(violation)
+      return `${driverMessage(violation)}${calledFromWords(violation)}`
     case "boot":
       return bootMessage(violation, prefix)
   }
@@ -372,6 +372,14 @@ const driverDefinitionWords = (
       return `holds functions in ${name} — a table of lambdas is a service without a contract; each hook handed to the tech in place`
   }
 }
+
+/** A red only some callers of the function get says which call site. */
+const calledFromWords = ({
+  calledFrom,
+}: AssemblyViolation | DriverViolation): string =>
+  calledFrom === undefined
+    ? ""
+    : ` — as called from ${calledFrom.file}:${calledFrom.line}`
 
 const driverMessage = (violation: DriverViolation): string => {
   const line = `line ${violation.line}`

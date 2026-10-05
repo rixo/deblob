@@ -1475,6 +1475,23 @@ describe("renderCheckResults", () => {
         expect(message(driver(rule, shape))).toContain(`line 7 ${words}`)
       })
 
+      it("names the call site of a red only some callers of the wiring function get, and none otherwise", () => {
+        const violation = driver("wiring-outside-hooks", {
+          shape: "call",
+          callee: CHECK,
+          where: "wiring",
+        })
+        expect(
+          message({
+            ...violation,
+            calledFrom: { file: "src/root.driver.ts", line: 12 },
+          }),
+        ).toContain(
+          "the call moves into a hook — as called from src/root.driver.ts:12",
+        )
+        expect(message(violation)).not.toContain("as called from")
+      })
+
       it("says an unread driver or test file's fix, about the file, no line", () => {
         expect(
           message(driver("driver-reader", { shape: "unread", kind: "driver" })),

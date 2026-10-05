@@ -118,4 +118,48 @@ describe("checkDriver", () => {
       }),
     ])
   })
+
+  it("judges a wiring function once per caller: a red one caller gets names its call site, a red every caller gets names none and is reported once", () => {
+    const tech = { ...callOf({ kind: "tech", package: "cac" }), args: [] }
+    const useCase = {
+      ...callOf({ kind: "use-case", member: "cli.check", origin: null }),
+      args: [],
+    }
+    const siteOf = (line: number) => ({
+      name: "main",
+      site: { path: "src/root.driver.ts", span: { ...SPAN, line } },
+      args: [],
+    })
+    const graphOfWorlds = (readings: readonly FileReading[]): ImportGraph =>
+      ({
+        modules: new Map([
+          [
+            NODE_DEFAULTS.path,
+            {
+              ...NODE_DEFAULTS,
+              reading: readings[0],
+              readings: readings.map((reading, index) => ({
+                world: siteOf(7 + index),
+                reading,
+              })),
+            },
+          ],
+        ]),
+        edges: [],
+      }) as unknown as ImportGraph
+    const clean = mainWith(tech, useCase)
+    const red = mainWith(useCase, useCase)
+
+    const one = checkDriver(graphOfWorlds([clean, red]))
+    expect(one).toEqual([
+      expect.objectContaining({
+        rules: ["wiring-outside-hooks"],
+        calledFrom: { file: "src/root.driver.ts", line: 8 },
+      }),
+    ])
+
+    const every = checkDriver(graphOfWorlds([red, red]))
+    expect(every).toHaveLength(1)
+    expect(every[0]).not.toHaveProperty("calledFrom")
+  })
 })

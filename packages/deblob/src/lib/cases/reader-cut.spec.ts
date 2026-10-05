@@ -276,6 +276,72 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // Judged per caller: the sub-driver's switch is the reader's where it is
+    // handed the read, and a branch where it is handed the host's — red there
+    // for that caller, whichever case comes first.
+    name: "a sub-driver handed the read by one case and what another tech returned by another is red for that caller",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/tool.driver.ts": `
+        import os from "node:os"
+        ${IMPORTS}
+        import { dispatchBy } from "./by.driver.ts"
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          const platform = os.platform()
+          switch (read.command) {
+            case "check":
+              return dispatchBy(read, tool)
+            default:
+              return dispatchBy(platform, tool)
+          }
+        }
+      `,
+      "src/by.driver.ts": `
+        export const dispatchBy = (key: unknown, tool: { check: (key: unknown) => unknown }) => {
+          switch (key) { // red: wiring-outside-hooks -- a branch in the wiring
+            default:
+              return tool.check(key) // red: wiring-outside-hooks -- a use case outside any hook
+          }
+        }
+      `,
+    },
+  },
+  {
+    // The same, the host's value handed first.
+    name: "a sub-driver handed the read by one case and what another tech returned by another is red for that caller, the other order",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/tool.driver.ts": `
+        import os from "node:os"
+        ${IMPORTS}
+        import { dispatchBy } from "./by.driver.ts"
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          const platform = os.platform()
+          switch (read.command) {
+            case "platform":
+              return dispatchBy(platform, tool)
+            default:
+              return dispatchBy(read, tool)
+          }
+        }
+      `,
+      "src/by.driver.ts": `
+        export const dispatchBy = (key: unknown, tool: { check: (key: unknown) => unknown }) => {
+          switch (key) { // red: wiring-outside-hooks -- a branch in the wiring
+            default:
+              return tool.check(key) // red: wiring-outside-hooks -- a use case outside any hook
+          }
+        }
+      `,
+    },
+  },
+  {
     // The read is the tech's whoever of the tech returned it: a function the
     // driver imports, or a method of an object the tech built.
     name: "the read returned by a method of an object the tech built is the reader's all the same: the thin driver, cut",

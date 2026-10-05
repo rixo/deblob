@@ -18,6 +18,7 @@
 
 import type {
   ArgValue,
+  FileReading,
   ImportGraph,
   ModuleNode,
   ReadCall,
@@ -26,6 +27,7 @@ import type {
   Span,
   UnknownCondition,
 } from "../extraction/graph.model.ts"
+import { mergeCallers } from "./callers.model.ts"
 import type { AssemblyViolation } from "./violation.model.ts"
 
 type Verdict = "green" | "red" | "unknown"
@@ -81,9 +83,14 @@ const resultIsTech = (call: ReadCall): boolean =>
   call.callee.kind === "tech" ||
   call.callee.kind === "unclaimed"
 
-const judgeAssembly = (node: ModuleNode): AssemblyViolation[] => {
-  const reading = node.reading
-  if (reading === null) return []
+/**
+ * One reading of an assembly file, judged: what sits at its root, and each of
+ * its functions apart, in the reading's order.
+ */
+const judgeReading = (
+  node: ModuleNode,
+  reading: FileReading,
+): { atRoot: AssemblyViolation[]; functions: AssemblyViolation[][] } => {
   const at = (span: Span, subject: Span = span) => ({
     check: "assembly" as const,
     ruleset: "arch" as const,
@@ -218,7 +225,8 @@ const judgeAssembly = (node: ModuleNode): AssemblyViolation[] => {
   const calledInProduction = (fn: ReadFunction): boolean =>
     node.readings.some(({ world }) => world.name === fn.name)
 
-  reading.functions.forEach((fn, index) => {
+  const atRoot = violations.splice(0)
+  const functions = reading.functions.map((fn, index) => {
     const body = bodies[index] as readonly ReadStatement[]
     const builds = body.some(
       (statement) =>
@@ -274,8 +282,38 @@ const judgeAssembly = (node: ModuleNode): AssemblyViolation[] => {
           break
       }
     }
+    return violations.splice(0)
   })
-  return violations
+  return { atRoot, functions }
+}
+
+const judgeAssembly = (node: ModuleNode): AssemblyViolation[] => {
+  const { reading } = node
+  if (reading === null) return []
+  const first = judgeReading(node, reading)
+  // judged once per caller: a function bound at several sites is read as each
+  // hands it, and a red not every caller gets names the one it holds for; one
+  // nothing binds is read once
+  return [
+    ...first.atRoot,
+    ...reading.functions.flatMap((fn, index) => {
+      const name = fn.name ?? "default"
+      const worlds = node.readings.filter(({ world }) => world.name === name)
+      if (worlds.length === 0)
+        return first.functions[index] as AssemblyViolation[]
+      return mergeCallers(
+        worlds.map(({ world, reading: bound }) => ({
+          world,
+          // the same file read again: the function is there by name
+          violations: judgeReading(node, bound).functions[
+            bound.functions.findIndex(
+              (candidate) => (candidate.name ?? "default") === name,
+            )
+          ] as AssemblyViolation[],
+        })),
+      )
+    }),
+  ]
 }
 
 /** What the reader could not see in an argument. */

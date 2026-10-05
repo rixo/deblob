@@ -28,6 +28,7 @@ import type {
   ReadStatement,
   Span,
 } from "../extraction/graph.model.ts"
+import { mergeCallers } from "./callers.model.ts"
 import type { RuleId } from "./rule.model.ts"
 import type { DriverViolation } from "./violation.model.ts"
 
@@ -432,8 +433,27 @@ const judgeDriver = (
         shape: "parameter",
         name: fn.name,
       })
-    judgeWiring(fn.body)
-    fn.hooks.forEach(judgeHook)
+    // judged once per caller: a function bound at several sites is read as
+    // each hands it, and a red not every caller gets names the one it holds
+    // for; one nothing binds is read once
+    const name = fn.name ?? "default"
+    const worlds = node.readings.filter(({ world }) => world.name === name)
+    if (worlds.length === 0) {
+      judgeWiring(fn.body)
+      fn.hooks.forEach(judgeHook)
+      continue
+    }
+    const found = worlds.map(({ world, reading: bound }) => {
+      const from = violations.length
+      // the same file read again: the function is there by name
+      const boundFn = bound.functions.find(
+        (candidate) => (candidate.name ?? "default") === name,
+      ) as ReadFunction
+      judgeWiring(boundFn.body)
+      boundFn.hooks.forEach(judgeHook)
+      return { world, violations: violations.splice(from) }
+    })
+    violations.push(...mergeCallers(found))
   }
   return violations
 }

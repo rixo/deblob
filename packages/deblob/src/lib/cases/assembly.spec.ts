@@ -340,6 +340,49 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // Judged per caller: what a group assembly was handed and returns is a
+    // service from one root assembly and an adapter from the other — red for
+    // that caller, though it is not the first.
+    name: "an assembly returning what it was handed, a service by one caller and an adapter by another, is red for the adapter's caller",
+    files: {
+      "src/lib/log/sink.port.ts": `
+        export type Sink = { write: (text: string) => void }
+      `,
+      "src/lib/log/adapters/memory-sink.adapter.ts": `
+        import type { Sink } from "../sink.port.ts"
+        export const createMemorySink = (): Sink => ({ write: () => {} })
+      `,
+      "src/lib/log/log.service.ts": `
+        import type { Sink } from "./sink.port.ts"
+        export const createLog = ({ sink }: { sink: Sink }) => ({ info: (text: string) => sink.write(text) })
+      `,
+      "src/lib/thing/thing.service.ts": `
+        export const createThing = () => ({ run: () => 1 })
+      `,
+      "src/group.assembly.ts": `
+        import { createThing } from "./lib/thing/thing.service.ts"
+        export const createGroupAssembly = (shared: unknown) => ({ shared, thing: createThing() }) // red: assembly-builds-only -- an adapter returned, as the second root hands it
+      `,
+      "src/a.assembly.ts": `
+        import { createMemorySink } from "./lib/log/adapters/memory-sink.adapter.ts"
+        import { createLog } from "./lib/log/log.service.ts"
+        import { createGroupAssembly } from "./group.assembly.ts"
+        export const createFirstAssembly = () => {
+          const log = createLog({ sink: createMemorySink() })
+          return createGroupAssembly(log)
+        }
+      `,
+      "src/b.assembly.ts": `
+        import { createMemorySink } from "./lib/log/adapters/memory-sink.adapter.ts"
+        import { createGroupAssembly } from "./group.assembly.ts"
+        export const createSecondAssembly = () => {
+          const sink = createMemorySink()
+          return createGroupAssembly(sink)
+        }
+      `,
+    },
+  },
+  {
     // Added at the detectors step, checkpoint 5, stamped after the check: no
     // stamped row returned a part of an adapter.
     // canon: "what the assembly builds … never … member-accessed" — a field of

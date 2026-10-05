@@ -13,6 +13,7 @@ import type {
   UnknownCondition,
   ValueKind,
 } from "../extraction/graph.model.ts"
+import type { CalledFrom } from "./callers.model.ts"
 import type { RuleId } from "./rule.model.ts"
 
 /**
@@ -320,6 +321,12 @@ export type AssemblyViolation = {
   /** What the violation is about, in its file: what a `cause` names. */
   subject: Span
   /**
+   * The call site this red holds for: an assembly function is judged once per
+   * caller, as each hands it — absent when every caller gets the red, or
+   * nothing calls the function.
+   */
+  calledFrom?: CalledFrom
+  /**
    * For an argument: the red or unknown call it came out of, or was handed to,
    * written in the same expression — that call's fix clears this violation too.
    * `null` otherwise, and on every other shape but a root binding storing a
@@ -406,6 +413,12 @@ export type DriverViolation = {
   subject: Span
   /** Always `null`: no driver violation rides another. */
   cause: Span | null
+  /**
+   * The call site this red holds for: a sub-driver's wiring function is judged
+   * once per caller, as each hands it — absent when every caller gets the red,
+   * or nothing calls the function.
+   */
+  calledFrom?: CalledFrom
 } & (
   | {
       /**
