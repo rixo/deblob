@@ -58,8 +58,25 @@ or lazy. The cut takes its event only from a value its own reader claims: a
 switch on what `os.platform()` returned is a branch in the wiring, in the root
 and in a sub-driver handed it.
 
-Not done: the stock cut restated through `cut` (the check that this is one
-concept, not two).
+One concept, checked 2026-10-06 (the harmony check). A cut answers with hook
+pointers of two forms (`HookPointer`, `reading.model.ts`): a function — its
+parameters are the event; or statements picked, with the expression that picked
+them — the tech value it is read off is the event. Three cuts speak it:
+
+- the reading's own, every reader's default: a function handed to a tech is a
+  hook (`cutCallbacks`);
+- the switch reader: each case is statements picked on the discriminant;
+- a hook-object reader (`cases/hook-object-reader.model.ts`, rows in
+  `cases/reader-hook-object.spec.ts`): each method of the object a wiring
+  function returns is a function pointed at — a bundler's plugin. Functions
+  nest, as callbacks did; nothing is picked inside a hook, whatever cut made the
+  hook (a switch on a callback's event is a branch in a hook).
+
+Not done: the reading's own cut answers in a reader's words but still lives in
+the reading — it needs what the reading knows of a callee, which a reader's cut
+is not given; so a reader cannot take it away ("callbacks handed to my tech are
+not hooks"). A function pointed at outside a call (a method) has no role and its
+event names no tech.
 
 ## The principle the rows follow
 

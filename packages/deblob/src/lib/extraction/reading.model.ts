@@ -74,18 +74,27 @@ export type ImportTargetKind =
   | { kind: "unresolved" }
 
 /**
- * A reader's own cut, its answer on one statement: the tech hands control here,
- * and these are the hooks. `on` is the expression that picks one — what the
- * reading takes the event from: the tech value at its root, a tech call's
- * result or what the function received, is the hooks' event. A statement whose
- * `on` is no such value is not cut: it reads as the statement it is. Each hook
- * is the statements one trigger runs, whole — what runs together is one hook —
- * and where it sits.
+ * A hook, pointed at: what a cut answers, the reading's own and a reader's
+ * alike. Two forms.
+ *
+ * A function (`fn`) — a callback handed to the tech, a method of an object the
+ * tech is handed: the hook is the function, its parameters the event. It is
+ * read as a hook where the reading meets it; what stands around it reads as it
+ * is. Functions nest: a hook may hold another.
+ *
+ * Statements picked (`body`, `on`) — a case of a dispatch the driver writes:
+ * what one trigger runs, whole (what runs together is one hook), where it sits,
+ * and the expression that picked it. The tech value at `on`'s root — the result
+ * of a call into the pointing reader's tech, or what the function received of
+ * it — is the event; the statement reads as its hooks. Pointed off any other
+ * value, the statement reads as the statement it is. Nothing is picked inside a
+ * hook: picking is the wiring's.
  */
-export type Cut = {
-  on: Node
-  hooks: readonly { start: number; end: number; body: readonly Node[] }[]
-}
+export type HookPointer =
+  { fn: Node } | { start: number; end: number; body: readonly Node[]; on: Node }
+
+/** A cut's answer on one statement: the hooks it holds. */
+export type Cut = readonly HookPointer[]
 
 export type ReadInput = {
   program: Program
@@ -1156,8 +1165,10 @@ export const readModule = ({
    * else — a callback's event is its parameter.
    */
   let event: Span | null = null
-  /** Reading a hook a reader's cut made: a hook has no wiring to cut. */
-  let inCutHook = false
+  /** Reading a hook: nothing is picked in one, picking is the wiring's. */
+  let inHook = false
+  /** The functions a reader's cut pointed at, until the reading meets them. */
+  const pointed = new Set<AstNode>()
 
   const withFrame = (ctx: Ctx | null, run: () => void): Frame | null => {
     const outer = frame
@@ -1602,9 +1613,12 @@ export const readModule = ({
         }),
       ),
     )
+    const outer = inHook
+    inHook = true
     const inner = inScope(params, () =>
       inBody(() => withFrame(null, () => walkFunctionBody(fn))),
     )
+    inHook = outer
     return {
       span: spanOf(fn),
       role,
@@ -1936,6 +1950,23 @@ export const readModule = ({
    * kind, where hooks are no concept, it is read inline: its calls count where
    * the callback sits.
    */
+  /**
+   * The reading's own cut, every reader's default, in a reader's words: a
+   * function handed to the tech is a hook. Handed to what nobody claims it is
+   * cut as one too: the missing premise is red once, at the call (GUESS: D8),
+   * never again as the callback's calls read into the wiring.
+   */
+  const cutCallbacks = (
+    argNodes: readonly AstNode[],
+    callee: CalleeKind,
+  ): Extract<HookPointer, { fn: Node }>[] =>
+    tech !== null && (callee.kind === "tech" || callee.kind === "unclaimed")
+      ? argNodes
+          .map(unwrap)
+          .filter(isFunctionNode)
+          .map((fn) => ({ fn: fn as unknown as Node }))
+      : []
+
   const readArgs = (
     argNodes: readonly AstNode[],
     callee: CalleeKind,
@@ -1944,18 +1975,18 @@ export const readModule = ({
     emitting: boolean,
   ): ArgValue[] => {
     const args: ArgValue[] = []
+    const callbacks = new Set(
+      cutCallbacks(argNodes, callee).map(
+        (pointer) => pointer.fn as unknown as AstNode,
+      ),
+    )
     for (const arg of argNodes) {
       const inner = unwrap(arg)
       if (isFunctionNode(inner)) {
         args.push(plainArg("function", arg))
         if (!emitting) continue
-        // a callback handed to what nobody claims is cut as a hook too: the
-        // missing premise is red once, at the call (GUESS: D8), never again
-        // as the callback's calls read into the wiring
-        if (
-          (callee.kind === "tech" || callee.kind === "unclaimed") &&
-          tech !== null
-        )
+        // pointed at by the reading's own cut, or by a reader's
+        if (callbacks.has(inner) || pointed.delete(inner))
           body.hooks.push(
             readHook(
               inner,
@@ -2422,6 +2453,10 @@ export const readModule = ({
         return { kind: "function", origin: null, path: [] }
       case "ArrowFunctionExpression":
       case "FunctionExpression":
+        // one a reader's cut pointed at is a hook where it stands: handed to
+        // no call, so no role and no tech named as the event's
+        if (emitting && pointed.delete(node))
+          body.hooks.push(readHook(node, null, null))
         return { kind: "function", origin: null, path: [] }
       case "ObjectExpression": {
         const kinds: ValueKind[] = []
@@ -2793,31 +2828,43 @@ export const readModule = ({
   }
 
   /**
-   * A statement the file's reader cuts, read: each of its hooks is a hook of
-   * the function, its event the tech value the cut is read off; one that only
-   * hands the dispatch on stays wiring. `false` when the reader cuts nothing
-   * here, or cuts on what is no tech value of a call or of the caller.
+   * A statement, asked of the file's reader. The functions its cut points at
+   * are kept until the reading meets them; the statements it picked are read
+   * here, each a hook of the function, its event the tech value it was picked
+   * on — one that only hands the dispatch on stays wiring. `true` when the
+   * statement was read as its picked hooks; `false` when the reader picks
+   * nothing here, picks on what is no tech value of its own, or picks inside a
+   * hook: the statement then reads as it is.
    */
   const readCut = (statement: AstNode): boolean => {
-    if (inCutHook) return false
     const answer = tech?.cut?.(statement as unknown as Node) ?? null
     if (answer === null) return false
     const { cut, claims } = answer
-    const on = cut.on as unknown as AstNode
-    const cutEvent = eventOf(on, claims)
-    if (cutEvent === undefined) return false
-    evaluate(on, { kind: "condition" }, true)
-    for (const hook of cut.hooks) {
+    const picked: Extract<HookPointer, { on: Node }>[] = []
+    for (const pointer of cut)
+      if ("fn" in pointer) pointed.add(pointer.fn as unknown as AstNode)
+      else picked.push(pointer)
+    if (picked.length === 0 || inHook) return false
+    const events = new Map<AstNode, Span | null>()
+    for (const { on } of picked) {
+      const node = on as unknown as AstNode
+      if (events.has(node)) continue
+      const pickedOn = eventOf(node, claims)
+      if (pickedOn === undefined) return false
+      events.set(node, pickedOn)
+    }
+    for (const on of events.keys()) evaluate(on, { kind: "condition" }, true)
+    for (const hook of picked) {
       const statements = hook.body as unknown as AstNode[]
       if (isHandOff(statements)) {
         walkBlock(statements)
         continue
       }
-      event = cutEvent
-      inCutHook = true
+      event = events.get(hook.on as unknown as AstNode) as Span | null
+      inHook = true
       const inner = inBody(() => withFrame(null, () => walkBlock(statements)))
       event = null
-      inCutHook = false
+      inHook = false
       body.hooks.push({
         span: spanOf({ type: "Hook", start: hook.start, end: hook.end }),
         role: null,

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 
-import { ARGV_SWITCH } from "./argv-switch-reader.model.ts"
+import { ARGV_SWITCH, cutSwitch } from "./argv-switch-reader.model.ts"
 import { assembleCase } from "./runner/cases.assembly.ts"
 import type { Row } from "./runner/markers.model.ts"
 import { AS_MARKED } from "./runner/markers.model.ts"
@@ -406,6 +406,40 @@ const ROWS: readonly Row[] = [
                   return tool.checkDag(read)
               }
           }
+        }
+      `,
+    },
+  },
+  {
+    // The same in a callback's hook: picking is the wiring's, whatever cut
+    // made the hook. The reader here claims a callback tech and brings the
+    // switch cut with it.
+    name: "a switch on the event inside a callback's hook is a branch in a hook: red, the reader's cut does not reach into a hook",
+    config: {
+      readers: {
+        driver: [{ name: "cac-switch", tech: ["cac"], cut: cutSwitch }],
+      },
+    },
+    files: {
+      ...TOOL,
+      "node_modules/cac/package.json": JSON.stringify({
+        name: "cac",
+        main: "./index.js",
+      }),
+      "node_modules/cac/index.js": "module.exports = {}",
+      "src/tool.driver.ts": `
+        import { cac } from "cac"
+        import { createToolAssembly } from "./tool.assembly.ts"
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const parser = cac("tool")
+          parser.command("check").action((opts) => {
+            switch (opts.dag) { // red: hook-one-call -- a conditional call
+              case true:
+                return tool.checkDag(opts)
+            }
+          })
+          parser.parse(process.argv)
         }
       `,
     },

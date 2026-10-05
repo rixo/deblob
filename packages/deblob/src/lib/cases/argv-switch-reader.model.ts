@@ -35,7 +35,8 @@ const bodyOf = (statements: readonly Statement[]): Statement[] =>
 
 export const cutSwitch = (statement: Node): Cut | null => {
   if (statement.type !== "SwitchStatement") return null
-  const hooks: { start: number; end: number; body: Statement[] }[] = []
+  const on = statement.discriminant
+  const hooks: Cut[number][] = []
   let open: { first: SwitchCase; body: Statement[] } | null = null
   for (const switchCase of statement.cases) {
     open ??= { first: switchCase, body: [] }
@@ -46,10 +47,11 @@ export const cutSwitch = (statement: Node): Cut | null => {
       start: open.first.start,
       end: switchCase.end,
       body: open.body,
+      on,
     })
     open = null
   }
-  return { on: statement.discriminant, hooks }
+  return hooks
 }
 
 /** The reader as a config writes it: the tech's file, and its cut. */

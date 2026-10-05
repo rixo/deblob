@@ -2,10 +2,11 @@
  * The driver axis — one reader per technology a driver listens to. A driver
  * reader is its binding (which files are this tech's drivers), its claims (the
  * packages that are its tech) and its exemptions (the driver rules its shape
- * relaxes, each with its reason). The cut is the stock one: every callback
- * handed to a claimed tech is a hook. A reader may add a cut of its own (`cut`)
- * for a tech whose hooks are not callbacks; configs written without one stay
- * valid. A driver no reader reads is red (`driver-reader`). No default.
+ * relaxes, each with its reason). Every reader has the reading's own cut: a
+ * callback handed to a tech is a hook. A reader may add a cut of its own
+ * (`cut`) for a tech whose hooks are not callbacks — it points at hooks in the
+ * same words the reading's cut does; configs written without one stay valid. A
+ * driver no reader reads is red (`driver-reader`). No default.
  */
 
 import type { Node } from "@oxc-project/types"
@@ -32,12 +33,14 @@ export interface DriverReader extends ReaderBinding {
    */
   readonly blob?: boolean
   /**
-   * The reader's own cut, beside the stock one: asked on every statement of a
-   * driver it reads, it answers where its tech hands control — the hooks, and
-   * the expression that picks one — or `null`. The node is the parser's (oxc's
-   * ESTree): a change of parser breaks a reader that has a cut. What the
-   * reading does with the answer — the event, a hook that only hands the
-   * dispatch on to a sub-driver — is the reading's, the same for every reader.
+   * The reader's own cut, beside the reading's: asked on every statement of a
+   * driver it reads, it points at the hooks the statement holds — a function
+   * its tech will call, or the statements a dispatch on its tech's value
+   * picked, with the expression that picked them — or answers `null`. The node
+   * is the parser's (oxc's ESTree): a change of parser breaks a reader that has
+   * a cut. What the reading does with a pointer — the event, a hook that only
+   * hands the dispatch on to a sub-driver, nothing picked inside a hook — is
+   * the reading's, the same for every reader.
    */
   readonly cut?: (statement: Node) => Cut | null
 }
