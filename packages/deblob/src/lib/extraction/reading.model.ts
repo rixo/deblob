@@ -16,7 +16,7 @@
  * complement.
  */
 
-import type { Program } from "@oxc-project/types"
+import type { Node, Program } from "@oxc-project/types"
 
 import type {
   ArgValue,
@@ -73,6 +73,20 @@ export type ImportTargetKind =
     }
   | { kind: "unresolved" }
 
+/**
+ * A reader's own cut, its answer on one statement: the tech hands control here,
+ * and these are the hooks. `on` is the expression that picks one — what the
+ * reading takes the event from: the tech value at its root, a tech call's
+ * result or what the function received, is the hooks' event. A statement whose
+ * `on` is no such value is not cut: it reads as the statement it is. Each hook
+ * is the statements one trigger runs, whole — what runs together is one hook —
+ * and where it sits.
+ */
+export type Cut = {
+  on: Node
+  hooks: readonly { start: number; end: number; body: readonly Node[] }[]
+}
+
 export type ReadInput = {
   program: Program
   source: string
@@ -87,6 +101,14 @@ export type ReadInput = {
     name: string
     exempts: readonly Exemption[]
     roleOf?: (chain: readonly string[]) => Role | null
+    /**
+     * The reader's own cut: its word on a statement, `null` where it has none,
+     * with what that reader claims — whether a package or a project file (by
+     * its root-relative path) is its tech.
+     */
+    cut?: (
+      statement: Node,
+    ) => { cut: Cut; claims: (target: string) => boolean } | null
   } | null
   importTargetOf: (specifier: string) => ImportTargetKind
   /**
@@ -620,6 +642,11 @@ type ImportBinding = {
 type Resolved = {
   kind: ValueKind
   origin: InstanceOrigin | null
+  /**
+   * Whose tech a tech value is: the package or project file a reader claims
+   * that it came from — absent for the host's, and for any other kind.
+   */
+  package?: string
   /** Member path from the origin's result (`const { cli } = assembly()`). */
   path: readonly string[]
 }
@@ -1008,6 +1035,17 @@ export const readModule = ({
     }
   }
 
+  /** A tech value: whose it is, and the path read off it. */
+  const techValue = (
+    pkg: string | null | undefined,
+    path: readonly string[],
+  ): Resolved => ({
+    kind: "tech",
+    origin: null,
+    path,
+    ...(pkg == null ? {} : { package: pkg }),
+  })
+
   /** A call's result, by what was called. */
   const resultOf = (callee: CalleeKind): Resolved => {
     switch (callee.kind) {
@@ -1023,7 +1061,7 @@ export const readModule = ({
           ? { kind: "instance", origin: null, path: [] }
           : { kind: "computed", origin: null, path: [] }
       case "tech":
-        return { kind: "tech", origin: null, path: [] }
+        return techValue(callee.package, [])
       case "unknown":
         return { kind: "unknown", origin: null, path: [] }
       default:
@@ -1047,14 +1085,16 @@ export const readModule = ({
             target.kind === "module"
               ? (target.exportForm?.(binding.import!.imported) ?? null)
               : null
+          if (
+            target.kind === "external" &&
+            (target.claim === "tech" || target.claim === "reader")
+          )
+            return techValue(target.package ?? binding.import!.specifier, [])
           return {
             kind:
-              target.kind === "external" &&
-              (target.claim === "tech" || target.claim === "reader")
-                ? "tech"
-                : target.kind === "unresolved" || isValueForm(form)
-                  ? "unknown"
-                  : "function",
+              target.kind === "unresolved" || isValueForm(form)
+                ? "unknown"
+                : "function",
             origin: null,
             path: [],
           }
@@ -1083,11 +1123,7 @@ export const readModule = ({
                 path: [...value.path, ...binding.path],
               }
             case "tech":
-              return {
-                kind: "tech",
-                origin: null,
-                path: [...value.path, ...binding.path],
-              }
+              return techValue(value.package, [...value.path, ...binding.path])
             case "literal":
               return { kind: "literal", origin: null, path: [] }
             default:
@@ -1114,6 +1150,14 @@ export const readModule = ({
    */
   type Frame = { ctx: Ctx; value: Resolved | null; returns: number }
   let frame: Frame | null = null
+  /**
+   * The event of the hook being read, when a reader's cut made the hook out of
+   * the wiring's statements: the tech call whose result it is. `null` anywhere
+   * else — a callback's event is its parameter.
+   */
+  let event: Span | null = null
+  /** Reading a hook a reader's cut made: a hook has no wiring to cut. */
+  let inCutHook = false
 
   const withFrame = (ctx: Ctx | null, run: () => void): Frame | null => {
     const outer = frame
@@ -1410,7 +1454,7 @@ export const readModule = ({
       // the name cannot prove what the tech value is: a call on it is the
       // tech's, `.trim()` as much as `.get()` (ruled 2026-09-26)
       case "tech":
-        return { kind: "tech", package: null }
+        return { kind: "tech", package: root.package ?? null }
       case "unknown":
         return { kind: "unknown" }
       default:
@@ -1479,7 +1523,8 @@ export const readModule = ({
             member: resolved.path.join(".") || name,
             origin: resolved.origin,
           }
-        if (resolved.kind === "tech") return { kind: "tech", package: null }
+        if (resolved.kind === "tech")
+          return { kind: "tech", package: resolved.package ?? null }
         if (resolved.kind === "unknown") return { kind: "unknown" }
         return { kind: "language" }
       }
@@ -1544,12 +1589,17 @@ export const readModule = ({
 
   const readHook = (
     fn: AstNode,
-    registeredBy: ReadCall,
     role: Role | null,
+    pkg: string | null,
   ): ReadHook => {
     const params = (fn["params"] as AstNode[]).flatMap((param) =>
       patternNames(param).map(({ name, path, node }) =>
-        newBinding(name, "parameter", node, { isHookParam: true, path }),
+        newBinding(name, "parameter", node, {
+          isHookParam: true,
+          path,
+          // the event is the tech's the hook was handed to
+          memo: techValue(pkg, path),
+        }),
       ),
     )
     const inner = inScope(params, () =>
@@ -1557,7 +1607,6 @@ export const readModule = ({
     )
     return {
       span: spanOf(fn),
-      registeredBy,
       role,
       body: inner.statements,
       hooks: inner.hooks,
@@ -1804,12 +1853,16 @@ export const readModule = ({
   const argValueOf = (node: AstNode, ctx: Ctx, emitting: boolean): ArgValue => {
     const value = evaluate(node, ctx, emitting)
     const inner = unwrap(node)
+    const from = fromOf(inner)
     return {
       kind: value.kind,
       origin: value.origin,
       path: value.path,
+      ...(value.package === undefined ? {} : { package: value.package }),
       entries: inner.type === "ObjectExpression" ? entriesOf(inner) : null,
-      from: fromOf(inner),
+      // the event of a hook a reader cut: what the tech handed, as a callback's
+      // parameter is — no call's result to the hook
+      from: from !== null && from.start === event?.start ? null : from,
       received: receivedOf(inner),
       host: value.kind === "tech" && hostOf(inner),
       span: spanOf(node),
@@ -1903,7 +1956,13 @@ export const readModule = ({
           (callee.kind === "tech" || callee.kind === "unclaimed") &&
           tech !== null
         )
-          body.hooks.push(readHook(inner, registeredBy, roleOf(calleeNode)))
+          body.hooks.push(
+            readHook(
+              inner,
+              roleOf(calleeNode),
+              callee.kind === "tech" ? callee.package : null,
+            ),
+          )
         else readInline(inner, callee, registeredBy.span)
         continue
       }
@@ -2312,11 +2371,7 @@ export const readModule = ({
         }
         switch (rootValue.kind) {
           case "tech":
-            return {
-              kind: "tech",
-              origin: null,
-              path: [...rootValue.path, ...members],
-            }
+            return techValue(rootValue.package, [...rootValue.path, ...members])
           case "instance":
             return {
               kind: "instance",
@@ -2683,7 +2738,98 @@ export const readModule = ({
     }
   }
 
+  /**
+   * The tech value an expression is read off, as a hook's event, when it is the
+   * cutting reader's tech's: a `const` bound to a tech call — whole or
+   * destructured — is that call; what the function received is the caller's, no
+   * call here. `undefined` for anything else: a host read, an import, a
+   * computed value, what another tech returned.
+   */
+  const eventOf = (
+    on: AstNode,
+    claims: (target: string) => boolean,
+  ): Span | null | undefined => {
+    const value = evaluate(on, { kind: "condition" }, false)
+    if (
+      value.kind !== "tech" ||
+      value.package === undefined ||
+      !claims(value.package)
+    )
+      return undefined
+    const { root } = chainOf(on)
+    if (root.type !== "Identifier") return undefined
+    const binding = lookup(scope, root["name"] as string)
+    if (binding?.kind === "parameter") return null
+    if (
+      binding?.kind !== "definition" ||
+      binding.reassigned ||
+      binding.init === null
+    )
+      return undefined
+    const init = unwrap(binding.init)
+    return CALL_FORMS.has(init.type) ? spanOf(init) : undefined
+  }
+
+  /**
+   * A hook's statements that are one call to a sub-driver's wiring function and
+   * nothing else: the dispatch handed on, the sub-driver's to finish — no hook
+   * here, the call is the wiring's.
+   */
+  const isHandOff = (statements: readonly AstNode[]): boolean => {
+    const [only, ...rest] = statements
+    if (only === undefined || rest.length > 0) return false
+    const expression =
+      only.type === "ReturnStatement"
+        ? only["argument"]
+        : only.type === "ExpressionStatement"
+          ? only["expression"]
+          : null
+    if (!isNode(expression)) return false
+    const call = unwrap(expression)
+    return (
+      call.type === "CallExpression" &&
+      calleeOf(calleeNodeOf(call), false).kind === "wiring"
+    )
+  }
+
+  /**
+   * A statement the file's reader cuts, read: each of its hooks is a hook of
+   * the function, its event the tech value the cut is read off; one that only
+   * hands the dispatch on stays wiring. `false` when the reader cuts nothing
+   * here, or cuts on what is no tech value of a call or of the caller.
+   */
+  const readCut = (statement: AstNode): boolean => {
+    if (inCutHook) return false
+    const answer = tech?.cut?.(statement as unknown as Node) ?? null
+    if (answer === null) return false
+    const { cut, claims } = answer
+    const on = cut.on as unknown as AstNode
+    const cutEvent = eventOf(on, claims)
+    if (cutEvent === undefined) return false
+    evaluate(on, { kind: "condition" }, true)
+    for (const hook of cut.hooks) {
+      const statements = hook.body as unknown as AstNode[]
+      if (isHandOff(statements)) {
+        walkBlock(statements)
+        continue
+      }
+      event = cutEvent
+      inCutHook = true
+      const inner = inBody(() => withFrame(null, () => walkBlock(statements)))
+      event = null
+      inCutHook = false
+      body.hooks.push({
+        span: spanOf({ type: "Hook", start: hook.start, end: hook.end }),
+        role: null,
+        body: inner.statements,
+        hooks: inner.hooks,
+      })
+    }
+    return true
+  }
+
   const walkStatement = (statement: AstNode, exported = false): void => {
+    if (readCut(statement)) return
     switch (statement.type) {
       case "ImportDeclaration":
       // a re-export is a module-graph statement, already an edge: it binds no
@@ -3042,6 +3188,9 @@ export const readModule = ({
                   kind: site.kind,
                   origin: site.origin,
                   path: [...site.path, ...path],
+                  ...(site.package === undefined
+                    ? {}
+                    : { package: site.package }),
                 },
         })
         if (site === null) unbound.push(binding)

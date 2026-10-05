@@ -40,6 +40,27 @@ the verdict the reader owes and marks what today's reading reports instead.
 - No row yet: a computed specifier (4.2); the tech-side `lazy` (4.5, its own
   checkpoint). The bare adapter (5.2, 6.2) is `assembly.spec.ts`'s row already.
 
+The cut, built 2026-10-05: every row above is green as marked, no known failure
+left. The driver reader has one more optional member, `cut`
+(`ports/driver-reader.port.ts`): asked on each statement, it answers where its
+tech hands control — the hooks, and the expression that picks one. The reader is
+`packages/deblob/src/lib/cases/argv-switch-reader.model.ts`; all it knows of
+`switch` is there. The reading does the rest, the same for any reader: the tech
+value the expression is read off is the hooks' event; a hook that is only a call
+to a sub-driver's wiring function stays wiring; nothing is cut inside a hook. A
+violation of the hook as a whole (its count of calls) is reported on its first
+label, as a callback's is on its first line.
+
+"Its tech" (row 1.7) is read off the value: a tech value says whose it is — the
+package or project file a reader claims that it came from, nothing for the
+host's — through a member read, a destructuring, a call on it, a hand-off, eager
+or lazy. The cut takes its event only from a value its own reader claims: a
+switch on what `os.platform()` returned is a branch in the wiring, in the root
+and in a sub-driver handed it.
+
+Not done: the stock cut restated through `cut` (the check that this is one
+concept, not two).
+
 ## The principle the rows follow
 
 The driver rules do not change. The reader only says where they apply. The stock

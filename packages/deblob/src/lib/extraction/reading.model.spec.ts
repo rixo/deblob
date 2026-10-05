@@ -149,6 +149,17 @@ const read = (
 }
 
 /** Every call in a body, nested arms included, evaluation order. */
+/** What a hook's callback was handed to: the call holding it as an argument. */
+const handedTo = (
+  calls: readonly ReadCall[],
+  hook: ReadHook | undefined,
+): CalleeKind | undefined =>
+  calls.find((call) =>
+    call.args.some(
+      (arg) => arg.kind === "function" && arg.span.start === hook?.span.start,
+    ),
+  )?.callee
+
 const callsOf = (statements: readonly ReadStatement[]): ReadCall[] =>
   statements.flatMap((statement) =>
     statement.kind === "call"
@@ -218,7 +229,7 @@ describe("readModule", () => {
         layer: "ports",
         path: "src/x.port.ts",
       })
-      expect(callee(23)).toEqual({ kind: "tech", package: null })
+      expect(callee(23)).toEqual({ kind: "tech", package: "some-tech" })
       expect(callee(46)).toEqual({
         kind: "model",
         path: "pure-lib",
@@ -401,7 +412,7 @@ describe("readModule", () => {
 
     it("cuts a function handed to a tech callee as a hook, and reads one handed to the language inline where it sits — nothing open", () => {
       expect(
-        main.hooks.map((hook) => [hook.span.line, hook.registeredBy.callee]),
+        main.hooks.map((hook) => [hook.span.line, handedTo(calls, hook)]),
       ).toEqual([[56, { kind: "tech", package: null }]])
       // a map over a literal array: a loop, its callback the one arm
       expect(
@@ -489,7 +500,7 @@ describe("readModule", () => {
       expect(reading.functions.map((fn) => fn.name)).toEqual(["fn", "declared"])
       expect(reading.hooks).toHaveLength(1)
       const [describeHook] = reading.hooks
-      expect(describeHook?.registeredBy.callee).toEqual({
+      expect(handedTo(callsOf(reading.root), describeHook)).toEqual({
         kind: "tech",
         package: null,
       })
@@ -563,7 +574,7 @@ describe("readModule", () => {
 
     it("cuts a hook on a free `describe` nobody claims too: its registration unclaimed, red once there (GUESS: D8)", () => {
       const reading = read("root-forms.ts", { layer: "test", tech: TESTS })
-      expect(reading.hooks[0]?.registeredBy.callee).toEqual({
+      expect(handedTo(callsOf(reading.root), reading.hooks[0])).toEqual({
         kind: "unclaimed",
         package: "describe",
         free: true,
@@ -660,7 +671,7 @@ describe("readModule", () => {
       })
       expect(callee(10)).toEqual({ kind: "unknown" })
       expect(callee(11)).toEqual({ kind: "unknown" })
-      expect(callee(13)).toEqual({ kind: "tech", package: null })
+      expect(callee(13)).toEqual({ kind: "tech", package: "some-tech" })
       expect(callee(18)).toEqual({ kind: "language" })
     })
 
@@ -815,7 +826,7 @@ describe("readModule", () => {
         js: "computed",
       })
       // the tech destructured, called: still the tech
-      expect(callee(61)).toEqual({ kind: "tech", package: null })
+      expect(callee(61)).toEqual({ kind: "tech", package: "some-tech" })
       // `const {} = helper()`: no definition, the call still read
       expect(
         main.body.filter(
@@ -833,7 +844,7 @@ describe("readModule", () => {
     it("classifies bare calls on odd roots: a file outside coverage is the tech, and so is a call on a tech-held value; a non-literal import or an expression called is the language; a module namespace called bare stays unknown", () => {
       expect(callee(67)).toEqual({ kind: "tech", package: "./outside.ts" })
       // a call on a tech-held value is the tech's, whatever its name
-      expect(callee(68)).toEqual({ kind: "tech", package: null })
+      expect(callee(68)).toEqual({ kind: "tech", package: "some-tech" })
       // the promise of a module the reader cannot name: a computed value
       expect(callee(69)).toEqual({ kind: "language" })
       // a namespace is not callable — no export named, nothing to classify
@@ -1030,7 +1041,7 @@ describe("readModule", () => {
 
     test("a helper registering a hook: the hook is main's, on the tech the site handed; at another site the same line is a use case on the instance handed, its callback read inline; a record handed to a destructuring parameter binds by key, a spread, computed or unnamed key dropped", () => {
       expect(
-        main.hooks.map((hook) => [hook.span.line, hook.registeredBy.callee]),
+        main.hooks.map((hook) => [hook.span.line, handedTo(calls, hook)]),
       ).toEqual([
         [6, { kind: "tech", package: null }],
         [37, { kind: "tech", package: null }],

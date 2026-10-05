@@ -1559,7 +1559,15 @@ describe("the reading on the graph — the reading fixture", () => {
 
   test("a globals-mode runner: the registration names are free globals no bound reader claims — unclaimed, their callbacks cut all the same", async () => {
     const reading = readingOf(await extractReading(), "src/globals.spec.ts")
-    expect(reading.hooks[0]?.registeredBy.callee).toEqual({
+    // what the first hook's callback was handed to
+    const registration = callsOf(reading.root).find((call) =>
+      call.args.some(
+        (arg) =>
+          arg.kind === "function" &&
+          arg.span.start === reading.hooks[0]?.span.start,
+      ),
+    )
+    expect(registration?.callee).toEqual({
       kind: "unclaimed",
       package: "describe",
       free: true,

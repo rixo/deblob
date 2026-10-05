@@ -1,5 +1,7 @@
 import { join, relative, resolve, sep } from "node:path"
 
+import type { Node } from "@oxc-project/types"
+
 import type {
   BrokenSite,
   ArgValue,
@@ -73,6 +75,20 @@ const stackedTech = (readers: readonly (DriverReader | TestReader)[]) => ({
     }
     return null
   },
+  // the first reader that cuts the statement, and what that reader claims
+  cut: (statement: Node) => {
+    for (const reader of readers) {
+      const cut = "cut" in reader ? (reader.cut?.(statement) ?? null) : null
+      if (cut !== null)
+        return {
+          cut,
+          claims: (target: string) =>
+            isTechPackage(reader.tech, target) ||
+            isTechFile(reader.tech, target),
+        }
+    }
+    return null
+  },
 })
 
 /** Every call in a reading, hooks and arms included. */
@@ -99,6 +115,7 @@ const readingCalls = (reading: FileReading): ReadCall[] => [
 
 const sameArg = (a: ArgValue, b: ArgValue): boolean =>
   a.kind === b.kind &&
+  a.package === b.package &&
   a.origin?.path === b.origin?.path &&
   a.origin?.name === b.origin?.name &&
   a.path.join(".") === b.path.join(".")

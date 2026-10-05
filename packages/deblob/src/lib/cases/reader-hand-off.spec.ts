@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest"
 
+import { ARGV_SWITCH } from "./argv-switch-reader.model.ts"
 import { assembleCase } from "./runner/cases.assembly.ts"
 import type { Row } from "./runner/markers.model.ts"
 import { AS_MARKED } from "./runner/markers.model.ts"
@@ -17,17 +18,11 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * builds its own app in its wiring. A shared logger travels as a service, never
  * as a bare adapter.
  *
- * Written red first: the reader has no cut yet, so every row states the verdict
- * owed and marks where today's reading differs.
+ * Written red first, before the port had a cut; the reader is
+ * `argv-switch-reader.model.ts`.
  */
 
-/** The fixture's tech as its reader claims it: a project file, no cut yet. */
-const ARGV = {
-  name: "argv-switch",
-  tech: ["./src/lib/argv/argv.model.ts"],
-} as const
-
-const CONFIG = { readers: { driver: [ARGV] } } as const
+const CONFIG = { readers: { driver: [ARGV_SWITCH] } } as const
 
 /** The tech; the shared log service over its port; the tool and its assembly. */
 const TOOL = {
@@ -96,9 +91,9 @@ const VIEW_DRIVER = `
   import { createViewAssembly } from "./view.assembly.ts"
   export const dispatchView = (read: Read, log: Log) => {
     const { view } = createViewAssembly(log)
-    switch (read.sub) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+    switch (read.sub) {
       default:
-        return view.open(read) // false red: wiring-outside-hooks -- a hook's one call
+        return view.open(read)
     }
   }
 `
@@ -110,9 +105,8 @@ const IMPORTS = `
 
 const ROWS: readonly Row[] = [
   {
-    // Run 2026-10-05: the hand-off call itself is not reported today (a
-    // sub-driver's wiring function called in the wiring); what is red is the
-    // switch around it and every case's call, in both files.
+    // The hand-off case stays the wiring's: a sub-driver's wiring function
+    // called in the wiring, as `sub-driver-wiring` has it.
     name: "a case whose whole body hands the read and instances to a sub-driver's wiring function is the dispatch continued: green, and the sub-driver's cases are hooks",
     config: CONFIG,
     files: {
@@ -121,11 +115,11 @@ const ROWS: readonly Row[] = [
         import type { Read } from "./lib/argv/argv.model.ts"
         import type { Tool } from "./lib/tool/tool.service.ts"
         export const dispatchCheck = (read: Read, tool: Tool) => {
-          switch (read.sub) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.sub) {
             case "dag":
-              return tool.checkDag(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.checkDag(read)
             default:
-              return tool.check(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.check(read)
           }
         }
       `,
@@ -135,11 +129,11 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { tool } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             case "check":
               return dispatchCheck(read, tool)
             default:
-              return tool.status(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.status(read)
           }
         }
       `,
@@ -158,9 +152,9 @@ const ROWS: readonly Row[] = [
         import type { Read } from "./lib/argv/argv.model.ts"
         import type { Tool } from "./lib/tool/tool.service.ts"
         export const dispatchCheck = (read: Read, tool: Tool, extra?: unknown) => {
-          switch (read.sub) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.sub) {
             default:
-              return tool.check(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.check(read)
           }
         }
       `,
@@ -170,10 +164,10 @@ const ROWS: readonly Row[] = [
         export const main = async () => {
           const { tool } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             case "check":
-              tool.status(read) // false red: wiring-outside-hooks -- a hook's one call
-              return dispatchCheck(read, tool) // missed red: sub-driver-wiring -- wired from inside a hook: the case has its use-case call
+              tool.status(read)
+              return dispatchCheck(read, tool) // red: sub-driver-wiring -- wired from inside a hook: the case has its use-case call
             default:
               // red: wiring-outside-hooks -- a use case outside any hook
               return dispatchCheck(read, tool, await tool.status(read)) // red: sub-driver-wiring -- handed a use-case result
@@ -183,11 +177,75 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // Run 2026-10-05: the lazy hand-off is not reported today either, and
-    // the shared log service handed through it raises nothing. Whether the
-    // reading binds `read` and `log` through the import() or does not look
-    // is not known yet: the cut checkpoint has to prove the unit's cases are
-    // read as hooks with the read as their event.
+    // The hand-off is the call, returned or not.
+    name: "the hand-off as a bare statement, closed by break, is the dispatch continued all the same: green",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/check.driver.ts": `
+        import type { Read } from "./lib/argv/argv.model.ts"
+        import type { Tool } from "./lib/tool/tool.service.ts"
+        export const dispatchCheck = (read: Read, tool: Tool) => {
+          switch (read.sub) {
+            default:
+              return tool.check(read)
+          }
+        }
+      `,
+      "src/tool.driver.ts": `
+        ${IMPORTS}
+        import { dispatchCheck } from "./check.driver.ts"
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          switch (read.command) {
+            case "check":
+              dispatchCheck(read, tool)
+              break
+            default:
+              return tool.status(read)
+          }
+        }
+      `,
+    },
+  },
+  {
+    // The whole body, not its first statement: a case that hands off and then
+    // calls is a hook, as when the call comes first.
+    name: "the hand-off first and a use-case call after it is red too: the case is a hook, whatever the order",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/check.driver.ts": `
+        import type { Read } from "./lib/argv/argv.model.ts"
+        import type { Tool } from "./lib/tool/tool.service.ts"
+        export const dispatchCheck = (read: Read, tool: Tool) => {
+          switch (read.sub) {
+            default:
+              return tool.check(read)
+          }
+        }
+      `,
+      "src/tool.driver.ts": `
+        ${IMPORTS}
+        import { dispatchCheck } from "./check.driver.ts"
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          switch (read.command) {
+            case "check":
+              dispatchCheck(read, tool) // red: sub-driver-wiring -- wired from inside a hook: the case has its use-case call
+              return tool.status(read)
+            default:
+              return tool.status(read)
+          }
+        }
+      `,
+    },
+  },
+  {
+    // The unit's cases are hooks, the read it received their event; the
+    // shared log service handed through the import() raises nothing.
     name: "the hand-off through a literal import() of a driver is the lazy seam; the unit builds its own app over the shared log service, its switch has the one hook",
     config: CONFIG,
     files: {
@@ -199,11 +257,11 @@ const ROWS: readonly Row[] = [
         export const main = async () => {
           const { tool, log } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             case "view":
               return (await import("./view/view.driver.ts")).dispatchView(read, log)
             default:
-              return tool.status(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.status(read)
           }
         }
       `,
@@ -222,12 +280,11 @@ const ROWS: readonly Row[] = [
         export const main = async () => {
           const { tool, log } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             case "view":
-              // false red: wiring-outside-hooks -- a hook's call, read as the wiring's
-              return (await import("./view/view.assembly.ts")).createViewAssembly(log).view.open(read) // missed red: hook-one-call, hook-one-call -- a hook does not wire: import(), the assembly call
+              return (await import("./view/view.assembly.ts")).createViewAssembly(log).view.open(read) // red: hook-one-call, hook-one-call -- a hook does not wire: import(), the assembly call
             default:
-              return tool.status(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.status(read)
           }
         }
       `,
@@ -246,11 +303,10 @@ const ROWS: readonly Row[] = [
         export const dispatchView = (read: Read, log: Log) => {
           const { view } = createViewAssembly(log)
           log.info("wiring") // red: wiring-outside-hooks -- a use case outside any hook
-          switch (read.sub) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
-            default:
-              log.info("opening") // false red: wiring-outside-hooks -- a hook's one call
-              // false red: wiring-outside-hooks -- a hook's call, read as the wiring's
-              return view.open(read) // missed red: hook-one-call -- two calls
+          switch (read.sub) {
+            default: // red: hook-one-call -- two calls
+              log.info("opening")
+              return view.open(read)
           }
         }
       `,
@@ -259,19 +315,18 @@ const ROWS: readonly Row[] = [
         export const main = async () => {
           const { tool, log } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             case "view":
               return (await import("./view/view.driver.ts")).dispatchView(read, log)
             default:
-              return tool.status(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.status(read)
           }
         }
       `,
     },
   },
   {
-    // Run 2026-10-05: green today but for the switch. A model (the tech file)
-    // calling a service handed to it raises nothing.
+    // A model (the tech file) calling a service handed to it raises nothing.
     name: "the tech handed the shared log service at setup: an instance as a wiring argument, green",
     config: CONFIG,
     files: {
@@ -289,9 +344,9 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { tool, log } = createToolAssembly()
           const read = readLine(process.argv, log)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             default:
-              return tool.status(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.status(read)
           }
         }
       `,

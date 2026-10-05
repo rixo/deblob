@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest"
 
+import { ARGV_SWITCH } from "./argv-switch-reader.model.ts"
 import { assembleCase } from "./runner/cases.assembly.ts"
 import type { Row } from "./runner/markers.model.ts"
 import { AS_MARKED } from "./runner/markers.model.ts"
@@ -18,17 +19,11 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * returned is the event. The discriminant needs nothing new: it sits in the
  * wiring, where "a tech value may be read — a field, a destructured part".
  *
- * Written red first: the port has no cut yet, so every row states the verdict
- * the reader owes and marks where today's reading differs.
+ * Written red first, before the port had a cut; the reader is
+ * `argv-switch-reader.model.ts`.
  */
 
-/** The fixture's tech as its reader claims it: a project file, no cut yet. */
-const ARGV = {
-  name: "argv-switch",
-  tech: ["./src/lib/argv/argv.model.ts"],
-} as const
-
-const CONFIG = { readers: { driver: [ARGV] } } as const
+const CONFIG = { readers: { driver: [ARGV_SWITCH] } } as const
 
 /** The tech, the tool's service and its assembly. */
 const TOOL = {
@@ -59,9 +54,9 @@ const IMPORTS = `
 const ROWS: readonly Row[] = [
   {
     // The two statements of the reader, and nothing else: every other row is
-    // this one with a defect. Today: the switch is a branch in the wiring and
-    // each case's call a use case outside any hook; the only way out is
-    // `blobDriver`.
+    // this one with a defect. Without the cut the switch is a branch in the
+    // wiring and each case's call a use case outside any hook; the only way
+    // out is `blobDriver`.
     name: "the thin driver: wiring, then a switch on what the tech read, one call per case, the read handed whole; default is a hook like any case",
     config: CONFIG,
     files: {
@@ -71,13 +66,13 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { tool } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             case "check":
-              return tool.check(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.check(read)
             case "explain":
-              return tool.explain(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.explain(read)
             default:
-              return tool.status(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.status(read)
           }
         }
       `,
@@ -96,25 +91,21 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { tool } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
-            case "noop":
-              return // missed red: hook-one-call -- zero calls
-            case "check":
-              tool.check(read) // false red: wiring-outside-hooks -- a hook's one call
-              // false red: wiring-outside-hooks -- a hook's call, read as the wiring's
-              return tool.report(read) // missed red: hook-one-call -- two calls
-            case "explain":
-              // false red: wiring-outside-hooks, wiring-outside-hooks -- a hook's branch and call, read as the wiring's
-              if (read.sub) return tool.explain(read) // missed red: hook-one-call -- the call is conditional
-              // false red: wiring-outside-hooks -- a hook's call, read as the wiring's
-              return tool.status(read) // missed red: hook-one-call -- a second call
+          switch (read.command) {
+            case "noop": // red: hook-one-call -- zero calls
+              return
+            case "check": // red: hook-one-call -- two calls
+              tool.check(read)
+              return tool.report(read)
+            case "explain": // red: hook-one-call -- two calls
+              if (read.sub) return tool.explain(read) // red: hook-one-call -- the call is conditional
+              return tool.status(read)
             case "view":
-              console.log("viewing") // missed red: hook-one-call -- a log line beside the call
-              return tool.view(read) // false red: wiring-outside-hooks -- a hook's one call
+              console.log("viewing") // red: hook-one-call -- a log line beside the call
+              return tool.view(read)
             case "fix":
-              // false red: wiring-outside-hooks -- a hook's write, read as the wiring's
-              process.exitCode = 0 // missed red: hook-one-call -- a write beside the call
-              return tool.fix(read) // false red: wiring-outside-hooks -- a hook's one call
+              process.exitCode = 0 // red: hook-one-call -- a write beside the call
+              return tool.fix(read)
           }
         }
       `,
@@ -130,12 +121,12 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { tool } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             case "-h":
             case "--help":
-              return tool.help(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.help(read)
             default:
-              return tool.status(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.status(read)
           }
         }
       `,
@@ -151,12 +142,11 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { tool } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
-            case "check":
-              // false red: wiring-outside-hooks -- a hook's call, read as the wiring's
-              tool.check(read) // missed red: hook-one-call -- falls through into "explain": two calls
+          switch (read.command) {
+            case "check": // red: hook-one-call -- falls through into "explain": two calls
+              tool.check(read)
             case "explain":
-              return tool.explain(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.explain(read)
           }
         }
       `,
@@ -174,12 +164,12 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { tool } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             case "check":
-              tool.check(read) // false red: wiring-outside-hooks -- a hook's one call
+              tool.check(read)
               break
             default:
-              tool.status(read) // false red: wiring-outside-hooks -- a hook's one call
+              tool.status(read)
           }
           process.exitCode = 0 // red: wiring-outside-hooks -- a write in the wiring
         }
@@ -187,7 +177,7 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // Green today already: the reader's cut must not reach it.
+    // The reader's cut must not reach it.
     name: "a switch on a value the tech did not return is not the reader's cut: a branch in the wiring, a use case outside any hook",
     config: CONFIG,
     files: {
@@ -206,9 +196,118 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // The reader's cut must not reach it: a tech value, a call's result, but
+    // of a call that is not into this reader's tech.
+    name: "a switch on what another tech returned is not the reader's cut: the host's call is not this reader's, a branch in the wiring, a use case outside any hook",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/tool.driver.ts": `
+        import os from "node:os"
+        ${IMPORTS}
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          const platform = os.platform()
+          switch (platform) { // red: wiring-outside-hooks -- a branch in the wiring
+            case "win32":
+              return tool.check(read) // red: wiring-outside-hooks -- a use case outside any hook
+          }
+        }
+      `,
+    },
+  },
+  {
+    // The reader's cut must not reach it: whose tech a value is travels with
+    // the value, a hand-off included.
+    name: "a sub-driver handed what another tech returned, switching on it, is not the reader's cut: a branch in the wiring, a use case outside any hook",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/tool.driver.ts": `
+        import os from "node:os"
+        import { createToolAssembly } from "./tool.assembly.ts"
+        import { dispatchByPlatform } from "./platform.driver.ts"
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const platform = os.platform()
+          dispatchByPlatform(platform, tool)
+        }
+      `,
+      "src/platform.driver.ts": `
+        export const dispatchByPlatform = (platform: string, tool: { check: (platform: unknown) => unknown }) => {
+          switch (platform) { // red: wiring-outside-hooks -- a branch in the wiring
+            case "win32":
+              return tool.check(platform) // red: wiring-outside-hooks -- a use case outside any hook
+          }
+        }
+      `,
+    },
+  },
+  {
+    // The same through the lazy hand-off: an import() binds like a call.
+    name: "a lazy unit handed what another tech returned, switching on it, is not the reader's cut either",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/tool.driver.ts": `
+        import os from "node:os"
+        ${IMPORTS}
+        export const main = async () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          const platform = os.platform()
+          switch (read.command) {
+            case "platform":
+              return (await import("./platform.driver.ts")).dispatchByPlatform(platform, tool)
+            default:
+              return tool.status(read)
+          }
+        }
+      `,
+      "src/platform.driver.ts": `
+        export const dispatchByPlatform = (platform: string, tool: { check: (platform: unknown) => unknown }) => {
+          switch (platform) { // red: wiring-outside-hooks -- a branch in the wiring
+            case "win32":
+              return tool.check(platform) // red: wiring-outside-hooks -- a use case outside any hook
+          }
+        }
+      `,
+    },
+  },
+  {
+    // The read is the tech's whoever of the tech returned it: a function the
+    // driver imports, or a method of an object the tech built.
+    name: "the read returned by a method of an object the tech built is the reader's all the same: the thin driver, cut",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/lib/argv/argv.model.ts": `
+        export const createArgv = () => ({
+          readLine: (argv: readonly string[]) => ({ command: argv[2] ?? "" }),
+        })
+      `,
+      "src/tool.driver.ts": `
+        import { createArgv } from "./lib/argv/argv.model.ts"
+        import { createToolAssembly } from "./tool.assembly.ts"
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const argv = createArgv()
+          const read = argv.readLine(process.argv)
+          switch (read.command) {
+            case "check":
+              return tool.check(read)
+            default:
+              return tool.status(read)
+          }
+        }
+      `,
+    },
+  },
+  {
     // Ruled 2026-09-28: "whatever, as long as you can describe it to me" —
-    // an if chain is a second shape, for a reader that describes it. Green
-    // today already: the reader's cut must not reach it.
+    // an if chain is a second shape, for a reader that describes it. The
+    // reader's cut must not reach it.
     name: "the same dispatch as an if chain is red: the reader describes one shape",
     config: CONFIG,
     files: {
@@ -234,12 +333,11 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { tool } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             case "check":
-              // false red: wiring-outside-hooks -- a hook's branch, read as the wiring's
-              switch (read.sub) { // missed red: hook-one-call -- a conditional call
+              switch (read.sub) { // red: hook-one-call -- a conditional call
                 case "dag":
-                  return tool.checkDag(read) // false red: wiring-outside-hooks -- the hook's call, its red the branch's
+                  return tool.checkDag(read)
               }
           }
         }
@@ -259,18 +357,15 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { tool } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             case "check":
-              return tool.check(read) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.check(read)
             case "explain":
-              // false red: wiring-outside-hooks -- a hook's call, read as the wiring's
-              return tool.explain(read.line) // missed red: hook-one-call -- read off the event
+              return tool.explain(read.line) // red: hook-one-call -- read off the event
             case "view":
-              // false red: wiring-outside-hooks -- a hook's call, read as the wiring's
-              return tool.view(read.line[0]) // missed red: hook-one-call -- read off the event
+              return tool.view(read.line[0]) // red: hook-one-call -- read off the event
             case "fix":
-              // false red: wiring-outside-hooks -- a hook's call, read as the wiring's
-              return tool.fix(read.command) // missed red: hook-one-call -- read off the event
+              return tool.fix(read.command) // red: hook-one-call -- read off the event
           }
         }
       `,
@@ -290,10 +385,9 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { tool } = createToolAssembly()
           const { command, line } = readLine(process.argv)
-          switch (command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (command) {
             case "check":
-              // false red: wiring-outside-hooks -- a hook's call, read as the wiring's
-              return tool.check(line) // missed red: hook-one-call -- read off the event, in the wiring
+              return tool.check(line) // red: hook-one-call -- read off the event, in the wiring
           }
         }
       `,
@@ -309,12 +403,11 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { tool } = createToolAssembly()
           const read = readLine(process.argv)
-          switch (read.command) { // false red: wiring-outside-hooks -- the reader's cut, not a branch in the wiring
+          switch (read.command) {
             case "check":
-              return tool.check(read, process) // false red: wiring-outside-hooks -- a hook's one call
+              return tool.check(read, process)
             case "here":
-              // false red: wiring-outside-hooks -- a hook's call, read as the wiring's
-              return tool.check(read, process.cwd()) // missed red: hook-one-call, hook-one-call -- a call that is not the use case's, and a value that is not the event handed on
+              return tool.check(read, process.cwd()) // red: hook-one-call, hook-one-call -- a call that is not the use case's, and a value that is not the event handed on
           }
         }
       `,
@@ -322,7 +415,7 @@ const ROWS: readonly Row[] = [
   },
   {
     // canon: "a root driver's `main()`, which takes nothing and reads its
-    // tech itself". Green today already.
+    // tech itself".
     name: "a root main taking the read as a parameter is red, and its switch is no cut: the value is not one the tech returned here",
     config: CONFIG,
     files: {

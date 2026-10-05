@@ -269,6 +269,11 @@ export type ArgValue = {
    */
   path: readonly string[]
   /**
+   * Whose tech a tech value is: the package or project file a reader claims
+   * that it came from — absent for the host's, and for any other kind.
+   */
+  package?: string
+  /**
    * A record literal handed: each entry as passed, so a rule judges them one by
    * one where `kind` joins them; `null` for anything else.
    */
@@ -543,8 +548,6 @@ export type Role =
 
 export type ReadHook = {
   span: Span
-  /** The tech call this hook was handed to. */
-  registeredBy: ReadCall
   /**
    * What the hook is for, by the reader's roles over the name its registration
    * calls (`it.skip.each` reads as `it`); `null` where the reader maps none —
