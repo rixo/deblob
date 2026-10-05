@@ -512,6 +512,25 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // The default cut holds in an assembly as in a driver: the function handed
+    // to a tech is a hook, cut out of the assembly's statements. What it does
+    // is not judged as the assembly's — the function handed is the red, with
+    // its call.
+    name: "what a function handed to a tech call does is the hook's, not the assembly's: the same one fix, nothing more",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          const notes = createNotes({ store: createFsStore(cwd) })
+          process.on("exit", () => notes.add("bye")) // red: assembly-builds-only + assembly-builds-only -- a call into the host, and the hook handed to it
+          return { notes }
+        }
+      `,
+    },
+  },
+  {
     // Added at checkpoint 5, as the row above.
     // canon: "arguments are literals, tech values received as parameters, or
     // instances" — a record spread into one hands its entries on, each judged

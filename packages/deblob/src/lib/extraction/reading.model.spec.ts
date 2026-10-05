@@ -16,6 +16,7 @@ import type { ImportTargetKind, ReadInput } from "./reading.model.ts"
 import { createJsReader } from "./adapters/js-reader.adapter.ts"
 import { createNodeReader } from "./adapters/node-reader.adapter.ts"
 import { createTsReader } from "./adapters/ts-reader.adapter.ts"
+import { answerCallbacks } from "./cut.model.ts"
 import { knowledgeOf } from "./knowledge.model.ts"
 import { readModule } from "./reading.model.ts"
 
@@ -141,7 +142,7 @@ const read = (
     program: extraction.program,
     source: extraction.source,
     layer: "driver",
-    tech: { name: "core", exempts: [] },
+    tech: { name: "core", exempts: [], cut: answerCallbacks },
     importTargetOf: (specifier) => TARGETS[specifier] ?? { kind: "unresolved" },
     knowledge: NODE_KNOWLEDGE,
     ...overrides,
@@ -493,7 +494,11 @@ describe("readModule", () => {
     test("a test kind: functions cut, and the hooks registered at root, nested", () => {
       const reading = read("root-forms.ts", {
         layer: "test",
-        tech: { name: "good-enough-tests", exempts: ["registration"] },
+        tech: {
+          name: "good-enough-tests",
+          exempts: ["registration"],
+          cut: answerCallbacks,
+        },
         knowledge: GLOBALS_RUNNER_KNOWLEDGE,
       })
       expect(reading.exempts).toEqual(["registration"])
@@ -516,6 +521,7 @@ describe("readModule", () => {
       name: "good-enough-tests",
       exempts: ["registration"],
       roleOf: createGoodEnoughTestsReader().roleOf,
+      cut: answerCallbacks,
     } as const
 
     /** Every hook with its line and role, nested ones after their parent. */
@@ -584,7 +590,11 @@ describe("readModule", () => {
     it("gives no role for a tech with none (tripwire)", () => {
       const reading = read("roles.ts", {
         layer: "test",
-        tech: { name: "good-enough-tests", exempts: ["registration"] },
+        tech: {
+          name: "good-enough-tests",
+          exempts: ["registration"],
+          cut: answerCallbacks,
+        },
       })
       expect(rolesOf(reading.hooks).every(([, role]) => role === null)).toBe(
         true,

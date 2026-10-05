@@ -11,7 +11,7 @@
 
 import type { Node } from "@oxc-project/types"
 
-import type { Cut } from "../extraction/reading.model.ts"
+import type { Cut } from "../extraction/cut.model.ts"
 
 export const cutMethods = (statement: Node): Cut | null => {
   if (statement.type !== "ReturnStatement") return null

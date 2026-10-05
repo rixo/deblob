@@ -37,6 +37,8 @@ import type {
   UnknownCondition,
   ValueKind,
 } from "./graph.model.ts"
+import type { CutAnswer, CutContext, HookPointer } from "./cut.model.ts"
+import { unwrapNode } from "./cut.model.ts"
 import type { Knowledge } from "./knowledge.model.ts"
 
 /** A declared form that holds a value, not code: `const`, `let`, `var`, an enum. */
@@ -73,29 +75,6 @@ export type ImportTargetKind =
     }
   | { kind: "unresolved" }
 
-/**
- * A hook, pointed at: what a cut answers, the reading's own and a reader's
- * alike. Two forms.
- *
- * A function (`fn`) — a callback handed to the tech, a method of an object the
- * tech is handed: the hook is the function, its parameters the event. It is
- * read as a hook where the reading meets it; what stands around it reads as it
- * is. Functions nest: a hook may hold another.
- *
- * Statements picked (`body`, `on`) — a case of a dispatch the driver writes:
- * what one trigger runs, whole (what runs together is one hook), where it sits,
- * and the expression that picked it. The tech value at `on`'s root — the result
- * of a call into the pointing reader's tech, or what the function received of
- * it — is the event; the statement reads as its hooks. Pointed off any other
- * value, the statement reads as the statement it is. Nothing is picked inside a
- * hook: picking is the wiring's.
- */
-export type HookPointer =
-  { fn: Node } | { start: number; end: number; body: readonly Node[]; on: Node }
-
-/** A cut's answer on one statement: the hooks it holds. */
-export type Cut = readonly HookPointer[]
-
 export type ReadInput = {
   program: Program
   source: string
@@ -115,9 +94,7 @@ export type ReadInput = {
      * with what that reader claims — whether a package or a project file (by
      * its root-relative path) is its tech.
      */
-    cut?: (
-      statement: Node,
-    ) => { cut: Cut; claims: (target: string) => boolean } | null
+    cut?: (node: Node, about: CutContext) => readonly CutAnswer[]
   } | null
   importTargetOf: (specifier: string) => ImportTargetKind
   /**
@@ -163,17 +140,6 @@ const isFunctionNode = (node: AstNode | null): node is AstNode =>
   node !== null && FUNCTION_TYPES.has(node.type)
 
 /** Transparent wrappers: the value is the inner expression's. */
-const WRAPPERS: ReadonlySet<string> = new Set([
-  "ParenthesizedExpression",
-  "TSAsExpression",
-  "TSSatisfiesExpression",
-  "TSNonNullExpression",
-  "TSTypeAssertion",
-  "TSInstantiationExpression",
-  "ChainExpression",
-  "AwaitExpression",
-])
-
 /** The forms that call: `import()` is a call into the host's module loader. */
 const CALL_FORMS: ReadonlySet<string> = new Set([
   "CallExpression",
@@ -182,14 +148,8 @@ const CALL_FORMS: ReadonlySet<string> = new Set([
   "ImportExpression",
 ])
 
-const unwrap = (node: AstNode): AstNode => {
-  let current = node
-  while (WRAPPERS.has(current.type)) {
-    // every wrapper carries the one or the other
-    current = (current["expression"] ?? current["argument"]) as AstNode
-  }
-  return current
-}
+const unwrap = (node: AstNode): AstNode =>
+  unwrapNode(node as unknown as Node) as unknown as AstNode
 
 // --- immutability, the syntactic fact -------------------------------------
 // Immutability a type checker would know and this reader reads off the
@@ -1950,23 +1910,6 @@ export const readModule = ({
    * kind, where hooks are no concept, it is read inline: its calls count where
    * the callback sits.
    */
-  /**
-   * The reading's own cut, every reader's default, in a reader's words: a
-   * function handed to the tech is a hook. Handed to what nobody claims it is
-   * cut as one too: the missing premise is red once, at the call (GUESS: D8),
-   * never again as the callback's calls read into the wiring.
-   */
-  const cutCallbacks = (
-    argNodes: readonly AstNode[],
-    callee: CalleeKind,
-  ): Extract<HookPointer, { fn: Node }>[] =>
-    tech !== null && (callee.kind === "tech" || callee.kind === "unclaimed")
-      ? argNodes
-          .map(unwrap)
-          .filter(isFunctionNode)
-          .map((fn) => ({ fn: fn as unknown as Node }))
-      : []
-
   const readArgs = (
     argNodes: readonly AstNode[],
     callee: CalleeKind,
@@ -1975,18 +1918,13 @@ export const readModule = ({
     emitting: boolean,
   ): ArgValue[] => {
     const args: ArgValue[] = []
-    const callbacks = new Set(
-      cutCallbacks(argNodes, callee).map(
-        (pointer) => pointer.fn as unknown as AstNode,
-      ),
-    )
     for (const arg of argNodes) {
       const inner = unwrap(arg)
       if (isFunctionNode(inner)) {
         args.push(plainArg("function", arg))
         if (!emitting) continue
-        // pointed at by the reading's own cut, or by a reader's
-        if (callbacks.has(inner) || pointed.delete(inner))
+        // pointed at by a cut, asked on the call
+        if (pointed.delete(inner))
           body.hooks.push(
             readHook(
               inner,
@@ -2113,6 +2051,57 @@ export const readModule = ({
       : { kind: "computed", origin: null, path: [] }
   }
 
+  /** A callee in a cut's words: a tech's and whose, nobody's, anything else. */
+  const cutCalleeOf = (
+    callee: CalleeKind,
+  ): ReturnType<CutContext["calleeOf"]> =>
+    callee.kind === "tech"
+      ? { kind: "tech", package: callee.package }
+      : callee.kind === "unclaimed"
+        ? { kind: "unclaimed" }
+        : { kind: "other" }
+
+  /**
+   * A call's callee as the reading takes it, nothing emitted: a
+   * `.map(callback)` on what cannot be proven an array is unknown, never
+   * presumed the tech's.
+   */
+  const classifyCall = (node: AstNode): CalleeKind => {
+    if (!CALL_FORMS.has(node.type) || node.type === "ImportExpression")
+      return { kind: "language" }
+    const calleeNode = calleeNodeOf(node)
+    const classified = calleeOf(calleeNode, false)
+    return node.type !== "TaggedTemplateExpression" &&
+      mapCallOf(node, calleeNode, node["arguments"] as AstNode[]) !== null &&
+      (classified.kind === "tech" || classified.kind === "unclaimed")
+      ? { kind: "unknown" }
+      : classified
+  }
+
+  /**
+   * The file's cuts asked on a node — a statement, or a call whose callee the
+   * reading has just classified (`known`). The functions pointed at are kept
+   * until the reading meets them; the answers come back for what they picked.
+   */
+  const askCuts = (
+    node: AstNode,
+    known: CalleeKind | null,
+  ): readonly CutAnswer[] => {
+    const answers =
+      tech?.cut?.(node as unknown as Node, {
+        calleeOf: (call) =>
+          cutCalleeOf(
+            (call as unknown as AstNode) === node && known !== null
+              ? known
+              : classifyCall(call as unknown as AstNode),
+          ),
+      }) ?? []
+    for (const { cut } of answers)
+      for (const pointer of cut)
+        if ("fn" in pointer) pointed.add(pointer.fn as unknown as AstNode)
+    return answers
+  }
+
   const evaluateCall = (
     node: AstNode,
     ctx: Ctx,
@@ -2193,6 +2182,9 @@ export const readModule = ({
         return value
       }
     }
+    // the cuts asked on the call: the functions they point at are hooks where
+    // the arguments are read
+    if (emitting) askCuts(node, callee)
     const results = resultsOf(ctx, callee, spanOf(node))
     const load = callee.kind === "use-case" ? loadOf(callee) : null
     if (ctx.kind === "bound" && load !== null) ctx.binding.boundLoad = true
@@ -2326,7 +2318,8 @@ export const readModule = ({
     const computed: Resolved = { kind: "computed", origin: null, path: [] }
     const unknown: Resolved = { kind: "unknown", origin: null, path: [] }
     const literal: Resolved = { kind: "literal", origin: null, path: [] }
-    if (WRAPPERS.has(node.type)) return evaluate(unwrap(node), ctx, emitting)
+    const unwrapped = unwrap(node)
+    if (unwrapped !== node) return evaluate(unwrapped, ctx, emitting)
     switch (node.type) {
       case "Literal":
         return literal
@@ -2837,14 +2830,18 @@ export const readModule = ({
    * hook: the statement then reads as it is.
    */
   const readCut = (statement: AstNode): boolean => {
-    const answer = tech?.cut?.(statement as unknown as Node) ?? null
-    if (answer === null) return false
-    const { cut, claims } = answer
-    const picked: Extract<HookPointer, { on: Node }>[] = []
-    for (const pointer of cut)
-      if ("fn" in pointer) pointed.add(pointer.fn as unknown as AstNode)
-      else picked.push(pointer)
-    if (picked.length === 0 || inHook) return false
+    // the first cut that picks here is the one that speaks
+    const picking = askCuts(statement, null)
+      .map(({ cut, claims }) => ({
+        claims,
+        picked: cut.filter(
+          (pointer): pointer is Extract<HookPointer, { on: Node }> =>
+            !("fn" in pointer),
+        ),
+      }))
+      .find(({ picked }) => picked.length > 0)
+    if (picking === undefined || inHook) return false
+    const { picked, claims } = picking
     const events = new Map<AstNode, Span | null>()
     for (const { on } of picked) {
       const node = on as unknown as AstNode

@@ -63,8 +63,8 @@ pointers of two forms (`HookPointer`, `reading.model.ts`): a function — its
 parameters are the event; or statements picked, with the expression that picked
 them — the tech value it is read off is the event. Three cuts speak it:
 
-- the reading's own, every reader's default: a function handed to a tech is a
-  hook (`cutCallbacks`);
+- the default, every reader's: a function handed to a tech is a hook
+  (`cutCallbacks`);
 - the switch reader: each case is statements picked on the discriminant;
 - a hook-object reader (`cases/hook-object-reader.model.ts`, rows in
   `cases/reader-hook-object.spec.ts`): each method of the object a wiring
@@ -72,11 +72,17 @@ them — the tech value it is read off is the event. Three cuts speak it:
   nest, as callbacks did; nothing is picked inside a hook, whatever cut made the
   hook (a switch on a callback's event is a branch in a hook).
 
-Not done: the reading's own cut answers in a reader's words but still lives in
-the reading — it needs what the reading knows of a callee, which a reader's cut
-is not given; so a reader cannot take it away ("callbacks handed to my tech are
-not hooks"). A function pointed at outside a call (a method) has no role and its
-event names no tech.
+The default cut is a cut like any other (`extraction/cut.model.ts`,
+`cutCallbacks`): a function outside the reading, last in every reader's stack
+and the core's. What made that possible is on the port: a cut is asked on every
+call too, not only on statements, and may ask the reading whose a call's callee
+is (`about.calleeOf`) — the one thing the callback cut needs that the syntax
+does not say.
+
+Not done: a reader saying "callbacks handed to my tech are not hooks" — the
+stack is built in one place (`stackedTech`, `extraction.service.ts`), so it is a
+key on the reader away, not built. A function pointed at outside a call (a
+method) has no role and its event names no tech.
 
 ## The principle the rows follow
 

@@ -39,6 +39,8 @@ import type { Resolvers } from "./ports/resolver.port.ts"
 import type { ImportTargetKind } from "./reading.model.ts"
 import { brokenLinesOf, readModule } from "./reading.model.ts"
 import { isTechFile, isTechPackage } from "./tech.model.ts"
+import type { CutAnswer, CutContext } from "./cut.model.ts"
+import { answerCallbacks } from "./cut.model.ts"
 import { symbolLevelOf } from "./symbols.model.ts"
 import type { Designations } from "./recognition.model.ts"
 import { knowledgeOf } from "./knowledge.model.ts"
@@ -62,7 +64,7 @@ const OUTSIDE_KINDS: ReadonlySet<Layer> = new Set([
  * The tech an assembly or a boot is read with: the core's, no reader bound
  * (canon: read by the flavor's kind) — nothing claimed, nothing exempt.
  */
-const CORE_TECH = { name: "core", exempts: [] } as const
+const CORE_TECH = { name: "core", exempts: [], cut: answerCallbacks } as const
 
 /** Readers stacked on one file: names joined, exemptions unioned, first role. */
 const stackedTech = (readers: readonly (DriverReader | TestReader)[]) => ({
@@ -75,20 +77,24 @@ const stackedTech = (readers: readonly (DriverReader | TestReader)[]) => ({
     }
     return null
   },
-  // the first reader that cuts the statement, and what that reader claims
-  cut: (statement: Node) => {
-    for (const reader of readers) {
-      const cut = "cut" in reader ? (reader.cut?.(statement) ?? null) : null
-      if (cut !== null)
-        return {
-          cut,
-          claims: (target: string) =>
-            isTechPackage(reader.tech, target) ||
-            isTechFile(reader.tech, target),
-        }
-    }
-    return null
-  },
+  // every reader's cut that answers, with what that reader claims; the
+  // default cut last
+  cut: (node: Node, about: CutContext): CutAnswer[] => [
+    ...readers.flatMap((reader) => {
+      const cut = "cut" in reader ? (reader.cut?.(node, about) ?? null) : null
+      return cut === null
+        ? []
+        : [
+            {
+              cut,
+              claims: (target: string) =>
+                isTechPackage(reader.tech, target) ||
+                isTechFile(reader.tech, target),
+            },
+          ]
+    }),
+    ...answerCallbacks(node, about),
+  ],
 })
 
 /** Every call in a reading, hooks and arms included. */

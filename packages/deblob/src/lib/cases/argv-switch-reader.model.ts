@@ -14,7 +14,7 @@
 
 import type { Node, Statement, SwitchCase } from "@oxc-project/types"
 
-import type { Cut } from "../extraction/reading.model.ts"
+import type { Cut } from "../extraction/cut.model.ts"
 
 /** Whether a case's statements end it: the last one leaves the switch. */
 const endsCase = (statements: readonly Statement[]): boolean => {
