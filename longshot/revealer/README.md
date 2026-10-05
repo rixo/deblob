@@ -26,12 +26,19 @@ a canon sentence, or **new** when nothing existing covers it. "Today" is the
 verdict without the custom reader, **inferred** from the row cited unless it
 says "run"; the fixture checkpoint replaces every inference by a run.
 
-Where the rows stand: sections 1 and 2 are corpus rows,
-`packages/deblob/src/lib/cases/reader-cut.spec.ts`, written red first — each
-states the verdict the reader owes and marks what today's reading reports
-instead (run 2026-10-05: the switch is "a branch in the wiring", each case's
-call "a use case outside any hook"; `readLine(process.argv)` is green already).
-Sections 3 to 6 are not in the corpus yet.
+Where the rows stand: every row is a corpus row written red first — it states
+the verdict the reader owes and marks what today's reading reports instead.
+
+- Sections 1 and 2: `packages/deblob/src/lib/cases/reader-cut.spec.ts`. Run
+  2026-10-05: the switch is "a branch in the wiring", each case's call "a use
+  case outside any hook"; `readLine(process.argv)` is green already.
+- Sections 3 to 6: `packages/deblob/src/lib/cases/reader-hand-off.spec.ts`. Run
+  2026-10-05: the hand-off call is not reported today, eager or through
+  `import()`; the shared log service handed down, and the tech handed that
+  service at setup, raise nothing. What is red is the same as above, in the
+  sub-driver and the lazy unit too.
+- No row yet: a computed specifier (4.2); the tech-side `lazy` (4.5, its own
+  checkpoint). The bare adapter (5.2, 6.2) is `assembly.spec.ts`'s row already.
 
 ## The principle the rows follow
 
