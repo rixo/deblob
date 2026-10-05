@@ -66,13 +66,22 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   reds for one missing premise — D8's cut does not cover a project file's
   callee, and the message calls the router's `route` "the use case" (two
   findings, confessed in the row). deblob's router, a model factory, reads clean
-  as its own layer. **Amended 2026-10-02 (rixo): the edge skip above goes.** A
-  claim never turns off a layer cell: a claimed file is judged on the edge and
-  in itself by its kind, so a driver imports a claimed service, never a model or
-  adapter; the claim only makes the callbacks handed to it hooks (the reader's
-  job). Claims became a declared list (`./path` for a file), `claimsFile` gone.
-  Built: the list (checkpoint 1); the skip's removal and the router's move to a
-  service are the next checkpoint. See `tests-model/README.md` § RESUME HERE.
+  as its own layer. **2026-10-02:** claims became a declared list under the key
+  `tech` (`./path` for a file), `claimsFile` gone (committed). The edge skip
+  stays: removing it was tried and failed, no project kind is importable by a
+  driver (services and adapters are assembly-only, a model is
+  `driver-no-model`). **2026-10-05, where it stands:** the supported shape is
+  the one built — the driver imports the claimed file and builds the tech
+  itself; verified by running, `cli.driver.ts`, `commands.driver.ts` and
+  `router.model.ts` carry no violation. A tech built in an assembly, or handed
+  to the driver as a parameter, is not supported: the instance's origin is the
+  assembly factory, not the claimed file, and the reader does not follow
+  assembly bodies, so its methods read as use cases (tried, red). The base is
+  not stretched to cover it (claim by origin and type-based identification were
+  proposed and dropped): the way in for such a case is the reader's own cut, to
+  be proven by the reader revealer. Not decided, waits on the revealer: whether
+  the skip narrows to a model or service target (adapter red). History of the
+  thread: `tests-model/README.md` § The router thread.
 - **D5 — Standard stacks without a config** (`--node`). Default: none, a config
   is written. Status: parked.
 - **D6 — Entry points nothing imports** (`+page.svelte`, `entryPoints`).
@@ -181,7 +190,28 @@ Anonymous; the partner run's details stay local.
   command word, `otherwise`; no arity: the front rereads the line and tells a
   value spelling a command, `-c check`), `apps/cli/commands.driver.ts` one hook
   per command, `cli.service.ts` the front service. Both CLI driver files read
-  clean.
+  clean. **2026-10-05:** stands as built, see D4's note (the driver builds the
+  router from the claimed file; handing it in from the assembly is not
+  supported). Option (c), the switch cut, comes back as the reader revealer's
+  first target: a second CLI over a switch-case router with its own reader.
+
+- **C2 — The boot hands the driver its app** (card, 2026-10-02; LOW since
+  2026-10-05: the untested gap is `main()`'s four lines, `registerCommands` is
+  tested in-process and the boot smoke test covers `main`; the revealer may
+  dissolve it). Today the root driver's `main()` builds its app
+  (`createCliAssembly(process)`) and reads its tech itself, so it is testable
+  only by the boot's child-process smoke test. Idea (rixo): the boot imports an
+  assembly and a driver, builds the app, calls `main(router, cli, argv)`. The
+  root driver then holds no tech of its own, takes everything as parameters like
+  a sub-driver, and is testable in-process; the irreducible concession shrinks
+  to a logic-free boot, where canon already puts "the process starts". Touches:
+  `boot-one-call` (canon: a boot imports one driver and calls its wiring), the
+  outside-layers ruling (one thing each — is building the app a second thing for
+  the boot?), D7 (the host-driver reader would dissolve), `main()`'s "takes
+  nothing and reads its tech itself". None checked yet. 2026-10-05: handing the
+  app in as a parameter mixes instances with the tech, and a rule reading every
+  handed-in parameter as tech would blind the driver's use-case rules. Status:
+  card.
 
 - **L1 — Where an app lives** (talked through 2026-09-30, to try). One folder
   per app under `src/apps/` (boot, root driver, sub-drivers, front service, its

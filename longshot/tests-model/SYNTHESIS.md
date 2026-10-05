@@ -205,12 +205,12 @@ either the router file is not a model, or the ruling needs canon to say how a
 claimed model reads. Report 2 also notes that canon's CLI example (664-666) lags
 the code.
 
-**Ruled 2026-10-02:** neither. The reports read red because canon's wording was
-wrong (a line saying a model cannot be claimed as tech), not because the design
-was. A claim feeds the driver reader and never changes the edge: the file keeps
-its kind and the normal layer rules, so a driver imports a claimed service (a
-model router gets a thin service in front). Full ruling: `README.md` § RESUME
-HERE.
+**2026-10-02:** the reports read red because canon's wording was wrong (a line
+saying a model cannot be claimed as tech), not because the design was. The first
+answer given here (a claim changes no edge, a service facade goes in front) was
+tried and REFUTED the same day: a driver may import no project kind at all.
+Closed 2026-10-05: the shipped shape (the driver builds the router from a file
+its reader lists as tech) is green as built. `README.md` § The router thread.
 
 ## What this hands back to rixo, to weigh slowly
 

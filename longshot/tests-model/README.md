@@ -11,9 +11,9 @@ now, no longer the frame.
 ## RESUME HERE
 
 Last sessions: 2026-10-01 evening, rixo weighed SYNTHESIS item by item;
-2026-10-02, item 8(c) ruled (below). This folder, `../REVIEW.md` and
-`../TESTS-DOSSIER.md` committed on `longshot` 2026-10-02. Nothing to canon yet,
-no commit without a go.
+2026-10-02 and 2026-10-05, item 8(c), the router (closed, § The router thread
+below). This folder, `../REVIEW.md` and `../TESTS-DOSSIER.md` committed on
+`longshot` 2026-10-02. Nothing to canon yet, no commit without a go.
 
 1. Read § Ruled from the synthesis — the session's outcome, in ruling order. The
    frame is settled: criterion A (an atom = one detection, one verdict); rule =
@@ -25,42 +25,118 @@ no commit without a go.
 2. Context if needed: § The finding, § What is held,
    [SYNTHESIS.md](SYNTHESIS.md) (the reports and raw decompositions sit beside
    it).
-3. **Next, in order:**
+3. **Next, in order.** Before all of it (rixo, 2026-10-05): the reader revealer,
+   a second CLI over a switch-case router with a fully custom reader, to settle
+   the reader port's final cut; its rows go in `longshot/revealer/`. Then:
    1. Item 8 leftovers, one at a time: (a) a legacy blob entry called green
       (654-658) vs `stable-root` — likely solved by the split (blob lists no
       root rule, it claims nothing): verify, then confirm with rixo; (b) e2e
       (263 "a test kind" vs 1022-1023 "outside the graph") — v1 scope says e2e
-      out, likely wording only; (c) **RULED 2026-10-02, see below** (the CLI
+      out, likely wording only; (c) **CLOSED 2026-10-05, see below** (the CLI
       root driver's `createRouter` from `router.model.ts`: the 24 reports read
-      red because canon's wording was wrong, not the design).
+      red because canon's wording was wrong, not the design; green as built).
    2. The owed rule: branches and loops in driver wiring (the definition rule's
       dissolution leans on it).
    3. Build the rules × kinds table (placeholder slugs) — the proof that every
       kind recomposes with no exception. Not shown until then.
-   4. The test kind's final list from that table. **Item 8(c), ruled 2026-10-02
-      with rixo (supersedes D4's "skips the driver's layer cell"):**
+   4. The test kind's final list from that table.
 
-- A claim never touches the edge. The driver's import of a claimed file is
-  judged by the normal layer rules: driver→service green, driver→model and
-  driver→adapter red, claimed or not. If the router is a model, a thin service
-  goes in front; "make it blob" is never the way out.
-- What a claim does: it feeds the driver reader. A claimed package is admitted
-  as tech (the one exemption, as `cac`); a claimed project file only makes the
-  callbacks handed to it hooks. The reader, not the rule, names what a hook is.
-  Claiming (reader pipe) and judging (the file's own kind) are distinct matters.
-- The hole confessed: a vendor router (`cac`) can hold domain logic as well as a
-  home-brew one; deblob never judges domain. With no edge skip, a claim cannot
-  launder an adapter or a model, only add hook constraints. A `.router` kind is
-  dead (the driver would need the rules, not a kind).
-- Claims are a declared list, never a function ("almost impossible to declare by
-  mistake, all too easy to accept by mistake"): package names, project files as
-  `./root-relative-path`. The key is `tech` (canon's own word; ruled
-  2026-10-02), not `claims`; host readers' builtin `claims(specifier)` still to
-  follow.
-- Canon owes a sentence saying this (the line that says a model cannot be
-  claimed as tech is the one to fix). Build order, longshot: (1) declarative
-  claims, done; (2+3, one checkpoint) the edge skip removed and
-  `router.model.ts` becomes a service; (4) canon sentence.
+**The router thread — item 8(c) and the `tech` key (2026-10-02 to 10-05,
+closed). Supersedes what this README said before 2026-10-02; GUESSES D4 carries
+the outcome.**
+
+Rulings by rixo (firm, 2026-10-02):
+
+- A driver can use a tech, vendor (`cac`) or home-brew; a reader (a `.driver`
+  concern) is what lets deblob judge the driver; deblob does not care whether
+  userland uses vendor or its own. Any code under the user's `include` is judged
+  by every existing rule by its kind, whatever it is used for (deblob judges
+  structure, never domain). The 24 atom-hunt reports read the router red because
+  canon's wording was wrong (a line saying a model cannot be claimed as tech),
+  not because the design was.
+- Claims are a DECLARED LIST, never a function ("almost impossible to declare by
+  mistake, all too easy to accept by mistake"). The key is `tech` (ruled
+  2026-10-02), project files spelled `./root-relative-path`. DONE and committed
+  (longshot checkpoint 1, "a reader's tech is a declared list"). Host readers'
+  builtin `claims(specifier)` function is untouched, to follow.
+- A `.router` kind is dead (the driver would need the rules, not a kind).
+- The hole (a vendor router like `cac` can hold domain logic too; a claim can
+  hide a driver→model edge) is to be CONFESSED in canon, not guarded: no nanny
+  guards, the claim is the user's own explicit act.
+- Card: GUESSES C2, the boot hands the driver its app
+  (`main(router, cli, argv)`). HIGH on 2026-10-02, LOW since 2026-10-05 (reasons
+  in the card).
+
+The question of the thread: how a home-brew tech (a project file) is identified
+to the reader AND reaches the driver legally. Facts VERIFIED by running the
+longshot self-check:
+
+- At checkpoint 1 the shipped shape is green: the driver imports the file its
+  reader lists as tech and builds the router itself; `cli.driver.ts`,
+  `commands.driver.ts`, `router.model.ts` carry no violation (run 2026-10-05;
+  baseline 239 violations, 61 unknown).
+- A driver may import NO project kind: model, service, adapter all red
+  (`service-assembly-only`, `adapter-assembly-only`, `driver-no-model`); only
+  assembly factories. I had told rixo "driver→service is the normal path":
+  WRONG.
+- Router built by the assembly and handed to the driver as a parameter (tried,
+  "option 2"): commands.driver.ts goes red ("hands router.flag a function"): a
+  handed instance is NOT tech to the reader, so no hook cut. 24 new violations.
+  Abandoned. Cause, by reading the code (2026-10-05): the instance's origin is
+  the assembly factory (`createCliAssembly`, member `router`), not the router
+  file, and the reader does not follow assembly bodies. The first diagnosis ("a
+  parameter no caller binds") was WRONG: the graph pass does bind parameters
+  from call sites.
+- A root `app.run()` is red too (`wiring-outside-hooks`): serve.driver.ts:11 and
+  snapshot.driver.ts:11, old reds, not mine. I had said serve was accepted:
+  WRONG.
+
+Options that were on the table, and what became of each:
+
+- (a) Keep the exempt edge, narrowed to a MODEL or SERVICE target, adapter red
+  (rixo: "model or service is the only legal kind to claim"). The edge skip was
+  never removed from the committed code; the narrowing is NOT decided, it waits
+  on the revealer (the file claim itself may not survive it).
+- (b) A claim naming an assembly-built instance. Grew on 2026-10-03 into "a
+  claimed file makes its imports AND the instances born from it tech, by
+  origin", ruled 2026-10-05 and WITHDRAWN the same day: its premise was wrong,
+  the origin of an assembly-built instance is the assembly factory, so the rule
+  would not reach the case it was made for. Dropped with it: type-based
+  identification, and a rule reading a root driver's parameters as tech (C2).
+- (c) The router outside the judged code: ruled out by rixo, 2026-10-03.
+
+Outcome (rixo, 2026-10-05): we were generalizing the base to fit one home-brew
+tech. The tech's whole role goes to its reader: the reader receives the AST and
+says "this is a hook, its body is here", and how the driver receives its tech;
+case-specific hard points are the reader's job, not base config or rules. The
+base keeps one generic contract: it honours what a reader claims. A tech built
+in an assembly or handed in stays unsupported until a reader's own cut covers
+it; "no cut, so blob" is not an accepted hole, it is the revealer's target.
+
+Build state: `packages/` is at checkpoint 1, clean; the abandoned option-2 edits
+are gone from this clone (a patch is kept in the private tracking repo). Still
+to do if (a)'s narrowing is picked after the revealer: skip in `layers.model.ts`
+(`edge.claim === "reader"`) only when the target's layer is model or service;
+corpus rows in `cases/readers.spec.ts` (claimed model green, claimed adapter
+red, unclaimed red, claimed file keeps its kind's rules); the canon sentence
+(the line saying a model cannot be claimed as tech, ~line 621 of
+`docs/architecture.md`: "what a reader lists as tech is tech to its driver,
+wherever the file lives; a claimed file keeps its kind and its own rules").
+Commit lesson: `git commit -- <paths>` ignores untracked files; a new file needs
+an explicit `git add` first.
+
+Found on the way, 2026-10-05, not fixed: canon `docs/architecture.md` says "a
+lazily loaded feature is a lazily imported assembly" (~l.503) and "an assembly
+importing another, at startup" (~l.592); a lazy facade written in an assembly is
+red (`assembly-builds-only`, verified by running). The revealer's lazy rows
+decide which sentence stays.
+
+Rest of the plan, in order: the reader revealer; item 8 leftovers (a) legacy
+blob entry vs `stable-root`, (b) e2e wording; the owed rule (branches and loops
+in driver wiring); the rules × kinds table; the test kind's final list; host
+readers' `claims` to `tech`. Road: longshot → port clean to driver-layer → main
+→ next 0.0.x; an interim longshot build for other consumers is an open ordering
+question.
 
 4. Placeholder slugs so far (named for real when each rule is born, 2–3 kebab
    words): `hook-one-call`, `hook-one-path`, `hook-passes-event`,
