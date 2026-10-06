@@ -37,8 +37,9 @@ export type PluginsConfig = Designations & {
 }
 
 /**
- * The tech a file is read with: its readers' names joined, their exemptions,
- * the first role one of them gives, and every cut that answers on a node.
+ * The tech a file is read with: its readers' names joined, the parts of the
+ * driver rules its kind does not take, the first role a reader gives, and every
+ * cut that answers on a node.
  */
 export type BoundTech = {
   name: string
@@ -78,12 +79,26 @@ export const CORE_TECH = {
   cut: answerCallbacks,
 } as const satisfies BoundTech
 
-/** Readers stacked on one file: names joined, exemptions unioned, first role. */
+/**
+ * The parts of the driver rules a test file does not take (`test-is-outside`:
+ * registering calls at its root, any count of calls in a body, calls to
+ * anything, definitions). The kind's, not a reader's to say: no reader sets
+ * them. They stand until the test kind has its own list of rules.
+ */
+const TEST_EXEMPTS = [
+  "registration",
+  "call-count",
+  "services-only",
+  "definitions",
+] as const satisfies readonly Exemption[]
+
+/** Readers stacked on one file: names joined, first role, every cut heard. */
 const stackedTech = (
   readers: readonly (DriverReader | TestReader)[],
+  exempts: readonly Exemption[],
 ): BoundTech => ({
   name: readers.map((reader) => reader.name).join("+"),
-  exempts: [...new Set(readers.flatMap((reader) => reader.exempts ?? []))],
+  exempts,
   roleOf: (chain) => {
     for (const reader of readers) {
       const role = "roleOf" in reader ? reader.roleOf({ chain }) : null
@@ -141,15 +156,16 @@ export const bindPlugins = (
   const bound = new Map<string, FilePlugins>()
   const bind = (file: string): FilePlugins => {
     const flavorLayer = classificationOf(file).layer
+    const testReaders = recognition.testReadersOf(file, flavorLayer)
     const own = [
       ...recognition.driverReadersOf(file, flavorLayer),
-      ...recognition.testReadersOf(file, flavorLayer),
+      ...testReaders,
     ]
     const hosts = recognition.boundOf(readers.host, file)
     return {
       unread: own.length === 0,
       asBlob: own.some((reader) => reader.blob),
-      tech: stackedTech(own),
+      tech: stackedTech(own, testReaders.length > 0 ? TEST_EXEMPTS : []),
       claimsPackage: (specifier) =>
         own.some((reader) => isTechPackage(reader.tech, specifier)),
       claimsFile: (path) => own.some((reader) => isTechFile(reader.tech, path)),

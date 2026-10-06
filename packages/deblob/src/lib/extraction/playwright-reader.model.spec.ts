@@ -4,12 +4,11 @@ import { createPlaywrightReader } from "./playwright-reader.model.ts"
 import { isTechPackage } from "./tech.model.ts"
 
 describe("createPlaywrightReader", () => {
-  it("claims @playwright/test and exempts what a test file does", () => {
+  it("claims @playwright/test", () => {
     const reader = createPlaywrightReader({ include: ["tests/**"] })
     expect(reader).toMatchObject({ name: "playwright", include: ["tests/**"] })
     expect(isTechPackage(reader.tech, "@playwright/test")).toBe(true)
     expect(isTechPackage(reader.tech, "vitest")).toBe(false)
-    expect(reader.exempts).toHaveLength(4)
   })
 
   it("translates Playwright's names into roles, a step into none", () => {

@@ -94,17 +94,30 @@ describe("bindPlugins", () => {
       expect(read.of(CLI)).toMatchObject({ unread: false, asBlob: false })
     })
 
-    it("stacks the readers of a file: names joined, exemptions merged once each", () => {
+    it("stacks the readers of a file, names joined", () => {
       const plugins = bind({
         driver: [
-          { name: "one", tech: [], exempts: ["registration"] },
-          { name: "two", tech: [], exempts: ["registration", "call-count"] },
+          { name: "one", tech: [] },
+          { name: "two", tech: [] },
         ],
       })
-      expect(plugins.of(CLI).tech).toMatchObject({
-        name: "one+two",
-        exempts: ["registration", "call-count"],
+      expect(plugins.of(CLI).tech.name).toBe("one+two")
+    })
+
+    it("relaxes the four driver rules a test file does not take for a test file, none for a driver, whatever a reader writes", () => {
+      const plugins = bind({
+        driver: [
+          { name: "made-up", tech: [], exempts: ["call-count"] } as never,
+        ],
+        test: [{ name: "made-up-runner", tech: [], roleOf: () => null }],
       })
+      expect(plugins.of(CLI).tech.exempts).toEqual([])
+      expect(plugins.of(SPEC).tech.exempts).toEqual([
+        "registration",
+        "call-count",
+        "services-only",
+        "definitions",
+      ])
     })
 
     it("takes the first role a test reader gives", () => {

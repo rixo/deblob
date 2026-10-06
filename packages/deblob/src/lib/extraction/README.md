@@ -204,14 +204,13 @@ unparsed one, has none: recognized and open.
   per tech as the flavor is one per naming convention. A reader is its binding
   (root-relative globs, the builtin one; config binds more, first), the kinds it
   reads among the files it binds (one kind = the binding designates it), the
-  packages it claims as tech, the driver rules it exempts, and its roles —
-  `roleOf({ chain })`, its tech's names translated into deblob's (`Role`: group,
-  behavior, verification, setup and teardown with a scope, mock), given the name
-  a registration calls (the reading finds it: the reader's own import, then the
-  members through calls), `null` for a name it does not map; the cut is the
-  reading's, so a tech that needs a cut of its own adds it here with the case
-  that needs it — as will the first reader whose files the default engine cannot
-  parse, with its engine.
+  packages it claims as tech, and its roles — `roleOf({ chain })`, its tech's
+  names translated into deblob's (`Role`: group, behavior, verification, setup
+  and teardown with a scope, mock), given the name a registration calls (the
+  reading finds it: the reader's own import, then the members through calls),
+  `null` for a name it does not map; the cut is the reading's, so a tech that
+  needs a cut of its own adds it here with the case that needs it — as will the
+  first reader whose files the default engine cannot parse, with its engine.
 
 ## Adapters
 
@@ -260,8 +259,7 @@ unparsed one, has none: recognized and open.
   conventions over every runner it knows: binds the test naming (`*.spec.*`,
   `*.test.*`, `__tests__/`) and reads the test kind only, so its binding is what
   makes a file a test file — canon's "spec files by the test globs"; claims the
-  runners it knows (a census, `driverTech` for the next one); exempts
-  registration, the call count, services-only and definitions; maps the runners'
+  runners it knows (a census, `driverTech` for the next one); maps the runners'
   shared names to roles (`describe`/`suite` group, `it` behavior, `test`
   verification, `before*`/`after*` setup and teardown by scope,
   `vi.mock`/`jest.mock` mock), a chain by the longest listed name it starts with

@@ -603,9 +603,9 @@ cut with their configs untouched.
 
 What a reader is, ruled 2026-10-06 (rixo): a plugin, as Rollup and Vite have
 them. A reader or a flavor is a plain object from outside — a name, declarations
-(`include`, `tech`, `exempts`, `blob`), and functions. It is no layer's citizen:
-not an adapter, not a service, not a model; nothing regulated is instantiated in
-the user's config. Its contract is a type, not a port. What it needs from deblob
+(`include`, `tech`, `blob`), and functions. It is no layer's citizen: not an
+adapter, not a service, not a model; nothing regulated is instantiated in the
+user's config. Its contract is a type, not a port. What it needs from deblob
 comes through the `context` it is handed, made by the service that calls it,
 from that service's own ports; the one place plugin functions are called (the
 container) is deblob's, under every rule. The stock readers and the stock flavor

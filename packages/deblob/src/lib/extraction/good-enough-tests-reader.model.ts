@@ -68,7 +68,6 @@ export const createGoodEnoughTestsReader = (
   name: "good-enough-tests",
   ...binding,
   tech: RUNNERS,
-  exempts: ["registration", "call-count", "services-only", "definitions"],
   // the longest listed name the chain starts with: `it.skip.each` is `it`,
   // `vi.mock` a mock, `vi.fn` none; own keys only (`constructor` is none)
   roleOf: ({ chain }) => {

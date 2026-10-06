@@ -546,14 +546,13 @@ What "one hook" is depends on the tech: a `.command().action()` callback on a
 CLI, a route handler, a `test()` body, an event handler in a component. So are
 what counts as a call, a definition, or wiring. So each technology comes with a
 **reading**: which files are its own, which packages and names are its tech, how
-its files are cut into hooks, and which driver rules it exempts. The driver
-rules are ascribed through that reading; in the checker it is a reader, bound to
-its files by glob, as the flavor is one per naming convention. A driver's tech
-is what the readers bound to it claim, and nothing else: the host's names
-(`process`, `document`) are tech where a host's reader is bound, and an import
-or a name no bound reader claims is unclaimed. A driver no reader reads is red
-(`driver-reader`): no driver rule can be judged without the reading, and the way
-out is binding one.
+its files are cut into hooks. The driver rules are ascribed through that
+reading; in the checker it is a reader, bound to its files by glob, as the
+flavor is one per naming convention. A driver's tech is what the readers bound
+to it claim, and nothing else: the host's names (`process`, `document`) are tech
+where a host's reader is bound, and an import or a name no bound reader claims
+is unclaimed. A driver no reader reads is red (`driver-reader`): no driver rule
+can be judged without the reading, and the way out is binding one.
 
 The rules assume one shape — a hook is a function the tech is handed and calls
 back — and the stock cut is exactly that: every callback handed to a claimed

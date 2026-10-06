@@ -30,4 +30,4 @@ export type {
   HookPointer,
   RelayedCall,
 } from "./lib/extraction/cut.model.ts"
-export type { Exemption, Role } from "./lib/extraction/graph.model.ts"
+export type { Role } from "./lib/extraction/graph.model.ts"

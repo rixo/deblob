@@ -4,7 +4,7 @@ import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.model.ts
 import { isTechPackage } from "./tech.model.ts"
 
 describe("createGoodEnoughTestsReader", () => {
-  it("binds the flavor's test files by default, claims the runners it knows by package, exempts the four", () => {
+  it("binds the flavor's test files by default, claims the runners it knows by package", () => {
     const reader = createGoodEnoughTestsReader()
     expect(reader.name).toBe("good-enough-tests")
     expect(reader.include).toBeUndefined()
@@ -14,12 +14,6 @@ describe("createGoodEnoughTestsReader", () => {
     expect(isTechPackage(reader.tech, "vitest/config")).toBe(true)
     expect(isTechPackage(reader.tech, "some-made-up-runner")).toBe(false)
     expect(isTechPackage(reader.tech, "./local.ts")).toBe(false)
-    expect(reader.exempts).toEqual([
-      "registration",
-      "call-count",
-      "services-only",
-      "definitions",
-    ])
   })
 
   it("takes include and exclude over its default binding", () => {

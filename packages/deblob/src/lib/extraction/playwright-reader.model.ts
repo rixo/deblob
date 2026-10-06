@@ -31,7 +31,6 @@ export const createPlaywrightReader = (
   name: "playwright",
   ...binding,
   tech: ["@playwright/test"],
-  exempts: ["registration", "call-count", "services-only", "definitions"],
   // the longest listed name the chain starts with: `test.describe.only` is a
   // group, `test.skip` a verification; own keys only
   roleOf: ({ chain }) => {

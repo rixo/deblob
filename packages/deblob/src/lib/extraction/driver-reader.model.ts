@@ -1,8 +1,7 @@
 /**
  * The driver axis — one reader per technology a driver listens to. A driver
- * reader is its binding (which files are this tech's drivers), its claims (the
- * packages that are its tech) and its exemptions (the driver rules its shape
- * relaxes, each with its reason). Every reader's stack ends with the default
+ * reader is its binding (which files are this tech's drivers) and its claims
+ * (the packages that are its tech). Every reader's stack ends with the default
  * cut (`cut.model.ts`): a callback handed to a tech is a hook. A reader may add
  * a cut of its own (`cut`) for a tech whose hooks are not callbacks — the same
  * function, the same answer; configs written without one stay valid. A driver
@@ -11,7 +10,6 @@
 
 import type { Node } from "@oxc-project/types"
 
-import type { Exemption } from "./graph.model.ts"
 import type { Cut, CutContext } from "./cut.model.ts"
 import type { ReaderBinding } from "./recognition.model.ts"
 
@@ -25,8 +23,6 @@ export interface DriverReader extends ReaderBinding {
    * (GUESS: D4).
    */
   readonly tech: readonly string[]
-  /** Driver rules the tech's shape exempts. */
-  readonly exempts?: readonly Exemption[]
   /**
    * The file counts as blob on purpose (`blobDriver`): nothing inside is
    * judged, and it keeps the driver's inbound seal.
