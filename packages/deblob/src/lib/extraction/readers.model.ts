@@ -4,10 +4,10 @@
  * shape, partial; assembly fills the groups left out with the defaults.
  */
 
-import type { DriverReader } from "./driver-reader.port.ts"
-import type { HostReader } from "./host-reader.port.ts"
-import type { LanguageReader } from "./language-reader.port.ts"
-import type { TestReader } from "./test-reader.port.ts"
+import type { DriverReader } from "./driver-reader.model.ts"
+import type { HostReader } from "./host-reader.model.ts"
+import type { LanguageReader } from "./language-reader.model.ts"
+import type { TestReader } from "./test-reader.model.ts"
 
 export type ReaderGroups = {
   readonly language: readonly LanguageReader[]

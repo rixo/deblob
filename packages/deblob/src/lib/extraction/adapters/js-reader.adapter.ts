@@ -1,5 +1,5 @@
 import type { ReaderBinding } from "../recognition.model.ts"
-import type { LanguageReader } from "../ports/language-reader.port.ts"
+import type { LanguageReader } from "../language-reader.model.ts"
 
 /**
  * ECMAScript's global intrinsics (ECMA-262 § 19, plus ECMA-402's `Intl`): a

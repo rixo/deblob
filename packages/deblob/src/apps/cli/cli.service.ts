@@ -34,8 +34,7 @@ import type { Manifest } from "../../lib/config/ports/manifest.port.ts"
 import type { ContentReader } from "../../lib/explain/content.port.ts"
 import { asExtractionError } from "../../lib/extraction/graph.model.ts"
 import type { ModuleNode } from "../../lib/extraction/graph.model.ts"
-import type { FlavorClassification } from "../../lib/extraction/ports/flavor.port.ts"
-import { createRecognition } from "../../lib/extraction/recognition.model.ts"
+import { bindPlugins } from "../../lib/extraction/plugins.model.ts"
 import type { Fs } from "../../lib/fs/fs.port.ts"
 import {
   ANSI_COLORS,
@@ -205,26 +204,14 @@ export const createCli = ({
     }
 
     const files = await coverage.scanCoverage(config)
-    // classify is total by contract — extraction throws on a gap; bare trusts it
-    const classifications = config.flavor.classify({ files })
-    const classificationOf = (path: string) =>
-      classifications.get(path) as FlavorClassification
-    // the same recognition as extraction's, so bare and check count one way;
-    // its one failure (a file under two designation keys) is the user's, told
-    // on stderr like a config error — bare stays 0
-    const { kindOf } = createRecognition({
-      driver: config.readers.driver,
-      test: config.readers.test,
-      isAssembly: config.isAssembly,
-      isBoot: config.isBoot,
-    })
+    // the run's plugins bound as extraction binds them, so bare and check
+    // count one way; its one failure (a file under two designation keys) is
+    // the user's, told on stderr like a config error — bare stays 0
+    const plugins = bindPlugins(config, files)
     let blobByPath: ReadonlyMap<string, boolean>
     try {
       blobByPath = new Map(
-        files.map((path) => [
-          path,
-          kindOf(path, classificationOf(path).layer) === "blob",
-        ]),
+        files.map((path) => [path, plugins.kindOf(path) === "blob"]),
       )
     } catch (error) {
       return unreadable(asExtractionError(error).message)
@@ -263,7 +250,7 @@ export const createCli = ({
               sizes.map(({ path, size }) => ({ size, blob: isBlob(path) })),
             ),
             services: serviceCountOf(
-              files.map((path) => classificationOf(path).serviceRoot),
+              files.map((path) => plugins.classificationOf(path).serviceRoot),
             ),
             surface:
               surface === null

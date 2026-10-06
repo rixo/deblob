@@ -8,5 +8,5 @@ export type { DeblobConfig } from "./lib/config/config.service.ts"
 export type {
   FlavorClassification,
   FlavorResolver,
-} from "./lib/extraction/ports/flavor.port.ts"
+} from "./lib/extraction/flavor.model.ts"
 export type { FlavorLayer } from "./lib/extraction/graph.model.ts"

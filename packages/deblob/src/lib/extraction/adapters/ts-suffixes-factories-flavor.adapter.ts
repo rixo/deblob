@@ -4,10 +4,7 @@ import {
   classifyStockEntry,
 } from "../stock-flavor.model.ts"
 import type { FlavorLayer } from "../graph.model.ts"
-import type {
-  FlavorClassification,
-  FlavorResolver,
-} from "../ports/flavor.port.ts"
+import type { FlavorClassification, FlavorResolver } from "../flavor.model.ts"
 
 /**
  * The stock flavor: suffix naming + factory injection. Path-only rules — layer

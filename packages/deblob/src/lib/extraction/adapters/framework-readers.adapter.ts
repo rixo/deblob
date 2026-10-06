@@ -1,5 +1,5 @@
 import type { ReaderBinding } from "../recognition.model.ts"
-import type { DriverReader } from "../ports/driver-reader.port.ts"
+import type { DriverReader } from "../driver-reader.model.ts"
 
 /**
  * A driver reader over a framework's packages, claims only — the stock cut, no

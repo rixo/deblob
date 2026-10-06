@@ -1,5 +1,5 @@
 import type { Role } from "../graph.model.ts"
-import type { TestReader } from "../ports/test-reader.port.ts"
+import type { TestReader } from "../test-reader.model.ts"
 import type { ReaderBinding } from "../recognition.model.ts"
 
 /**

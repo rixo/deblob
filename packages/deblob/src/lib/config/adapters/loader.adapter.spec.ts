@@ -7,7 +7,7 @@ import { promisify } from "node:util"
 
 import { afterAll, describe, expect, it, test } from "vitest"
 
-import type { FlavorResolver } from "../../extraction/ports/flavor.port.ts"
+import type { FlavorResolver } from "../../extraction/flavor.model.ts"
 import { STOCK_FLAVOR_NAME } from "../../extraction/stock-flavor.model.ts"
 import { ConfigError } from "../config.model.ts"
 import { overlayLocalConfig, resolveConfig } from "../config.service.ts"

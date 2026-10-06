@@ -1,7 +1,7 @@
 import { builtinModules } from "node:module"
 
 import type { ReaderBinding } from "../recognition.model.ts"
-import type { HostReader } from "../ports/host-reader.port.ts"
+import type { HostReader } from "../host-reader.model.ts"
 
 /**
  * Node's free names beyond the language: the process, the module system's

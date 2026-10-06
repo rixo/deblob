@@ -11,9 +11,9 @@
 
 import type { Node } from "@oxc-project/types"
 
-import type { Exemption } from "../graph.model.ts"
-import type { Cut, CutContext } from "../cut.model.ts"
-import type { ReaderBinding } from "../recognition.model.ts"
+import type { Exemption } from "./graph.model.ts"
+import type { Cut, CutContext } from "./cut.model.ts"
+import type { ReaderBinding } from "./recognition.model.ts"
 
 export interface DriverReader extends ReaderBinding {
   readonly name: string

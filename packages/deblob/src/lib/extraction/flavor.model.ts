@@ -5,7 +5,7 @@
  * so a flavor classifies the whole coverage set at once.
  */
 
-import type { FlavorLayer } from "../graph.model.ts"
+import type { FlavorLayer } from "./graph.model.ts"
 
 export type FlavorClassification = {
   layer: FlavorLayer

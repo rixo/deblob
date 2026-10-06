@@ -18,8 +18,8 @@ import picomatch from "picomatch"
 
 import type { Layer } from "../extraction/graph.model.ts"
 import { LAYERS, specifierPattern } from "../extraction/graph.model.ts"
-import type { FlavorResolver } from "../extraction/ports/flavor.port.ts"
-import type { ReaderGroups } from "../extraction/ports/readers.port.ts"
+import type { FlavorResolver } from "../extraction/flavor.model.ts"
+import type { ReaderGroups } from "../extraction/readers.model.ts"
 import { STOCK_FLAVOR_NAME } from "../extraction/stock-flavor.model.ts"
 import type {
   ConfigFiles,

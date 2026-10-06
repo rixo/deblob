@@ -7,8 +7,8 @@
  * `node`, shipped, bound by the project (no default).
  */
 
-import type { HostKnowledge } from "../knowledge.model.ts"
-import type { ReaderBinding } from "../recognition.model.ts"
+import type { HostKnowledge } from "./knowledge.model.ts"
+import type { ReaderBinding } from "./recognition.model.ts"
 
 export interface HostReader extends ReaderBinding, HostKnowledge {
   readonly name: string

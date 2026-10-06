@@ -51,14 +51,14 @@ the verdict the reader owes and marks what today's reading reports instead.
 
 The cut, built 2026-10-05: every row above is green as marked, no known failure
 left. The driver reader has one more optional member, `cut`
-(`ports/driver-reader.port.ts`): asked on each statement, it answers where its
-tech hands control — the hooks, and the expression that picks one. The reader is
-`packages/deblob/src/lib/cases/argv-switch-reader.model.ts`; all it knows of
-`switch` is there. The reading does the rest, the same for any reader: the tech
-value the expression is read off is the hooks' event; a hook that is only a call
-to a sub-driver's wiring function stays wiring; nothing is cut inside a hook. A
-violation of the hook as a whole (its count of calls) is reported on its first
-label, as a callback's is on its first line.
+(`extraction/driver-reader.model.ts`): asked on each statement, it answers where
+its tech hands control — the hooks, and the expression that picks one. The
+reader is `packages/deblob/src/lib/cases/argv-switch-reader.model.ts`; all it
+knows of `switch` is there. The reading does the rest, the same for any reader:
+the tech value the expression is read off is the hooks' event; a hook that is
+only a call to a sub-driver's wiring function stays wiring; nothing is cut
+inside a hook. A violation of the hook as a whole (its count of calls) is
+reported on its first label, as a callback's is on its first line.
 
 "Its tech" (row 1.7) is read off the value: a tech value says whose it is — the
 package or project file a reader claims that it came from, nothing for the

@@ -22,8 +22,8 @@ import {
   asExtractionError,
   isExtractionError,
 } from "./graph.model.ts"
-import type { DriverReader } from "./ports/driver-reader.port.ts"
-import type { ReaderGroups } from "./ports/readers.port.ts"
+import type { DriverReader } from "./driver-reader.model.ts"
+import type { ReaderGroups } from "./readers.model.ts"
 import type { ExtractionEngine } from "./ports/extraction.port.ts"
 import type { Resolver, Resolvers } from "./ports/resolver.port.ts"
 

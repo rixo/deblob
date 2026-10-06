@@ -4,8 +4,8 @@
  * for. Stock: `goodEnoughTests`, the default.
  */
 
-import type { Role } from "../graph.model.ts"
-import type { DriverReader } from "./driver-reader.port.ts"
+import type { Role } from "./graph.model.ts"
+import type { DriverReader } from "./driver-reader.model.ts"
 
 export interface TestReader extends DriverReader {
   /**

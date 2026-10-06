@@ -1,7 +1,5 @@
 import { join, relative, resolve, sep } from "node:path"
 
-import type { Node } from "@oxc-project/types"
-
 import type {
   BrokenSite,
   ArgValue,
@@ -26,26 +24,14 @@ import type {
   ExtractionEngine,
   FileExtraction,
 } from "./ports/extraction.port.ts"
-import type {
-  FlavorClassification,
-  FlavorResolver,
-} from "./ports/flavor.port.ts"
-import type { DriverReader } from "./ports/driver-reader.port.ts"
-import type { HostReader } from "./ports/host-reader.port.ts"
-import type { ReaderGroups } from "./ports/readers.port.ts"
-import type { TestReader } from "./ports/test-reader.port.ts"
 import type { PackageClaims } from "./ports/package-claims.port.ts"
 import type { Resolvers } from "./ports/resolver.port.ts"
 import type { ImportTargetKind } from "./reading.model.ts"
 import { brokenLinesOf, readModule } from "./reading.model.ts"
-import { isTechFile, isTechPackage } from "./tech.model.ts"
-import type { CutAnswer, CutContext } from "./cut.model.ts"
+import type { FilePlugins, PluginsConfig } from "./plugins.model.ts"
+import { bindPlugins, CORE_TECH } from "./plugins.model.ts"
 import { createTrace } from "./trace.model.ts"
-import { answerCallbacks } from "./cut.model.ts"
 import { symbolLevelOf } from "./symbols.model.ts"
-import type { Designations } from "./recognition.model.ts"
-import { knowledgeOf } from "./knowledge.model.ts"
-import { createRecognition } from "./recognition.model.ts"
 
 const toPosix = (path: string): string => path.split(sep).join("/")
 
@@ -60,46 +46,6 @@ const OUTSIDE_KINDS: ReadonlySet<Layer> = new Set([
   "boot",
   "test",
 ])
-
-/**
- * The tech an assembly or a boot is read with: the core's, no reader bound
- * (canon: read by the flavor's kind) — nothing claimed, nothing exempt.
- */
-const CORE_TECH = { name: "core", exempts: [], cut: answerCallbacks } as const
-
-/** Readers stacked on one file: names joined, exemptions unioned, first role. */
-const stackedTech = (readers: readonly (DriverReader | TestReader)[]) => ({
-  name: readers.map((reader) => reader.name).join("+"),
-  exempts: [...new Set(readers.flatMap((reader) => reader.exempts ?? []))],
-  roleOf: (chain: readonly string[]) => {
-    for (const reader of readers) {
-      const role = "roleOf" in reader ? reader.roleOf({ chain }) : null
-      if (role !== null) return role
-    }
-    return null
-  },
-  // every reader's cut that answers, with what that reader claims; the
-  // default cut last
-  cut: (node: Node, about: CutContext): CutAnswer[] => [
-    ...readers.flatMap((reader) => {
-      const cut =
-        "cut" in reader
-          ? (reader.cut?.({ node, context: about }) ?? null)
-          : null
-      return cut === null
-        ? []
-        : [
-            {
-              cut,
-              claims: (target: string) =>
-                isTechPackage(reader.tech, target) ||
-                isTechFile(reader.tech, target),
-            },
-          ]
-    }),
-    ...answerCallbacks(node, about),
-  ],
-})
 
 /** Every call in a reading, hooks and arms included. */
 const callsOf = (statements: readonly ReadStatement[]): ReadCall[] =>
@@ -200,15 +146,8 @@ const paramKindsOf = (
  * resolved config satisfies it whole. Per call: the service is built once and
  * serves every config (the placement recut).
  */
-export type ExtractionConfig = Designations & {
+export type ExtractionConfig = PluginsConfig & {
   root: string
-  flavor: FlavorResolver
-  /**
-   * The readers by group, defaults already filled: a driver or test file is
-   * read by every reader of its group whose binding reads it, and by none is
-   * unread (`driver-reader`); language and host readers give the knowledge.
-   */
-  readers: ReaderGroups
   /** Declared tsconfig (`false` = none, absent = discover at the root). */
   tsconfig?: string | false | undefined
   /** Resolution aliases, absolute. */
@@ -260,16 +199,10 @@ export const createExtraction = ({
     /** Coverage set: paths relative to the config root, POSIX-style. */
     files: readonly string[]
   }): Promise<ImportGraph> => {
-    const {
-      root,
-      flavor,
-      readers,
-      isAssembly,
-      isBoot,
-      external,
-      pure = [],
-      configLoads = [],
-    } = config
+    const { root, external, pure = [], configLoads = [] } = config
+    // the run's plugins — its flavor and readers — bound over its files: what
+    // kind a file is, and what the readers of a file say
+    const plugins = bindPlugins(config, files)
     const resolver = await resolvers.resolverFor({
       root,
       tsconfig: config.tsconfig,
@@ -285,7 +218,6 @@ export const createExtraction = ({
       (await claims?.layerOf(specifier)) ??
       null
     const pureSet = new Set(pure)
-    const classifications = flavor.classify({ files })
     const fileSet = new Set(files)
     for (const load of configLoads) {
       if (!fileSet.has(load.file)) {
@@ -301,27 +233,6 @@ export const createExtraction = ({
     const unresolved: UnresolvedImport[] = []
     const broken: BrokenSite[] = []
 
-    const recognition = createRecognition({
-      driver: readers.driver,
-      test: readers.test,
-      ...(isAssembly ? { isAssembly } : {}),
-      ...(isBoot ? { isBoot } : {}),
-    })
-    /** The file's kind: the flavor's name, else a binding or a designation. */
-    const layerOf = recognition.kindOf
-
-    /** A driver or test file's own readers: its group's, bound to it. */
-    const ownReadersOf = (
-      file: string,
-    ): readonly (DriverReader | TestReader)[] => {
-      const flavorLayer = (classifications.get(file) as FlavorClassification)
-        .layer
-      return [
-        ...recognition.driverReadersOf(file, flavorLayer),
-        ...recognition.testReadersOf(file, flavorLayer),
-      ]
-    }
-
     /**
      * Who claims an external import, for the file importing it: its own reader,
      * then purity (`pure`, a host's pure builtin), then a bound host's builtin;
@@ -330,21 +241,16 @@ export const createExtraction = ({
      * coverage alike).
      */
     const claimOf = (
-      own: readonly (DriverReader | TestReader)[],
-      hosts: readonly HostReader[],
+      bound: FilePlugins,
       target: Extract<EdgeTarget, { type: "external" }>,
       specifier: string,
     ): "reader" | "tech" | "model" | "unclaimed" => {
-      if (own.some((reader) => isTechPackage(reader.tech, specifier)))
-        return "reader"
+      if (bound.claimsPackage(specifier)) return "reader"
       if (externalPurityOf(target, pureSet) === "pure") return "model"
       const name = target.package ?? specifier
       if (
         !target.declared &&
-        hosts.some(
-          (host) =>
-            host.claims({ specifier: name }) || host.claims({ specifier }),
-        )
+        (bound.hostClaims(name) || bound.hostClaims(specifier))
       )
         return "tech"
       return "unclaimed"
@@ -376,8 +282,7 @@ export const createExtraction = ({
 
     /** What an import lands on, for the reader: the target's kind, or the claim. */
     const importTargetKindOf = (
-      own: readonly (DriverReader | TestReader)[],
-      hosts: readonly HostReader[],
+      bound: FilePlugins,
       target: EdgeTarget | null,
       specifier: string,
     ): ImportTargetKind => {
@@ -385,21 +290,17 @@ export const createExtraction = ({
       if (target.type === "module") {
         // a project file the importer's own reader claims is its tech, read
         // as a claimed package is (GUESS: D4)
-        if (own.some((reader) => isTechFile(reader.tech, target.path)))
+        if (bound.claimsFile(target.path))
           return {
             kind: "external",
             package: target.path,
             layer: null,
             claim: "reader",
           }
-        // a covered module: classify is total, the flavor's word is there
-        const classification = classifications.get(
-          target.path,
-        ) as FlavorClassification
         return {
           kind: "module",
           path: target.path,
-          layer: layerOf(target.path, classification.layer),
+          layer: plugins.kindOf(target.path),
           exportForm: (name) => exportFormOf(target.path, name),
         }
       }
@@ -407,7 +308,7 @@ export const createExtraction = ({
         kind: "external",
         package: target.package,
         layer: target.layer,
-        claim: claimOf(own, hosts, target, specifier),
+        claim: claimOf(bound, target, specifier),
       }
     }
 
@@ -425,11 +326,9 @@ export const createExtraction = ({
       paramKinds?: ReadonlyMap<string, readonly ArgValue[]>,
       receiving = false,
     ): FileReading | null => {
-      const own = ownReadersOf(file)
+      const bound = plugins.of(file)
       const read = layer === "driver" || layer === "test"
-      if (read && (own.length === 0 || own.some((reader) => reader.blob)))
-        return null
-      const hosts = recognition.boundOf(readers.host, file)
+      if (read && (bound.unread || bound.asBlob)) return null
       // every literal specifier the reader can ask about is an import the
       // engine listed — a miss is an unresolved one
       const targetOfSpecifier = (specifier: string): EdgeTarget | null =>
@@ -438,25 +337,11 @@ export const createExtraction = ({
         program: extraction.program,
         source: extraction.source,
         layer,
-        tech: !OUTSIDE_KINDS.has(layer)
-          ? null
-          : read
-            ? stackedTech(own)
-            : CORE_TECH,
+        tech: !OUTSIDE_KINDS.has(layer) ? null : read ? bound.tech : CORE_TECH,
         importTargetOf: (specifier) =>
-          importTargetKindOf(
-            own,
-            hosts,
-            targetOfSpecifier(specifier),
-            specifier,
-          ),
-        knowledge: knowledgeOf(
-          recognition.boundOf(readers.language, file),
-          hosts,
-        ),
-        // the flavor's word on export names, plain data; a flavor without the
-        // rule names nothing
-        isFactory: (name) => flavor.isFactory?.({ name }) ?? false,
+          importTargetKindOf(bound, targetOfSpecifier(specifier), specifier),
+        knowledge: bound.knowledge,
+        isFactory: plugins.isFactory,
         ...(paramKinds ? { paramKinds } : {}),
         // what an assembly handed the file is its reader's tech when the
         // factory behind it is in a file the reader claims
@@ -464,10 +349,7 @@ export const createExtraction = ({
           ? {
               handedOverOf: (origin, path) => {
                 const traced = trace(origin, path)
-                return traced !== null &&
-                  own.some((reader) =>
-                    isTechFile(reader.tech, traced.origin.path),
-                  )
+                return traced !== null && bound.claimsFile(traced.origin.path)
                   ? { package: traced.origin.path, path: traced.path }
                   : null
               },
@@ -478,10 +360,7 @@ export const createExtraction = ({
     }
 
     /** A file whose reader claims a project file: it may be handed that tech. */
-    const receives = (file: string): boolean =>
-      ownReadersOf(file).some((reader) =>
-        reader.tech.some((entry) => entry.startsWith("./")),
-      )
+    const receives = (file: string): boolean => plugins.of(file).claimsSomeFile
 
     /** What the graph pass needs to read a file again: where its imports landed. */
     const landedByFile = new Map<
@@ -537,12 +416,7 @@ export const createExtraction = ({
     }
 
     for (const file of files) {
-      const classification = classifications.get(file)
-      if (!classification) {
-        throw new Error(
-          `flavor broke its contract: no classification for ${file} (classify must be total)`,
-        )
-      }
+      const classification = plugins.classificationOf(file)
 
       const absolutePath = resolve(root, file)
       const extracted = extractedByFile.get(file) ?? null
@@ -552,7 +426,7 @@ export const createExtraction = ({
         broken.push({ file, line: null, reason: extracted.unparsed })
       const extraction =
         extracted !== null && "unparsed" in extracted ? null : extracted
-      const layer = layerOf(file, classification.layer)
+      const layer = plugins.kindOf(file)
       /** Where each of this file's specifiers landed — the reader asks again. */
       const landed = new Map<string, EdgeTarget | null>()
 
@@ -627,9 +501,7 @@ export const createExtraction = ({
         ...(symbolsByFile.get(file) as ReturnType<typeof symbolLevelOf>),
         reading,
         readings: [],
-        ...(ownReadersOf(file).some((reader) => reader.blob)
-          ? { asBlob: true as const }
-          : {}),
+        ...(plugins.of(file).asBlob ? { asBlob: true as const } : {}),
       })
     }
 
@@ -702,18 +574,9 @@ export const createExtraction = ({
     ): Pick<ImportEdge, "claim"> => {
       if (to.type === "external")
         return {
-          claim: claimOf(
-            ownReadersOf(from),
-            recognition.boundOf(readers.host, from),
-            to,
-            to.specifier,
-          ),
+          claim: claimOf(plugins.of(from), to, to.specifier),
         }
-      return ownReadersOf(from).some((reader) =>
-        isTechFile(reader.tech, to.path),
-      )
-        ? { claim: "reader" }
-        : {}
+      return plugins.of(from).claimsFile(to.path) ? { claim: "reader" } : {}
     }
 
     return {

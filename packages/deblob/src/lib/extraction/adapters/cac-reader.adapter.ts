@@ -1,5 +1,5 @@
 import type { ReaderBinding } from "../recognition.model.ts"
-import type { DriverReader } from "../ports/driver-reader.port.ts"
+import type { DriverReader } from "../driver-reader.model.ts"
 
 /**
  * The cac command-line parser as a driver's tech: `cac` claimed, the stock cut

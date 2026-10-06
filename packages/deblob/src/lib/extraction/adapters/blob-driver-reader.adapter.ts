@@ -1,5 +1,5 @@
 import type { ReaderBinding } from "../recognition.model.ts"
-import type { DriverReader } from "../ports/driver-reader.port.ts"
+import type { DriverReader } from "../driver-reader.model.ts"
 
 /**
  * The stock silencer: a driver the project counts as blob on purpose — legacy,

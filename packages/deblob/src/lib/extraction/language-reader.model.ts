@@ -10,8 +10,8 @@
  * type names.
  */
 
-import type { LanguageKnowledge } from "../knowledge.model.ts"
-import type { ReaderBinding } from "../recognition.model.ts"
+import type { LanguageKnowledge } from "./knowledge.model.ts"
+import type { ReaderBinding } from "./recognition.model.ts"
 
 export interface LanguageReader extends ReaderBinding, LanguageKnowledge {
   readonly name: string

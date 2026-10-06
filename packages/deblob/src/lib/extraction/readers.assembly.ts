@@ -1,7 +1,7 @@
 import { createGoodEnoughTestsReader } from "./adapters/good-enough-tests-reader.adapter.ts"
 import { createJsReader } from "./adapters/js-reader.adapter.ts"
 import { createTsReader } from "./adapters/ts-reader.adapter.ts"
-import type { ReaderGroups } from "./ports/readers.port.ts"
+import type { ReaderGroups } from "./readers.model.ts"
 
 /**
  * The default readers, one place for every run that reads a project (the CLI,
