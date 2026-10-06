@@ -1,8 +1,4 @@
-import {
-  LAYER_BY_SUFFIX,
-  STOCK_FLAVOR_NAME,
-  classifyStockEntry,
-} from "../stock-flavor.model.ts"
+import { LAYER_BY_SUFFIX, STOCK_FLAVOR_NAME } from "../stock-flavor.model.ts"
 import type { FlavorLayer } from "../graph.model.ts"
 import type { FlavorClassification, FlavorResolver } from "../flavor.model.ts"
 
@@ -102,7 +98,6 @@ export const createStockFlavors = (): Readonly<
 })
 
 export const createTsSuffixesFactoriesFlavor = (): FlavorResolver => ({
-  classifyEntry: ({ subpath }) => classifyStockEntry(subpath),
   isFactory: ({ name }) => isStockFactoryName(name),
   classify: ({ files }) => {
     const roots = new Set<string>()

@@ -196,11 +196,10 @@ unparsed one, has none: recognized and open.
   node run's tree is the disk, a case's is the fs port's.
 - `flavor.model.ts` — `FlavorResolver`: `classify({ files })` maps the whole
   coverage set to layer, service root, and privacy at once (path-only,
-  set-based); optional `classifyEntry(subpath)` is the naming rule read across
-  package boundaries; optional `isFactory(name)` is the naming rule over an
-  export name — what tells a model factory from a model function, the stock rule
-  being `create` followed by a capital; optional `typeOnlyExempt` is the
-  flavor's type-only stance (`runtime-import`).
+  set-based); optional `isFactory({ name })` is the naming rule over an export
+  name — what tells a model factory from a model function, the stock rule being
+  `create` followed by a capital; optional `typeOnlyExempt` is the flavor's
+  type-only stance (`runtime-import`).
 - `ports/reader.port.ts` — `Reader`: canon's reading of a technology, one reader
   per tech as the flavor is one per naming convention. A reader is its binding
   (root-relative globs, the builtin one; config binds more, first), the kinds it

@@ -1,6 +1,6 @@
 import { describe, expect, it, test } from "vitest"
 
-import { STOCK_FLAVOR_NAME, classifyStockEntry } from "../stock-flavor.model.ts"
+import { STOCK_FLAVOR_NAME } from "../stock-flavor.model.ts"
 import {
   createStockFlavors,
   createTsSuffixesFactoriesFlavor,
@@ -228,15 +228,5 @@ describe("the factory naming rule — `create` followed by a capital", () => {
     const flavor = createTsSuffixesFactoriesFlavor()
     expect(flavor.isFactory?.({ name: "createThing" })).toBe(true)
     expect(flavor.isFactory?.({ name: "makeThing" })).toBe(false)
-  })
-})
-
-describe("createTsSuffixesFactoriesFlavor", () => {
-  it("names its entries by the stock rule", () => {
-    const flavor = createTsSuffixesFactoriesFlavor()
-    for (const subpath of ["service", "adapters/node", "model", "nope"])
-      expect(flavor.classifyEntry?.({ subpath })).toBe(
-        classifyStockEntry(subpath),
-      )
   })
 })

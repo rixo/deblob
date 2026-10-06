@@ -27,9 +27,9 @@ export const LAYER_BY_SUFFIX: Readonly<Record<string, FlavorLayer>> = {
 }
 
 /**
- * The stock naming rule over an exports subpath or specifier tail — the
- * cross-package half of the flavor (`classifyEntry`): extensionless suffix
- * matching on the tail segment. `./checkout.service`, `checkout.service.js`,
+ * The stock naming rule over an exports subpath or specifier tail — how a
+ * package's entries classify from outside: extensionless suffix matching on the
+ * tail segment. `./checkout.service`, `checkout.service.js`,
  * `nested/checkout.service.d.ts` all say service; an unsuffixed tail (the bare
  * root included) claims nothing. A model, not the adapter's: `check` and the
  * package claims read producers by the stock rule, whatever flavor is local,

@@ -31,16 +31,6 @@ export interface FlavorResolver {
   }): ReadonlyMap<string, FlavorClassification>
 
   /**
-   * The naming rule over one exports subpath or specifier tail — how a
-   * package's entries classify from outside. `null` = no claim. Optional: a
-   * flavor without it contributes nothing cross-package. In v1 both sides of
-   * the boundary consult the stock resolver's implementation (the `deblob`
-   * field claims the stock rule); the method lives on the port so a named
-   * flavor can carry its own rule later.
-   */
-  classifyEntry?(input: { subpath: string }): FlavorLayer | null
-
-  /**
    * The naming rule over an export name — whether the flavor reads it as a
    * factory. Consulted where the file kind does not already decide: a model
    * export, a pure package's export, a local function. Optional: a flavor
