@@ -20,6 +20,17 @@ export type LanguageKnowledge = {
 export type HostKnowledge = {
   readonly globals?: readonly string[]
   readonly locations?: readonly string[]
+  /**
+   * The host's calls that only compute from what they are handed: nothing done,
+   * nothing read off the machine (canon: a call is presumed to act "until the
+   * reading that claims it declares that call effect-free"). By call, never by
+   * name: a free name's call as written (`"URL"` is `new URL(…)`, not
+   * `URL.createObjectURL(…)`), a builtin module's export by the module's name.
+   */
+  readonly effectFree?: {
+    readonly globals?: readonly string[]
+    readonly exports?: Readonly<Record<string, readonly string[]>>
+  }
 }
 
 /**
@@ -31,6 +42,11 @@ export type FreeName =
 
 export type Knowledge = {
   freeName(name: string): FreeName
+  /**
+   * A call the host declares effect-free: a free name's, by the chain called
+   * (`"URL"`), or a builtin's export, by its name and the module's.
+   */
+  isEffectFreeCall(chain: string, module?: string): boolean
   /** An `import.meta` member that is the module's own location. */
   isLocationMeta(member: string): boolean
   /** A constructor whose instances carry mutators. */
@@ -59,7 +75,21 @@ export const knowledgeOf = (
     language.map((reader) => reader.readonlyTypeNames),
   )
   const mutableTypes = union(language.map((reader) => reader.mutableTypeNames))
+  const effectFreeGlobals = union(
+    host.map((reader) => reader.effectFree?.globals),
+  )
+  const effectFreeExports = new Set(
+    host.flatMap((reader) =>
+      Object.entries(reader.effectFree?.exports ?? {}).flatMap(
+        ([module, names]) => names.map((name) => `${module}#${name}`),
+      ),
+    ),
+  )
   return {
+    isEffectFreeCall: (chain, module) =>
+      module === undefined
+        ? effectFreeGlobals.has(chain)
+        : effectFreeExports.has(`${module}#${chain}`),
     freeName: (name) =>
       literals.has(name)
         ? "literal"

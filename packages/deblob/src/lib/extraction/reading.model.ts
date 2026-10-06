@@ -766,6 +766,16 @@ export const readModule = ({
   handedOverOf,
   configLoads = [],
 }: ReadInput): FileReading => {
+  /**
+   * A call its host declares effect-free, in a file of a kind where that is
+   * taken: a test file, an adapter, blob (ruled 2026-10-07). A model or a
+   * service has no business with the host; a driver, an assembly and a boot
+   * keep the host's calls and what they give as the host's, as before.
+   */
+  const isEffectFree = (chain: string, module?: string): boolean =>
+    (layer === "test" || layer === "adapters" || layer === "blob") &&
+    knowledge.isEffectFreeCall(chain, module)
+
   /** A free name the language defines: a literal or a computation. */
   const isOwnName = (name: string): boolean => {
     const free = knowledge.freeName(name)
@@ -991,7 +1001,14 @@ export const readModule = ({
         rest,
         callee:
           target.claim === "tech" || target.claim === "reader"
-            ? { kind: "tech", package: pkg }
+            ? {
+                kind: "tech",
+                package: pkg,
+                // the export itself called, not a member of what it gave
+                ...(rest.length === 0 && isEffectFree(name, binding.specifier)
+                  ? { effectFree: true }
+                  : {}),
+              }
             : target.claim === "model"
               ? modelCallee(binding.specifier)
               : { kind: "unclaimed", package: pkg },
@@ -1054,7 +1071,11 @@ export const readModule = ({
           ? { kind: "instance", origin: null, path: [] }
           : { kind: "computed", origin: null, path: [] }
       case "tech":
-        return techValue(callee.package, [])
+        // what an effect-free call gives is computed from what it was handed,
+        // not read off the tech: a string's `.replace()` on it is the language's
+        return callee.effectFree
+          ? { kind: "computed", origin: null, path: [] }
+          : techValue(callee.package, [])
       case "unknown":
         return { kind: "unknown", origin: null, path: [] }
       default:
@@ -1509,7 +1530,14 @@ export const readModule = ({
         const free = knowledge.freeName(name)
         // a host's free name: the host is the tech, and so is any call on it;
         // a name no bound reader claims is nobody's (04/07 ruling 8)
-        if (free === "host") return { kind: "tech", package: null }
+        if (free === "host")
+          return {
+            kind: "tech",
+            package: null,
+            ...(isEffectFree([name, ...members].join("."))
+              ? { effectFree: true }
+              : {}),
+          }
         if (free === "unclaimed")
           return { kind: "unclaimed", package: name, free: true }
         return { kind: "language" }

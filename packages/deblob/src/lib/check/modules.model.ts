@@ -116,7 +116,9 @@ const judgeCall = (call: ReadCall, layer: Layer): CallVerdict => {
         ? { verdict: "red", reaches: "function", name: callee.name }
         : GREEN
     case "tech":
-      return { verdict: "red", reaches: "tech", name: callee.package }
+      return callee.effectFree
+        ? GREEN
+        : { verdict: "red", reaches: "tech", name: callee.package }
     case "use-case":
       return { verdict: "red", reaches: "use-case", name: callee.member }
     case "unclaimed":

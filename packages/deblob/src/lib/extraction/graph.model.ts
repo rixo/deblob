@@ -306,7 +306,12 @@ export type CalleeKind =
   /** A model export the flavor did not name a factory: bound by result flow. */
   | { kind: "model"; path: string; name: string }
   | { kind: "forbidden-import"; layer: "ports" | "boot" | "test"; path: string }
-  | { kind: "tech"; package: string | null }
+  /**
+   * The tech's; `effectFree` when the reading that claims it declares that call
+   * effect-free (a host's `new URL(…)`) and the file is a test, an adapter or
+   * blob — the kinds where the declaration is taken.
+   */
+  | { kind: "tech"; package: string | null; effectFree?: true }
   /**
    * What no bound reader claims: a package, or a free name (`free`) — the name
    * standing where the package would.

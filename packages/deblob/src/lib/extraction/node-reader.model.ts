@@ -60,6 +60,22 @@ const GLOBALS: readonly string[] = [
 ]
 
 /**
+ * Node's calls that only compute a path or a URL from what they are handed
+ * (GUESS: R8, taken 2026-10-06 for these alone): a fixture path computed at a
+ * file's root is nothing done on load. Not `pathToFileURL`, which resolves a
+ * relative path against the working directory; not `URL.createObjectURL`. What
+ * such a call gives is a computed value, no longer the host's: a method called
+ * on it is the language's.
+ */
+const EFFECT_FREE = {
+  globals: ["URL", "URLSearchParams"],
+  exports: {
+    "node:url": ["fileURLToPath"],
+    url: ["fileURLToPath"],
+  },
+} as const
+
+/**
  * The stock host reader: Node. Its builtin modules are its tech, `node:path`
  * and `node:querystring` the pure ones (string-only, deterministic — GUESS: R5,
  * the curated table moved here from the graph); its free names are tech, and
@@ -79,5 +95,6 @@ export const createNodeReader = (binding: ReaderBinding = {}): HostReader => {
     locations: ["__dirname", "__filename"],
     tech: builtins,
     pure: ["node:path", "node:querystring", "path", "querystring"],
+    effectFree: EFFECT_FREE,
   }
 }
