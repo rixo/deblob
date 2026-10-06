@@ -374,6 +374,21 @@ const calleeText = (callee: AstNode): string | null => {
   return null
 }
 
+/**
+ * The return type a called function of the file declares: the callee a plain
+ * name bound to a function written in the file, its annotation — `null` when
+ * the callee is anything else, or the function declares none.
+ */
+const declaredReturnOf = (callee: AstNode, names: Names): AstNode | null => {
+  const name = unwrap(callee)
+  if (name.type !== "Identifier") return null
+  const bound = names.initOf(name["name"] as string)
+  const fn = bound === null ? null : unwrap(bound)
+  if (!isFunctionNode(fn)) return null
+  const returnType = fn["returnType"]
+  return isNode(returnType) ? (returnType["typeAnnotation"] as AstNode) : null
+}
+
 const isObjectFreeze = (callee: AstNode): boolean =>
   callee.type === "MemberExpression" &&
   (callee["object"] as AstNode)["name"] === "Object" &&
@@ -451,12 +466,18 @@ const initializerImmutability = (node: AstNode, names: Names): Immutability => {
     }
     case "CallExpression": {
       const callee = node["callee"] as AstNode
-      if (!isObjectFreeze(callee))
+      if (!isObjectFreeze(callee)) {
+        // a function of the file that declares what it returns says it as an
+        // annotation on the binding would
+        const declared = declaredReturnOf(callee, names)
+        if (declared !== null)
+          return typeImmutability(declared, names.knowledge)
         return unknownFor({
           kind: "call-result",
           callee: calleeText(callee),
           construct: false,
         })
+      }
       // a freeze is one level: what it freezes must hold immutable entries;
       // a name frozen is the very object it is bound to
       const argument = unwrap((node["arguments"] as AstNode[])[0] ?? node)
