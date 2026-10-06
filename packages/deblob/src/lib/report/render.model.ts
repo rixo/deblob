@@ -544,7 +544,7 @@ const assemblyMessage = (violation: AssemblyViolation): string => {
     case "root-statement":
       return `${line} runs at the assembly's root — nothing sits there but imports; move it inside the assembly function`
     case "adapter-returned":
-      return `${line} returns the adapter ${violation.key} to a caller that is not a test — an assembly returns services; return services only, a test factory returns the adapters`
+      return `${line} returns ${violation.key === null ? "an adapter" : `the adapter ${violation.key}`} to a caller that is not a test — an assembly returns services; return services only, a test factory returns the adapters`
   }
 }
 

@@ -380,9 +380,12 @@ export type AssemblyViolation = {
       shape: "root-statement"
     }
   | {
-      /** An adapter in the returned record of a function a non-test file calls. */
+      /**
+       * An adapter in what a function a non-test file calls returns: under a
+       * key of the record — a path when the record nests — or bare (`null`).
+       */
       shape: "adapter-returned"
-      key: string
+      key: string | null
       origin: InstanceOrigin
     }
 )

@@ -340,6 +340,38 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // The same rule, the adapter leaving by another door: it is what the
+    // function returns that is read, however the record is written.
+    name: "an adapter returned through a record held in a local, in a nested record, or bare, is red all the same",
+    files: {
+      ...NOTES,
+      ...DRIVER,
+      "src/store.assembly.ts": `
+        import { createFsStore } from "./notes/adapters/fs-store.adapter.ts"
+        export const createStoreAssembly = (cwd: string) => createFsStore(cwd) // red: assembly-builds-only -- an adapter returned bare, an assembly the caller
+      `,
+      "src/parts.assembly.ts": `
+        ${IMPORTS}
+        export const createPartsAssembly = ({ cwd }: { cwd: string }) => {
+          const fs = createFsStore(cwd)
+          return { notes: createNotes({ store: fs }), parts: { fs } } // red: assembly-builds-only -- an adapter returned in a nested record
+        }
+      `,
+      "src/notes.assembly.ts": `
+        ${IMPORTS}
+        import { createPartsAssembly } from "./parts.assembly.ts"
+        import { createStoreAssembly } from "./store.assembly.ts"
+        export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
+          createPartsAssembly({ cwd })
+          createStoreAssembly(cwd)
+          const fs = createFsStore(cwd)
+          const app = { notes: createNotes({ store: fs }), fs } // red: assembly-builds-only -- an adapter in the record the function returns
+          return app
+        }
+      `,
+    },
+  },
+  {
     // Judged per caller: what a group assembly was handed and returns is a
     // service from one root assembly and an adapter from the other — red for
     // that caller, though it is not the first.

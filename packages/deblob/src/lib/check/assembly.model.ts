@@ -20,6 +20,7 @@ import type {
   ArgValue,
   FileReading,
   ImportGraph,
+  InstanceOrigin,
   ModuleNode,
   ReadCall,
   ReadFunction,
@@ -87,6 +88,26 @@ const resultIsTech = (call: ReadCall): boolean =>
  * One reading of an assembly file, judged: what sits at its root, and each of
  * its functions apart, in the reading's order.
  */
+/**
+ * The adapters in what a function returns, each with the key it sits under — a
+ * path for a nested record, `null` for one returned bare. The adapter whole: a
+ * member of one is a field read, its own red.
+ */
+const adaptersIn = (
+  value: ArgValue,
+  key: string | null = null,
+): { key: string | null; value: ArgValue; origin: InstanceOrigin }[] =>
+  value.entries !== null
+    ? value.entries.flatMap((entry) =>
+        adaptersIn(
+          entry.value,
+          key === null ? entry.key : `${key}.${entry.key}`,
+        ),
+      )
+    : value.origin?.layer === "adapters" && value.path.length === 0
+      ? [{ key, value, origin: value.origin }]
+      : []
+
 const judgeReading = (
   node: ModuleNode,
   reading: FileReading,
@@ -269,16 +290,14 @@ const judgeReading = (
             })
           break
         case "return":
-          if (statement.record === null || !calledInProduction(fn)) break
-          // the adapter whole: a member of one is a field read, its own red
-          for (const { key, value } of statement.record)
-            if (value.origin?.layer === "adapters" && value.path.length === 0)
-              violations.push({
-                ...at(value.span),
-                shape: "adapter-returned",
-                key,
-                origin: value.origin,
-              })
+          if (statement.returned === null || !calledInProduction(fn)) break
+          for (const { key, value, origin } of adaptersIn(statement.returned))
+            violations.push({
+              ...at(value.span),
+              shape: "adapter-returned",
+              key,
+              origin,
+            })
           break
       }
     }

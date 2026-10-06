@@ -1208,6 +1208,18 @@ describe("renderCheckResults", () => {
           },
           "returns the adapter fs to a caller that is not a test — an assembly returns services; return services only, a test factory returns the adapters",
         ],
+        [
+          {
+            shape: "adapter-returned",
+            key: null,
+            origin: {
+              path: "src/notes/adapters/fs-store.adapter.ts",
+              name: "createFsStore",
+              layer: "adapters",
+            },
+          },
+          "returns an adapter to a caller that is not a test — an assembly returns services; return services only, a test factory returns the adapters",
+        ],
       ] as const)("formats %o as: %s", (shape, words) => {
         expect(message(assembly(shape))).toContain(`line 7 ${words}`)
       })
