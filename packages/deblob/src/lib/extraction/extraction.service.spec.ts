@@ -119,6 +119,7 @@ const FORMS_FILES = [
   "src/import-and-reexport.ts",
   "src/local-reexport.ts",
   "src/dynamic.ts",
+  "src/dynamic-template.ts",
   "src/requires.ts",
   "src/no-require.ts",
   "src/unresolvable.ts",
@@ -313,6 +314,22 @@ describe("extractGraph over the forms fixture", () => {
     expect(graph.unresolved).toContainEqual(
       expect.objectContaining({ from: "src/dynamic.ts", specifier: "path" }),
     )
+  })
+
+  it("surfaces an `import()` of a template with an interpolation as non-literal, not as a missing file", async () => {
+    const graph = await extractForms()
+    expect(
+      graph.unresolved.filter(
+        (entry) => entry.from === "src/dynamic-template.ts",
+      ),
+    ).toEqual([
+      {
+        from: "src/dynamic-template.ts",
+        specifier: "`./${name}.ts`",
+        reason: "non-literal import expression",
+        literal: false,
+      },
+    ])
   })
 
   it("surfaces a non-literal require(expr) as a diagnostic, skips argument-less require()", async () => {

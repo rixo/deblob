@@ -20,7 +20,8 @@ const PARSEABLE = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
  */
 const REQUIRE_HINT = /\brequire\s*\(/
 
-const STRING_LITERAL = /^(['"`])(.*)\1$/s
+/** A quoted string, or a template with no interpolation: a path as written. */
+const STRING_LITERAL = /^(?:(['"])(.*)\1|`((?:[^$]|\$(?!\{))*)`)$/s
 
 /**
  * Walk the AST for `require(...)` calls — CJS is absent from oxc's ESM-only
@@ -240,7 +241,7 @@ export const createOxcEngine = ({
       imports.push(
         literal
           ? {
-              specifier: literal[2] as string,
+              specifier: (literal[2] ?? literal[3]) as string,
               typeOnly: false,
               form: "dynamic",
               reExport: false,
