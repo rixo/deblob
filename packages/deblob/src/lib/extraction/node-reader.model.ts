@@ -69,17 +69,15 @@ const GLOBALS: readonly string[] = [
 export const createNodeReader = (binding: ReaderBinding = {}): HostReader => {
   // every builtin, both spellings: `fs` and `node:fs`; `node:test` is
   // prefix-only
-  const builtins = new Set(
-    builtinModules.flatMap((name) =>
-      name.startsWith("node:") ? [name] : [name, `node:${name}`],
-    ),
+  const builtins = builtinModules.flatMap((name) =>
+    name.startsWith("node:") ? [name] : [name, `node:${name}`],
   )
   return {
     name: "node",
     ...binding,
     globals: GLOBALS,
     locations: ["__dirname", "__filename"],
-    claims: ({ specifier }) => builtins.has(specifier),
+    tech: builtins,
     pure: ["node:path", "node:querystring", "path", "querystring"],
   }
 }

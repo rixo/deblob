@@ -327,11 +327,11 @@ const readersOf = (value: unknown, defaults: DefaultReaders): ReaderGroups => {
         `config key "readers.${group}" must be an array of readers — a stock factory called (node(), goodEnoughTests()) or an object with a name`,
       )
     }
-    if (group === "driver" || group === "test") {
+    if (group === "driver" || group === "test" || group === "host") {
       for (const entry of entries as { name: string; tech?: unknown }[]) {
         if (!isStringArray(entry.tech)) {
           throw new ConfigError(
-            `reader "${entry.name}" under "readers.${group}": tech must be an array of strings — package names, and project files as "./path" — a declaration, not a function`,
+            `reader "${entry.name}" under "readers.${group}": tech must be an array of strings — package or builtin module names, and project files as "./path" — a declaration, not a function`,
           )
         }
       }

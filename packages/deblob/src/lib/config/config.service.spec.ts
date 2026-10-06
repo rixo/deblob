@@ -292,8 +292,8 @@ describe("resolveConfig — readers: four groups, a written one replaces its def
   })
 
   it("folds a bound host's pure builtins into pure — a host with none adds none", () => {
-    const host = { name: "some-host", claims: () => true, pure: ["host:str"] }
-    const bare = { name: "other-host", claims: () => true }
+    const host = { name: "some-host", tech: ["host:str"], pure: ["host:str"] }
+    const bare = { name: "other-host", tech: [] }
     expect(
       resolve({ pure: ["some-lib"], readers: { host: [host, bare] } }).pure,
     ).toEqual(["some-lib", "host:str"])
@@ -311,7 +311,14 @@ describe("resolveConfig — readers: four groups, a written one replaces its def
     )
   })
 
-  it("rejects a driver or test reader whose tech is not a list of strings, naming the reader — a function included", () => {
+  it("rejects a driver, test or host reader whose tech is not a list of strings, naming the reader — a function included", () => {
+    expect(() =>
+      resolve({
+        readers: { host: [{ name: "some-host", claims: () => true }] },
+      }),
+    ).toThrowError(
+      /reader "some-host" under "readers.host": tech must be an array of strings/,
+    )
     expect(() =>
       resolve({
         readers: { driver: [{ name: "some-cli", claims: () => true }] },

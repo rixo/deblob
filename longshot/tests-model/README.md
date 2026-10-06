@@ -57,8 +57,8 @@ Rulings by rixo (firm, 2026-10-02):
 - Claims are a DECLARED LIST, never a function ("almost impossible to declare by
   mistake, all too easy to accept by mistake"). The key is `tech` (ruled
   2026-10-02), project files spelled `./root-relative-path`. DONE and committed
-  (longshot checkpoint 1, "a reader's tech is a declared list"). Host readers'
-  builtin `claims(specifier)` function is untouched, to follow.
+  (longshot checkpoint 1, "a reader's tech is a declared list"). Host readers
+  followed 2026-10-06: a host reader declares `tech` too, its builtin modules.
 - A `.router` kind is dead (the driver would need the rules, not a kind).
 - The hole (a vendor router like `cac` can hold domain logic too; a claim can
   hide a driver→model edge) is to be CONFESSED in canon, not guarded: no nanny

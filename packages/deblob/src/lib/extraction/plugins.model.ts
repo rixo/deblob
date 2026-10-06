@@ -157,7 +157,7 @@ export const bindPlugins = (
         reader.tech.some((entry) => entry.startsWith("./")),
       ),
       hostClaims: (specifier) =>
-        hosts.some((host) => host.claims({ specifier })),
+        hosts.some((host) => isTechPackage(host.tech, specifier)),
       knowledge: knowledgeOf(
         recognition.boundOf(readers.language, file),
         hosts,

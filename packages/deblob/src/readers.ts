@@ -24,3 +24,10 @@ export type { HostReader } from "./lib/extraction/host-reader.model.ts"
 export type { DriverReader } from "./lib/extraction/driver-reader.model.ts"
 export type { TestReader } from "./lib/extraction/test-reader.model.ts"
 export type { ReaderBinding } from "./lib/extraction/recognition.model.ts"
+export type {
+  Cut,
+  CutContext,
+  HookPointer,
+  RelayedCall,
+} from "./lib/extraction/cut.model.ts"
+export type { Exemption, Role } from "./lib/extraction/graph.model.ts"

@@ -173,16 +173,13 @@ describe("bindPlugins", () => {
       ).toBe(false)
     })
 
-    test("a host reader bound to the file claims what it says it does", () => {
-      const host = {
-        name: "made-up-host",
-        claims: ({ specifier }: { specifier: string }) =>
-          specifier === "node:fs",
-        locations: [],
-        freeNames: [],
-      } as unknown as ReaderGroups["host"][number]
-      const bound = bind({ host: [host] }).of(SERVICE)
+    test("a host reader bound to the file claims the modules it lists as its tech, subpaths included", () => {
+      const bound = bind({
+        host: [{ name: "made-up-host", tech: ["node:fs", "fs"] }],
+      }).of(SERVICE)
       expect(bound.hostClaims("node:fs")).toBe(true)
+      expect(bound.hostClaims("node:fs/promises")).toBe(true)
+      expect(bound.hostClaims("fs")).toBe(true)
       expect(bound.hostClaims("node:path")).toBe(false)
       expect(bind().of(SERVICE).hostClaims("node:fs")).toBe(false)
     })
