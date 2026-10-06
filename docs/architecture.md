@@ -499,8 +499,9 @@ down; a group assembly next to the driver that uses it builds its own graph from
 what it received. Shared instances flow down, never sideways: an assembly that
 wants a sibling's instance is asking for that instance to move up. Assembly
 files are also where a bundler splits — they are the only files that import
-composition units, so the chunk graph is the assembly graph, and a lazily loaded
-feature is a lazily imported assembly.
+composition units, so the chunk graph is the assembly graph. A feature loaded on
+demand is a sub-driver loaded on demand, which builds its own app from its group
+assembly (`sub-driver-wiring`); an assembly loads nothing lazily itself.
 
 An assembly does not return adapters, except when called by a test: a spec file
 asserts on what its fakes recorded, so a test factory hands them back (see
@@ -588,9 +589,9 @@ The driver rules make thin the only legal shape:
 - **`wiring-outside-hooks`** — outside its hooks, a driver only wires: assembly
   calls, tech setup (the parser, the server, the mount), sub-driver
   registration. Arguments are tech values, instances, literals. Wiring is done
-  here and nowhere else: a hook does not wire. A lazily loaded feature is an
-  assembly importing another, at startup — laziness is the assembly's, to each
-  its job.
+  here and nowhere else: a hook does not wire, and an assembly loads nothing
+  lazily. A feature loaded on demand is a sub-driver loaded on demand
+  (`sub-driver-wiring`).
 - **`hook-one-call`** — a hook makes exactly one use-case call, and nothing
   else. Two calls mean the sequence between them is a use case nobody owns: it
   gets a facade service, with a contract and a test, and the two become its
@@ -634,8 +635,13 @@ The driver rules make thin the only legal shape:
   function and no hook, so the only thing the root can do with the import is let
   it attach its callbacks. Calling a sub-driver from inside a hook, or handing
   it a use-case result, would let one hook chain two calls through one level of
-  indirection. A parent component rendering a child in markup is not this rule;
-  that is the tech mounting it.
+  indirection. A sub-driver may be loaded on demand, where the tech's reading
+  leaves the hand-off in the wiring: a literal `import()` of the driver file,
+  its wiring function called with tech and instances — written by the driver, or
+  made by the tech where its reader says so. A computed path is no hand-off. A
+  tech whose hooks are callbacks has no such place today: its hook may not load
+  a sub-driver, so its features load at startup. A parent component rendering a
+  child in markup is not this rule; that is the tech mounting it.
 - **`driver-not-imported`** — nothing but a boot or another driver imports a
   driver, type imports included.
 

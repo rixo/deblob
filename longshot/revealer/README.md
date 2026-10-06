@@ -619,9 +619,33 @@ nothing breaks by order and what a function does not use it does not name;
 every plugin function; only a cut is handed a context today, the key appears on
 the others the day there is something in it.
 
-Still to do: the container named and taken out of `extraction.service.ts`
-(`stackedTech`); the reader and flavor files renamed out of `adapters/` and
-`ports/`.
+Built the same day: the plugins of a run are bound and asked in one model
+(`extraction/plugins.model.ts`, `bindPlugins`), the only code that calls a
+plugin function; the contract types are model files (`driver-reader.model.ts`,
+`test-reader.model.ts`, `host-reader.model.ts`, `language-reader.model.ts`,
+`readers.model.ts`, `flavor.model.ts`), and so are the stock readers and the
+stock flavor.
+
+The public surface, as ruled. Every reader has `name`, and may have `include`
+and `exclude`. A language reader is lists of what the language knows. A host
+reader declares `tech` (its builtin modules), `globals`, `locations`, `pure`. A
+driver reader declares `tech` and may be `blob`; its one function is `cut`. A
+test reader is a driver reader with `roleOf`. A flavor has `classify`, and may
+have `isFactory` and `typeOnlyExempt`. A cut answers with a function, with
+statements picked on an expression, or with a call its tech relays; its context
+holds `calleeOf`. The types are exported from `deblob/readers`. What a reader no
+longer says: what its files are exempt from (the test kind's, inside, until that
+kind has its own list of rules); whether a module is its host's by a function (a
+declared list, as any tech).
+
+What the port reaches: a tech the driver hands callbacks to; a tech whose value
+the driver dispatches on; a tech that loads a unit and calls it; a tech that
+calls a file's exports. What it does not settle: where a file the framework
+loads does its wiring, and where a tech whose hooks are callbacks may load a
+feature on demand — one question, what a hook may do beside its one call, left
+to the web drivers. Not built: a reader saying callbacks handed to its tech are
+no hooks. Left as they were: what a reader may claim as a project file (a model
+or a service only — not narrowed yet), and the boot handing the driver its app.
 
 A tech that calls a file's exports, built 2026-10-06 (point 4). A route file the
 framework loads has no callback handed to anything and no call to answer on. Its
