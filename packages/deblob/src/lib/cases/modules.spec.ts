@@ -116,6 +116,23 @@ const ROOT_CALLS: readonly Row[] = [
     },
   },
   {
+    // Found 2026-10-07 on deblob's own specs: a reference written under
+    // `as const` (or `satisfies`, `!`) was not counted, so a helper called
+    // only there was never read inline, and one handed on as a value there
+    // still was. `as const` wraps code; it is not a type.
+    name: "a local called only under as const is read inline like any other; handed on as a value there, it stays a function of the file",
+    files: {
+      "src/readers/adapters/readers.adapter.ts": `
+        const readerOf = (name: string) => ({ name, tech: [name] })
+        const CONFIG = { readers: { driver: [readerOf("cac")] } } as const
+        const labelOf = (name: string) => name.toUpperCase()
+        const TABLE = { labelOf } as const
+        const LABEL: string = labelOf("cac") // red: stable-root -- handed on as a value above: not seen whole, a function of an adapter's file
+        export const createReaders = () => ({ config: CONFIG, table: TABLE, label: LABEL })
+      `,
+    },
+  },
+  {
     // canon: "a call that reaches the tech". In a service the same read is
     // also `ambient-access` (added 2026-09-21, when that rule was ruled).
     name: "a service calling into tech at root is red: a host global is the tech's, a language global is not",
