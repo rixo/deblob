@@ -84,9 +84,9 @@ describe("useCaseLevels", () => {
       unresolved.map(({ driver, member, span }) => [driver, member, span.line]),
     ).toEqual([
       // the sub-driver in its third world: the instance came from the opaque
-      // assembly, whose record the reading cannot see
+      // assembly, whose record a call returns — followed nowhere
       ["src/sub.driver.ts", "app.check", 4],
-      // a record returned through a binding
+      // a record returned through a call
       ["src/other.driver.ts", "app.status", 18],
       // an instance at an assembly's root, no function to trace
       ["src/other.driver.ts", "app.check", 22],

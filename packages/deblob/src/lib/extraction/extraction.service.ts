@@ -40,6 +40,7 @@ import type { ImportTargetKind } from "./reading.model.ts"
 import { brokenLinesOf, readModule } from "./reading.model.ts"
 import { isTechFile, isTechPackage } from "./tech.model.ts"
 import type { CutAnswer, CutContext } from "./cut.model.ts"
+import { createTrace } from "./trace.model.ts"
 import { answerCallbacks } from "./cut.model.ts"
 import { symbolLevelOf } from "./symbols.model.ts"
 import type { Designations } from "./recognition.model.ts"
@@ -292,6 +293,7 @@ export const createExtraction = ({
       }
     }
     const modules = new Map<string, ModuleNode>()
+    const { trace } = createTrace(modules)
     const edges = new Map<string, ImportEdge>()
     const unresolved: UnresolvedImport[] = []
     const broken: BrokenSite[] = []
@@ -415,6 +417,7 @@ export const createExtraction = ({
       extraction: FileExtraction,
       landed: ReadonlyMap<string, EdgeTarget | null>,
       paramKinds?: ReadonlyMap<string, readonly ArgValue[]>,
+      receiving = false,
     ): FileReading | null => {
       const own = ownReadersOf(file)
       const read = layer === "driver" || layer === "test"
@@ -449,9 +452,30 @@ export const createExtraction = ({
         // rule names nothing
         isFactory: (name) => flavor.isFactory?.(name) ?? false,
         ...(paramKinds ? { paramKinds } : {}),
+        // what an assembly handed the file is its reader's tech when the
+        // factory behind it is in a file the reader claims
+        ...(receiving
+          ? {
+              handedOverOf: (origin, path) => {
+                const traced = trace(origin, path)
+                return traced !== null &&
+                  own.some((reader) =>
+                    isTechFile(reader.tech, traced.origin.path),
+                  )
+                  ? { package: traced.origin.path, path: traced.path }
+                  : null
+              },
+            }
+          : {}),
         configLoads,
       })
     }
+
+    /** A file whose reader claims a project file: it may be handed that tech. */
+    const receives = (file: string): boolean =>
+      ownReadersOf(file).some((reader) =>
+        reader.tech.some((entry) => entry.startsWith("./")),
+      )
 
     /** What the graph pass needs to read a file again: where its imports landed. */
     const landedByFile = new Map<
@@ -612,13 +636,29 @@ export const createExtraction = ({
     // argument known (a root assembly's parameter handed on to a group
     // assembly), so the pass runs to a fixed point: one round per level of
     // the call chain, at most one per file.
+    //
+    // The same pass tells a driver what an assembly handed it: a file whose
+    // reader claims a project file is read again each round, once the
+    // assemblies are read, until its reading settles too.
+    const receivers = [...modules]
+      .filter(
+        ([file, node]) =>
+          (node.layer === "driver" || node.layer === "test") &&
+          node.reading !== null &&
+          receives(file),
+      )
+      .map(([file]) => file)
     let previous = ""
-    for (let round = 0; round < modules.size; round += 1) {
+    for (let round = 0; round <= modules.size; round += 1) {
       const worlds = worldsOf(modules)
-      const current = JSON.stringify([...worlds])
+      const current = JSON.stringify([
+        [...worlds],
+        receivers.map((file) => modules.get(file)?.reading),
+      ])
       if (current === previous) break
       previous = current
-      for (const [file, fileWorlds] of worlds) {
+      for (const file of new Set([...worlds.keys(), ...receivers])) {
+        const fileWorlds = worlds.get(file) ?? []
         // a bound file is an assembly or a driver, so the node and its landed
         // imports exist; one no reader covers (a designated `+page.svelte`,
         // unparsed or unbound) has no reading in any world — recognized and
@@ -636,6 +676,7 @@ export const createExtraction = ({
             (await engine.extract(resolve(root, file))) as FileExtraction,
             landed,
             paramKindsOf(fileWorlds, bound),
+            true,
           ) as FileReading
         const readings: { world: World; reading: FileReading }[] = []
         for (const world of fileWorlds)

@@ -116,6 +116,18 @@ export type ReadInput = {
    * open.
    */
   paramKinds?: ReadonlyMap<string, readonly ArgValue[]>
+  /**
+   * What an assembly handed the file, when it is the file's reader's tech: an
+   * instance of an assembly's, followed out of it to the factory that built it
+   * (`trace.model.ts`), is that reader's when the reader claims the factory's
+   * file — the claimed file as the tech value's `package`, and the members read
+   * off what was built. `null` for any other instance. The graph pass's word:
+   * absent on a first read, where no assembly is read yet.
+   */
+  handedOverOf?: (
+    origin: InstanceOrigin,
+    path: readonly string[],
+  ) => { package: string; path: readonly string[] } | null
   /** The declared config loads, `<file>#<name>` split. */
   configLoads?: readonly { file: string; name: string }[]
 }
@@ -753,6 +765,7 @@ export const readModule = ({
   knowledge,
   isFactory = () => false,
   paramKinds,
+  handedOverOf,
   configLoads = [],
 }: ReadInput): FileReading => {
   /** A free name the language defines: a literal or a computation. */
@@ -1015,6 +1028,19 @@ export const readModule = ({
     ...(pkg == null ? {} : { package: pkg }),
   })
 
+  /**
+   * An instance an assembly handed over, read as the reader's tech when the
+   * factory that built it is in a file the reader claims; as it is otherwise.
+   */
+  const receive = (value: Resolved): Resolved => {
+    if (value.kind !== "instance" || value.origin?.layer !== "assembly")
+      return value
+    const received = handedOverOf?.(value.origin, value.path) ?? null
+    return received === null
+      ? value
+      : techValue(received.package, received.path)
+  }
+
   /** A call's result, by what was called. */
   const resultOf = (callee: CalleeKind): Resolved => {
     switch (callee.kind) {
@@ -1082,15 +1108,15 @@ export const readModule = ({
           if (binding.init === null)
             return { kind: "computed", origin: null, path: [] }
           const value = evaluate(binding.init, { kind: "computed" }, false)
-          if (binding.path.length === 0) return value
+          if (binding.path.length === 0) return receive(value)
           // destructured: a member of the initializer's value
           switch (value.kind) {
             case "instance":
-              return {
+              return receive({
                 kind: "instance",
                 origin: value.origin,
                 path: [...value.path, ...binding.path],
-              }
+              })
             case "tech":
               return techValue(value.package, [...value.path, ...binding.path])
             case "literal":
@@ -1125,6 +1151,8 @@ export const readModule = ({
    * else — a callback's event is its parameter.
    */
   let event: Span | null = null
+  /** Reading what a function returns: a local holding a record is followed. */
+  let followingLocals = false
   /** Reading a hook: nothing is picked in one, picking is the wiring's. */
   let inHook = false
   /** The functions a reader's cut pointed at, until the reading meets them. */
@@ -1416,12 +1444,21 @@ export const readModule = ({
     members: readonly string[],
   ): CalleeKind => {
     switch (root.kind) {
-      case "instance":
-        return {
-          kind: "use-case",
-          member: [...root.path, ...members].join("."),
+      case "instance": {
+        // a member of what an assembly handed over may be the reader's tech
+        const received = receive({
+          kind: "instance",
           origin: root.origin,
-        }
+          path: [...root.path, ...members],
+        })
+        return received.kind === "tech"
+          ? { kind: "tech", package: received.package ?? null }
+          : {
+              kind: "use-case",
+              member: [...root.path, ...members].join("."),
+              origin: root.origin,
+            }
+      }
       // the name cannot prove what the tech value is: a call on it is the
       // tech's, `.trim()` as much as `.get()` (ruled 2026-09-26)
       case "tech":
@@ -1774,7 +1811,7 @@ export const readModule = ({
    */
   const emitReturn = (argument: AstNode | null, span: Span): void => {
     if (argument === null) {
-      emit({ kind: "return", value: null, record: null, span })
+      emit({ kind: "return", value: null, record: null, returned: null, span })
       return
     }
     const inner = unwrap(argument)
@@ -1782,7 +1819,10 @@ export const readModule = ({
     // and loops were read to
     const value = evaluate(argument, { kind: "returned" }, true)
     const record = inner.type === "ObjectExpression" ? entriesOf(inner) : null
-    emit({ kind: "return", value: value.kind, record, span })
+    followingLocals = true
+    const returned = argValueOf(argument, { kind: "returned" }, false)
+    followingLocals = false
+    emit({ kind: "return", value: value.kind, record, returned, span })
   }
 
   /**
@@ -1833,7 +1873,12 @@ export const readModule = ({
       origin: value.origin,
       path: value.path,
       ...(value.package === undefined ? {} : { package: value.package }),
-      entries: inner.type === "ObjectExpression" ? entriesOf(inner) : null,
+      entries:
+        inner.type === "ObjectExpression"
+          ? entriesOf(inner)
+          : followingLocals
+            ? localRecordOf(inner)
+            : null,
       // the event of a hook a reader cut: what the tech handed, as a callback's
       // parameter is — no call's result to the hook
       from: from !== null && from.start === event?.start ? null : from,
@@ -1841,6 +1886,27 @@ export const readModule = ({
       host: value.kind === "tech" && hostOf(inner),
       span: spanOf(node),
     }
+  }
+
+  /**
+   * The record a name holds: a `const` bound whole to a record literal, read as
+   * that record. Followed for what a function returns only — a record handed as
+   * an argument through a local is judged as the value it is.
+   */
+  const localRecordOf = (
+    inner: AstNode,
+  ): { key: string; value: ArgValue }[] | null => {
+    if (inner.type !== "Identifier") return null
+    const binding = lookup(scope, inner["name"] as string)
+    if (
+      binding?.kind !== "definition" ||
+      binding.reassigned ||
+      binding.init === null ||
+      binding.path.length > 0
+    )
+      return null
+    const init = unwrap(binding.init)
+    return init.type === "ObjectExpression" ? entriesOf(init) : null
   }
 
   /** A value with nothing to say past its kind: a function, a spread. */
@@ -2397,11 +2463,11 @@ export const readModule = ({
           case "tech":
             return techValue(rootValue.package, [...rootValue.path, ...members])
           case "instance":
-            return {
+            return receive({
               kind: "instance",
               origin: rootValue.origin,
               path: [...rootValue.path, ...members],
-            }
+            })
           case "unknown":
             return unknown
           default:

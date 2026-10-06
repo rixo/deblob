@@ -509,6 +509,13 @@ export type ReadStatement =
        * when what is returned is not a record literal.
        */
       record: readonly { key: string; value: ArgValue }[] | null
+      /**
+       * What is returned, as a value: an instance with its origin, a record
+       * with its entries — a local holding a record literal read as that
+       * record. What `trace.model.ts` follows out of an assembly. `null` for a
+       * bare `return`.
+       */
+      returned: ArgValue | null
       span: Span
     }
   /**

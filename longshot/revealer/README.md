@@ -37,6 +37,8 @@ the verdict the reader owes and marks what today's reading reports instead.
   `import()`; the shared log service handed down, and the tech handed that
   service at setup, raise nothing. What is red is the same as above, in the
   sub-driver and the lazy unit too.
+- Rows 2.5 and 6.3, receiving:
+  `packages/deblob/src/lib/cases/reader-receiving.spec.ts`.
 - No row yet: a computed specifier (4.2); the tech-side `lazy` (4.5, its own
   checkpoint). The bare adapter (5.2, 6.2) is `assembly.spec.ts`'s row already.
 
@@ -83,6 +85,29 @@ Not done: a reader saying "callbacks handed to my tech are not hooks" — the
 stack is built in one place (`stackedTech`, `extraction.service.ts`), so it is a
 key on the reader away, not built. A function pointed at outside a call (a
 method) has no role and its event names no tech.
+
+Receiving, built 2026-10-06. rixo: "a home-made router is a service" — the
+router stays the driver's tech, and is built like a service, by the assembly,
+which hands it over. Nothing is declared for it: the reader claims the router's
+file, as it does when the driver builds the router itself, and a value an
+assembly handed the driver is followed back, out of the assembly, to the file
+whose factory built it (`extraction/trace.model.ts`). Claimed by the driver's
+reader, it is that reader's tech, and whose it is travels on as any tech
+value's. The base does this for every reader that claims a project file; the
+revealer's reader knows nothing of it.
+
+Followed through every way a value may leave an assembly, a row each: the
+returned record, written in place or held in a local, nested, a key written
+twice; another assembly's instance returned bare; a parameter passed through,
+per caller; every return of a branch (they agree, or nothing is followed). The
+same following serves the use-case levels (`extraction/levels.model.ts`): a use
+case reached through a record held in a local is now traced to its service.
+
+Not followed, what an assembly may not do — red where it stands, and no one's
+tech: what a call that builds nothing returns; a record spread into the returned
+one. Ruled 2026-10-06 (rixo): composing assemblies by spread stays red, "that
+would be carving exceptions for niche, prefer clarity". Nothing is known of a
+key past a spread; one written after it is.
 
 ## The principle the rows follow
 
@@ -303,9 +328,10 @@ case "here":
 (`driver.spec.ts:510`, "main takes nothing and reads its tech itself"). The boot
 handing the driver its app stays a separate, low card (GUESSES C2).
 
-**2.5 The tech built in the assembly and handed back to the driver.** Red, as
-today (run 2026-10-05: its methods read as use cases). The reader changes
-nothing in what an assembly returns.
+**2.5 The tech built in the assembly and handed back to the driver.** Green,
+re-ruled 2026-10-06 (was red: its methods read as use cases). The reader's claim
+is unchanged — the tech's file — and what an assembly built with that file and
+handed over is followed back to it: see "Receiving" below.
 
 ## 3. Splitting the dispatch across files
 
@@ -500,8 +526,8 @@ handed to it was never judged (GUESSES C1: "how it is judged […] is not ruled"
 
 **6.2 The same with the bare adapter.** Red, as 5.2.
 
-**6.3 The assembly builds the tech and returns it.** The assembly is green (a
-model factory's instance, passed on or returned); the driver is red, as 2.5.
+**6.3 The assembly builds the tech and returns it.** Green, as 2.5: the way a
+tech that needs a port is built — as a service, by the assembly.
 
 **6.4 The tech takes no port: it returns what it saw, the use case logs it.**
 Green today, no reader work.
@@ -515,6 +541,11 @@ cut with their configs untouched.
 
 ## Ruled
 
+- 2026-10-06 (rixo): 2.5 and 6.3 re-ruled green. The router is the driver's
+  tech, built by the assembly like a service; the base follows a handed value
+  back to a claimed file — one trace, complete, no reader option, no member
+  named in the config. The dispatch moved into a service is not what was meant:
+  it would hide the primary use cases.
 - 2026-10-05 (rixo): sections 1 and 2, the cut and the event.
 - 2026-10-05 (rixo): 3.1, a case that hands off to a sub-driver is the dispatch
   continued. All of it lives in this tech's reader: the base learns nothing

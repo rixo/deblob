@@ -3,9 +3,8 @@
  * a driver's hook is primary on that channel; everything else on a service's
  * API is instrumental by complement. Pure over the graph's readings. A use case
  * traces to its service through the instance's origin: a service factory
- * directly, or an assembly's returned record entry by entry, as far as the
- * records are literal. Test hooks never label (canon: test edges never count
- * for use-case level).
+ * directly, or out of an assembly as `trace.model.ts` follows it. Test hooks
+ * never label (canon: test edges never count for use-case level).
  */
 
 import type {
@@ -19,6 +18,7 @@ import type {
   ReadStatement,
   Span,
 } from "./graph.model.ts"
+import { createTrace } from "./trace.model.ts"
 
 export type PrimaryUseCase = {
   /** The service file whose factory built the instance. */
@@ -51,32 +51,11 @@ const callsOf = (statements: readonly ReadStatement[]): ReadCall[] =>
 const hooksOf = (hooks: readonly ReadHook[]): ReadHook[] =>
   hooks.flatMap((hook) => [hook, ...hooksOf(hook.hooks)])
 
-/**
- * The returned record of an exported function, entry by key; `null` if none is
- * literal.
- */
-const returnedRecordOf = (
-  node: ModuleNode | undefined,
-  name: string,
-): ReadonlyMap<string, ArgValue> | null => {
-  const fn = node?.reading?.functions.find(
-    (candidate) => (candidate.name ?? "default") === name,
-  )
-  if (!fn) return null
-  const records = fn.body.flatMap((statement) =>
-    statement.kind === "return" && statement.record !== null
-      ? [statement.record]
-      : [],
-  )
-  // one literal record, or nothing to trace through
-  const [record] = records
-  if (record === undefined || records.length > 1) return null
-  return new Map(record.map((entry) => [entry.key, entry.value]))
-}
-
 export const useCaseLevels = (graph: ImportGraph): UseCaseLevels => {
   const primary: PrimaryUseCase[] = []
   const unresolved: UnresolvedUseCase[] = []
+
+  const { trace: follow } = createTrace(graph.modules)
 
   /**
    * Follow the origin down the member path: to a service (primary), to an
@@ -87,21 +66,12 @@ export const useCaseLevels = (graph: ImportGraph): UseCaseLevels => {
     origin: InstanceOrigin,
     path: readonly string[],
   ): { service: string; member: string } | "not-a-service" | null => {
-    if (origin.layer === "service") {
-      return path.length === 0
-        ? null
-        : { service: origin.path, member: path.join(".") }
-    }
-    if (origin.layer !== "assembly") return "not-a-service"
-    const [key, ...rest] = path
-    if (key === undefined) return null
-    const entry = returnedRecordOf(
-      graph.modules.get(origin.path),
-      origin.name,
-    )?.get(key)
-    // an entry with no origin is not an instance: nothing to follow
-    if (entry === undefined || entry.origin === null) return null
-    return trace(entry.origin, [...entry.path, ...rest])
+    const traced = follow(origin, path)
+    if (traced === null) return null
+    if (traced.origin.layer !== "service") return "not-a-service"
+    return traced.path.length === 0
+      ? null
+      : { service: traced.origin.path, member: traced.path.join(".") }
   }
 
   for (const node of graph.modules.values()) {

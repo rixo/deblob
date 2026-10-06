@@ -14,7 +14,7 @@ export const other = async () => {
   process.on("exit", () => {
     // through the group's record to an adapter: not a use case of a service
     services.group.store.has("k")
-    // through a record the reading cannot see: unresolved
+    // through a record a call returns: unresolved
     opaque.app.status({ cwd: "." })
     // through a default-exported assembly's record: primary
     viaDefault.app.check({ cwd: "." })
