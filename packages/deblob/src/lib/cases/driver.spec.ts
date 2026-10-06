@@ -735,10 +735,9 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // canon: `test-is-outside`, "A test file is assembly and driver in one …
-    // the test bodies are hooks … the hook count and services-only do not
-    // apply".
-    name: "a test body making two use-case calls and calling an adapter is green: the test tech exempts the count and services-only",
+    // A test is not a driver (ruled 2026-10-06): it builds what it checks and
+    // fires it, and takes none of the rules on a driver's hooks or wiring.
+    name: "a test body making two use-case calls and calling an adapter is green: a test takes no driver rule",
     files: {
       ...CLI,
       "node_modules/vitest/package.json": JSON.stringify({
@@ -763,12 +762,11 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // Added at the sweep (04/05, checkpoint 2): the test exemptions skipped
-    // the sub-driver rule with the rest. canon: `sub-driver-wiring` binds a
-    // spec too ("a spec file calling a shared `registerMatchers(expect)`"),
-    // and the test tech exempts the count and services-only, not it. Way
-    // out: the spec calls the wiring function, handing it its tech.
-    name: "a test handing a sub-driver's wiring function on as a body is red: a sub-driver is imported only to be called",
+    // Each test is the process starting over: wiring the driver it fires is
+    // the test's setup, the same as building a service in it. `sub-driver-wiring`
+    // keeps a hook from chaining two calls; a test body is no hook. Red
+    // until 2026-10-06, 64 lines of deblob's own check, all in its CLI gate.
+    name: "a test body calling a driver's wiring function is green: it wires the driver it fires",
     config: CONFIG,
     files: {
       ...CLI,
@@ -795,9 +793,25 @@ const ROWS: readonly Row[] = [
         }
       `,
       "src/cli.spec.ts": `
-        import { it } from "vitest"
+        import { cac } from "cac"
+        import { expect, it } from "vitest"
+        import { createCliAssembly } from "./cli.assembly.ts"
         import { registerCheckCommands } from "./cli/check.driver.ts"
-        it("registers the check commands", registerCheckCommands) // red: sub-driver-wiring -- a sub-driver's wiring function handed on as a value
+        const start = () => {
+          const { cli } = createCliAssembly({ cwd: "/tmp" })
+          const parser = cac("notes")
+          registerCheckCommands(parser, cli)
+          return parser
+        }
+        it("checks", () => {
+          expect(start().parse(["node", "notes", "check"])).toBeDefined()
+        })
+        it("checks again, on a parser of its own", () => {
+          const { cli } = createCliAssembly({ cwd: "/tmp" })
+          const parser = cac("notes")
+          registerCheckCommands(parser, cli)
+          expect(parser.parse(["node", "notes", "check"])).toBeDefined()
+        })
       `,
     },
   },
