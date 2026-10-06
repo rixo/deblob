@@ -6,9 +6,15 @@ const PAGE = "src/routes/home/+page.ts"
 const HELPER = "src/routes/home/helper.ts"
 const CLI = "src/cli.driver.ts"
 
-const pages = { name: "made-up-pages", include: ["src/routes/**/+page.ts"] }
-const stories = { name: "made-up-stories", include: ["src/**/+page.ts"] }
-const cli = { name: "made-up-cli" }
+const pages = {
+  name: "made-up-pages",
+  include: ["src/routes/**/+page.ts"],
+} as const
+const stories = {
+  name: "made-up-stories",
+  include: ["src/**/+page.ts"],
+} as const
+const cli = { name: "made-up-cli" } as const
 
 describe("createRecognition", () => {
   describe("kindOf", () => {

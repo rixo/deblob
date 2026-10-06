@@ -31,7 +31,7 @@ const fakeFlavor = (
   ...overrides,
 })
 
-const FLAVORS = { [STOCK_FLAVOR_NAME]: () => fakeFlavor() }
+const FLAVORS = { [STOCK_FLAVOR_NAME]: () => fakeFlavor() } as const
 
 const fakeTestReader = (
   name: string,

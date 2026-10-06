@@ -30,7 +30,7 @@ const FILES = [
   "src/default.assembly.ts",
   "src/app/app.service.spec.ts",
   "src/globals.spec.ts",
-]
+] as const
 
 /** Test factory: the reading fixture's graph, with or without the second driver. */
 const levelsOf = async (files: readonly string[] = FILES) => {

@@ -33,7 +33,7 @@ const readerOf = (...packages: readonly string[]) => ({
 })
 
 /** The parser as the driver's tech, claimed by the driver's reader. */
-const CONFIG = { readers: { driver: [readerOf("cac")] } }
+const CONFIG = { readers: { driver: [readerOf("cac")] } } as const
 
 /** The CLI service, its assembly, and the parser package. */
 const CLI = {

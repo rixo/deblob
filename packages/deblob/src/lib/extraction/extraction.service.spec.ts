@@ -132,7 +132,7 @@ const FORMS_FILES = [
   "src/types-only.ts",
   "src/default-fn.ts",
   "src/default-class.ts",
-]
+] as const
 
 const extractForms = () =>
   extractFixture({ fixture: "forms", files: FORMS_FILES })

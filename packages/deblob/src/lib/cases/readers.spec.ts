@@ -20,7 +20,7 @@ import { AS_MARKED } from "./runner/markers.model.ts"
 const ROUTER = {
   name: "made-up-router",
   tech: ["made-up-router"],
-}
+} as const
 
 /** The notes service, its assembly, and the router package. */
 const APP = {
@@ -57,7 +57,7 @@ const ROUTES = `
 const LOCAL_ROUTER = {
   name: "local-router",
   tech: ["./src/lib/router/router.model.ts"],
-}
+} as const
 
 /** The project's own router: a model factory, its registrations kept inside. */
 const ROUTER_FILE = {

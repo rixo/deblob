@@ -72,7 +72,7 @@ const options = {
   classifyEntry: classifyStockEntry,
   mirror: { dist: "src" },
   disclosed: () => false,
-}
+} as const
 
 describe("checkSurface", () => {
   it("yields nothing for a null surface — no field, no claim, no check", () => {
