@@ -79,7 +79,7 @@ export const createNodeReader = (binding: ReaderBinding = {}): HostReader => {
     ...binding,
     globals: GLOBALS,
     locations: ["__dirname", "__filename"],
-    claims: (specifier) => builtins.has(specifier),
+    claims: ({ specifier }) => builtins.has(specifier),
     pure: ["node:path", "node:querystring", "path", "querystring"],
   }
 }

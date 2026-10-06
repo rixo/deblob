@@ -41,10 +41,10 @@ export interface DriverReader extends ReaderBinding {
    * loads a module and calls one of its exports for the driver (a unit loaded
    * on demand): the call then reads as that sub-driver's wiring function called
    * there. The node is the parser's (oxc's ESTree): a change of parser breaks a
-   * reader that has a cut. `about` is what it may ask the reading: whose a
+   * reader that has a cut. `context` is what it may ask the reading: whose a
    * call's callee is. What the reading does with a pointer — the event, a hook
    * that only hands the dispatch on to a sub-driver, nothing picked inside a
    * hook — is the reading's, the same for every cut.
    */
-  readonly cut?: (node: Node, about: CutContext) => Cut | null
+  readonly cut?: (input: { node: Node; context: CutContext }) => Cut | null
 }

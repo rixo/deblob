@@ -13,7 +13,7 @@ import type { ReaderBinding } from "../recognition.model.ts"
 export interface HostReader extends ReaderBinding, HostKnowledge {
   readonly name: string
   /** Whether an import specifier is one of the host's builtin modules. */
-  claims(specifier: string): boolean
+  claims(input: { specifier: string }): boolean
   /**
    * The builtins that are pure — string-only, deterministic (`node:path`).
    * Model to the reader, as a `pure` entry is.

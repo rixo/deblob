@@ -1,6 +1,6 @@
 export default {
   flavor: {
-    classify: (files: readonly string[]) =>
+    classify: ({ files }: { files: readonly string[] }) =>
       new Map(
         files.map((file) => [
           file,

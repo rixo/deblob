@@ -1528,7 +1528,7 @@ describe("the reading on the graph — the reading fixture", () => {
     const graph = await extraction.extractGraph({
       config: {
         root,
-        flavor: { classify: (files) => stock.classify(files) },
+        flavor: { classify: (input) => stock.classify(input) },
         readers: FIXTURE_READERS,
       },
       files: READING_FILES,

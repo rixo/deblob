@@ -520,7 +520,8 @@ describe("readModule", () => {
     const TESTS = {
       name: "good-enough-tests",
       exempts: ["registration"],
-      roleOf: createGoodEnoughTestsReader().roleOf,
+      roleOf: (chain: readonly string[]) =>
+        createGoodEnoughTestsReader().roleOf({ chain }),
       cut: answerCallbacks,
     } as const
 

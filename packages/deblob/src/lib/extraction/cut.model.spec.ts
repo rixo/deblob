@@ -24,7 +24,7 @@ describe("cutCallbacks", () => {
     const call = expressionOf(
       `parser.on("check", (opts) => run(opts), function named() {}, other)`,
     )
-    const cut = cutCallbacks(call, techCallee())
+    const cut = cutCallbacks({ node: call, context: techCallee() })
     expect(cut?.map((pointer) => "fn" in pointer && pointer.fn.type)).toEqual([
       "ArrowFunctionExpression",
       "FunctionExpression",
@@ -33,34 +33,57 @@ describe("cutCallbacks", () => {
 
   it("points at a function handed to a callee nobody claims too, and to the host's", () => {
     const call = expressionOf(`register(() => run())`)
-    expect(cutCallbacks(call, aboutOf({ kind: "unclaimed" }))).toHaveLength(1)
     expect(
-      cutCallbacks(call, aboutOf({ kind: "tech", package: null })),
+      cutCallbacks({ node: call, context: aboutOf({ kind: "unclaimed" }) }),
+    ).toHaveLength(1)
+    expect(
+      cutCallbacks({
+        node: call,
+        context: aboutOf({ kind: "tech", package: null }),
+      }),
     ).toHaveLength(1)
   })
 
   it("answers nothing for a callee that is neither: a function handed to the language or a service is no hook", () => {
     const call = expressionOf(`items.forEach((item) => run(item))`)
-    expect(cutCallbacks(call, aboutOf({ kind: "other" }))).toBeNull()
+    expect(
+      cutCallbacks({ node: call, context: aboutOf({ kind: "other" }) }),
+    ).toBeNull()
   })
 
   it("answers nothing for a call that hands no function, and for a node that is no call", () => {
     expect(
-      cutCallbacks(expressionOf(`parser.parse(argv)`), techCallee()),
+      cutCallbacks({
+        node: expressionOf(`parser.parse(argv)`),
+        context: techCallee(),
+      }),
     ).toBeNull()
-    expect(cutCallbacks(expressionOf(`parser.name`), techCallee())).toBeNull()
+    expect(
+      cutCallbacks({
+        node: expressionOf(`parser.name`),
+        context: techCallee(),
+      }),
+    ).toBeNull()
   })
 
   it("points at the function past what wraps it, at a constructor's and at a tagged template's", () => {
     const wrapped = expressionOf(
       `parser.on((((opts) => run(opts)) as Handler)!)`,
     )
-    expect(cutCallbacks(wrapped, techCallee())).toHaveLength(1)
+    expect(cutCallbacks({ node: wrapped, context: techCallee() })).toHaveLength(
+      1,
+    )
     expect(
-      cutCallbacks(expressionOf(`new Watcher(() => run())`), techCallee()),
+      cutCallbacks({
+        node: expressionOf(`new Watcher(() => run())`),
+        context: techCallee(),
+      }),
     ).toHaveLength(1)
     expect(
-      cutCallbacks(expressionOf("tag`a ${() => run()} b`"), techCallee()),
+      cutCallbacks({
+        node: expressionOf("tag`a ${() => run()} b`"),
+        context: techCallee(),
+      }),
     ).toHaveLength(1)
   })
 })

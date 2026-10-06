@@ -13,7 +13,7 @@ import type { Node } from "@oxc-project/types"
 
 import type { Cut } from "../extraction/cut.model.ts"
 
-export const cutMethods = (statement: Node): Cut | null => {
+export const cutMethods = ({ node: statement }: { node: Node }): Cut | null => {
   if (statement.type !== "ReturnStatement") return null
   const returned = statement.argument
   if (returned?.type !== "ObjectExpression") return null

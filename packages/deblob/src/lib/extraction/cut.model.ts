@@ -92,14 +92,20 @@ export const unwrapNode = (node: Node): Node => {
  * claims it is cut as one too: the missing premise is red once, at the call
  * (GUESS: D8), never again as the callback's calls read into the wiring.
  */
-export const cutCallbacks = (node: Node, about: CutContext): Cut | null => {
+export const cutCallbacks = ({
+  node,
+  context,
+}: {
+  node: Node
+  context: CutContext
+}): Cut | null => {
   const handed =
     node.type === "CallExpression" || node.type === "NewExpression"
       ? node.arguments
       : node.type === "TaggedTemplateExpression"
         ? node.quasi.expressions
         : null
-  if (handed === null || about.calleeOf(node).kind === "other") return null
+  if (handed === null || context.calleeOf(node).kind === "other") return null
   const hooks = handed
     .map(unwrapNode)
     .filter(
@@ -113,6 +119,6 @@ export const cutCallbacks = (node: Node, about: CutContext): Cut | null => {
 
 /** The default cut's answer, as the reading takes one: it claims nothing. */
 export const answerCallbacks = (node: Node, about: CutContext): CutAnswer[] => {
-  const cut = cutCallbacks(node, about)
+  const cut = cutCallbacks({ node, context: about })
   return cut === null ? [] : [{ cut, claims: () => false }]
 }

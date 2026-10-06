@@ -21,7 +21,7 @@ import type { ConfigFiles } from "./ports/config-files.port.ts"
 const fakeFlavor = (
   overrides: Partial<FlavorResolver> = {},
 ): FlavorResolver => ({
-  classify: (files) =>
+  classify: ({ files }) =>
     new Map(
       files.map((file) => [
         file,
@@ -538,7 +538,9 @@ describe("resolveConfig — externalLayers", () => {
 describe("resolveConfig — flavor", () => {
   it("resolves a registry name to its instance", () => {
     const resolved = resolve({ flavor: STOCK_FLAVOR_NAME })
-    expect(resolved.flavor.classify(["a.ts"]).get("a.ts")?.layer).toBe("blob")
+    expect(
+      resolved.flavor.classify({ files: ["a.ts"] }).get("a.ts")?.layer,
+    ).toBe("blob")
   })
 
   it("uses a custom resolver object as-is", () => {

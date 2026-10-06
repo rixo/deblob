@@ -13,7 +13,8 @@ describe("createPlaywrightReader", () => {
   })
 
   it("translates Playwright's names into roles, a step into none", () => {
-    const { roleOf } = createPlaywrightReader()
+    const reader = createPlaywrightReader()
+    const roleOf = (chain: readonly string[]) => reader.roleOf({ chain })
     expect(roleOf(["test"])).toEqual({ kind: "verification" })
     expect(roleOf(["test", "skip"])).toEqual({ kind: "verification" })
     expect(roleOf(["test", "describe", "only"])).toEqual({ kind: "group" })

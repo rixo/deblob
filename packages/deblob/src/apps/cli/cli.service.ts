@@ -206,7 +206,7 @@ export const createCli = ({
 
     const files = await coverage.scanCoverage(config)
     // classify is total by contract — extraction throws on a gap; bare trusts it
-    const classifications = config.flavor.classify(files)
+    const classifications = config.flavor.classify({ files })
     const classificationOf = (path: string) =>
       classifications.get(path) as FlavorClassification
     // the same recognition as extraction's, so bare and check count one way;

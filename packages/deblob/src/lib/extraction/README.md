@@ -194,8 +194,8 @@ unparsed one, has none: recognized and open.
   a file, a builtin under its `node:` name, or an unresolved reason. Split off
   the engine because parsing reads a string and resolution reads a tree: the
   node run's tree is the disk, a case's is the fs port's.
-- `ports/flavor.port.ts` — `FlavorResolver`: `classify(files)` maps the whole
-  coverage set to layer, service root, and privacy at once (path-only,
+- `ports/flavor.port.ts` — `FlavorResolver`: `classify({ files })` maps the
+  whole coverage set to layer, service root, and privacy at once (path-only,
   set-based); optional `classifyEntry(subpath)` is the naming rule read across
   package boundaries; optional `isFactory(name)` is the naming rule over an
   export name — what tells a model factory from a model function, the stock rule
@@ -206,7 +206,7 @@ unparsed one, has none: recognized and open.
   (root-relative globs, the builtin one; config binds more, first), the kinds it
   reads among the files it binds (one kind = the binding designates it), the
   packages it claims as tech, the driver rules it exempts, and its roles —
-  `roleOf(chain)`, its tech's names translated into deblob's (`Role`: group,
+  `roleOf({ chain })`, its tech's names translated into deblob's (`Role`: group,
   behavior, verification, setup and teardown with a scope, mock), given the name
   a registration calls (the reading finds it: the reader's own import, then the
   members through calls), `null` for a name it does not map; the cut is the

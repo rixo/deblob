@@ -71,7 +71,7 @@ export const createGoodEnoughTestsReader = (
   exempts: ["registration", "call-count", "services-only", "definitions"],
   // the longest listed name the chain starts with: `it.skip.each` is `it`,
   // `vi.mock` a mock, `vi.fn` none; own keys only (`constructor` is none)
-  roleOf: (chain) => {
+  roleOf: ({ chain }) => {
     for (let length = chain.length; length > 0; length -= 1) {
       const name = chain.slice(0, length).join(".")
       if (Object.hasOwn(ROLES, name)) return ROLES[name as keyof typeof ROLES]

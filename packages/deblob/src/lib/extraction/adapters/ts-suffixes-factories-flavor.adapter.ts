@@ -105,9 +105,9 @@ export const createStockFlavors = (): Readonly<
 })
 
 export const createTsSuffixesFactoriesFlavor = (): FlavorResolver => ({
-  classifyEntry: classifyStockEntry,
-  isFactory: isStockFactoryName,
-  classify: (files) => {
+  classifyEntry: ({ subpath }) => classifyStockEntry(subpath),
+  isFactory: ({ name }) => isStockFactoryName(name),
+  classify: ({ files }) => {
     const roots = new Set<string>()
     for (const file of files) {
       if (ROOT_MARKING_SUFFIX.test(file)) roots.add(markedRootOf(file))

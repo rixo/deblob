@@ -14,5 +14,5 @@ export interface TestReader extends DriverReader {
    * `["it", "skip", "each"]`). The tech's names translated into deblob's;
    * `null` for a name the reader does not map — never guessed.
    */
-  roleOf(chain: readonly string[]): Role | null
+  roleOf(input: { chain: readonly string[] }): Role | null
 }

@@ -38,7 +38,7 @@ const bodyOf = (statements: readonly Statement[]): Statement[] =>
       !(index === statements.length - 1 && statement.type === "BreakStatement"),
   )
 
-export const cutSwitch = (statement: Node): Cut | null => {
+export const cutSwitch = ({ node: statement }: { node: Node }): Cut | null => {
   if (statement.type !== "SwitchStatement") return null
   const on = statement.discriminant
   const hooks: Cut[number][] = []
@@ -91,7 +91,7 @@ const loadOf = (handed: Node): Node | null => {
  * its `import()` is no seam: a function handed to the tech, as any. Whether
  * `lazy` is this reader's tech is the reading's to check.
  */
-export const cutLazy = (node: Node): Cut | null => {
+export const cutLazy = ({ node }: { node: Node }): Cut | null => {
   if (
     node.type !== "CallExpression" ||
     node.callee.type !== "Identifier" ||
@@ -107,5 +107,5 @@ export const cutLazy = (node: Node): Cut | null => {
 export const ARGV_SWITCH = {
   name: "argv-switch",
   tech: ["./src/lib/argv/argv.model.ts"],
-  cut: (node: Node) => cutSwitch(node) ?? cutLazy(node),
+  cut: (input: { node: Node }) => cutSwitch(input) ?? cutLazy(input),
 } as const

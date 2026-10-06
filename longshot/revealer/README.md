@@ -85,7 +85,7 @@ The default cut is a cut like any other (`extraction/cut.model.ts`,
 `cutCallbacks`): a function outside the reading, last in every reader's stack
 and the core's. What made that possible is on the port: a cut is asked on every
 call too, not only on statements, and may ask the reading whose a call's callee
-is (`about.calleeOf`) — the one thing the callback cut needs that the syntax
+is (`context.calleeOf`) — the one thing the callback cut needs that the syntax
 does not say.
 
 Not done: a reader saying "callbacks handed to my tech are not hooks" — the
@@ -598,6 +598,30 @@ cut with their configs untouched.
   list). A reader is a plain object in the config today, so code on it is
   loadable; whether that is wanted is the revealer's verdict.
 - Whether the claimed-file edge skip narrows to model or service targets.
+
+## The verdict on the port
+
+What a reader is, ruled 2026-10-06 (rixo): a plugin, as Rollup and Vite have
+them. A reader or a flavor is a plain object from outside — a name, declarations
+(`include`, `tech`, `exempts`, `blob`), and functions. It is no layer's citizen:
+not an adapter, not a service, not a model; nothing regulated is instantiated in
+the user's config. Its contract is a type, not a port. What it needs from deblob
+comes through the `context` it is handed, made by the service that calls it,
+from that service's own ports; the one place plugin functions are called (the
+container) is deblob's, under every rule. The stock readers and the stock flavor
+deblob ships are values, model files.
+
+A plugin function takes one object, the context under its `context` key:
+`cut: ({ node, context }) => …`, `roleOf: ({ chain }) => …`,
+`claims: ({ specifier }) => …`, `classify: ({ files }) => …`. No position, so
+nothing breaks by order and what a function does not use it does not name;
+`this` is not used, deblob's own reading cannot follow it. Built 2026-10-06 for
+every plugin function; only a cut is handed a context today, the key appears on
+the others the day there is something in it.
+
+Still to do: the container named and taken out of `extraction.service.ts`
+(`stackedTech`); the reader and flavor files renamed out of `adapters/` and
+`ports/`.
 
 ## Known limit, for the verdict on the port
 

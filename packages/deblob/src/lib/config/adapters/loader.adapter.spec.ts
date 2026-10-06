@@ -26,7 +26,7 @@ const fixture = (name: string): string =>
   fileURLToPath(new URL(`../__fixtures__/${name}`, import.meta.url))
 
 const fakeFlavor = (): FlavorResolver => ({
-  classify: (files) =>
+  classify: ({ files }) =>
     new Map(
       files.map((file) => [
         file,
@@ -326,7 +326,9 @@ describe("importConfigDefault + the assembly sequence", () => {
 
   it("uses a custom flavor exported from the config", async () => {
     const resolved = await load(fixture("custom-flavor"))
-    expect(resolved.flavor.classify(["a.ts"]).get("a.ts")?.layer).toBe("model")
+    expect(
+      resolved.flavor.classify({ files: ["a.ts"] }).get("a.ts")?.layer,
+    ).toBe("model")
   })
 
   describe("configless", () => {

@@ -8,12 +8,12 @@ import {
 } from "./ts-suffixes-factories-flavor.adapter.ts"
 
 const classify = (files: string[]) =>
-  createTsSuffixesFactoriesFlavor().classify(files)
+  createTsSuffixesFactoriesFlavor().classify({ files })
 
 describe("stock flavor registry", () => {
   it("yields this flavor under the stock name", () => {
     const flavor = createStockFlavors()[STOCK_FLAVOR_NAME]?.()
-    const result = flavor?.classify(["icons/icons.model.ts"])
+    const result = flavor?.classify({ files: ["icons/icons.model.ts"] })
     expect(result?.get("icons/icons.model.ts")?.layer).toBe("model")
   })
 })
@@ -224,15 +224,19 @@ describe("the factory naming rule — `create` followed by a capital", () => {
     expect(isStockFactoryName("default")).toBe(false)
   })
 
-  test("the flavor's isFactory is isStockFactoryName", () => {
+  test("the flavor's isFactory answers as isStockFactoryName", () => {
     const flavor = createTsSuffixesFactoriesFlavor()
-    expect(flavor.isFactory).toBe(isStockFactoryName)
+    expect(flavor.isFactory?.({ name: "createThing" })).toBe(true)
+    expect(flavor.isFactory?.({ name: "makeThing" })).toBe(false)
   })
 })
 
 describe("createTsSuffixesFactoriesFlavor", () => {
   it("names its entries by the stock rule", () => {
     const flavor = createTsSuffixesFactoriesFlavor()
-    expect(flavor.classifyEntry).toBe(classifyStockEntry)
+    for (const subpath of ["service", "adapters/node", "model", "nope"])
+      expect(flavor.classifyEntry?.({ subpath })).toBe(
+        classifyStockEntry(subpath),
+      )
   })
 })

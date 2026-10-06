@@ -32,7 +32,8 @@ describe("createGoodEnoughTestsReader", () => {
   })
 
   describe("roleOf", () => {
-    const { roleOf } = createGoodEnoughTestsReader()
+    const reader = createGoodEnoughTestsReader()
+    const roleOf = (chain: readonly string[]) => reader.roleOf({ chain })
 
     it("translates the runners' names into roles, a setup or teardown with its scope", () => {
       expect(

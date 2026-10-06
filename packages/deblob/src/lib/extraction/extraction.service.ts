@@ -73,7 +73,7 @@ const stackedTech = (readers: readonly (DriverReader | TestReader)[]) => ({
   exempts: [...new Set(readers.flatMap((reader) => reader.exempts ?? []))],
   roleOf: (chain: readonly string[]) => {
     for (const reader of readers) {
-      const role = "roleOf" in reader ? reader.roleOf(chain) : null
+      const role = "roleOf" in reader ? reader.roleOf({ chain }) : null
       if (role !== null) return role
     }
     return null
@@ -82,7 +82,10 @@ const stackedTech = (readers: readonly (DriverReader | TestReader)[]) => ({
   // default cut last
   cut: (node: Node, about: CutContext): CutAnswer[] => [
     ...readers.flatMap((reader) => {
-      const cut = "cut" in reader ? (reader.cut?.(node, about) ?? null) : null
+      const cut =
+        "cut" in reader
+          ? (reader.cut?.({ node, context: about }) ?? null)
+          : null
       return cut === null
         ? []
         : [
@@ -282,7 +285,7 @@ export const createExtraction = ({
       (await claims?.layerOf(specifier)) ??
       null
     const pureSet = new Set(pure)
-    const classifications = flavor.classify(files)
+    const classifications = flavor.classify({ files })
     const fileSet = new Set(files)
     for (const load of configLoads) {
       if (!fileSet.has(load.file)) {
@@ -338,7 +341,10 @@ export const createExtraction = ({
       const name = target.package ?? specifier
       if (
         !target.declared &&
-        hosts.some((host) => host.claims(name) || host.claims(specifier))
+        hosts.some(
+          (host) =>
+            host.claims({ specifier: name }) || host.claims({ specifier }),
+        )
       )
         return "tech"
       return "unclaimed"
@@ -450,7 +456,7 @@ export const createExtraction = ({
         ),
         // the flavor's word on export names, plain data; a flavor without the
         // rule names nothing
-        isFactory: (name) => flavor.isFactory?.(name) ?? false,
+        isFactory: (name) => flavor.isFactory?.({ name }) ?? false,
         ...(paramKinds ? { paramKinds } : {}),
         // what an assembly handed the file is its reader's tech when the
         // factory behind it is in a file the reader claims
