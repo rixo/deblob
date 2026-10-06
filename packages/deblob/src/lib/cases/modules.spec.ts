@@ -960,6 +960,27 @@ const ROOT_CALLS: readonly Row[] = [
 
 const READONLY_BINDINGS: readonly Row[] = [
   {
+    // Found 2026-10-07 on deblob's own specs (15 unknowns for one helper): a
+    // function of the file that declares what it returns says it as an
+    // annotation on the binding would, and the binding needs no second one.
+    // Undeclared, the result stays unknown: the reader infers no type.
+    name: "a root binding holding what a function of the file returns is proven by that function's declared return type",
+    files: {
+      "src/paths.model.ts": `
+        const shout = (name: string): string => name.toUpperCase()
+        function count(name: string): number {
+          return name.length
+        }
+        const listOf = (name: string): string[] => [name]
+        const trim = (name: string) => name.trim()
+        export const NAME = shout("notes")
+        export const LENGTH = count("notes") // false unknown: stable-root -- declared by statement: the reader holds no node to ask its return type of yet
+        export const NAMES = listOf("notes") // red: stable-root -- declared to return a mutable array
+        export const TRIMMED = trim("notes") // false unknown: stable-root -- no declared return type: the reader infers none
+      `,
+    },
+  },
+  {
     // canon: "proof being a primitive type, `as const`, a readonly array, record,
     // map or set, or `Object.freeze` over a literal, each proven to its depth".
     // The green half, form by form.
@@ -1152,7 +1173,7 @@ const READONLY_BINDINGS: readonly Row[] = [
       "src/unread.model.ts": `
         import { BASE_TABLE } from "./base.model.ts"
         const SHAPE = { a: 1 } as const
-        const firstKey = (): "a" => "a"
+        const firstKey = () => "a" as const
         export const STOPPABLE: Readonly<{ stop(): void }> = { stop: () => {} } // false unknown: stable-root -- method signatures are not read yet
         export const LOOSE_STOP: { stop(): void } = { stop: () => {} } // red: stable-root -- a method can be reassigned: TS cannot mark it readonly
         export const COUNTS: { readonly [key: string]: number } = {} // false unknown: stable-root -- index signatures are not read yet
