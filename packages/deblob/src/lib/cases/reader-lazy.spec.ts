@@ -532,6 +532,39 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // `reader-hand-off.spec.ts`, the same through a sub-driver called and
+    // through the driver's own import().
+    name: "a part of the read handed through the tech's lazy: the unit's switch is the reader's cut, and its case handing the part on is red, read off the event in the caller's wiring",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/check.driver.ts": `
+        export const dispatch = (line: readonly string[], tool: { check: (line: unknown) => unknown }) => {
+          // false red: wiring-outside-hooks -- the tech-side seam is not read yet: the unit is handed nothing, its switch is a branch
+          switch (line[1]) {
+            default:
+              // false unknown: driver-calls-services -- the tech-side seam is not read yet: the tool is handed by no caller
+              return tool.check(line) // missed red: hook-one-call -- read off the event, in the caller's wiring; the tech-side seam is not read yet
+          }
+        }
+      `,
+      "src/tool.driver.ts": `
+        ${IMPORTS}
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          switch (read.command) {
+            // false red: hook-one-call -- the tech-side seam is not read yet: the case is taken for a hook with no use case
+            case "check":
+              return lazy(() => import("./check.driver.ts"), read.line, tool) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
+            default:
+              return tool.status(read)
+          }
+        }
+      `,
+    },
+  },
+  {
     // One shape per reader (README 1.8, 4.4): the seam is the thunk written
     // where it is handed.
     name: "a thunk held in a local and handed by name is no seam: red, the reader describes one shape",

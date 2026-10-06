@@ -580,3 +580,18 @@ cut with their configs untouched.
   list). A reader is a plain object in the config today, so code on it is
   loadable; whether that is wanted is the revealer's verdict.
 - Whether the claimed-file edge skip narrows to model or service targets.
+
+## Known limit, for the verdict on the port
+
+A cut that picks statements takes its event from a value of the wiring, where
+calling the tech is legal. Without types, a method called on what the tech
+returned (`read.line.slice(1)`, `read.line.join(" ").toUpperCase()`) looks like
+a method of an object the tech built (`argv.readLine(…)`, green on purpose), so
+its result passes for the reader's tech: a driver may reshape the read and
+dispatch on the result, unseen. Sized by running, 2026-10-06: only a chain of
+method calls with literal arguments gets through; an operator, a template, a
+ternary, a helper of the driver's own, a language function, a method handed a
+callback or a computed argument is red already. The callback cut is closed (its
+event is born in the hook). Ruled red (rixo, 2026-10-06), confessed as missed:
+one row in `reader-cut.spec.ts`, one in `reader-hand-off.spec.ts`. Not fixed: no
+shipped reader has such a cut.

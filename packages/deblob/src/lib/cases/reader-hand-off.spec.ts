@@ -352,6 +352,105 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
+  {
+    // `reader-cut.spec.ts`, "the read destructured in the wiring": a part read
+    // off the read is still the tech's, and no longer the event as received.
+    // That it was read off travels with it through the hand-off.
+    name: "a part of the read handed to a sub-driver: its switch is the reader's cut, and its cases handing the part on are red, read off the event in the caller's wiring",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/check.driver.ts": `
+        import type { Tool } from "./lib/tool/tool.service.ts"
+        export const dispatchCheck = (line: readonly string[], tool: Tool) => {
+          switch (line[1]) {
+            case "dag":
+              return tool.checkDag(line) // red: hook-one-call -- read off the event, in the caller's wiring
+            default:
+              return tool.check(line) // red: hook-one-call -- read off the event, in the caller's wiring
+          }
+        }
+      `,
+      "src/tool.driver.ts": `
+        ${IMPORTS}
+        import { dispatchCheck } from "./check.driver.ts"
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          switch (read.command) {
+            case "check":
+              return dispatchCheck(read.line, tool)
+            default:
+              return tool.status(read)
+          }
+        }
+      `,
+    },
+  },
+  {
+    name: "the same part handed through a literal import() is red the same",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/check.driver.ts": `
+        import type { Tool } from "./lib/tool/tool.service.ts"
+        export const dispatchCheck = (line: readonly string[], tool: Tool) => {
+          switch (line[1]) {
+            default:
+              return tool.check(line) // red: hook-one-call -- read off the event, in the caller's wiring
+          }
+        }
+      `,
+      "src/tool.driver.ts": `
+        ${IMPORTS}
+        export const main = async () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          switch (read.command) {
+            case "check":
+              return (await import("./check.driver.ts")).dispatchCheck(read.line, tool)
+            default:
+              return tool.status(read)
+          }
+        }
+      `,
+    },
+  },
+  {
+    // The read reshaped is not the event as received. The reader misses it: a
+    // call on a tech value reads as a call into the tech (a method of an
+    // object the tech built is one), and without types `.slice` on what the
+    // tech returned looks the same — so the result passes for an event of its
+    // own. `reader-cut.spec.ts` has the same in one driver.
+    name: "the read reshaped by a method call and handed to a sub-driver is red: not the event as received",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/check.driver.ts": `
+        import type { Tool } from "./lib/tool/tool.service.ts"
+        export const dispatchCheck = (rest: readonly string[], tool: Tool) => {
+          switch (rest[0]) {
+            default:
+              return tool.check(rest) // missed red: hook-one-call -- not the event as received: the read sliced by the caller; a method call on a tech value reads as the tech's
+          }
+        }
+      `,
+      "src/tool.driver.ts": `
+        ${IMPORTS}
+        import { dispatchCheck } from "./check.driver.ts"
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          switch (read.command) {
+            case "check":
+              return dispatchCheck(read.line.slice(1), tool)
+            default:
+              return tool.status(read)
+          }
+        }
+      `,
+    },
+  },
 ]
 
 describe("reader hand-off", () => {

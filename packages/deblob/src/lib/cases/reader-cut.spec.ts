@@ -371,6 +371,35 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // The other side of the row above, a limit of a cut that picks statements
+    // (its event is born in the wiring, where calling the tech is legal):
+    // without types a method called on what the tech returned looks like a
+    // method of an object the tech built, so the read reshaped passes for
+    // the reader's tech, and the switch on it for the dispatch. Only a chain
+    // of method calls with literal arguments gets through; an operator, a
+    // template, a ternary, a helper, a callback or a computed argument is
+    // red already. The callback cut has no such hole.
+    name: "the read reshaped by method calls before the switch is red: the driver computes its event",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/tool.driver.ts": `
+        ${IMPORTS}
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          const text = read.line.join(" ").toUpperCase()
+          switch (text) {
+            case "CHECK":
+              return tool.check(text) // missed red: hook-one-call -- not the event as received: the read joined and upper-cased; a method call on a tech value reads as the tech's
+            default:
+              return tool.status(text) // missed red: hook-one-call -- not the event as received; a method call on a tech value reads as the tech's
+          }
+        }
+      `,
+    },
+  },
+  {
     // Ruled 2026-09-28: "whatever, as long as you can describe it to me" —
     // an if chain is a second shape, for a reader that describes it. The
     // reader's cut must not reach it.
