@@ -772,6 +772,68 @@ const ROOT_CALLS: readonly Row[] = [
     },
   },
   {
+    // canon: "`process.cwd()` at root is red, stored or not, until the reading
+    // that claims it declares that call effect-free". The `node` reader
+    // declares the calls that only compute a path or a URL from what they
+    // are handed (ruled 2026-10-06): a fixture path at a file's root is
+    // nothing done on load. Of deblob's own check, 40 lines were this.
+    name: "a path or a URL computed at root is green: the host reader declares those calls effect-free",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/store/adapters/templates.adapter.ts": `
+        import { fileURLToPath } from "node:url"
+        const TEMPLATES: string = fileURLToPath(new URL("./templates", import.meta.url))
+        const QUERY: string = new URLSearchParams({ lang: "en" }).toString()
+        export const createTemplates = () => ({ root: () => TEMPLATES + QUERY })
+      `,
+      "src/fixtures.spec.ts": `
+        import { fileURLToPath } from "node:url"
+        import { expect, it } from "vitest"
+        const here = (path: string): string => fileURLToPath(new URL(path, import.meta.url))
+        const VIOLATING: string = here("__fixtures__/violating")
+        it("finds the fixture", () => {
+          expect(VIOLATING).toContain("violating")
+        })
+      `,
+    },
+  },
+  {
+    // The declaration is by call, not by name: what the same module or the
+    // same global also offers, and that acts or reads the machine, stays
+    // presumed to act.
+    name: "a call the host reader does not declare effect-free stays red at root, beside one it does",
+    files: {
+      "src/store/adapters/cwd.adapter.ts": `
+        import { fileURLToPath, pathToFileURL } from "node:url"
+        const HERE: string = fileURLToPath(import.meta.url)
+        const CWD = pathToFileURL("./") // red: stable-root + stable-root -- resolved against the working directory: a read of the machine; the binding holding its result rides with it
+        URL.revokeObjectURL("blob:made-up") // red: stable-root -- a member of URL, not the URL built: an act
+        export const createCwd = () => ({ here: () => HERE, cwd: () => CWD })
+      `,
+    },
+  },
+  {
+    // The declaration lifts a presumption where the host may be used at all:
+    // a model or a service has no business with it, and a host call at their
+    // root stays red, effect-free or not (rixo, 2026-10-07). The import of
+    // `node:url` there is the layer rules' red; a host global has no import,
+    // and this is the one rule that sees it.
+    name: "a host call at the root of a model or a service stays red, even one the host reader declares effect-free",
+    files: {
+      "src/notes/paths.model.ts": `
+        export const HERE: string = new URL("./notes", import.meta.url).pathname // red: stable-root -- the host, called at a model's root
+      `,
+      "src/notes/notes.service.ts": `
+        const QUERY: string = new URLSearchParams({ lang: "en" }).toString() // red: stable-root + stable-root -- the host, called at a service's root; the binding holding its result rides with it
+        export const createNotes = () => ({ query: () => QUERY })
+      `,
+    },
+  },
+  {
     // canon: "a call is presumed to have side effects … until the tech's reading
     // declares that call effect-free". `import()` is a call into the host's
     // module loader: a presumption, not a proven instability — the loaded
