@@ -221,10 +221,6 @@ export type World = {
 
 export type WorldReading = { world: World; reading: FileReading }
 
-/** The driver rules a tech's shape exempts (`test-is-outside`). */
-export type Exemption =
-  "registration" | "call-count" | "services-only" | "definitions"
-
 /** Byte offsets plus the 1-based line and column, so nothing reopens the file. */
 export type Span = { start: number; end: number; line: number; column: number }
 
@@ -365,9 +361,9 @@ export type ReadCall = {
    */
   load: { file: string; name: string } | null
   /**
-   * A call into the runner the file's own reader claims, where that reader
-   * exempts registration — a spec file's `describe`, `vi.mock`,
-   * `expect.extend`: the calls `stable-root` exempts by kind.
+   * A call at a test file's root into the runner its own reader claims — a spec
+   * file's `describe`, `vi.mock`, `expect.extend`: the calls `stable-root` lets
+   * a test file make.
    */
   registration: boolean
   /**
@@ -590,7 +586,6 @@ export type OpenPart = {
 export type FileReading = {
   /** The tech that read the file; `null` for a file of an inside kind. */
   tech: string | null
-  exempts: readonly Exemption[]
   root: readonly ReadStatement[]
   /** Hooks registered from module root — a spec file's `test()` bodies. */
   hooks: readonly ReadHook[]

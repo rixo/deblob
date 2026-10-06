@@ -47,7 +47,6 @@ describe("checkModules", () => {
         layer: "adapters",
         reading: {
           tech: null,
-          exempts: [],
           root: [
             {
               kind: "call",

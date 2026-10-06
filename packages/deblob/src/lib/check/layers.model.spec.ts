@@ -20,7 +20,6 @@ type NodeSpec = {
  */
 const READ = {
   tech: "some-made-up-reader",
-  exempts: [],
   root: [],
   hooks: [],
   functions: [],

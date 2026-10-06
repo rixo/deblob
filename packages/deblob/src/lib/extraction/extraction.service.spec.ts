@@ -1086,12 +1086,6 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(readingOf(graph, "src/app/app.service.spec.ts").tech).toBe(
       "good-enough-tests",
     )
-    expect(readingOf(graph, "src/app/app.service.spec.ts").exempts).toEqual([
-      "registration",
-      "call-count",
-      "services-only",
-      "definitions",
-    ])
     expect(readingOf(graph, "src/app/app.model.ts").tech).toBeNull()
     expect(readingOf(graph, "src/app/app.model.ts").functions).toEqual([])
     expect(
@@ -1128,7 +1122,7 @@ describe("the reading on the graph — the reading fixture", () => {
     )
   })
 
-  it("makes a blob file a test by a test reader's written binding, read with its exemptions; stacked readers union their exemptions", async () => {
+  it("makes a blob file a test by a test reader's written binding, read by that reader", async () => {
     const bound = await extractReading({
       test: [
         createGoodEnoughTestsReader({ include: ["src/legacy.ts"] }),
@@ -1136,7 +1130,7 @@ describe("the reading on the graph — the reading fixture", () => {
       ],
     })
     expect(bound.modules.get("src/legacy.ts")).toMatchObject({ layer: "test" })
-    expect(readingOf(bound, "src/legacy.ts").exempts).toHaveLength(4)
+    expect(readingOf(bound, "src/legacy.ts").tech).toBe("good-enough-tests")
     expect(bound.modules.get("src/globals.spec.ts")?.layer).toBe("test")
   })
 

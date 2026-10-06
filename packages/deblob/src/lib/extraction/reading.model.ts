@@ -21,7 +21,6 @@ import type { Node, Program } from "@oxc-project/types"
 import type {
   ArgValue,
   CalleeKind,
-  Exemption,
   FileReading,
   Immutability,
   InstanceOrigin,
@@ -81,13 +80,12 @@ export type ReadInput = {
   /** The file's own kind. */
   layer: Layer
   /**
-   * The tech reading the file: its name, exemptions and roles — the name a
-   * registration calls, translated (absent = no hook gets one). `null` for an
-   * inside kind — root statements only, no functions cut.
+   * The tech reading the file: its name and roles — the name a registration
+   * calls, translated (absent = no hook gets one). `null` for an inside kind —
+   * root statements only, no functions cut.
    */
   tech: {
     name: string
-    exempts: readonly Exemption[]
     roleOf?: (chain: readonly string[]) => Role | null
     /**
      * The reader's own cut: its word on a statement, `null` where it has none,
@@ -1415,8 +1413,11 @@ export const readModule = ({
     return translate(imported === "*" ? members : [imported, ...members])
   }
 
-  /** Whether the file's own reader exempts registrations into its tech. */
-  const registers = tech !== null && tech.exempts.includes("registration")
+  /**
+   * Whether the file's root may register into its tech: a test file's, into its
+   * runner (`stable-root`).
+   */
+  const registers = layer === "test"
 
   /**
    * The value kind at the root of an assignment target: a binding's own kind (a
@@ -3450,7 +3451,6 @@ export const readModule = ({
 
   return {
     tech: tech?.name ?? null,
-    exempts: tech?.exempts ?? [],
     root: body.statements,
     hooks: body.hooks,
     functions,

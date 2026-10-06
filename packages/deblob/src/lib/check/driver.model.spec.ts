@@ -63,7 +63,6 @@ const callOf = (callee: ReadCall["callee"]): ReadCall => ({
 /** `main` whose body is `wiring`, with one hook whose body is `hooked`. */
 const mainWith = (wiring: ReadCall, hooked: ReadCall): FileReading => ({
   tech: "plain-ts",
-  exempts: [],
   root: [],
   hooks: [],
   functions: [

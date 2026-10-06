@@ -37,7 +37,6 @@ const NODE_DEFAULTS = {
 
 const READING: FileReading = {
   tech: null,
-  exempts: [],
   root: [],
   hooks: [],
   functions: [],

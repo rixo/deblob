@@ -14,7 +14,7 @@ import type { Node } from "@oxc-project/types"
 
 import type { CutAnswer, CutContext } from "./cut.model.ts"
 import { answerCallbacks } from "./cut.model.ts"
-import type { Exemption, Layer, Role } from "./graph.model.ts"
+import type { Layer, Role } from "./graph.model.ts"
 import type { Knowledge } from "./knowledge.model.ts"
 import { knowledgeOf } from "./knowledge.model.ts"
 import type { DriverReader } from "./driver-reader.model.ts"
@@ -37,13 +37,11 @@ export type PluginsConfig = Designations & {
 }
 
 /**
- * The tech a file is read with: its readers' names joined, the parts of the
- * driver rules its kind does not take, the first role a reader gives, and every
- * cut that answers on a node.
+ * The tech a file is read with: its readers' names joined, the first role a
+ * reader gives, and every cut that answers on a node.
  */
 export type BoundTech = {
   name: string
-  exempts: readonly Exemption[]
   roleOf: (chain: readonly string[]) => Role | null
   cut: (node: Node, about: CutContext) => CutAnswer[]
 }
@@ -70,35 +68,19 @@ export type FilePlugins = {
 
 /**
  * The tech an assembly or a boot is read with: the core's, no reader bound
- * (canon: read by the flavor's kind) — nothing claimed, nothing exempt.
+ * (canon: read by the flavor's kind) — nothing claimed.
  */
 export const CORE_TECH = {
   name: "core",
-  exempts: [],
   roleOf: () => null,
   cut: answerCallbacks,
 } as const satisfies BoundTech
 
-/**
- * The parts of the driver rules a test file does not take (`test-is-outside`:
- * registering calls at its root, any count of calls in a body, calls to
- * anything, definitions). The kind's, not a reader's to say: no reader sets
- * them. They stand until the test kind has its own list of rules.
- */
-const TEST_EXEMPTS = [
-  "registration",
-  "call-count",
-  "services-only",
-  "definitions",
-] as const satisfies readonly Exemption[]
-
 /** Readers stacked on one file: names joined, first role, every cut heard. */
 const stackedTech = (
   readers: readonly (DriverReader | TestReader)[],
-  exempts: readonly Exemption[],
 ): BoundTech => ({
   name: readers.map((reader) => reader.name).join("+"),
-  exempts,
   roleOf: (chain) => {
     for (const reader of readers) {
       const role = "roleOf" in reader ? reader.roleOf({ chain }) : null
@@ -165,7 +147,7 @@ export const bindPlugins = (
     return {
       unread: own.length === 0,
       asBlob: own.some((reader) => reader.blob),
-      tech: stackedTech(own, testReaders.length > 0 ? TEST_EXEMPTS : []),
+      tech: stackedTech(own),
       claimsPackage: (specifier) =>
         own.some((reader) => isTechPackage(reader.tech, specifier)),
       claimsFile: (path) => own.some((reader) => isTechFile(reader.tech, path)),

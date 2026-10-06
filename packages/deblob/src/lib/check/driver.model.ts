@@ -9,16 +9,15 @@
  * sub-driver's wiring runs in the wiring, handed tech and instances
  * (`sub-driver-wiring`).
  *
- * Reads a driver's reading, and a test file's hooks — a test is assembly and
- * driver in one, its tech exempting the count and services-only. Two facts are
- * two violations: nothing here rides another. Pure: classified graph in,
- * violation set out.
+ * Reads a driver's reading. A test file takes one of these rules, the one that
+ * asks for a reader (`driver-reader`): a test is not a driver, it builds what
+ * it checks and fires it. Two facts are two violations: nothing here rides
+ * another. Pure: classified graph in, violation set out.
  */
 
 import type {
   ArgValue,
   CalleeKind,
-  Exemption,
   FileReading,
   ImportGraph,
   ModuleNode,
@@ -152,7 +151,8 @@ const judgeDriver = (
       },
     ]
   }
-  const exempts = new Set<Exemption>(reading.exempts)
+  // a test is not a driver: read, it takes no other rule of these
+  if (node.layer === "test") return []
   const violations: DriverViolation[] = []
   const report = (
     rule: RuleId,
@@ -174,9 +174,9 @@ const judgeDriver = (
     })
   }
 
-  /** A callee no driver calls: the services-only rule, unless exempt. */
+  /** A callee no driver calls: the services-only rule. */
   const judgeCallee = (call: ReadCall, where: "wiring" | "hook"): void => {
-    if (isDriversCall(call.callee) || exempts.has("services-only")) return
+    if (isDriversCall(call.callee)) return
     report(
       "driver-calls-services",
       call.span,
@@ -273,20 +273,12 @@ const judgeDriver = (
     walk(body)
   }
 
-  /**
-   * PROVISIONAL (ruled 2026-09-26, revisited by the chapter's
-   * `04/06_test-rules` — must not outlive it): the test tech's exemption of the
-   * hook count is read as `hook-one-call` whole. Canon's letter exempts the
-   * count alone; applied to test bodies, the rest judges a use case's result
-   * and leaves a model function's free — a split with no reason in a test.
-   */
-  const oneCall = !exempts.has("call-count")
   const reportHook = (
     span: Span,
     shape: Shape,
     unknown: DriverViolation["unknown"] = null,
   ): void => {
-    if (oneCall) report("hook-one-call", span, shape, unknown)
+    report("hook-one-call", span, shape, unknown)
   }
 
   /**
@@ -395,8 +387,6 @@ const judgeDriver = (
   // used as a value — handed as a hook, stored, read off — is red where used
   for (const used of reading.driverValues)
     report("sub-driver-wiring", used.span, { shape: "value", name: used.name })
-
-  if (exempts.has("definitions")) return violations
 
   // the only definitions: its hooks and one wiring function
   for (const statement of reading.root)

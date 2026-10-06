@@ -142,7 +142,7 @@ const read = (
     program: extraction.program,
     source: extraction.source,
     layer: "driver",
-    tech: { name: "core", exempts: [], cut: answerCallbacks },
+    tech: { name: "core", cut: answerCallbacks },
     importTargetOf: (specifier) => TARGETS[specifier] ?? { kind: "unresolved" },
     knowledge: NODE_KNOWLEDGE,
     ...overrides,
@@ -496,12 +496,10 @@ describe("readModule", () => {
         layer: "test",
         tech: {
           name: "good-enough-tests",
-          exempts: ["registration"],
           cut: answerCallbacks,
         },
         knowledge: GLOBALS_RUNNER_KNOWLEDGE,
       })
-      expect(reading.exempts).toEqual(["registration"])
       expect(reading.functions.map((fn) => fn.name)).toEqual(["fn", "declared"])
       expect(reading.hooks).toHaveLength(1)
       const [describeHook] = reading.hooks
@@ -519,7 +517,6 @@ describe("readModule", () => {
   describe("roles — what a test hook is for, in deblob's words", () => {
     const TESTS = {
       name: "good-enough-tests",
-      exempts: ["registration"],
       roleOf: (chain: readonly string[]) =>
         createGoodEnoughTestsReader().roleOf({ chain }),
       cut: answerCallbacks,
@@ -593,7 +590,6 @@ describe("readModule", () => {
         layer: "test",
         tech: {
           name: "good-enough-tests",
-          exempts: ["registration"],
           cut: answerCallbacks,
         },
       })
