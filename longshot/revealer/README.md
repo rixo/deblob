@@ -110,6 +110,24 @@ per caller; every return of a branch (they agree, or nothing is followed). The
 same following serves the use-case levels (`extraction/levels.model.ts`): a use
 case reached through a record held in a local is now traced to its service.
 
+The tech-side lazy seam, built 2026-10-06 (4.5). A cut may say one more thing,
+on a call into its tech: the tech loads a module and calls one of its exports
+for the driver (`RelayedCall`, `extraction/cut.model.ts`: the `import()`, the
+export's name, the arguments). The reader's part is `cutLazy`
+(`cases/argv-switch-reader.model.ts`): a call to `lazy` whose first argument is
+a function that only returns an `import()` relays a call to that module's
+`dispatch`, with the rest. The reading does the rest, in words that are no
+tech's: it takes the answer only for a call into the answering reader's own
+tech, a literal path, and an export that is a sub-driver's wiring function; the
+call then reads as that function called there by the driver. So everything a
+sub-driver called is, the unit is: the hand-off stays wiring, the unit's
+parameters are what was handed, its cases are hooks, a use-case call beside it
+is red. Where the answer is not taken (an assembly loaded, a computed path,
+another tech's `lazy`, a thunk doing more) the call reads as the call it is: a
+function handed to a tech. A unit that does not export `dispatch` is handed
+nothing, red in the unit; the missing export is the type checker's. Rows:
+`cases/reader-lazy.spec.ts`, no known failure left.
+
 Not followed, what an assembly may not do — red where it stands, and no one's
 tech: what a call that builds nothing returns; a record spread into the returned
 one. Ruled 2026-10-06 (rixo): composing assemblies by spread stays red, "that

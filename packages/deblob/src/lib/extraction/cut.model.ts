@@ -3,7 +3,8 @@
  * every statement and every call of a file a reader reads, and answers with the
  * hooks that node holds, pointed at; the reading turns a pointer into a hook —
  * the event, a hook that only hands the dispatch on, nothing picked inside a
- * hook — the same for every cut.
+ * hook — the same for every cut. A cut may also say that a call into its tech
+ * is the tech calling a sub-driver for the driver (`RelayedCall`).
  *
  * Every reader's stack ends with the one cut written here, `cutCallbacks`: a
  * function handed to a tech is a hook. A reader's own (`cut`, on its port)
@@ -31,8 +32,23 @@ import type { Node } from "@oxc-project/types"
 export type HookPointer =
   { fn: Node } | { start: number; end: number; body: readonly Node[]; on: Node }
 
-/** A cut's answer on one node: the hooks it holds. */
-export type Cut = readonly HookPointer[]
+/**
+ * A call the tech makes for the driver, pointed at: the tech is handed a module
+ * to load and calls one of its exports itself — a unit loaded on demand, as a
+ * framework loads a route file. `load` is the `import()` that names the module,
+ * `name` the export the tech calls, `args` what it calls it with. Where the
+ * import is of a literal path and the export is a sub-driver's wiring function,
+ * the call reads as that function called there by the driver, with those
+ * arguments — judged as any call to a sub-driver's wiring function is. Anywhere
+ * else the answer says nothing, and the call reads as the call it is. Answered
+ * on a call into the pointing reader's tech only.
+ */
+export type RelayedCall = {
+  relayed: { load: Node; name: string; args: readonly Node[] }
+}
+
+/** A cut's answer on one node: the hooks it holds, the call it relays. */
+export type Cut = readonly (HookPointer | RelayedCall)[]
 
 /**
  * What a cut may ask the reading, which follows what the file binds: whose a

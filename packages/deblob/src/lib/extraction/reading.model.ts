@@ -2153,19 +2153,62 @@ export const readModule = ({
     node: AstNode,
     known: CalleeKind | null,
   ): readonly CutAnswer[] => {
-    const answers =
-      tech?.cut?.(node as unknown as Node, {
-        calleeOf: (call) =>
-          cutCalleeOf(
-            (call as unknown as AstNode) === node && known !== null
-              ? known
-              : classifyCall(call as unknown as AstNode),
-          ),
-      }) ?? []
+    const answers = answersOf(node, known)
     for (const { cut } of answers)
       for (const pointer of cut)
         if ("fn" in pointer) pointed.add(pointer.fn as unknown as AstNode)
     return answers
+  }
+
+  /** The file's cuts asked on a node, nothing kept. */
+  const answersOf = (
+    node: AstNode,
+    known: CalleeKind | null,
+  ): readonly CutAnswer[] =>
+    tech?.cut?.(node as unknown as Node, {
+      calleeOf: (call) =>
+        cutCalleeOf(
+          (call as unknown as AstNode) === node && known !== null
+            ? known
+            : classifyCall(call as unknown as AstNode),
+        ),
+    }) ?? []
+
+  /**
+   * A call a cut says its tech relays: the sub-driver's wiring function the
+   * tech calls for the driver, and what it is called with. Only for a call into
+   * the answering reader's own tech, a literal `import()`, and an export that
+   * is a sub-driver's wiring function; `null` anywhere else — the call then
+   * reads as the call it is.
+   */
+  const relayedOf = (
+    node: AstNode,
+    known: CalleeKind,
+  ): {
+    callee: Extract<CalleeKind, { kind: "wiring" }>
+    args: AstNode[]
+  } | null => {
+    if (known.kind !== "tech" || known.package === null) return null
+    for (const { cut, claims } of answersOf(node, known)) {
+      if (!claims(known.package)) continue
+      for (const pointer of cut) {
+        if (!("relayed" in pointer)) continue
+        const load = unwrap(pointer.relayed.load as unknown as AstNode)
+        if (load.type !== "ImportExpression") continue
+        const specifier = literalSourceOf(load)
+        if (specifier === null) continue
+        const { callee, rest } = calleeOfImport(
+          { specifier, imported: "*", typeOnly: false },
+          [pointer.relayed.name],
+        )
+        if (callee.kind === "wiring" && rest.length === 0)
+          return {
+            callee,
+            args: pointer.relayed.args as unknown as AstNode[],
+          }
+      }
+    }
+    return null
   }
 
   const evaluateCall = (
@@ -2226,11 +2269,16 @@ export const readModule = ({
     const classified = calleeOf(calleeNode, emitting)
     // `.map(callback)` on what the reader cannot prove an array: a loop cannot
     // be told from a call on the tech — unknown, never presumed either way
-    const callee: CalleeKind =
+    const own: CalleeKind =
       mapped !== null &&
       (classified.kind === "tech" || classified.kind === "unclaimed")
         ? { kind: "unknown" }
         : classified
+    // a call the tech relays reads as the sub-driver's wiring function called
+    // here, with what the tech hands it
+    const relayed = relayedOf(node, own)
+    const callee: CalleeKind = relayed?.callee ?? own
+    const handed = relayed?.args ?? argNodes
     if (emitting && callee.kind === "local") {
       // a local callee is a binding of this scope by construction
       const binding = lookup(scope, callee.name) as Binding
@@ -2263,11 +2311,11 @@ export const readModule = ({
       registration:
         registers && callee.kind === "tech" && startsFromReader(calleeNode),
       handsRunner:
-        registers && argNodes.length > 0 && argNodes.every(startsFromReader),
+        registers && handed.length > 0 && handed.every(startsFromReader),
       site: inlineSite,
       calleeCall: calleeCallOf(calleeNode),
     }
-    call.args = readArgs(argNodes, callee, call, calleeNode, emitting)
+    call.args = readArgs(handed, callee, call, calleeNode, emitting)
     emitCall(call, spanOf(calleeNode), emitting)
     // a matched load's result counts as a tech value from then on
     return load === null
@@ -2882,7 +2930,8 @@ export const readModule = ({
     const call = unwrap(expression)
     return (
       call.type === "CallExpression" &&
-      calleeOf(calleeNodeOf(call), false).kind === "wiring"
+      (calleeOf(calleeNodeOf(call), false).kind === "wiring" ||
+        relayedOf(call, classifyCall(call)) !== null)
     )
   }
 
@@ -2902,7 +2951,7 @@ export const readModule = ({
         claims,
         picked: cut.filter(
           (pointer): pointer is Extract<HookPointer, { on: Node }> =>
-            !("fn" in pointer),
+            "on" in pointer,
         ),
       }))
       .find(({ picked }) => picked.length > 0)

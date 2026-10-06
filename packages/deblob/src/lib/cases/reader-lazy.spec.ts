@@ -16,8 +16,10 @@ import { AS_MARKED } from "./runner/markers.model.ts"
  * hook; the call is the hand-off, so the unit's cases are hooks and the read
  * handed through `lazy` is their event.
  *
- * Written red first, before the reader could say any of it; the reader is
- * `argv-switch-reader.model.ts`.
+ * Written red first, before the reader could say any of it. The reader
+ * (`argv-switch-reader.model.ts`, `cutLazy`) says the one thing: this call is
+ * its tech calling `dispatch` of the module the thunk imports, with the rest.
+ * What follows is the reading's, as for a sub-driver the driver calls itself.
  */
 
 const CONFIG = { readers: { driver: [ARGV_SWITCH] } } as const
@@ -93,10 +95,9 @@ const VIEW_DRIVER = `
   import { createViewAssembly } from "./view.assembly.ts"
   export const dispatch = (read: Read, log: Log) => {
     const { view } = createViewAssembly(log)
-    // false red: wiring-outside-hooks -- the tech-side seam is not read yet: the unit is handed nothing, its switch is a branch
     switch (read.sub) {
       default:
-        return view.open(read) // false red: wiring-outside-hooks -- the tech-side seam is not read yet: the case is no hook
+        return view.open(read)
     }
   }
 `
@@ -163,9 +164,8 @@ const ROWS: readonly Row[] = [
           const { tool, log } = createToolAssembly()
           const read = readLine(process.argv)
           switch (read.command) {
-            // false red: hook-one-call -- the tech-side seam is not read yet: the case is taken for a hook with no use case
             case "view":
-              return lazy(() => import("./view/view.driver.ts"), read, log) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
+              return lazy(() => import("./view/view.driver.ts"), read, log)
             default:
               return tool.status(read)
           }
@@ -197,9 +197,8 @@ const ROWS: readonly Row[] = [
               return dispatchCheck(read, tool)
             case "edit":
               return (await import("./edit/edit.driver.ts")).dispatch(read, log)
-            // false red: hook-one-call -- the tech-side seam is not read yet: the case is taken for a hook with no use case
             case "view":
-              return lazy(() => import("./view/view.driver.ts"), read, log) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
+              return lazy(() => import("./view/view.driver.ts"), read, log)
             default:
               return tool.status(read)
           }
@@ -221,14 +220,12 @@ const ROWS: readonly Row[] = [
         import { createViewAssembly } from "./view.assembly.ts"
         export const dispatch = (read: Read, log: Log) => {
           const { view } = createViewAssembly(log)
-          // false red: wiring-outside-hooks -- the tech-side seam is not read yet: the unit is handed nothing, its switch is a branch
           switch (read.sub) {
             case "first":
-              // false red: wiring-outside-hooks -- the tech-side seam is not read yet: the case is no hook
-              return view.open(read.line) // missed red: hook-one-call -- read off the event; the tech-side seam is not read yet
-            default: // missed red: hook-one-call -- two calls; the tech-side seam is not read yet
-              log.info("opening") // false unknown: driver-calls-services -- the tech-side seam is not read yet: the log is handed by no caller
-              return view.open(read) // false red: wiring-outside-hooks -- the tech-side seam is not read yet: the case is no hook
+              return view.open(read.line) // red: hook-one-call -- read off the event
+            default: // red: hook-one-call -- two calls
+              log.info("opening")
+              return view.open(read)
           }
         }
       `,
@@ -238,9 +235,8 @@ const ROWS: readonly Row[] = [
           const { tool, log } = createToolAssembly()
           const read = readLine(process.argv)
           switch (read.command) {
-            // false red: hook-one-call -- the tech-side seam is not read yet: the case is taken for a hook with no use case
             case "view":
-              return lazy(() => import("./view/view.driver.ts"), read, log) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
+              return lazy(() => import("./view/view.driver.ts"), read, log)
             default:
               return tool.status(read)
           }
@@ -262,10 +258,9 @@ const ROWS: readonly Row[] = [
         import { createViewAssembly } from "./view.assembly.ts"
         export const dispatch = (read: Read, log: Log, extra?: unknown) => {
           const { view } = createViewAssembly(log)
-          // false red: wiring-outside-hooks -- the tech-side seam is not read yet: the unit is handed nothing, its switch is a branch
           switch (read.sub) {
             default:
-              return view.open(read) // false red: wiring-outside-hooks -- the tech-side seam is not read yet: the case is no hook
+              return view.open(read)
           }
         }
       `,
@@ -277,12 +272,12 @@ const ROWS: readonly Row[] = [
           switch (read.command) {
             case "view":
               tool.status(read)
-              // missed red: sub-driver-wiring -- wired from inside a hook: the case has its use-case call; the tech-side seam is not read yet
-              return lazy(() => import("./view/view.driver.ts"), read, log) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
+              // red: sub-driver-wiring -- wired from inside a hook: the case has its use-case call
+              return lazy(() => import("./view/view.driver.ts"), read, log)
             default:
-              // missed red: wiring-outside-hooks -- a use case outside any hook; the tech-side seam is not read yet
-              // missed red: sub-driver-wiring -- handed a use-case result; the tech-side seam is not read yet
-              return lazy(() => import("./view/view.driver.ts"), read, log, await tool.status(read)) // false red: hook-one-call, hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook, the result used
+              // red: wiring-outside-hooks -- a use case outside any hook
+              // red: sub-driver-wiring -- handed a use-case result
+              return lazy(() => import("./view/view.driver.ts"), read, log, await tool.status(read))
           }
         }
       `,
@@ -401,15 +396,12 @@ const ROWS: readonly Row[] = [
           const { tool, log } = createToolAssembly()
           const read = readLine(process.argv)
           switch (read.command) {
-            // false red: hook-one-call -- the tech-side seam is not read yet: the case is taken for a hook with no use case
             case "view":
-              return lazy(() => { return import("./view/view.driver.ts") }, read, log) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
-            // false red: hook-one-call -- the tech-side seam is not read yet: the case is taken for a hook with no use case
+              return lazy(() => { return import("./view/view.driver.ts") }, read, log)
             case "show":
-              return lazy(function () { return import("./view/view.driver.ts") }, read, log) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
-            // false red: hook-one-call -- the tech-side seam is not read yet: the case is taken for a hook with no use case
+              return lazy(function () { return import("./view/view.driver.ts") }, read, log)
             case "open":
-              return lazy(async () => await import("./view/view.driver.ts"), read, log) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
+              return lazy(async () => await import("./view/view.driver.ts"), read, log)
             default:
               return tool.status(read)
           }
@@ -431,9 +423,8 @@ const ROWS: readonly Row[] = [
           const { tool, log } = createToolAssembly()
           const read = readLine(process.argv)
           switch (read.command) {
-            // false red: hook-one-call -- the tech-side seam is not read yet: the case is taken for a hook with no use case
             case "view":
-              lazy(() => import("./view/view.driver.ts"), read, log) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
+              lazy(() => import("./view/view.driver.ts"), read, log)
               break
             default:
               return tool.status(read)
@@ -456,7 +447,7 @@ const ROWS: readonly Row[] = [
         export const main = () => {
           const { log } = createToolAssembly()
           const read = readLine(process.argv)
-          return lazy(() => import("./view/view.driver.ts"), read, log) // false red: hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, import() for a call in a hook
+          return lazy(() => import("./view/view.driver.ts"), read, log)
         }
       `,
     },
@@ -474,10 +465,9 @@ const ROWS: readonly Row[] = [
         import { lazy } from "../lib/argv/argv.model.ts"
         import type { Log } from "../lib/log/log.service.ts"
         export const dispatch = (read: Read, log: Log) => {
-          // false red: wiring-outside-hooks -- the tech-side seam is not read yet: the unit is handed nothing, its switch is a branch
           switch (read.sub) {
             default:
-              return lazy(() => import("../view/view.driver.ts"), read, log) // false red: hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, import() for a call in a hook
+              return lazy(() => import("../view/view.driver.ts"), read, log)
           }
         }
       `,
@@ -487,9 +477,8 @@ const ROWS: readonly Row[] = [
           const { tool, log } = createToolAssembly()
           const read = readLine(process.argv)
           switch (read.command) {
-            // false red: hook-one-call -- the tech-side seam is not read yet: the case is taken for a hook with no use case
             case "group":
-              return lazy(() => import("./group/group.driver.ts"), read, log) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
+              return lazy(() => import("./group/group.driver.ts"), read, log)
             default:
               return tool.status(read)
           }
@@ -512,9 +501,8 @@ const ROWS: readonly Row[] = [
           const read = readLine(process.argv)
           const platform = os.platform()
           switch (read.command) {
-            // false red: hook-one-call -- the tech-side seam is not read yet: the case is taken for a hook with no use case
             case "platform":
-              return lazy(() => import("./platform.driver.ts"), platform, tool) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
+              return lazy(() => import("./platform.driver.ts"), platform, tool)
             default:
               return tool.status(read)
           }
@@ -524,8 +512,7 @@ const ROWS: readonly Row[] = [
         export const dispatch = (platform: string, tool: { check: (platform: unknown) => unknown }) => {
           switch (platform) { // red: wiring-outside-hooks -- a branch in the wiring
             case "win32":
-              // false unknown: driver-calls-services -- the tech-side seam is not read yet: the tool is handed by no caller
-              return tool.check(platform) // missed red: wiring-outside-hooks -- a use case outside any hook; the tech-side seam is not read yet
+              return tool.check(platform) // red: wiring-outside-hooks -- a use case outside any hook
           }
         }
       `,
@@ -540,11 +527,9 @@ const ROWS: readonly Row[] = [
       ...TOOL,
       "src/check.driver.ts": `
         export const dispatch = (line: readonly string[], tool: { check: (line: unknown) => unknown }) => {
-          // false red: wiring-outside-hooks -- the tech-side seam is not read yet: the unit is handed nothing, its switch is a branch
           switch (line[1]) {
             default:
-              // false unknown: driver-calls-services -- the tech-side seam is not read yet: the tool is handed by no caller
-              return tool.check(line) // missed red: hook-one-call -- read off the event, in the caller's wiring; the tech-side seam is not read yet
+              return tool.check(line) // red: hook-one-call -- read off the event, in the caller's wiring
           }
         }
       `,
@@ -554,9 +539,8 @@ const ROWS: readonly Row[] = [
           const { tool } = createToolAssembly()
           const read = readLine(process.argv)
           switch (read.command) {
-            // false red: hook-one-call -- the tech-side seam is not read yet: the case is taken for a hook with no use case
             case "check":
-              return lazy(() => import("./check.driver.ts"), read.line, tool) // false red: hook-one-call, hook-one-call, hook-one-call -- the tech-side seam is not read yet: the thunk is taken for a hook, lazy and import() for calls in a hook
+              return lazy(() => import("./check.driver.ts"), read.line, tool)
             default:
               return tool.status(read)
           }
@@ -591,9 +575,11 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // The tech calls `dispatch`; a module that exports none is handed
+    // The tech calls `dispatch`. Whether the module exports one is the type
+    // checker's to say, as for any import: the driver's call reads as the
+    // hand-off it is written as. The unit's function nobody calls is handed
     // nothing.
-    name: "a unit that does not export what the tech calls is no seam: red",
+    name: "a unit that does not export what the tech calls is handed nothing: red in the unit; the missing export is the type checker's",
     config: CONFIG,
     files: {
       ...TOOL,
@@ -608,9 +594,73 @@ const ROWS: readonly Row[] = [
           const { tool, log } = createToolAssembly()
           const read = readLine(process.argv)
           switch (read.command) {
+            case "view":
+              return lazy(() => import("./view/view.driver.ts"), read, log)
+            default:
+              return tool.status(read)
+          }
+        }
+      `,
+    },
+  },
+  {
+    // Whose a call is, is the reading's to check: the reader's cut answers
+    // on any tech's \`lazy\`, and only its own tech's is taken.
+    name: "another tech's lazy is not this reader's seam: red, a function handed to a tech as any",
+    config: {
+      readers: {
+        driver: [ARGV_SWITCH, { name: "other", tech: ["other-lazy"] }],
+      },
+    },
+    files: {
+      ...TOOL,
+      ...VIEW,
+      "node_modules/other-lazy/package.json": JSON.stringify({
+        name: "other-lazy",
+        main: "./index.js",
+      }),
+      "node_modules/other-lazy/index.js": "module.exports = {}",
+      "src/view/view.driver.ts": UNIT_HANDED_NOTHING,
+      "src/tool.driver.ts": `
+        import { lazy } from "other-lazy"
+        import { readLine } from "./lib/argv/argv.model.ts"
+        import { createToolAssembly } from "./tool.assembly.ts"
+        export const main = () => {
+          const { tool, log } = createToolAssembly()
+          const read = readLine(process.argv)
+          switch (read.command) {
             // red: hook-one-call -- the case runs no use case
             case "view":
               return lazy(() => import("./view/view.driver.ts"), read, log) // red: hook-one-call, hook-one-call, hook-one-call -- no seam: lazy called in a hook, the thunk a hook with no use case, its import()
+            default:
+              return tool.status(read)
+          }
+        }
+      `,
+    },
+  },
+  {
+    // What the tech hands the unit is judged as what a driver hands a
+    // sub-driver: a function among it is no hook of the tech's.
+    name: "a function handed through the tech's lazy beside the read is judged as one handed to a sub-driver called",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      ...VIEW,
+      "src/view/view.driver.ts": VIEW_DRIVER,
+      "src/edit/edit.driver.ts": EDIT_DRIVER,
+      "src/edit/view.assembly.ts": VIEW["src/view/view.assembly.ts"],
+      "src/edit/view.service.ts": VIEW["src/view/view.service.ts"],
+      "src/tool.driver.ts": `
+        ${IMPORTS}
+        export const main = async () => {
+          const { tool, log } = createToolAssembly()
+          const read = readLine(process.argv)
+          switch (read.command) {
+            case "edit":
+              return (await import("./edit/edit.driver.ts")).dispatch(read, log, () => tool.status(read)) // red: wiring-outside-hooks, wiring-outside-hooks -- a function handed to a sub-driver, and the use case it calls outside any hook
+            case "view":
+              return lazy(() => import("./view/view.driver.ts"), read, log, () => tool.status(read)) // red: wiring-outside-hooks, wiring-outside-hooks -- a function handed to a sub-driver, and the use case it calls outside any hook
             default:
               return tool.status(read)
           }
