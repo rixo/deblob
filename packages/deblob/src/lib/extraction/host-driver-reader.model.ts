@@ -1,5 +1,5 @@
-import type { ReaderBinding } from "../recognition.model.ts"
-import type { DriverReader } from "../driver-reader.model.ts"
+import type { ReaderBinding } from "./recognition.model.ts"
+import type { DriverReader } from "./driver-reader.model.ts"
 
 /**
  * A driver whose tech is the host alone — a plain Node CLI on `process.argv`

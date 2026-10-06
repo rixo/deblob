@@ -1,11 +1,11 @@
 import { describe, expect, it, test } from "vitest"
 
-import { STOCK_FLAVOR_NAME } from "../stock-flavor.model.ts"
+import { STOCK_FLAVOR_NAME } from "./stock-flavor.model.ts"
 import {
   createStockFlavors,
   createTsSuffixesFactoriesFlavor,
   isStockFactoryName,
-} from "./ts-suffixes-factories-flavor.adapter.ts"
+} from "./ts-suffixes-factories-flavor.model.ts"
 
 const classify = (files: string[]) =>
   createTsSuffixesFactoriesFlavor().classify({ files })

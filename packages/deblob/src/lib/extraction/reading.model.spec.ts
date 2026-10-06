@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, it, test } from "vitest"
 
 import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
-import { createGoodEnoughTestsReader } from "./adapters/good-enough-tests-reader.adapter.ts"
+import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.model.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import type {
   CalleeKind,
@@ -13,9 +13,9 @@ import type {
   ReadStatement,
 } from "./graph.model.ts"
 import type { ImportTargetKind, ReadInput } from "./reading.model.ts"
-import { createJsReader } from "./adapters/js-reader.adapter.ts"
-import { createNodeReader } from "./adapters/node-reader.adapter.ts"
-import { createTsReader } from "./adapters/ts-reader.adapter.ts"
+import { createJsReader } from "./js-reader.model.ts"
+import { createNodeReader } from "./node-reader.model.ts"
+import { createTsReader } from "./ts-reader.model.ts"
 import { answerCallbacks } from "./cut.model.ts"
 import { knowledgeOf } from "./knowledge.model.ts"
 import { readModule } from "./reading.model.ts"

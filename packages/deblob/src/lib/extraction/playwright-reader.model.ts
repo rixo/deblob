@@ -1,6 +1,6 @@
-import type { Role } from "../graph.model.ts"
-import type { ReaderBinding } from "../recognition.model.ts"
-import type { TestReader } from "../test-reader.model.ts"
+import type { Role } from "./graph.model.ts"
+import type { ReaderBinding } from "./recognition.model.ts"
+import type { TestReader } from "./test-reader.model.ts"
 
 /**
  * Playwright's names, in deblob's roles — `test` alone, its members for the

@@ -1,6 +1,6 @@
-import { LAYER_BY_SUFFIX, STOCK_FLAVOR_NAME } from "../stock-flavor.model.ts"
-import type { FlavorLayer } from "../graph.model.ts"
-import type { FlavorClassification, FlavorResolver } from "../flavor.model.ts"
+import { LAYER_BY_SUFFIX, STOCK_FLAVOR_NAME } from "./stock-flavor.model.ts"
+import type { FlavorLayer } from "./graph.model.ts"
+import type { FlavorClassification, FlavorResolver } from "./flavor.model.ts"
 
 /**
  * The stock flavor: suffix naming + factory injection. Path-only rules — layer
@@ -85,11 +85,10 @@ export const isStockFactoryName = (name: string): boolean =>
   FACTORY_NAME.test(name)
 
 /**
- * Stock flavor registry — name → factory, built by assembly and injected into
- * the config unit (a flavor is an adapter; neither the model nor another
- * adapter may import one). A factory, not a constant: an assembly hands on what
- * it builds. One entry today; a second stock flavor gets its own adapter file,
- * and the registry moves to whoever may import them both.
+ * Stock flavor registry — name → factory, handed by assembly to the config
+ * unit. A flavor is a plugin: a plain object under the flavor contract
+ * (`flavor.model.ts`), this one deblob's own. One entry today; a second stock
+ * flavor gets its own file.
  */
 export const createStockFlavors = (): Readonly<
   Record<string, () => FlavorResolver>

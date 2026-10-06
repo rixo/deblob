@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { createPlaywrightReader } from "./playwright-reader.adapter.ts"
-import { isTechPackage } from "../tech.model.ts"
+import { createPlaywrightReader } from "./playwright-reader.model.ts"
+import { isTechPackage } from "./tech.model.ts"
 
 describe("createPlaywrightReader", () => {
   it("claims @playwright/test and exempts what a test file does", () => {

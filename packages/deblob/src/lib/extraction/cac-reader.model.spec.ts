@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { createCacReader } from "./cac-reader.adapter.ts"
-import { isTechPackage } from "../tech.model.ts"
+import { createCacReader } from "./cac-reader.model.ts"
+import { isTechPackage } from "./tech.model.ts"
 
 describe("createCacReader", () => {
   it("claims cac by package, subpaths included, and nothing else", () => {

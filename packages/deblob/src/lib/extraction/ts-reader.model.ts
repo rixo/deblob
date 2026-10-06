@@ -1,5 +1,5 @@
-import type { ReaderBinding } from "../recognition.model.ts"
-import type { LanguageReader } from "../language-reader.model.ts"
+import type { ReaderBinding } from "./recognition.model.ts"
+import type { LanguageReader } from "./language-reader.model.ts"
 
 /**
  * The stock TypeScript reader: the standard type names, by name at a type's top

@@ -22,12 +22,12 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   chapter PLAN.) Default: yes. Status: taken — `readers.assembly.ts`.
 - **R5 — Where `PURE_BUILTINS` goes** (`node:path`, `node:querystring`; not in
   the cp3 move list). Default: the `node` reader, as pure builtins it claims.
-  Status: taken — `node-reader.adapter.ts`; config folds a bound host's pure
-  list into `pure`, so `node:path` is pure only where `node` is bound.
+  Status: taken — `node-reader.model.ts`; config folds a bound host's pure list
+  into `pure`, so `node:path` is pure only where `node` is bound.
 - **R6 — `__dirname`/`__filename` with `node` unbound.** (Canon presumes a
   location, S07 moves `LOCATION_GLOBALS` to `node`.) Default: follows the move —
   a location where `node` is bound, unclaimed elsewhere. Status: taken —
-  `node-reader.adapter.ts`.
+  `node-reader.model.ts`.
 - **R7 — Ambient members of intrinsics** (`Date.now`, `Math.random`). Default:
   `js` lists them as ambient. Status: parked (no `ambient-access` detector yet).
 - **R8 — Effect-free tech calls.** (Canon :1113-1116, no slot in the host
@@ -93,9 +93,9 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   that did it by default — is gone (ruling 2, 6). Default: a stock
   `hostDriver()` driver reader, claiming nothing of its own, shipped not
   defaulted — the host readers bound to the file claim its tech. It is
-  `plain-ts` again, opt-in. Status: taken — `host-driver-reader.adapter.ts`.
-  **To rule**: accept `hostDriver`, or give host readers a way to read drivers,
-  or something else.
+  `plain-ts` again, opt-in. Status: taken — `host-driver-reader.model.ts`. **To
+  rule**: accept `hostDriver`, or give host readers a way to read drivers, or
+  something else.
 - **D8 — A callback handed to an unclaimed callee.** Found writing the rows:
   `process.on(…, cb)` with no host bound gave four reds for one missing premise
   (the call, then the callback's use case read inline as "outside any hook",

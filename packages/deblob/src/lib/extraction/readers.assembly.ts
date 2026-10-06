@@ -1,6 +1,6 @@
-import { createGoodEnoughTestsReader } from "./adapters/good-enough-tests-reader.adapter.ts"
-import { createJsReader } from "./adapters/js-reader.adapter.ts"
-import { createTsReader } from "./adapters/ts-reader.adapter.ts"
+import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.model.ts"
+import { createJsReader } from "./js-reader.model.ts"
+import { createTsReader } from "./ts-reader.model.ts"
 import type { ReaderGroups } from "./readers.model.ts"
 
 /**

@@ -234,15 +234,15 @@ unparsed one, has none: recognized and open.
   `resolver-test-suite.service.ts` (a conformance kit over the `test` unit's
   `TestingApi` port): each adapter's spec materializes `RESOLVER_TREE` where its
   adapter reads and runs the kit under its own name.
-- `adapters/ts-suffixes-factories-flavor.adapter.ts` — the stock flavor: kind
-  from the file suffix (`.model`, `.port`, `.service`, `.adapter`, `.assembly`,
-  `.driver`, `.boot`; test naming is not the flavor's, see the test runner),
-  service roots from where the hexagon's own suffixed files sit — an
-  outside-kind file marks none — grouping directories collapsed to their nearest
-  real service; its suffix table and `classifyStockEntry` (the same rule over a
-  specifier tail) live in `stock-flavor.model.ts`, where `check` and the package
-  claims read them. `createStockFlavors()` builds the registry assembly injects
-  into the config unit.
+- `ts-suffixes-factories-flavor.model.ts` — the stock flavor: kind from the file
+  suffix (`.model`, `.port`, `.service`, `.adapter`, `.assembly`, `.driver`,
+  `.boot`; test naming is not the flavor's, see the test runner), service roots
+  from where the hexagon's own suffixed files sit — an outside-kind file marks
+  none — grouping directories collapsed to their nearest real service; its
+  suffix table and `classifyStockEntry` (the same rule over a specifier tail)
+  live in `stock-flavor.model.ts`, where `check` and the package claims read
+  them. `createStockFlavors()` builds the registry assembly injects into the
+  config unit.
 - `adapters/oxc-resolver.adapter.ts` — `createOxcResolver`, and
   `createOxcResolvers({ fs })` behind the `Resolvers` port: a resolver per
   config, its tsconfig located by `createTsconfigLocator` (declared must exist —
@@ -256,14 +256,14 @@ unparsed one, has none: recognized and open.
   every script file, reads the assembly, driver and boot ones among them; claims
   nothing (builtins and host globals are tech by the reading's table,
   third-party packages by `driverTech`); exempts nothing; maps no role.
-- `adapters/good-enough-tests-reader.adapter.ts` — the good-enough test reader,
-  common conventions over every runner it knows: binds the test naming
-  (`*.spec.*`, `*.test.*`, `__tests__/`) and reads the test kind only, so its
-  binding is what makes a file a test file — canon's "spec files by the test
-  globs"; claims the runners it knows (a census, `driverTech` for the next one);
-  exempts registration, the call count, services-only and definitions; maps the
-  runners' shared names to roles (`describe`/`suite` group, `it` behavior,
-  `test` verification, `before*`/`after*` setup and teardown by scope,
+- `good-enough-tests-reader.model.ts` — the good-enough test reader, common
+  conventions over every runner it knows: binds the test naming (`*.spec.*`,
+  `*.test.*`, `__tests__/`) and reads the test kind only, so its binding is what
+  makes a file a test file — canon's "spec files by the test globs"; claims the
+  runners it knows (a census, `driverTech` for the next one); exempts
+  registration, the call count, services-only and definitions; maps the runners'
+  shared names to roles (`describe`/`suite` group, `it` behavior, `test`
+  verification, `before*`/`after*` setup and teardown by scope,
   `vi.mock`/`jest.mock` mock), a chain by the longest listed name it starts with
   (`it.skip.each` is `it`, `vi.fn` none) — a globals-mode runner's free names
   map to none.

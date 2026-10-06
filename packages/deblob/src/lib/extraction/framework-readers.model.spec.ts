@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import { isTechPackage } from "../tech.model.ts"
+import { isTechPackage } from "./tech.model.ts"
 import {
   createAstroReader,
   createViteReader,
-} from "./framework-readers.adapter.ts"
+} from "./framework-readers.model.ts"
 
 describe("createViteReader", () => {
   it("claims vite by package, a relative path never", () => {

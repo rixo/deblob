@@ -4,12 +4,12 @@ import { describe, expect, it, test } from "vitest"
 import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import { createOxcResolver } from "./adapters/oxc-resolver.adapter.ts"
-import { createTsSuffixesFactoriesFlavor } from "./adapters/ts-suffixes-factories-flavor.adapter.ts"
+import { createTsSuffixesFactoriesFlavor } from "./ts-suffixes-factories-flavor.model.ts"
 import { createExtraction } from "./extraction.service.ts"
-import { createGoodEnoughTestsReader } from "./adapters/good-enough-tests-reader.adapter.ts"
-import { createJsReader } from "./adapters/js-reader.adapter.ts"
-import { createNodeReader } from "./adapters/node-reader.adapter.ts"
-import { createTsReader } from "./adapters/ts-reader.adapter.ts"
+import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.model.ts"
+import { createJsReader } from "./js-reader.model.ts"
+import { createNodeReader } from "./node-reader.model.ts"
+import { createTsReader } from "./ts-reader.model.ts"
 import type {
   ImportEdge,
   ImportGraph,

@@ -304,8 +304,8 @@ without the slop — eat this cost, not the death seed.
   inline (`reading.model.ts:1880-1905`); the hook cut is positional (a function
   written in place as the argument of a claimed tech call), so detection is
   syntactic and reliable. Confessed gap: hook objects (Vite plugin methods) read
-  as definitions until their reader cut (`framework-readers.adapter.ts:7-10`) —
-  moot once definitions don't count. Refused: (a) every function at any depth
+  as definitions until their reader cut (`framework-readers.model.ts`) — moot
+  once definitions don't count. Refused: (a) every function at any depth
   (collides with canon's assembly loops with factory arms,
   `plugins.map((p) => createPlugin(p))`, an exception again).
   - **Owed hole: branches and loops in driver wiring** (canon silent, 8 runs

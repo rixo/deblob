@@ -1,6 +1,6 @@
-import type { Role } from "../graph.model.ts"
-import type { TestReader } from "../test-reader.model.ts"
-import type { ReaderBinding } from "../recognition.model.ts"
+import type { Role } from "./graph.model.ts"
+import type { TestReader } from "./test-reader.model.ts"
+import type { ReaderBinding } from "./recognition.model.ts"
 
 /**
  * The runners this reader knows — a census by necessity: the claim is what

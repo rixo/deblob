@@ -26,7 +26,9 @@ export default defineConfig({
   },
   // deterministic, string-only computation — declared, not presumed
   // (service-purity)
-  pure: ["node:util", "picomatch", "@oxc-project/types"],
+  // `node:module`: the node reader's list of Node's builtins, a constant of
+  // the Node that runs the check — it varies with that version, nothing else
+  pure: ["node:util", "node:module", "picomatch", "@oxc-project/types"],
   // the parser's AST types: a types-only package, nothing on disk to resolve
   // at runtime — declared, and pure like any type
   external: ["@oxc-project/types"],

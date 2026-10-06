@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.adapter.ts"
-import { isTechPackage } from "../tech.model.ts"
+import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.model.ts"
+import { isTechPackage } from "./tech.model.ts"
 
 describe("createGoodEnoughTestsReader", () => {
   it("binds the flavor's test files by default, claims the runners it knows by package, exempts the four", () => {

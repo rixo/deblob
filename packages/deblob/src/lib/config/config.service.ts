@@ -1,15 +1,16 @@
 /**
  * Config resolution — `deblob.config.ts` as data, validated loudly and turned
- * into everything a run consumes. Service layer, not model: `ResolvedConfig`
- * holds a live `FlavorResolver` (a port shape the model may not know —
- * `inward-deps`, surfaced by our own first self-check). Pure all the same: raw
- * value in, resolved value out, `ConfigError` with teaching messages. Loading
- * is this unit's use case too (`createConfigService`): the files found and
- * imported through the `ConfigFiles` port, the raw value resolved here. It
- * lived in assembly until the placement recut — once per caller, and the copies
- * drifted. Assembly injects the stock flavor registry and the default readers —
- * a flavor is an adapter, and neither this service nor another adapter may
- * import one.
+ * into everything a run consumes. Pure: raw value in, resolved value out,
+ * `ConfigError` with teaching messages. The resolved config carries the run's
+ * plugins — its flavor and its readers — as the config wrote them: plain
+ * objects under a contract (`extraction/flavor.model.ts`,
+ * `extraction/readers.model.ts`), which this service validates and never calls;
+ * `extraction/plugins.model.ts` is where they are asked. Loading is this unit's
+ * use case too (`createConfigService`): the files found and imported through
+ * the `ConfigFiles` port, the raw value resolved here. It lived in assembly
+ * until the placement recut — once per caller, and the copies drifted. Assembly
+ * injects the stock flavor registry and the default readers, which are
+ * extraction's.
  */
 
 import { resolve } from "node:path"
@@ -232,12 +233,12 @@ export type ResolvedConfig = {
   view: { projects: readonly string[] }
 }
 
-/** Stock flavors, name → factory — injected by assembly (flavors are adapters). */
+/** Stock flavors, name → factory — injected by assembly. */
 export type FlavorRegistry = Readonly<Record<string, () => FlavorResolver>>
 
 /**
  * The default readers, one array per group — injected by assembly like the
- * flavors (readers are adapters).
+ * flavors.
  */
 export type DefaultReaders = ReaderGroups
 

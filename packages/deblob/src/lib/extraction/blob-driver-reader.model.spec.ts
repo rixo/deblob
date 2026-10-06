@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { createBlobDriverReader } from "./blob-driver-reader.adapter.ts"
-import { isTechPackage } from "../tech.model.ts"
+import { createBlobDriverReader } from "./blob-driver-reader.model.ts"
+import { isTechPackage } from "./tech.model.ts"
 
 describe("createBlobDriverReader", () => {
   it("binds nothing by default, claims nothing, counts its files as blob", () => {
