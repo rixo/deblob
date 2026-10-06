@@ -3284,7 +3284,14 @@ export const readModule = ({
       for (const item of node) countReferences(item, parent, key)
       return
     }
-    if (!isNode(node) || node.type.startsWith("TS")) return
+    if (!isNode(node)) return
+    if (node.type.startsWith("TS")) {
+      // a type holds no reference; `x as const`, `x satisfies T`, `x!` wrap
+      // code, read as standing where the wrapper stands
+      const wrapped = node["expression"]
+      if (isNode(wrapped)) countReferences(wrapped, parent, key)
+      return
+    }
     if (node.type === "Identifier") {
       const count = references.get(node["name"] as string)
       if (count === undefined || parent === null) return
