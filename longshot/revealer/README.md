@@ -39,8 +39,15 @@ the verdict the reader owes and marks what today's reading reports instead.
   sub-driver and the lazy unit too.
 - Rows 2.5 and 6.3, receiving:
   `packages/deblob/src/lib/cases/reader-receiving.spec.ts`.
-- No row yet: a computed specifier (4.2); the tech-side `lazy` (4.5, its own
-  checkpoint). The bare adapter (5.2, 6.2) is `assembly.spec.ts`'s row already.
+- The tech-side `lazy` (4.5) and a computed specifier (4.2):
+  `packages/deblob/src/lib/cases/reader-lazy.spec.ts`, written red first. Run
+  2026-10-06: `lazy(() => import("./unit"), read, log)` in a case is read as a
+  function handed to the tech, so the thunk is a hook and the case a hook with
+  no use case (four reds); the unit is handed nothing, so its switch is a branch
+  in the wiring. The tech calls the unit's `dispatch`: the name is the bench
+  tech's convention, not ruled. A computed specifier is red today in both
+  spellings, as a case that loads no driver.
+- The bare adapter (5.2, 6.2) is `assembly.spec.ts`'s row already.
 
 The cut, built 2026-10-05: every row above is green as marked, no known failure
 left. The driver reader has one more optional member, `cut`
