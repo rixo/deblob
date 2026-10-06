@@ -3374,6 +3374,16 @@ export const readModule = ({
     })
   }
 
+  /**
+   * A top-level function a cut pointed at — an export the tech calls: a hook
+   * where it stands, no function of the file's.
+   */
+  const asPointedHook = (fn: AstNode): boolean => {
+    if (!pointed.delete(fn)) return false
+    body.hooks.push(readHook(fn, null, null))
+    return true
+  }
+
   /** A top-level function definition, taken as a function of the outside kind. */
   const asTopLevelFunction = (
     statement: AstNode,
@@ -3391,6 +3401,7 @@ export const readModule = ({
           declaration.type === "FunctionDeclaration" ||
           isFunctionNode(declaration)
         ) {
+          if (asPointedHook(declaration)) return true
           const id = declaration["id"]
           readFunction(
             declaration,
@@ -3402,6 +3413,7 @@ export const readModule = ({
         return false
       }
       case "FunctionDeclaration": {
+        if (asPointedHook(statement)) return true
         const id = statement["id"] as AstNode
         const name = id["name"] as string
         if (isTrackedName(name)) return true
@@ -3417,6 +3429,7 @@ export const readModule = ({
           return false
         const fn = unwrap(init)
         if (!isFunctionNode(fn)) return false
+        if (asPointedHook(fn)) return true
         const name = id["name"] as string
         if (isTrackedName(name)) return true
         readFunction(fn, name, exported || exportedNames.has(name))
@@ -3428,6 +3441,9 @@ export const readModule = ({
   }
 
   for (const statement of rootStatements) {
+    // the cuts asked on a root statement before it is taken for a definition:
+    // a function it defines may be one the tech calls
+    askCuts(statement, null)
     if (asTopLevelFunction(statement, false)) continue
     walkStatement(statement)
   }

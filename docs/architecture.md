@@ -556,12 +556,12 @@ can be judged without the reading, and the way out is binding one.
 
 The rules assume one shape — a hook is a function the tech is handed and calls
 back — and the stock cut is exactly that: every callback handed to a claimed
-tech is a hook. There is no open part: a reader relaxes a rule only by an
-exemption stated with its reason, for a role the tech gives a hook (a test
-runner's registration, say). A technology whose hooks are not handed callbacks —
-a route file the framework loads, a handler written in markup, a decorated
-method — needs a reader with a cut of its own; until one exists, the stock cut
-is all its drivers get.
+tech is a hook. There is no open part: a reader relaxes no rule. What a test
+file does not take of the driver rules is its kind's (`test-is-outside`), not
+its reader's to say. A technology whose hooks are not handed callbacks — a route
+file the framework loads, a handler written in markup, a decorated method —
+needs a reader with a cut of its own; until one exists, the stock cut is all its
+drivers get.
 
 A file's kind comes from the flavor's name: `.driver.ts`, and test files by
 `.spec`, `.test`, `.e2e`. A reader's binding gives a kind only to a file the

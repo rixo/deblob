@@ -623,6 +623,24 @@ Still to do: the container named and taken out of `extraction.service.ts`
 (`stackedTech`); the reader and flavor files renamed out of `adapters/` and
 `ports/`.
 
+A tech that calls a file's exports, built 2026-10-06 (point 4). A route file the
+framework loads has no callback handed to anything and no call to answer on. Its
+reader binds the file by `include`, which makes it a driver, and points at the
+function each export statement defines (the `fn` answer of a cut). The reading
+now asks the cuts on a root statement before taking it for a definition: a
+top-level function a cut points at is a hook where it stands, its parameters the
+event. Rows: `cases/reader-exports.spec.ts`, the reader
+`cases/exports-reader.model.ts` — an exported arrow, an exported function, a
+default export; an exported hook judged as any hook; a function not exported, an
+exported constant, an object of handlers and a name exported after its
+definition are definitions, red.
+
+Not settled, and not the port's: where such a file does its wiring. Nobody calls
+a wiring function of a file the framework loads, so its assembly call sits at
+the module root, red. Every row carries that line as reported. Open with the web
+drivers: a hook allowed to call the assembly, a registry the assembly pulls
+from, or the root of such a file taken for its wiring.
+
 ## Known limit, for the verdict on the port
 
 A cut that picks statements takes its event from a value of the wiring, where
