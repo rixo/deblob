@@ -38,6 +38,7 @@ import type {
 } from "./graph.model.ts"
 import type { CutAnswer, CutContext, HookPointer } from "./cut.model.ts"
 import { unwrapNode } from "./cut.model.ts"
+import type { LostType, TypeDeclaration } from "./declarations.model.ts"
 import type { Knowledge } from "./knowledge.model.ts"
 
 /** A declared form that holds a value, not code: `const`, `let`, `var`, an enum. */
@@ -128,6 +129,14 @@ export type ReadInput = {
   ) => { package: string; path: readonly string[] } | null
   /** The declared config loads, `<file>#<name>` split. */
   configLoads?: readonly { file: string; name: string }[]
+  /**
+   * What a type name stands for: the declaration it lands on, as the project's
+   * files declare, import and re-export it — written in this file, or in the
+   * file given (a declaration's own, where the names of its body resolve) — or
+   * how the name is lost, when the files pass it on to no declaration. Absent,
+   * no name is followed.
+   */
+  typeOf?: (name: string, file?: string) => TypeDeclaration | LostType | null
 }
 
 type AstNode = Record<string, unknown> & {
@@ -228,25 +237,41 @@ const typeNameText = (name: AstNode): string =>
     : (name["name"] as string)
 
 /**
- * A type literal's members, each readonly — marked so, or under a `Readonly<…>`
- * that wraps the literal — and of a proven type. A property or method not
- * marked, outside `Readonly`, is mutable: TypeScript lets it be reassigned. A
- * call or construct signature is code.
+ * What the verdict on a type reads beside the type itself: what the readers
+ * know, what a name stands for where the type is written, the type parameters
+ * bound on the way in — each argument with the context it was written in — and
+ * the declarations being proven, so a type that reaches itself stops there.
+ */
+type Types = {
+  knowledge: Knowledge
+  /** What a name stands for in a file; the file being judged when not given. */
+  typeOf: (name: string, file?: string) => TypeDeclaration | LostType | null
+  /** The file whose names this context resolves; `undefined` = the one read. */
+  file: string | undefined
+  bound: ReadonlyMap<string, { type: AstNode; types: Types }>
+  proving: ReadonlySet<string>
+}
+
+/**
+ * Members, each readonly — marked so, or under a `Readonly<…>` that wraps what
+ * holds them — and of a proven type. A property or method not marked, outside
+ * `Readonly`, is mutable: TypeScript lets it be reassigned. A call or construct
+ * signature is code. A type literal's members, or an interface's.
  */
 const membersImmutability = (
-  literal: AstNode,
+  members: readonly AstNode[],
   wrapped: boolean,
-  k: Knowledge,
+  t: Types,
 ): Immutability =>
   allOf(
-    (literal["members"] as AstNode[]).map((member) => {
+    members.map((member) => {
       switch (member.type) {
         case "TSPropertySignature": {
           if (!wrapped && member["readonly"] !== true)
             return mutableBy(member.type)
           const annotation = member["typeAnnotation"]
           return isNode(annotation)
-            ? typeImmutability(annotation["typeAnnotation"] as AstNode, k)
+            ? typeImmutability(annotation["typeAnnotation"] as AstNode, t)
             : unknownFor({ kind: "type-form", form: "TSPropertySignature" })
         }
         case "TSMethodSignature":
@@ -264,24 +289,162 @@ const membersImmutability = (
     }),
   )
 
+/** Why a name the project's files pass on lands on no declaration. */
+const lostReasonOf = ({ name, file, how }: LostType): string => {
+  switch (how) {
+    case "unparsed":
+      return `the type ${name} comes from ${file}, which does not parse`
+    case "missing":
+      return `${file} exports no ${name}`
+    case "value":
+      return `${file} exports ${name} as a value, which is no type`
+    case "loop":
+      return `the type ${name} is re-exported in a loop, through ${file}`
+  }
+}
+
+/**
+ * What a name the project declares stands for, judged: an alias is its body
+ * with the arguments substituted — a missing one takes the parameter's default
+ * — an interface every member it gathered, its own and those of what it
+ * extends, an enum its values, which are primitives. `wrapped` when a
+ * `Readonly<…>` holds the name: one level, as over a type literal. The names a
+ * declaration writes resolve in the file that declares it. A declaration met
+ * again while it is being proven counts as proven: nothing on the way back can
+ * be mutable, so the rest of the type decides. Broken, code that does not
+ * compile: a name that lands on no declaration, a parameter left with neither
+ * argument nor default.
+ */
+const declarationImmutability = (
+  declaration: TypeDeclaration | LostType,
+  args: readonly AstNode[],
+  wrapped: boolean,
+  t: Types,
+): Immutability => {
+  if (declaration.kind === "lost")
+    return { proof: "broken", reason: lostReasonOf(declaration) }
+  if (declaration.kind === "enum") return READONLY
+  // declared, and not followed: a class
+  if (declaration.kind === "opaque")
+    return unknownFor({ kind: "type-name", name: declaration.name })
+  const key = `${declaration.file}\0${declaration.name}`
+  if (t.proving.has(key)) return READONLY
+  if (
+    declaration.parameters.some(
+      (parameter, index) =>
+        args[index] === undefined && parameter.default === null,
+    )
+  )
+    return {
+      proof: "broken",
+      reason: `${declaration.name} without its type arguments`,
+    }
+  const bound = new Map<string, { type: AstNode; types: Types }>()
+  const inside: Types = {
+    knowledge: t.knowledge,
+    typeOf: t.typeOf,
+    file: declaration.file,
+    bound,
+    proving: new Set([...t.proving, key]),
+  }
+  declaration.parameters.forEach((parameter, index) => {
+    const arg = args[index]
+    if (arg !== undefined) bound.set(parameter.name, { type: arg, types: t })
+    // no argument: its default, there since the check above
+    else
+      bound.set(parameter.name, {
+        type: parameter.default as unknown as AstNode,
+        types: inside,
+      })
+  })
+  if (declaration.kind === "alias") {
+    const body = declaration.body as unknown as AstNode
+    return wrapped ? readonlyOver(body, inside) : typeImmutability(body, inside)
+  }
+  return allOf([
+    membersImmutability(
+      declaration.members as unknown as AstNode[],
+      wrapped,
+      inside,
+    ),
+    ...(declaration.extends as unknown as AstNode[]).map((heritage) => {
+      const expression = heritage["expression"] as AstNode
+      const name =
+        expression.type === "Identifier" ? (expression["name"] as string) : null
+      const extended = name === null ? null : inside.typeOf(name, inside.file)
+      return extended === null
+        ? unknownFor({
+            kind: "type-name",
+            name: name ?? "an extended interface",
+          })
+        : declarationImmutability(
+            extended,
+            typeArgumentsOf(heritage),
+            wrapped,
+            inside,
+          )
+    }),
+  ])
+}
+
+/**
+ * `Readonly<…>` over a type: one level — a type literal's members or an
+ * interface's become readonly, an array its readonly form, a `Record` a
+ * readonly one — whatever name the type was written through.
+ */
+const readonlyOver = (inner: AstNode, t: Types): Immutability => {
+  if (inner.type === "TSTypeLiteral")
+    return membersImmutability(inner["members"] as AstNode[], true, t)
+  if (inner.type === "TSArrayType")
+    return typeImmutability(inner["elementType"] as AstNode, t)
+  if (inner.type === "TSParenthesizedType")
+    return readonlyOver(inner["typeAnnotation"] as AstNode, t)
+  if (inner.type === "TSTypeReference") {
+    const typeName = inner["typeName"] as AstNode
+    if (typeName.type === "Identifier") {
+      const name = typeName["name"] as string
+      const argument = t.bound.get(name)
+      if (argument !== undefined)
+        return readonlyOver(argument.type, argument.types)
+      const declaration = t.typeOf(name, t.file)
+      if (declaration !== null)
+        return declarationImmutability(
+          declaration,
+          typeArgumentsOf(inner),
+          true,
+          t,
+        )
+      if (name === "Record") {
+        const recordArgs = typeArgumentsOf(inner)
+        return recordArgs.length === 2
+          ? typeImmutability(recordArgs[1] as AstNode, t)
+          : { proof: "broken", reason: "Record without its value type" }
+      }
+    }
+  }
+  return typeImmutability(inner, t)
+}
+
 /**
  * A type's immutability to its depth. Readonly: a primitive; a function type
  * (code, not state); a type literal whose members are all `readonly` and
  * proven; `Readonly<…>` over a type literal whose members are proven, over a
  * `Record<K, V>` whose values are, or over a proven array; a `Readonly*`
  * collection whose type arguments are proven; `readonly T[]` over a proven
- * element; a union or intersection of those. Mutable: `T[]`, a tuple, a
- * standard mutable collection or `Record` — `Readonly<Map<…>>` keeps the Map's
- * mutators — and a type literal with a member not readonly. Unknown: a named
- * type (no alias resolution) and every form not read.
+ * element; a union or intersection of those; a name the project declares, by
+ * what it stands for. Mutable: `T[]`, a tuple, a standard mutable collection or
+ * `Record` — `Readonly<Map<…>>` keeps the Map's mutators — and a type literal
+ * with a member not readonly. Unknown: a name the reader cannot follow (a
+ * class, a package's type, a qualified name) and every form not read.
  */
-const typeImmutability = (type: AstNode, k: Knowledge): Immutability => {
+const typeImmutability = (type: AstNode, t: Types): Immutability => {
   if (PRIMITIVE_TYPE_KEYWORDS.has(type.type)) return READONLY
+  const k = t.knowledge
   switch (type.type) {
     case "TSFunctionType":
       return READONLY
     case "TSTypeLiteral":
-      return membersImmutability(type, false, k)
+      return membersImmutability(type["members"] as AstNode[], false, t)
     case "TSArrayType":
     case "TSTupleType":
       return mutableBy(type.type)
@@ -290,6 +453,19 @@ const typeImmutability = (type: AstNode, k: Knowledge): Immutability => {
       if (typeName.type !== "Identifier")
         return unknownFor({ kind: "type-name", name: typeNameText(typeName) })
       const name = typeName["name"] as string
+      // the way TypeScript resolves a name: a type parameter in scope, then a
+      // declaration or an import, then the standard library
+      const argument = t.bound.get(name)
+      if (argument !== undefined)
+        return typeImmutability(argument.type, argument.types)
+      const declaration = t.typeOf(name, t.file)
+      if (declaration !== null)
+        return declarationImmutability(
+          declaration,
+          typeArgumentsOf(type),
+          false,
+          t,
+        )
       if (k.typeName(name) === "mutable")
         return mutableBy("TSTypeReference", name)
       if (k.typeName(name) !== "readonly")
@@ -298,22 +474,8 @@ const typeImmutability = (type: AstNode, k: Knowledge): Immutability => {
       if (args.length === 0)
         return { proof: "broken", reason: `${name} without its type arguments` }
       if (name !== "Readonly")
-        return allOf(args.map((part) => typeImmutability(part, k)))
-      const inner = args[0] as AstNode
-      if (inner.type === "TSTypeLiteral")
-        return membersImmutability(inner, true, k)
-      if (inner.type === "TSArrayType")
-        return typeImmutability(inner["elementType"] as AstNode, k)
-      if (
-        inner.type === "TSTypeReference" &&
-        (inner["typeName"] as AstNode)["name"] === "Record"
-      ) {
-        const recordArgs = typeArgumentsOf(inner)
-        return recordArgs.length === 2
-          ? typeImmutability(recordArgs[1] as AstNode, k)
-          : { proof: "broken", reason: "Record without its value type" }
-      }
-      return typeImmutability(inner, k)
+        return allOf(args.map((part) => typeImmutability(part, t)))
+      return readonlyOver(args[0] as AstNode, t)
     }
     case "TSTypeOperator": {
       const operator = type["operator"] as string
@@ -325,19 +487,19 @@ const typeImmutability = (type: AstNode, k: Knowledge): Immutability => {
       // oxc refuses `readonly` over anything but an array or a tuple
       const operand = type["typeAnnotation"] as AstNode
       return operand.type === "TSArrayType"
-        ? typeImmutability(operand["elementType"] as AstNode, k)
+        ? typeImmutability(operand["elementType"] as AstNode, t)
         : allOf(
             (operand["elementTypes"] as AstNode[]).map((part) =>
-              typeImmutability(part, k),
+              typeImmutability(part, t),
             ),
           )
     }
     case "TSParenthesizedType":
-      return typeImmutability(type["typeAnnotation"] as AstNode, k)
+      return typeImmutability(type["typeAnnotation"] as AstNode, t)
     case "TSUnionType":
     case "TSIntersectionType":
       return allOf(
-        (type["types"] as AstNode[]).map((part) => typeImmutability(part, k)),
+        (type["types"] as AstNode[]).map((part) => typeImmutability(part, t)),
       )
     default:
       return unknownFor({
@@ -356,6 +518,8 @@ const isConstAssertion = (type: AstNode): boolean =>
 type Names = {
   /** What the language readers bound to the file know. */
   knowledge: Knowledge
+  /** What a type written in the file is judged with. */
+  types: Types
   /** Bound to an immutable value. */
   isImmutable: (name: string) => boolean
   /** The initializer it is bound to, when the reader can hold it for sure. */
@@ -446,7 +610,7 @@ const initializerImmutability = (node: AstNode, names: Names): Immutability => {
       const type = node["typeAnnotation"] as AstNode
       if (isConstAssertion(type)) return READONLY
       return typedAs(
-        typeImmutability(type, names.knowledge),
+        typeImmutability(type, names.types),
         of(node["expression"]),
       )
     }
@@ -470,8 +634,7 @@ const initializerImmutability = (node: AstNode, names: Names): Immutability => {
         // a function of the file that declares what it returns says it as an
         // annotation on the binding would
         const declared = declaredReturnOf(callee, names)
-        if (declared !== null)
-          return typeImmutability(declared, names.knowledge)
+        if (declared !== null) return typeImmutability(declared, names.types)
         return unknownFor({
           kind: "call-result",
           callee: calleeText(callee),
@@ -549,7 +712,7 @@ const declaratorImmutability = (
   const typed =
     annotation === null
       ? value
-      : typedAs(typeImmutability(annotation, names.knowledge), value)
+      : typedAs(typeImmutability(annotation, names.types), value)
   if (id.type === "Identifier" || typed.proof === "readonly") return typed
   return unknownFor({ kind: "value", form: id.type, name: null })
 }
@@ -788,7 +951,16 @@ export const readModule = ({
   paramKinds,
   handedOverOf,
   configLoads = [],
+  typeOf,
 }: ReadInput): FileReading => {
+  /** What a type written in this file is judged with: no name bound yet. */
+  const types: Types = {
+    knowledge,
+    typeOf: (name, file) => typeOf?.(name, file) ?? null,
+    file: undefined,
+    bound: new Map(),
+    proving: new Set(),
+  }
   /**
    * A call its host declares effect-free, in a file of a kind where that is
    * taken: a test file, an adapter, blob (ruled 2026-10-07). A model or a
@@ -2876,7 +3048,7 @@ export const readModule = ({
           ? mutableBy("static", name)
           : annotation === null
             ? held
-            : typedAs(typeImmutability(annotation, knowledge), held),
+            : typedAs(typeImmutability(annotation, types), held),
       storesMachineRead,
       storedCall: isNode(value) ? storedCallOf(value) : null,
       inlined: frame !== null,
@@ -2915,6 +3087,7 @@ export const readModule = ({
     }
     return {
       knowledge,
+      types,
       initOf,
       isImmutable: (name) => {
         const binding = definitionOf(name)
@@ -3117,6 +3290,14 @@ export const readModule = ({
           walkStatement(declaration, true)
           return
         }
+        // a name no value of the file bears and a type does: a type exported
+        // by default, which binds nothing and does nothing at load
+        if (
+          declaration.type === "Identifier" &&
+          lookup(scope, declaration["name"] as string) === null &&
+          types.typeOf(declaration["name"] as string) !== null
+        )
+          return
         let value: Resolved = { kind: "computed", origin: null, path: [] }
         const storesMachineRead = readsMachine(() => {
           value = evaluate(declaration, { kind: "computed" }, true)

@@ -29,6 +29,7 @@ import type { Resolvers } from "./ports/resolver.port.ts"
 import type { ImportTargetKind } from "./reading.model.ts"
 import { brokenLinesOf, readModule } from "./reading.model.ts"
 import type { FilePlugins, PluginsConfig } from "./plugins.model.ts"
+import { createDeclarations } from "./declarations.model.ts"
 import { bindPlugins, CORE_TECH } from "./plugins.model.ts"
 import { createTrace } from "./trace.model.ts"
 import { symbolLevelOf } from "./symbols.model.ts"
@@ -341,6 +342,8 @@ export const createExtraction = ({
         importTargetOf: (specifier) =>
           importTargetKindOf(bound, targetOfSpecifier(specifier), specifier),
         knowledge: bound.knowledge,
+        typeOf: (name, declaring = file) =>
+          declarations.typeOf(declaring, name),
         isFactory: plugins.isFactory,
         ...(paramKinds ? { paramKinds } : {}),
         // what an assembly handed the file is its reader's tech when the
@@ -415,18 +418,26 @@ export const createExtraction = ({
       }
     }
 
-    for (const file of files) {
-      const classification = plugins.classificationOf(file)
+    /**
+     * A file's extraction; `null` for one that does not parse, or no engine
+     * reads.
+     */
+    const extractionOf = (file: string): FileExtraction | null => {
+      const extracted = extractedByFile.get(file) ?? null
+      return extracted !== null && "unparsed" in extracted ? null : extracted
+    }
 
+    // the second pass: where every file's imports land, before any file is
+    // read — a reading asks what a type name imported from another file stands
+    // for, and that file's own imports and re-exports say
+    for (const file of files) {
       const absolutePath = resolve(root, file)
       const extracted = extractedByFile.get(file) ?? null
       // a file that does not parse is a place deblob cannot read: listed,
       // then a node with nothing read, as one no engine supports
       if (extracted !== null && "unparsed" in extracted)
         broken.push({ file, line: null, reason: extracted.unparsed })
-      const extraction =
-        extracted !== null && "unparsed" in extracted ? null : extracted
-      const layer = plugins.kindOf(file)
+      const extraction = extractionOf(file)
       /** Where each of this file's specifiers landed — the reader asks again. */
       const landed = new Map<string, EdgeTarget | null>()
 
@@ -484,8 +495,44 @@ export const createExtraction = ({
         }
       }
 
-      if (layer === "assembly" || layer === "driver")
-        landedByFile.set(file, landed)
+      landedByFile.set(file, landed)
+    }
+
+    // what each file declares, imports and re-exports as types, across the
+    // project: the table every reading asks a type name of. A file that does
+    // not parse is in it, as one whose names are lost; a file no engine reads
+    // is not
+    const declarations = createDeclarations(
+      new Map(
+        files.flatMap((file) => {
+          const extracted = extractedByFile.get(file) ?? null
+          if (extracted === null) return []
+          const landed = landedByFile.get(file)
+          return [
+            [
+              file,
+              {
+                program: "unparsed" in extracted ? null : extracted.program,
+                fileOf: (specifier: string) => {
+                  const target = landed?.get(specifier) ?? null
+                  return target?.type === "module" ? target.path : null
+                },
+              },
+            ] as const,
+          ]
+        }),
+      ),
+    )
+
+    // the third pass: every file read
+    for (const file of files) {
+      const classification = plugins.classificationOf(file)
+      const extraction = extractionOf(file)
+      const layer = plugins.kindOf(file)
+      const landed = landedByFile.get(file) as ReadonlyMap<
+        string,
+        EdgeTarget | null
+      >
       const reading = extraction
         ? readingOf(file, layer, extraction, landed)
         : null

@@ -1605,6 +1605,13 @@ const TYPE_NAMES: readonly Row[] = [
         export const MERGED: Merged = { a: 1, b: 2 } // red: stable-root -- the second declaration adds a mutable member
         export const DERIVED: Derived = { n: 1, m: 2 } // red: stable-root -- n, inherited, is mutable
         export const EXTENDED: Extended = { n: 1, m: 2 }
+        interface Box<T> { readonly value: T }
+        export const BOX: Box<number> = { value: 1 }
+        export const BOX_OF_LOOSE: Box<{ n: number }> = { value: { n: 1 } } // red: stable-root -- the argument is a mutable record
+        interface Tree { readonly kids: readonly Tree[] }
+        interface Chain { readonly n: number; next: Chain | null }
+        export const TREE: Tree = { kids: [] }
+        export const CHAIN: Chain = { n: 1, next: null } // red: stable-root -- next is not readonly
       `,
     },
   },
@@ -1641,6 +1648,49 @@ const TYPE_NAMES: readonly Row[] = [
         export const LOOSE: Loose = { a: 1 } // red: stable-root -- the imported alias names a mutable record
         export const POINT: Point = { x: 0 }
         export const RELAYED: Relayed = { a: 1 }
+      `,
+    },
+  },
+  {
+    // A default import is followed like a named one (rixo, 2026-10-07: "default
+    // imports are skipped? why?" — for no reason).
+    name: "a type imported by default stands for what the file exports by default: a declaration, a name, a relayed default; a value, or no default at all, is broken",
+    files: {
+      "src/props.model.ts": `
+        export default interface Props { readonly a: number }
+      `,
+      "src/loose.model.ts": `
+        type Loose = { a: number }
+        export default Loose
+      `,
+      "src/relay.model.ts": `
+        export { default as Relayed } from "./props.model.ts"
+        export * from "./props.model.ts"
+      `,
+      "src/count.model.ts": `
+        export default 1
+      `,
+      "src/create.model.ts": `
+        export default function createTable() { return 1 }
+      `,
+      "src/spot.model.ts": `
+        export default class { readonly x = 1 }
+      `,
+      "src/uses.model.ts": `
+        import type Props from "./props.model.ts"
+        import type Loose from "./loose.model.ts"
+        import type { Relayed } from "./relay.model.ts"
+        import type Nothing from "./relay.model.ts"
+        import type Count from "./count.model.ts"
+        import type Create from "./create.model.ts"
+        import type Spot from "./spot.model.ts"
+        export const PROPS: Props = { a: 1 }
+        export const LOOSE: Loose = { a: 1 } // red: stable-root -- the default export names a mutable record
+        export const RELAYED: Relayed = { a: 1 }
+        export const NOTHING: Nothing = { a: 1 } // broken -- the file has no default export: export * passes none on
+        export const COUNT: Count = 1 // broken -- the default export is a value
+        export const CREATE: Create = 1 // broken -- the default export is a function
+        export const SPOT: Spot = { x: 1 } // false unknown: stable-root -- class types are not followed yet
       `,
     },
   },
