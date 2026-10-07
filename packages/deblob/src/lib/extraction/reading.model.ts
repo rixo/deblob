@@ -1611,8 +1611,10 @@ export const readModule = ({
   /**
    * What a name stands for when it holds what a fixture declaration gave back
    * (`const test = base.extend({ … })`): the registering function the
-   * declaration was called on, `base` — `null` for any other binding. A name
-   * bound to itself through its own initializer stands for nothing.
+   * declaration was called on, `base`; or, when it is another name for a
+   * registering function (`const it = test`), the name it copies — `null` for
+   * any other binding. A name bound to itself through its own initializer
+   * stands for nothing.
    */
   const fixtureBaseOf = (binding: Binding): AstNode | null => {
     if (
@@ -1624,6 +1626,13 @@ export const readModule = ({
     )
       return null
     const init = unwrap(binding.init)
+    // another name for it (`const it = test`) stands for the name it copies
+    if (init.type === "Identifier") {
+      derivingFixture.add(binding)
+      const registrar = startsFromReader(init)
+      derivingFixture.delete(binding)
+      return registrar ? init : null
+    }
     if (init.type !== "CallExpression") return null
     const callee = unwrap(init["callee"] as AstNode)
     if (callee.type !== "MemberExpression") return null
@@ -3131,8 +3140,9 @@ export const readModule = ({
       })
       const form = declaration["kind"] as string
       const storedCall = isNode(init) ? storedCallOf(init) : null
-      // what a fixture declaration gave back is the runner's registering
-      // function under another name: code, not state
+      // what a fixture declaration gave back, or another name for it, is the
+      // runner's registering function under another name: code, not state,
+      // and no read of the machine
       const holdsRegistrar = names.some(({ name }) => {
         const declared = lookup(scope, name)
         return declared !== null && fixtureBaseOf(declared) !== null
@@ -3150,7 +3160,7 @@ export const readModule = ({
           exported,
           value: resolveBinding(binding).kind,
           immutability,
-          storesMachineRead,
+          storesMachineRead: storesMachineRead && !holdsRegistrar,
           storedCall,
           inlined: frame !== null,
           span: spanOf(node),

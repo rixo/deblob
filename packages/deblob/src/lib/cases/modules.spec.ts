@@ -1031,6 +1031,47 @@ const ROOT_CALLS: readonly Row[] = [
     },
   },
   {
+    // Found 2026-10-07 on deblob's own specs: a spec that writes both `it`
+    // and `test` over one fixture declaration names the second `const it =
+    // test`, and every `it(…)` read as a call into the runner at load. A
+    // const that is another name for the runner's registering function is
+    // that function: code, not state, and a test written with it is a test.
+    name: "another name for the runner's test function, imported or given back by a fixture declaration, registers tests like it; another name for a list stays the list",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/notes.spec.ts": `
+        import { describe, expect, test as base } from "vitest"
+        const test = base.extend<{ notes: readonly string[] }>({
+          notes: [
+            async ({}, use) => {
+              await use(["a", "b"])
+            },
+            { scope: "file" },
+          ],
+        })
+        const it = test
+        const plain = base
+        const NOTES = ["a", "b"] // red: stable-root -- a list without as const
+        const SAME = NOTES // red: stable-root -- another name for the mutable list
+        it("reads the notes", ({ notes }) => {
+          expect(notes).toHaveLength(2)
+        })
+        plain("needs no fixture", () => {
+          expect(1).toBe(1)
+        })
+        describe("in a group", () => {
+          it.skip("is skipped", ({ notes }) => {
+            expect(notes).toEqual([])
+          })
+        })
+      `,
+    },
+  },
+  {
     // Found 2026-10-07 on deblob's own specs, where a path helper written in
     // a group read as "a function of the file" while the same at the root
     // was read inline. A group's body declares like the root does: a helper
