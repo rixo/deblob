@@ -5,7 +5,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 
-import { afterAll, describe, expect, it, test } from "vitest"
+import { describe, expect, it, onTestFinished, test } from "vitest"
 
 import type { FlavorResolver } from "../../extraction/flavor.model.ts"
 import { STOCK_FLAVOR_NAME } from "../../extraction/stock-flavor.model.ts"
@@ -136,22 +136,16 @@ describe("explicitConfigPath", () => {
 })
 
 describe("the local overlay — deblob.local.ts beside the config", () => {
-  const roots: string[] = []
   const makeRoot = async (
     files: Readonly<Record<string, string>>,
   ): Promise<string> => {
     const root = await mkdtemp(join(tmpdir(), "deblob-local-"))
-    roots.push(root)
+    onTestFinished(() => rm(root, { recursive: true, force: true }))
     for (const [name, content] of Object.entries(files)) {
       await writeFile(join(root, name), content)
     }
     return root
   }
-  afterAll(() =>
-    Promise.all(
-      roots.map((root) => rm(root, { recursive: true, force: true })),
-    ),
-  )
 
   const CONFIG = `export default { pure: ["FAKE_BASE_LIB"], include: ["src/**"] }\n`
   const local = (value: unknown): string =>
@@ -341,13 +335,9 @@ describe("importConfigDefault + the assembly sequence", () => {
   })
 
   describe("configless", () => {
-    let isolated: string | undefined
-    afterAll(async () => {
-      if (isolated) await rm(isolated, { recursive: true, force: true })
-    })
-
     it("resolves root = cwd, null provenance, no pure entries and typeOnlyExempt on", async () => {
-      isolated = await mkdtemp(join(tmpdir(), "deblob-configless-"))
+      const isolated = await mkdtemp(join(tmpdir(), "deblob-configless-"))
+      onTestFinished(() => rm(isolated, { recursive: true, force: true }))
       const resolved = await load(isolated)
       expect(resolved.configPath).toBeNull()
       expect(resolved.root).toBe(isolated)
@@ -396,15 +386,9 @@ describe("importConfigDefault + the assembly sequence", () => {
       }
     }
 
-    const roots: string[] = []
-    afterAll(() =>
-      Promise.all(
-        roots.map((root) => rm(root, { recursive: true, force: true })),
-      ),
-    )
     const fileIn = async (name: string, content: string): Promise<string> => {
       const root = await mkdtemp(join(tmpdir(), "deblob-reload-"))
-      roots.push(root)
+      onTestFinished(() => rm(root, { recursive: true, force: true }))
       await writeFile(join(root, name), content)
       return join(root, name)
     }
@@ -445,20 +429,14 @@ describe("importConfigDefault + the assembly sequence", () => {
 })
 
 describe("readPackageSurface", () => {
-  const roots: string[] = []
   const rootWith = async (manifest?: string): Promise<string> => {
     const root = await mkdtemp(join(tmpdir(), "deblob-surface-"))
-    roots.push(root)
+    onTestFinished(() => rm(root, { recursive: true, force: true }))
     if (manifest !== undefined) {
       await writeFile(join(root, "package.json"), manifest)
     }
     return root
   }
-  afterAll(() =>
-    Promise.all(
-      roots.map((root) => rm(root, { recursive: true, force: true })),
-    ),
-  )
 
   it("readPackageName: the manifest's string name, else null", async () => {
     const { readPackageName } = loader()

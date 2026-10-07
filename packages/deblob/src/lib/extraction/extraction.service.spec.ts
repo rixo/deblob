@@ -650,7 +650,7 @@ describe("extractGraph over the resolution fixture", () => {
     "src/app/util.ts",
     "src/esm.mts",
     "src/cjs.cts",
-  ]
+  ] as const
 
   const extractResolution = () =>
     extractFixture({ fixture: "resolution", files: RESOLUTION_FILES })
@@ -1019,7 +1019,7 @@ describe("the reading on the graph — the reading fixture", () => {
     "src/globals.spec.ts",
     "src/sub.driver.spec.ts",
     "src/routes/+page.svelte",
-  ]
+  ] as const
 
   /**
    * Test factory: the fixture project with its readers — the fixture drivers'

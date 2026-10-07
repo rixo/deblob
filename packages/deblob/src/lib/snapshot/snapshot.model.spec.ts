@@ -82,7 +82,7 @@ describe("snapshotFrom", () => {
     { path: "src/FAKE_A/private/p.model.ts", size: 100 },
     { path: "src/FAKE_B/b.service.ts", size: 200 },
     { path: "src/loose.svelte", size: 100 },
-  ]
+  ] as const
 
   test("folds graph, sizes and provenance into the contract, field by field", () => {
     const snapshot = snapshotFrom({

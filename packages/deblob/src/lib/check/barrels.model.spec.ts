@@ -413,7 +413,7 @@ describe("checkBarrels", () => {
   })
 
   describe("tolerateBlobReexport — the brownfield opt-out", () => {
-    const nodes: Record<string, NodeSpec> = {
+    const nodes: Readonly<Record<string, NodeSpec>> = {
       "billing/refund.service.ts": {
         layer: "service",
         serviceRoot: "billing",

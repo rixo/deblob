@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { afterEach, describe, expect, test } from "vitest"
+import { describe, expect, onTestFinished, test } from "vitest"
 import WebSocket from "ws"
 
 import type { ServerMessage, Snapshot } from "@deblob/viewer/snapshot.model"
@@ -41,15 +41,9 @@ describe("serve", () => {
    * subprojects, each a bare directory with one covered file — no config of its
    * own: a listed directory is the project, the root's config is not its.
    */
-  const temps: string[] = []
-  afterEach(async () => {
-    for (const temp of temps.splice(0)) {
-      await rm(temp, { recursive: true, force: true })
-    }
-  })
   const viewerProject = async () => {
     const root = await mkdtemp(join(tmpdir(), "deblob-serve-"))
-    temps.push(root)
+    onTestFinished(() => rm(root, { recursive: true, force: true }))
     for (const name of ["FAKE_A", "FAKE_B"]) {
       await mkdir(join(root, name, "src"), { recursive: true })
       await writeFile(
@@ -348,7 +342,7 @@ describe("serve", () => {
   /** A built bundle, as a build would leave it: a page and one hashed asset. */
   const bundleDir = async () => {
     const root = await mkdtemp(join(tmpdir(), "deblob-bundle-"))
-    temps.push(root)
+    onTestFinished(() => rm(root, { recursive: true, force: true }))
     await mkdir(join(root, "assets"), { recursive: true })
     await writeFile(join(root, "index.html"), FAKE_INDEX)
     await writeFile(join(root, "assets", "app-FAKEHASH.js"), FAKE_SCRIPT)

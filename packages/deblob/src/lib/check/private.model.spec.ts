@@ -339,7 +339,7 @@ describe("checkPrivate", () => {
   })
 
   describe("fractal nesting — the operation, not a case census", () => {
-    const nodes: Record<string, NodeSpec> = {
+    const nodes: Readonly<Record<string, NodeSpec>> = {
       "other/y.ts": { layer: "blob", serviceRoot: "other" },
       "other/o.service.ts": { layer: "service", serviceRoot: "other" },
       "s/s.service.ts": { layer: "service", serviceRoot: "s" },

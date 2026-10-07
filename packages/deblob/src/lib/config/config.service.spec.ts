@@ -558,10 +558,10 @@ describe("resolveConfig — flavor", () => {
 })
 
 describe("resolveConfig — typeOnlyExempt precedence", () => {
-  const cases: Array<{
-    flavorStance: boolean | undefined
-    key: boolean | undefined
-    winner: boolean
+  const cases: ReadonlyArray<{
+    readonly flavorStance: boolean | undefined
+    readonly key: boolean | undefined
+    readonly winner: boolean
   }> = [
     { flavorStance: undefined, key: undefined, winner: true },
     { flavorStance: undefined, key: true, winner: true },

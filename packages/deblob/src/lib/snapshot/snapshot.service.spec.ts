@@ -164,7 +164,7 @@ describe("createSnapshotService", () => {
       callables: {},
       participants: [{ id: "m:src/a.ts", label: "a", kind: "blob", box: null }],
       drivers: [],
-    }
+    } as const
 
     /** The fold's map rows for the memory project: no symbol, no edge. */
     const foldRows = (modules: readonly ModuleRef[]) => ({
@@ -271,7 +271,7 @@ describe("serveSnapshots", () => {
     { root: "/FAKE_B", name: null },
     { root: "/FAKE_BROKEN", name: null },
     { root: "/FAKE_SLOW", name: null },
-  ]
+  ] as const
 
   const FAKE_BUG = new Error("FAKE_BUG")
 

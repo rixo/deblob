@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, describe, expect, test } from "vitest"
+import { describe, expect, onTestFinished, test } from "vitest"
 
 import { createChokidarWatcher } from "./chokidar-watcher.adapter.ts"
 import { createMemoryReport } from "./memory-report.adapter.ts"
@@ -19,14 +19,9 @@ describe("createChokidarWatcher", () => {
     }
   }
 
-  const cleanups: (() => Promise<void>)[] = []
-  afterEach(async () => {
-    for (const cleanup of cleanups.splice(0).reverse()) await cleanup()
-  })
-
   const tempTree = async () => {
     const root = await mkdtemp(join(tmpdir(), "deblob-watch-"))
-    cleanups.push(() => rm(root, { recursive: true, force: true }))
+    onTestFinished(() => rm(root, { recursive: true, force: true }))
     await mkdir(join(root, "FAKE_SUB"))
     return root
   }
@@ -37,7 +32,7 @@ describe("createChokidarWatcher", () => {
     const watcher = createChokidarWatcher({ quietMs: QUIET_MS, report })
     const fired: number[] = []
     const watch = await watcher.watch([root], () => fired.push(Date.now()))
-    cleanups.push(() => watch.close())
+    onTestFinished(() => watch.close())
 
     await writeFile(join(root, "FAKE_ONE.ts"), "")
     await until(fired, 1)
@@ -106,7 +101,7 @@ describe("createChokidarWatcher", () => {
     const watcher = createChokidarWatcher({ quietMs: QUIET_MS, report })
     const fired: number[] = []
     const watch = await watcher.watch([root, sub], () => fired.push(Date.now()))
-    cleanups.push(() => watch.close())
+    onTestFinished(() => watch.close())
 
     // not awaited: the second call arrives while the first is still opening, and
     // it asks for the set the first one is about to take apart
@@ -133,7 +128,7 @@ describe("createChokidarWatcher", () => {
     const watcher = createChokidarWatcher({ quietMs: QUIET_MS, report })
     const fired: number[] = []
     const watch = await watcher.watch([dotted], () => fired.push(Date.now()))
-    cleanups.push(() => watch.close())
+    onTestFinished(() => watch.close())
 
     await writeFile(join(dotted, ".FAKE_HIDDEN"), "")
     await settle()
@@ -155,7 +150,7 @@ describe("createChokidarWatcher", () => {
     const watch = await watcher.watch([root, loop], () =>
       fired.push(Date.now()),
     )
-    cleanups.push(() => watch.close())
+    onTestFinished(() => watch.close())
     // the loop's own instance fails before it is ready; `root`'s, listing the
     // loop among its entries, may fail too, now or a moment later
     expect(reported.length).toBeGreaterThan(0)
@@ -175,7 +170,7 @@ describe("createChokidarWatcher", () => {
     const watcher = createChokidarWatcher({ quietMs: QUIET_MS, report })
     const fired: number[] = []
     const watch = await watcher.watch([gone, sub], () => fired.push(Date.now()))
-    cleanups.push(() => watch.close())
+    onTestFinished(() => watch.close())
 
     // right away, as above: the one-instance shape missed this write here, 8
     // runs out of 8

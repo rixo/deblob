@@ -60,7 +60,7 @@ describe("assembleCase", () => {
       }),
       "src/index.ts": `export { createApp } from "./app.service.ts"`,
       "src/app.service.ts": `export const createApp = () => ({})`,
-    }
+    } as const
 
     it("reports through layers, barrels and surface when every check runs", async () => {
       const { judge } = assembleCase(files)

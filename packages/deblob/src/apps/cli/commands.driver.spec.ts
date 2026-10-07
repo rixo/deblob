@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { afterAll, beforeAll, describe, expect, it, test } from "vitest"
+import { beforeAll, describe, expect, it, onTestFinished, test } from "vitest"
 
 import {
   createConfigAssembly,
@@ -765,7 +765,7 @@ describe("view", () => {
 
   const bundleDir = async (): Promise<string> => {
     const dir = await mkdtemp(join(tmpdir(), "deblob-view-"))
-    viewTemps.push(dir)
+    onTestFinished(() => rm(dir, { recursive: true, force: true }))
     await writeFile(join(dir, "index.html"), FAKE_INDEX)
     return dir
   }
@@ -798,13 +798,6 @@ describe("view", () => {
       },
     }
   }
-
-  const viewTemps: string[] = []
-  afterAll(async () => {
-    for (const dir of viewTemps.splice(0)) {
-      await rm(dir, { recursive: true, force: true })
-    }
-  })
 
   test("an install without the bundle says so and serves nothing, exit 2", async () => {
     const { code, out, err } = await run(["view"])
