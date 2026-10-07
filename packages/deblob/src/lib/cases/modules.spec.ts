@@ -1031,13 +1031,12 @@ const ROOT_CALLS: readonly Row[] = [
     },
   },
   {
-    // Found 2026-10-07 on deblob's own specs: the reader reads a function
-    // inline, at its call, only when it is written at the file's root. The
-    // same helper written in a group is "a function of the file" to it, and
-    // its call in the group's body reads as presumed to act. Way out until
-    // the reader follows a group's own functions: write the helper at the
-    // file's root.
-    name: "a helper called in a describe body is read inline when written at the file's root; written in the group, the reader does not follow it yet",
+    // Found 2026-10-07 on deblob's own specs, where a path helper written in
+    // a group read as "a function of the file" while the same at the root
+    // was read inline. A group's body declares like the root does: a helper
+    // only ever called there is read at its calls; handed on as a value, it
+    // is not seen whole and stays a function of the file.
+    name: "a helper called in a describe body is read inline, written at the file's root or in the group; handed on as a value in the group, it stays a function of the file",
     files: {
       "node_modules/vitest/package.json": JSON.stringify({
         name: "vitest",
@@ -1049,10 +1048,13 @@ const ROOT_CALLS: readonly Row[] = [
         const atRoot = (name: string): string => name.toUpperCase()
         describe("notes", () => {
           const inGroup = (name: string): string => name.toUpperCase()
+          const handedOn = (name: string): string => name.toLowerCase()
+          const TABLE = { handedOn } as const
           const FIRST = atRoot("a")
-          const SECOND = inGroup("b") // false red: stable-root -- a helper of the group, as free of effects as the root's: not read inline yet
+          const SECOND = inGroup("b")
+          const THIRD = handedOn("C") // red: stable-root -- handed on as a value above: not seen whole
           it("shouts", () => {
-            expect(FIRST + SECOND).toBe("AB")
+            expect(FIRST + SECOND + THIRD + TABLE.handedOn("D")).toBe("ABcd")
           })
         })
       `,
