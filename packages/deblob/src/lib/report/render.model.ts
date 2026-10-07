@@ -270,23 +270,34 @@ const messageOf = (violation: FileViolation, prefix: string): string => {
         violation.via.length === 0
           ? ""
           : `, reached from ${violation.via.map((site) => `${prefix}${site.file}:${site.line}`).join(", ")}`
+      // a group's body of a test file: it runs when the file loads, and its
+      // tests share what it declares — the root's words, placed, and a way out
+      // a test file has
+      const inGroup = violation.group === true
+      const where = inGroup ? "in a group its tests share" : "at module root"
+      const runs = inGroup
+        ? "when the file loads, in a group's body"
+        : "on import"
+      const intoCode = inGroup
+        ? "move it into the tests that use it"
+        : "move it inside a factory or a function"
       if (violation.shape === "root-binding") {
         if (violation.holds === "machine")
-          return `line ${violation.line} stores a read of the machine at load time — no type proves what it held; read it inside a factory or a function`
+          return `line ${violation.line} stores a read of the machine at load time — no type proves what it held; ${inGroup ? "read it in the tests that use it" : "read it inside a factory or a function"}`
         const js = isJavaScript(violation.file)
         if (violation.unknown !== null)
-          return `line ${violation.line} may bind state at module root — unknown: ${unknownWords(violation.unknown)}; ${unknownWaysOut(violation.unknown, js)}`
+          return `line ${violation.line} may bind state ${where} — unknown: ${unknownWords(violation.unknown)}; ${inGroup ? unknownWaysOut(violation.unknown, js, intoCode) : unknownWaysOut(violation.unknown, js)}`
         const by = violation.by as { form: string; name: string | null }
-        return `line ${violation.line} binds mutable state at module root — ${mutableWords(by, js)}; ${js ? JS_WAYS_OUT : "use as const, a readonly type, or move it inside a factory"}`
+        return `line ${violation.line} binds mutable state ${where} — ${mutableWords(by, js)}; ${inGroup ? `${js ? "use Object.freeze" : "use as const, a readonly type"}, or ${intoCode}` : js ? JS_WAYS_OUT : "use as const, a readonly type, or move it inside a factory"}`
       }
       if (violation.shape === "root-call") {
         if (violation.reaches === null)
-          return `line ${violation.line} may run on import${via} — unknown: ${unknownWords({ kind: "callee" })}; move it inside a factory or a function`
-        return `line ${violation.line} runs on import${via} — ${reachWords(violation.reaches, violation.name)}, presumed to act; move it inside a factory or a function`
+          return `line ${violation.line} may run ${runs}${via} — unknown: ${unknownWords({ kind: "callee" })}; ${intoCode}`
+        return `line ${violation.line} runs ${runs}${via} — ${reachWords(violation.reaches, violation.name)}, presumed to act; ${intoCode}`
       }
       if (violation.unknown !== null)
-        return `line ${violation.line} may run on import${via} — unknown: ${unknownWords(violation.unknown)}; move it inside a function`
-      return `line ${violation.line} runs on import${via} — a module's evaluation performs no side effect; move it inside a factory or a function`
+        return `line ${violation.line} may run ${runs}${via} — unknown: ${unknownWords(violation.unknown)}; ${inGroup ? intoCode : "move it inside a function"}`
+      return `line ${violation.line} runs ${runs}${via} — ${inGroup ? "a group's body performs no side effect" : "a module's evaluation performs no side effect"}; ${intoCode}`
     }
     case "assembly":
       return `${assemblyMessage(violation)}${calledFromWords(violation)}`
@@ -691,12 +702,17 @@ const reachWords = (
  * lists them all. A type the reader does not follow is written out in place; a
  * value it does not follow is annotated, where there are types to write.
  */
-const unknownWaysOut = (condition: UnknownCondition, js: boolean): string => {
+const unknownWaysOut = (
+  condition: UnknownCondition,
+  js: boolean,
+  /** Where the value goes instead: a factory, or a group's tests. */
+  elsewhere = "move it inside a factory",
+): string => {
   if (condition.kind === "type-name" || condition.kind === "type-form")
-    return "write the type out in place, or move it inside a factory"
+    return `write the type out in place, or ${elsewhere}`
   return js
-    ? "move it inside a factory, or set mutableModuleState: true"
-    : "annotate it with a readonly type, or move it inside a factory"
+    ? `${elsewhere}, or set mutableModuleState: true`
+    : `annotate it with a readonly type, or ${elsewhere}`
 }
 
 /** Dag blocks: 2-space indent + tag; continuation under the head. */

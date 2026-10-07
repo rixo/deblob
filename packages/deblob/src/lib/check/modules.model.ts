@@ -26,6 +26,7 @@ import type {
   Layer,
   ModuleNode,
   ReadCall,
+  ReadHook,
   ReadStatement,
   Span,
 } from "../extraction/graph.model.ts"
@@ -171,7 +172,53 @@ const judgeModule = (
     subject: statement.span,
     cause: null,
   })
-  const statements = flattenBranches(node.reading.root)
+  // the file's root, and in a test file every group's body: it runs when the
+  // file loads and what it declares is shared by the group's tests, the root
+  // one level in (ruled 2026-10-07)
+  const inGroup: Placed = (statement) => ({ ...at(statement), group: true })
+  return [
+    ...judgeShared(node.reading.root, node, options, at),
+    ...(node.layer === "test" ? groupBodiesOf(node.reading.hooks) : []).flatMap(
+      (body) => judgeShared(body, node, options, inGroup),
+    ),
+  ]
+}
+
+/** The bodies of a test file's groups, nested ones included. */
+const groupBodiesOf = (
+  hooks: readonly ReadHook[],
+): (readonly ReadStatement[])[] =>
+  hooks.flatMap((hook) =>
+    hook.role?.kind === "group"
+      ? [hook.body, ...groupBodiesOf(hook.hooks)]
+      : [],
+  )
+
+/** What every violation of a file carries, placed at a statement. */
+type Placed = (statement: {
+  span: Span
+}) => Pick<
+  ModulesViolation,
+  | "check"
+  | "ruleset"
+  | "rules"
+  | "file"
+  | "serviceRoot"
+  | "line"
+  | "via"
+  | "subject"
+  | "cause"
+  | "group"
+>
+
+/** A body that runs on load and is shared: the root, or a group's. */
+const judgeShared = (
+  body: readonly ReadStatement[],
+  node: ModuleNode,
+  options: CheckModulesOptions,
+  at: Placed,
+): ModulesViolation[] => {
+  const statements = flattenBranches(body)
   // the calls first, in order: the boot's one call is its first to the wiring
   const calls: { call: ReadCall; verdict: CallVerdict }[] = []
   let bootCallMade = false

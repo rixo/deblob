@@ -251,6 +251,12 @@ export type ModulesViolation = {
    * removes this violation too, so it is the same fix. `null` otherwise.
    */
   cause: Span | null
+  /**
+   * The line sits in the body of a group of a test file (`describe`), not at
+   * the file's root: it runs when the file loads all the same, and what it
+   * declares is shared by the group's tests. Absent at a root.
+   */
+  group?: true
 } & (
   | {
       /**

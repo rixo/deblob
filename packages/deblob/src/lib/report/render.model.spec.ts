@@ -673,6 +673,88 @@ describe("renderCheckResults", () => {
       )
     })
 
+    describe("a line in a group's body of a test file", () => {
+      const SPEC = "src/billing/refund.model.spec.ts"
+      const inGroup = (fields: Parameters<typeof rootBinding>[0]) =>
+        message({ ...rootBinding(fields, SPEC), group: true })
+
+      it("places a binding in the group its tests share, the way out into the tests", () => {
+        expect(inGroup({ by: { form: "let", name: null } })).toContain(
+          "line 7 binds mutable state in a group its tests share — a let can be reassigned; use as const, a readonly type, or move it into the tests that use it",
+        )
+        expect(
+          inGroup({ unknown: { kind: "type-name", name: "Table" } }),
+        ).toContain(
+          "line 7 may bind state in a group its tests share — unknown: the reader does not follow the type name Table yet; write the type out in place, or move it into the tests that use it",
+        )
+        expect(
+          message({
+            ...rootBinding(
+              { by: { form: "let", name: null } },
+              "src/billing/refund.model.spec.js",
+            ),
+            group: true,
+          }),
+        ).toContain(
+          "; use Object.freeze, or move it into the tests that use it",
+        )
+        expect(inGroup({ holds: "machine" })).toContain(
+          "line 7 stores a read of the machine at load time — no type proves what it held; read it in the tests that use it",
+        )
+      })
+
+      it("says a call or a statement there runs when the file loads", () => {
+        const placed = {
+          check: "modules",
+          ruleset: "arch",
+          rules: ["stable-root"],
+          file: SPEC,
+          serviceRoot: "src/billing",
+          line: 7,
+          via: [],
+          subject: SUBJECT,
+          cause: null,
+          group: true,
+        } as const
+        expect(
+          message({
+            ...placed,
+            shape: "root-call",
+            reaches: "tech",
+            name: "node:fs",
+            unknown: null,
+          }),
+        ).toContain(
+          "line 7 runs when the file loads, in a group's body — a call into node:fs, the tech, presumed to act; move it into the tests that use it",
+        )
+        expect(
+          message({
+            ...placed,
+            shape: "root-call",
+            reaches: null,
+            name: null,
+            unknown: { kind: "callee" },
+          }),
+        ).toContain(
+          "line 7 may run when the file loads, in a group's body — unknown:",
+        )
+        expect(
+          message({ ...placed, shape: "root-statement", unknown: null }),
+        ).toContain(
+          "line 7 runs when the file loads, in a group's body — a group's body performs no side effect; move it into the tests that use it",
+        )
+        expect(
+          message({
+            ...placed,
+            shape: "root-statement",
+            unknown: { kind: "statement", form: "LabeledStatement" },
+          }),
+        ).toContain(
+          "line 7 may run when the file loads, in a group's body — unknown:",
+        )
+      })
+    })
+
     describe("a root binding", () => {
       const binding = (
         fields: Parameters<typeof rootBinding>[0],
