@@ -48,8 +48,7 @@ another service.
    Run them; never simulate, never skip. Invocation commands come from the
    project's own docs and skills.
 3. Iterate until green.
-4. Self-review (use the `deblob-review` skill if available).
-5. Only then hand off.
+4. Only then hand off.
 
 ## Non-negotiables
 
