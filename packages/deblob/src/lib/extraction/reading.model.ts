@@ -772,6 +772,8 @@ const patternNames = (
   }
 }
 
+const NO_NAMES: ReadonlySet<string> = new Set()
+
 const isStatementLike = (node: AstNode): boolean =>
   node.type.endsWith("Statement") || node.type.endsWith("Declaration")
 
@@ -1195,6 +1197,12 @@ export const readModule = ({
   let followingLocals = false
   /** Reading a hook: nothing is picked in one, picking is the wiring's. */
   let inHook = false
+  /**
+   * The next block walked is a group's body (a test file's `describe`): what it
+   * declares is tracked like the root's, so a helper written there is read at
+   * its calls there.
+   */
+  let enteringGroup = false
   /** The functions a reader's cut pointed at, until the reading meets them. */
   const pointed = new Set<AstNode>()
 
@@ -1701,9 +1709,11 @@ export const readModule = ({
     )
     const outer = inHook
     inHook = true
+    enteringGroup = role?.kind === "group"
     const inner = inScope(params, () =>
       inBody(() => withFrame(null, () => walkFunctionBody(fn))),
     )
+    enteringGroup = false
     inHook = outer
     return {
       span: spanOf(fn),
@@ -2875,8 +2885,11 @@ export const readModule = ({
   }
 
   const walkBlock = (statements: readonly AstNode[]): void => {
+    const group = enteringGroup
+    enteringGroup = false
     inScope([], () => {
       declareBlock(scope, statements)
+      if (group) trackLocals(statements, NO_NAMES)
       for (const statement of statements) walkStatement(statement)
     })
   }
@@ -3313,104 +3326,111 @@ export const readModule = ({
     }
   }
 
-  // the tracked locals: every non-exported top-level function is a candidate;
-  // it is tracked when every reference to its name in the file is a direct
-  // call — one passed as a value, taken as a member's root, tagged, or
-  // constructed is not seen whole, and stays a function of the file
-  const candidates = new Map<string, AstNode>()
-  for (const statement of rootStatements) {
-    if (statement.type === "FunctionDeclaration") {
-      // a root function statement is named: the anonymous form is the
-      // default export's, under its own declaration node
-      const id = statement["id"] as AstNode
-      candidates.set(id["name"] as string, statement)
-    } else if (statement.type === "VariableDeclaration") {
-      const declarators = statement["declarations"] as AstNode[]
-      const single = declarators.length === 1 ? declarators[0] : undefined
-      const id = single?.["id"]
-      const init = single?.["init"]
-      if (single && isNode(id) && id.type === "Identifier" && isNode(init)) {
-        const fn = unwrap(init)
-        if (isFunctionNode(fn)) candidates.set(id["name"] as string, fn)
+  /**
+   * The tracked locals of a body — the file's root, or a group's in a test
+   * file, read with the scope it declares in: every function it declares, not
+   * exported, is a candidate; it is tracked when every reference to its name in
+   * that body is a direct call — one passed as a value, taken as a member's
+   * root, tagged, or constructed is not seen whole, and stays a function of the
+   * file.
+   */
+  const trackLocals = (
+    statements: readonly AstNode[],
+    exported: ReadonlySet<string>,
+  ): void => {
+    const candidates = new Map<string, AstNode>()
+    for (const statement of statements) {
+      if (statement.type === "FunctionDeclaration") {
+        // a root function statement is named: the anonymous form is the
+        // default export's, under its own declaration node
+        const id = statement["id"] as AstNode
+        candidates.set(id["name"] as string, statement)
+      } else if (statement.type === "VariableDeclaration") {
+        const declarators = statement["declarations"] as AstNode[]
+        const single = declarators.length === 1 ? declarators[0] : undefined
+        const id = single?.["id"]
+        const init = single?.["init"]
+        if (single && isNode(id) && id.type === "Identifier" && isNode(init)) {
+          const fn = unwrap(init)
+          if (isFunctionNode(fn)) candidates.set(id["name"] as string, fn)
+        }
       }
     }
-  }
-  for (const name of exportedNames) candidates.delete(name)
-  const references = new Map(
-    [...candidates.keys()].map((name) => [name, { direct: 0, other: 0 }]),
-  )
-  const countReferences = (
-    node: unknown,
-    parent: AstNode | null,
-    key: string,
-  ): void => {
-    if (Array.isArray(node)) {
-      for (const item of node) countReferences(item, parent, key)
-      return
-    }
-    if (!isNode(node)) return
-    if (node.type.startsWith("TS")) {
-      // a type holds no reference; `x as const`, `x satisfies T`, `x!` wrap
-      // code, read as standing where the wrapper stands
-      const wrapped = node["expression"]
-      if (isNode(wrapped)) countReferences(wrapped, parent, key)
-      return
-    }
-    if (node.type === "Identifier") {
-      const count = references.get(node["name"] as string)
-      if (count === undefined || parent === null) return
-      // not a reference: a property name, a key, a label, an import or
-      // export name, the declaration's own name
-      const named =
-        (parent.type === "MemberExpression" && key === "property") ||
-        ((parent.type === "Property" ||
-          parent.type === "MethodDefinition" ||
-          parent.type === "PropertyDefinition") &&
-          key === "key")
-      if (named && parent["computed"] !== true) return
-      if (
-        key === "label" ||
-        parent.type === "ImportSpecifier" ||
-        parent.type === "ExportSpecifier" ||
-        (key === "id" &&
-          (parent.type === "FunctionDeclaration" ||
-            parent.type === "FunctionExpression" ||
-            parent.type === "VariableDeclarator"))
-      )
-        return
-      if (parent.type === "CallExpression" && key === "callee")
-        count.direct += 1
-      else count.other += 1
-      return
-    }
-    for (const [childKey, child] of Object.entries(node)) {
-      if (childKey === "type" || childKey === "loc" || childKey === "range")
-        continue
-      countReferences(child, node, childKey)
-    }
-  }
-  if (candidates.size > 0) countReferences(rootStatements, null, "body")
-  for (const [name, fn] of candidates) {
-    const count = references.get(name) as { direct: number; other: number }
-    const binding = lookup(scope, name)
-    // an assembly's, a driver's or a boot's local function is not its own
-    // code read inline: nothing but assembly functions is defined in the one,
-    // nothing but its hooks and one wiring function in the other, nothing at
-    // all in a boot, so it stays a definition and its call a call
-    if (
-      layer !== "assembly" &&
-      layer !== "driver" &&
-      layer !== "boot" &&
-      count.other === 0 &&
-      count.direct > 0 &&
-      binding !== null
+    for (const name of exported) candidates.delete(name)
+    const references = new Map(
+      [...candidates.keys()].map((name) => [name, { direct: 0, other: 0 }]),
     )
-      // the scope it is written in — always the root's, since this loop runs
-      // at top level over root statements only. Widening the candidates to
-      // nested functions means capturing each one's own declaring scope here,
-      // not this `scope`
-      tracked.set(binding, { fn, scope })
+    const countReferences = (
+      node: unknown,
+      parent: AstNode | null,
+      key: string,
+    ): void => {
+      if (Array.isArray(node)) {
+        for (const item of node) countReferences(item, parent, key)
+        return
+      }
+      if (!isNode(node)) return
+      if (node.type.startsWith("TS")) {
+        // a type holds no reference; `x as const`, `x satisfies T`, `x!` wrap
+        // code, read as standing where the wrapper stands
+        const wrapped = node["expression"]
+        if (isNode(wrapped)) countReferences(wrapped, parent, key)
+        return
+      }
+      if (node.type === "Identifier") {
+        const count = references.get(node["name"] as string)
+        if (count === undefined || parent === null) return
+        // not a reference: a property name, a key, a label, an import or
+        // export name, the declaration's own name
+        const named =
+          (parent.type === "MemberExpression" && key === "property") ||
+          ((parent.type === "Property" ||
+            parent.type === "MethodDefinition" ||
+            parent.type === "PropertyDefinition") &&
+            key === "key")
+        if (named && parent["computed"] !== true) return
+        if (
+          key === "label" ||
+          parent.type === "ImportSpecifier" ||
+          parent.type === "ExportSpecifier" ||
+          (key === "id" &&
+            (parent.type === "FunctionDeclaration" ||
+              parent.type === "FunctionExpression" ||
+              parent.type === "VariableDeclarator"))
+        )
+          return
+        if (parent.type === "CallExpression" && key === "callee")
+          count.direct += 1
+        else count.other += 1
+        return
+      }
+      for (const [childKey, child] of Object.entries(node)) {
+        if (childKey === "type" || childKey === "loc" || childKey === "range")
+          continue
+        countReferences(child, node, childKey)
+      }
+    }
+    if (candidates.size > 0) countReferences(statements, null, "body")
+    for (const [name, fn] of candidates) {
+      const count = references.get(name) as { direct: number; other: number }
+      const binding = lookup(scope, name)
+      // an assembly's, a driver's or a boot's local function is not its own
+      // code read inline: nothing but assembly functions is defined in the one,
+      // nothing but its hooks and one wiring function in the other, nothing at
+      // all in a boot, so it stays a definition and its call a call
+      if (
+        layer !== "assembly" &&
+        layer !== "driver" &&
+        layer !== "boot" &&
+        count.other === 0 &&
+        count.direct > 0 &&
+        binding !== null
+      )
+        // the scope it is written in: the body's own, current when this runs
+        tracked.set(binding, { fn, scope })
+    }
   }
+  trackLocals(rootStatements, exportedNames)
   const isTrackedName = (name: string): boolean => {
     const binding = lookup(scope, name)
     return binding !== null && tracked.has(binding)
