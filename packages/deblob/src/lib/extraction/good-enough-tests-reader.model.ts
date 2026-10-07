@@ -50,6 +50,8 @@ const ROLES = {
   after: TEARDOWN_ALL,
   "vi.mock": { kind: "mock" },
   "jest.mock": { kind: "mock" },
+  "test.extend": { kind: "fixture" },
+  "it.extend": { kind: "fixture" },
 } as const satisfies Readonly<Record<string, Role>>
 
 /**

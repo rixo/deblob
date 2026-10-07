@@ -26,6 +26,7 @@ describe("createPlaywrightReader", () => {
       scope: "all",
     })
     expect(roleOf(["test", "step"])).toEqual({ kind: "verification" })
+    expect(roleOf(["test", "extend"])).toEqual({ kind: "fixture" })
     expect(roleOf(["expect"])).toBeNull()
   })
 })

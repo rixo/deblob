@@ -553,6 +553,13 @@ export type Role =
   | { kind: "setup"; scope: "each" | "all" }
   | { kind: "teardown"; scope: "each" | "all" }
   | { kind: "mock" }
+  /**
+   * Declares what the runner builds for the behaviors that ask for it, and
+   * gives the runner's own registering function back under another name (`const
+   * test = base.extend({ … })`): what it gave back registers as what it came
+   * from.
+   */
+  | { kind: "fixture" }
 
 export type ReadHook = {
   span: Span

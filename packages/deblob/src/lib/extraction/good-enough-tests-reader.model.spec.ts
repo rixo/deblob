@@ -65,6 +65,8 @@ describe("createGoodEnoughTestsReader", () => {
       expect(roleOf(["it", "skip", "each"])).toEqual({ kind: "behavior" })
       expect(roleOf(["describe", "each"])).toEqual({ kind: "group" })
       expect(roleOf(["vi", "mock"])).toEqual({ kind: "mock" })
+      expect(roleOf(["test", "extend"])).toEqual({ kind: "fixture" })
+      expect(roleOf(["it", "extend"])).toEqual({ kind: "fixture" })
     })
 
     it.each([

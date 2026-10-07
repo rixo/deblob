@@ -1420,10 +1420,40 @@ export const readModule = ({
     }
     if (current.type !== "Identifier") return false
     const binding = lookup(scope, current["name"] as string)
-    if (binding === null || binding.kind !== "import") return false
+    if (binding === null) return false
+    const base = fixtureBaseOf(binding)
+    if (base !== null) return startsFromReader(base)
+    if (binding.kind !== "import") return false
     const target = importTargetOf(binding.import!.specifier)
     return target.kind === "external" && target.claim === "reader"
   }
+
+  /**
+   * What a name stands for when it holds what a fixture declaration gave back
+   * (`const test = base.extend({ … })`): the registering function the
+   * declaration was called on, `base` — `null` for any other binding. A name
+   * bound to itself through its own initializer stands for nothing.
+   */
+  const fixtureBaseOf = (binding: Binding): AstNode | null => {
+    if (
+      binding.kind !== "definition" ||
+      binding.reassigned ||
+      binding.path.length > 0 ||
+      binding.init === null ||
+      derivingFixture.has(binding)
+    )
+      return null
+    const init = unwrap(binding.init)
+    if (init.type !== "CallExpression") return null
+    const callee = unwrap(init["callee"] as AstNode)
+    if (callee.type !== "MemberExpression") return null
+    derivingFixture.add(binding)
+    const role = roleOf(callee)
+    derivingFixture.delete(binding)
+    return role?.kind === "fixture" ? (callee["object"] as AstNode) : null
+  }
+  /** The names whose fixture declaration is being read: a cycle stops there. */
+  const derivingFixture = new Set<Binding>()
 
   /**
    * A hook's role: the reader's word on the name its registration calls — the
@@ -1431,10 +1461,14 @@ export const readModule = ({
    * (`it.skip.each(rows)` → `it`, `skip`, `each`). `null` when the chain does
    * not start from the reader's import, or goes through a computed member.
    */
-  const roleOf = (calleeNode: AstNode): Role | null => {
+  const roleOf = (
+    calleeNode: AstNode,
+    /** The members already read off a name this node stands behind. */
+    read: readonly string[] = [],
+  ): Role | null => {
     const translate = tech?.roleOf
     if (translate === undefined) return null
-    const members: string[] = []
+    const members: string[] = [...read]
     let current = unwrap(calleeNode)
     while (
       current.type === "MemberExpression" ||
@@ -1448,7 +1482,12 @@ export const readModule = ({
     }
     if (current.type !== "Identifier") return null
     const binding = lookup(scope, current["name"] as string)
-    if (binding === null || binding.kind !== "import") return null
+    if (binding === null) return null
+    // a name holding what a fixture declaration gave back is the registering
+    // function it was declared on: `test.skip` reads as `base.skip`
+    const base = fixtureBaseOf(binding)
+    if (base !== null) return roleOf(base, members)
+    if (binding.kind !== "import") return null
     const { specifier, imported } = binding.import!
     const target = importTargetOf(specifier)
     if (target.kind !== "external" || target.claim !== "reader") return null
@@ -2906,11 +2945,15 @@ export const readModule = ({
       })
       const form = declaration["kind"] as string
       const storedCall = isNode(init) ? storedCallOf(init) : null
-      const immutability = declaratorImmutability(
-        form,
-        declarator,
-        namesIn(new Set()),
-      )
+      // what a fixture declaration gave back is the runner's registering
+      // function under another name: code, not state
+      const holdsRegistrar = names.some(({ name }) => {
+        const declared = lookup(scope, name)
+        return declared !== null && fixtureBaseOf(declared) !== null
+      })
+      const immutability = holdsRegistrar
+        ? READONLY
+        : declaratorImmutability(form, declarator, namesIn(new Set()))
       for (const { name, node } of names) {
         // declared by the same pattern walk on scope entry — always found
         const binding = lookup(scope, name) as Binding

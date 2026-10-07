@@ -15,6 +15,7 @@ const ROLES = {
   "test.beforeAll": { kind: "setup", scope: "all" },
   "test.afterEach": { kind: "teardown", scope: "each" },
   "test.afterAll": { kind: "teardown", scope: "all" },
+  "test.extend": { kind: "fixture" },
 } as const satisfies Readonly<Record<string, Role>>
 
 /**
