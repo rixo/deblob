@@ -956,6 +956,80 @@ const ROOT_CALLS: readonly Row[] = [
       `,
     },
   },
+  {
+    // Ruled 2026-10-07: a group's body runs when the file loads, and what it
+    // declares is shared by its tests — the file's root, one level in. A
+    // test's own body is each run's: nothing there is shared.
+    name: "a describe body is judged like the file's root: a changeable value, a let and a call that acts are red there; a proven value, a registration and a test's own locals are not",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/notes.spec.ts": `
+        import { rmSync } from "node:fs"
+        import { beforeEach, describe, expect, it } from "vitest"
+        describe("notes", () => {
+          const SEEN: string[] = [] // red: stable-root -- changeable, shared by the group's tests
+          let count = 0 // red: stable-root -- a let, shared by the group's tests
+          const LIMIT = 3
+          const NAMES = ["a", "b"] as const
+          rmSync("/tmp/made-up", { force: true }) // red: stable-root -- acts when the file loads
+          beforeEach(() => {
+            count = 0
+          })
+          describe("nested", () => {
+            const DEEPER: string[] = [] // red: stable-root -- a nested group is a group
+            it("counts", () => {
+              const local: string[] = []
+              let n = 0
+              n += 1
+              local.push("a")
+              SEEN.push("a")
+              count += n
+              expect(LIMIT + NAMES.length + DEEPER.length + local.length).toBe(6)
+            })
+          })
+        })
+      `,
+    },
+  },
+  {
+    // The way out for a setup too costly to build in each test (ruled with
+    // the row above, 2026-10-07): a fixture the runner builds for the tests
+    // that ask for it. Declaring one is a registration; what it gives back
+    // is the runner's test function, under another name, and a test written
+    // with it is a test. The fixture's own body runs when a test asks.
+    name: "a fixture declared at a spec's root is a registration, and the test function it gives back registers tests like the runner's own",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/notes.spec.ts": `
+        import { readFileSync } from "node:fs"
+        import { describe, expect, test as base } from "vitest"
+        const test = base.extend<{ notes: readonly string[] }>({
+          notes: [
+            async ({}, use) => {
+              await use(readFileSync("/tmp/made-up-notes.txt", "utf8").split(","))
+            },
+            { scope: "file" },
+          ],
+        })
+        test("reads the notes", ({ notes }) => {
+          expect(notes).toHaveLength(2)
+        })
+        describe("in a group", () => {
+          test.skip("is skipped", ({ notes }) => {
+            expect(notes).toEqual([])
+          })
+        })
+      `,
+    },
+  },
 ]
 
 const READONLY_BINDINGS: readonly Row[] = [
