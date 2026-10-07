@@ -1,6 +1,6 @@
 import { createServer } from "node:http"
 import type { AddressInfo } from "node:net"
-import { afterEach, describe, expect, test } from "vitest"
+import { describe, expect, onTestFinished, test } from "vitest"
 import WebSocket from "ws"
 
 import type { ServerMessage } from "@deblob/viewer/snapshot.model"
@@ -41,11 +41,6 @@ describe("createWsChannel", () => {
     }
   }
 
-  const cleanups: (() => Promise<void>)[] = []
-  afterEach(async () => {
-    for (const cleanup of cleanups.splice(0)) await cleanup()
-  })
-
   // the rule is `handshake.model.ts`'s and tested there; here it is a value, so
   // these tests say what the adapter does with each answer and nothing more
   const serverOn = async (path: string, allows: () => boolean = () => true) => {
@@ -58,7 +53,7 @@ describe("createWsChannel", () => {
       await close()
       await new Promise<void>((resolve) => server.close(() => resolve()))
     }
-    cleanups.push(closeAll)
+    onTestFinished(closeAll)
     return {
       channel,
       reported,
@@ -167,7 +162,7 @@ describe("createWsChannel", () => {
     })
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
     const { port } = server.address() as AddressInfo
-    cleanups.push(
+    onTestFinished(
       () => new Promise<void>((resolve) => server.close(() => resolve())),
     )
     const client = connect(`ws://127.0.0.1:${port}/FAKE_WS`, {

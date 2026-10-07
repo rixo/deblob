@@ -30,7 +30,7 @@ createResolverTestSuite({ api: createVitestTestingApi() }).run({
 })
 
 describe("createTsconfigLocator", () => {
-  const { tsconfigPathOf } = createTsconfigLocator({ fs: createNodeFs() })
+  const locator = () => createTsconfigLocator({ fs: createNodeFs() })
   const makeRoot = async (withTsconfig: boolean): Promise<string> => {
     const root = await mkdtemp(join(tmpdir(), "deblob-tsconfig-"))
     onTestFinished(() => rm(root, { recursive: true, force: true }))
@@ -38,6 +38,7 @@ describe("createTsconfigLocator", () => {
     return root
   }
   it("discovers tsconfig.json at the root when undeclared", async () => {
+    const { tsconfigPathOf } = locator()
     const root = await makeRoot(true)
     expect(await tsconfigPathOf({ root, tsconfig: undefined })).toBe(
       join(root, "tsconfig.json"),
@@ -45,22 +46,26 @@ describe("createTsconfigLocator", () => {
   })
 
   it("yields null when undeclared and the root has none", async () => {
+    const { tsconfigPathOf } = locator()
     const root = await makeRoot(false)
     expect(await tsconfigPathOf({ root, tsconfig: undefined })).toBeNull()
   })
 
   it("disables discovery on false, even when the file exists", async () => {
+    const { tsconfigPathOf } = locator()
     const root = await makeRoot(true)
     expect(await tsconfigPathOf({ root, tsconfig: false })).toBeNull()
   })
 
   it("returns a declared path that exists", async () => {
+    const { tsconfigPathOf } = locator()
     const root = await makeRoot(true)
     const declared = join(root, "tsconfig.json")
     expect(await tsconfigPathOf({ root, tsconfig: declared })).toBe(declared)
   })
 
   it("throws a teaching error on a declared-but-missing path — declared means load-bearing", async () => {
+    const { tsconfigPathOf } = locator()
     const root = await makeRoot(false)
     await expect(
       tsconfigPathOf({ root, tsconfig: join(root, "tsconfig.json") }),

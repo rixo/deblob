@@ -66,27 +66,28 @@ describe("createSnapshotService", () => {
    * One project at `/FAKE_ROOT`, files in filesystem order; nothing at
    * `/FAKE_B`.
    */
-  const memorySource = createMemoryProjectSource({
-    projects: {
-      "/FAKE_ROOT": {
-        config: FAKE_CONFIG,
-        files: ["src/z.ts", "src/a.ts"],
-        dirs: ["src"],
-        sizes: { "src/z.ts": 10, "src/a.ts": 10 },
-        name: "FAKE_PKG",
-        // the root has none: absent from the map
-        readmes: { src: "# src\n\nFAKE_PARAGRAPH" },
+  const memorySource = () =>
+    createMemoryProjectSource({
+      projects: {
+        "/FAKE_ROOT": {
+          config: FAKE_CONFIG,
+          files: ["src/z.ts", "src/a.ts"],
+          dirs: ["src"],
+          sizes: { "src/z.ts": 10, "src/a.ts": 10 },
+          name: "FAKE_PKG",
+          // the root has none: absent from the map
+          readmes: { src: "# src\n\nFAKE_PARAGRAPH" },
+        },
+        "/FAKE_MONO": {
+          config: FAKE_MONO_CONFIG,
+          files: [],
+          dirs: [],
+          sizes: {},
+          name: "FAKE_MONO",
+        },
       },
-      "/FAKE_MONO": {
-        config: FAKE_MONO_CONFIG,
-        files: [],
-        dirs: [],
-        sizes: {},
-        name: "FAKE_MONO",
-      },
-    },
-    now: "1999-12-31T23:59:59.000Z",
-  })
+      now: "1999-12-31T23:59:59.000Z",
+    })
 
   /**
    * The snapshot's world over a memory source: every port the source, the judge
@@ -118,7 +119,7 @@ describe("createSnapshotService", () => {
   test("snapshotOf: load, scan, extract over the sorted files, fold", async () => {
     const seen: { config: ResolvedConfig; files: readonly string[] }[] = []
     const { snapshotOf } = createSnapshotService({
-      ...worldOver(memorySource, (config, files) => {
+      ...worldOver(memorySource(), (config, files) => {
         seen.push({ config, files })
         return graphOf(files)
       }),
@@ -191,7 +192,7 @@ describe("createSnapshotService", () => {
     it("reads the READMEs of the root and every directory holding a file, as blocks, and feeds the call stacks the fold's map rows", async () => {
       const { feed, asked } = recordingFeed(async () => FAKE_SEQUENCE)
       const { runOf } = createSnapshotService({
-        ...worldOver(memorySource),
+        ...worldOver(memorySource()),
         feed,
       })
       const { snapshot } = await runOf("/FAKE_ROOT")
@@ -210,7 +211,7 @@ describe("createSnapshotService", () => {
         throw new Error("FAKE_TRACER_MISS")
       })
       const { runOf } = createSnapshotService({
-        ...worldOver(memorySource),
+        ...worldOver(memorySource()),
         feed,
       })
       const { snapshot } = await runOf("/FAKE_ROOT")
@@ -224,7 +225,7 @@ describe("createSnapshotService", () => {
 
     it("fails the run when the READMEs cannot be read: a bug, not a tree the map cannot draw", async () => {
       const run = createSnapshotService({
-        ...worldOver(memorySource),
+        ...worldOver(memorySource()),
         readmes: {
           readmeTextsOf: async () => {
             throw new Error("FAKE_BUG in readmeTextsOf")
@@ -238,7 +239,7 @@ describe("createSnapshotService", () => {
 
   test("watchSetFor: the root and the directories coverage spans, no extraction", async () => {
     const { watchSetFor } = createSnapshotService({
-      ...worldOver(memorySource, () => {
+      ...worldOver(memorySource(), () => {
         throw new Error("the set is read without running the extraction")
       }),
       feed: plainFeed(),
@@ -251,7 +252,7 @@ describe("createSnapshotService", () => {
 
   test("projectsOf: the config's view.projects, or the project alone; names, null without one", async () => {
     const { projectsOf } = createSnapshotService({
-      ...worldOver(memorySource),
+      ...worldOver(memorySource()),
       feed: plainFeed(),
     })
     expect(await projectsOf("/FAKE_ROOT")).toEqual([
