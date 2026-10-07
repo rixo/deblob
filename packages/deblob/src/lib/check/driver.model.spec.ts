@@ -21,19 +21,22 @@ import { checkDriver } from "./driver.model.ts"
 
 const SPAN = { start: 40, end: 50, line: 3, column: 8 } as const
 
-const NODE_DEFAULTS = {
-  path: "src/cli.driver.ts",
-  layer: "driver",
-  serviceRoot: null,
-  isPrivate: false,
-  parsed: true,
-  runtimeContent: [],
-  readings: [],
-} as unknown as ModuleNode
+const NODE_PATH = "src/cli.driver.ts"
+
+const nodeDefaults = (): ModuleNode =>
+  ({
+    path: NODE_PATH,
+    layer: "driver",
+    serviceRoot: null,
+    isPrivate: false,
+    parsed: true,
+    runtimeContent: [],
+    readings: [],
+  }) as unknown as ModuleNode
 
 const graphOf = (reading: FileReading | null): ImportGraph =>
   ({
-    modules: new Map([[NODE_DEFAULTS.path, { ...NODE_DEFAULTS, reading }]]),
+    modules: new Map([[NODE_PATH, { ...nodeDefaults(), reading }]]),
     edges: [],
   }) as unknown as ImportGraph
 
@@ -133,9 +136,9 @@ describe("checkDriver", () => {
       ({
         modules: new Map([
           [
-            NODE_DEFAULTS.path,
+            NODE_PATH,
             {
-              ...NODE_DEFAULTS,
+              ...nodeDefaults(),
               reading: readings[0],
               readings: readings.map((reading, index) => ({
                 world: siteOf(7 + index),

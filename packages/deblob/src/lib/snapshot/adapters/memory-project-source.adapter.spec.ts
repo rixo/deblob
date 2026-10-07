@@ -4,13 +4,13 @@ import type { ResolvedConfig } from "../../config/config.service.ts"
 import { createMemoryProjectSource } from "./memory-project-source.adapter.ts"
 
 describe("createMemoryProjectSource", () => {
-  const FAKE_CONFIG = { root: "/FAKE_ROOT" } as ResolvedConfig
+  const fakeConfig = () => ({ root: "/FAKE_ROOT" }) as ResolvedConfig
 
-  const sourceOver = () =>
+  const sourceOver = (config = fakeConfig()) =>
     createMemoryProjectSource({
       projects: {
         "/FAKE_ROOT": {
-          config: FAKE_CONFIG,
+          config,
           files: ["src/z.ts", "src/a.ts"],
           dirs: ["src"],
           sizes: { "src/z.ts": 10, "src/a.ts": 20 },
@@ -22,14 +22,12 @@ describe("createMemoryProjectSource", () => {
     })
 
   test("answers every port of the snapshot's world from the project at that directory, the scan sorted as the disk's is", async () => {
-    const source = sourceOver()
-    expect(await source.loadConfig("/FAKE_ROOT")).toBe(FAKE_CONFIG)
-    expect(await source.loadConfigAt("/FAKE_ROOT")).toBe(FAKE_CONFIG)
-    expect(await source.scanCoverage(FAKE_CONFIG)).toEqual([
-      "src/a.ts",
-      "src/z.ts",
-    ])
-    expect(await source.scanCoverageDirs(FAKE_CONFIG)).toEqual(["src"])
+    const config = fakeConfig()
+    const source = sourceOver(config)
+    expect(await source.loadConfig("/FAKE_ROOT")).toBe(config)
+    expect(await source.loadConfigAt("/FAKE_ROOT")).toBe(config)
+    expect(await source.scanCoverage(config)).toEqual(["src/a.ts", "src/z.ts"])
+    expect(await source.scanCoverageDirs(config)).toEqual(["src"])
     expect(await source.statSizes("/FAKE_ROOT", ["src/a.ts"])).toEqual([
       { path: "src/a.ts", size: 20 },
     ])
@@ -41,7 +39,7 @@ describe("createMemoryProjectSource", () => {
     const bare = createMemoryProjectSource({
       projects: {
         "/FAKE_BARE": {
-          config: FAKE_CONFIG,
+          config: fakeConfig(),
           files: [],
           dirs: [],
           sizes: {},

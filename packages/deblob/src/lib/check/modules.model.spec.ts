@@ -15,15 +15,16 @@ import { checkModules } from "./modules.model.ts"
  * refuses a tree that does not resolve.
  */
 
-const NODE_DEFAULTS = {
-  layer: "model",
-  serviceRoot: null,
-  isPrivate: false,
-  parsed: true,
-  content: [],
-  edges: [],
-  readings: [],
-} as unknown as ModuleNode
+const nodeDefaults = (): ModuleNode =>
+  ({
+    layer: "model",
+    serviceRoot: null,
+    isPrivate: false,
+    parsed: true,
+    content: [],
+    edges: [],
+    readings: [],
+  }) as unknown as ModuleNode
 
 const buildGraph = (nodes: readonly ModuleNode[]): ImportGraph =>
   ({
@@ -33,7 +34,7 @@ const buildGraph = (nodes: readonly ModuleNode[]): ImportGraph =>
 describe("checkModules", () => {
   it("says nothing about a module that carries no reading", () => {
     const graph = buildGraph([
-      { ...NODE_DEFAULTS, path: "src/unread.driver.ts", reading: null },
+      { ...nodeDefaults(), path: "src/unread.driver.ts", reading: null },
     ])
     expect(checkModules(graph)).toEqual([])
   })
@@ -42,7 +43,7 @@ describe("checkModules", () => {
     const span = { start: 16, end: 26, line: 2, column: 16 }
     const graph = buildGraph([
       {
-        ...NODE_DEFAULTS,
+        ...nodeDefaults(),
         path: "src/boot.adapter.ts",
         layer: "adapters",
         reading: {

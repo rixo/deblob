@@ -25,15 +25,18 @@ import { checkAssembly } from "./assembly.model.ts"
 
 const SPAN = { start: 40, end: 50, line: 3, column: 8 } as const
 
-const NODE_DEFAULTS = {
-  path: "src/notes.assembly.ts",
-  layer: "assembly",
-  serviceRoot: null,
-  isPrivate: false,
-  parsed: true,
-  runtimeContent: [],
-  readings: [],
-} as unknown as ModuleNode
+const NODE_PATH = "src/notes.assembly.ts"
+
+const nodeDefaults = (): ModuleNode =>
+  ({
+    path: NODE_PATH,
+    layer: "assembly",
+    serviceRoot: null,
+    isPrivate: false,
+    parsed: true,
+    runtimeContent: [],
+    readings: [],
+  }) as unknown as ModuleNode
 
 const READING: FileReading = {
   tech: null,
@@ -46,7 +49,7 @@ const READING: FileReading = {
 
 const graphOf = (reading: FileReading | null): ImportGraph =>
   ({
-    modules: new Map([[NODE_DEFAULTS.path, { ...NODE_DEFAULTS, reading }]]),
+    modules: new Map([[NODE_PATH, { ...nodeDefaults(), reading }]]),
   }) as unknown as ImportGraph
 
 const assemblyFunction = (body: readonly ReadStatement[]) => ({

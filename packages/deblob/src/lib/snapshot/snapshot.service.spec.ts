@@ -55,22 +55,15 @@ const plainFeed = (): MapFeed => ({
 })
 
 describe("createSnapshotService", () => {
-  const FAKE_CONFIG = configAt("/FAKE_ROOT")
-
-  /** A monorepo root whose viewer lists two projects, one of them nameless. */
-  const FAKE_MONO_CONFIG = configAt("/FAKE_MONO", {
-    view: { projects: ["/FAKE_ROOT", "/FAKE_B"] },
-  })
-
   /**
    * One project at `/FAKE_ROOT`, files in filesystem order; nothing at
    * `/FAKE_B`.
    */
-  const memorySource = () =>
+  const memorySource = (config = configAt("/FAKE_ROOT")) =>
     createMemoryProjectSource({
       projects: {
         "/FAKE_ROOT": {
-          config: FAKE_CONFIG,
+          config,
           files: ["src/z.ts", "src/a.ts"],
           dirs: ["src"],
           sizes: { "src/z.ts": 10, "src/a.ts": 10 },
@@ -79,7 +72,10 @@ describe("createSnapshotService", () => {
           readmes: { src: "# src\n\nFAKE_PARAGRAPH" },
         },
         "/FAKE_MONO": {
-          config: FAKE_MONO_CONFIG,
+          // a monorepo root whose viewer lists two projects, one nameless
+          config: configAt("/FAKE_MONO", {
+            view: { projects: ["/FAKE_ROOT", "/FAKE_B"] },
+          }),
           files: [],
           dirs: [],
           sizes: {},
@@ -118,8 +114,9 @@ describe("createSnapshotService", () => {
 
   test("snapshotOf: load, scan, extract over the sorted files, fold", async () => {
     const seen: { config: ResolvedConfig; files: readonly string[] }[] = []
+    const rootConfig = configAt("/FAKE_ROOT")
     const { snapshotOf } = createSnapshotService({
-      ...worldOver(memorySource(), (config, files) => {
+      ...worldOver(memorySource(rootConfig), (config, files) => {
         seen.push({ config, files })
         return graphOf(files)
       }),
@@ -128,7 +125,7 @@ describe("createSnapshotService", () => {
     // the map has rows of its own, below
     const { map: _map, ...snapshot } = await snapshotOf("/FAKE_ROOT")
     expect(seen).toEqual([
-      { config: FAKE_CONFIG, files: ["src/a.ts", "src/z.ts"] },
+      { config: rootConfig, files: ["src/a.ts", "src/z.ts"] },
     ])
     expect(snapshot).toEqual({
       generatedAt: "1999-12-31T23:59:59.000Z",
@@ -274,7 +271,7 @@ describe("serveSnapshots", () => {
     { root: "/FAKE_SLOW", name: null },
   ] as const
 
-  const FAKE_BUG = new Error("FAKE_BUG")
+  const fakeBug = () => new Error("FAKE_BUG")
 
   /** A deferred run: the test resolves it. */
   const deferred = <T>() => {
@@ -312,7 +309,7 @@ describe("serveSnapshots", () => {
       if (root === "/FAKE_B" || failing.has(root)) {
         throw new ConfigError("FAKE_CONFIG_FAILURE")
       }
-      if (root === "/FAKE_BROKEN") throw FAKE_BUG
+      if (root === "/FAKE_BROKEN") throw fakeBug()
       if (root === "/FAKE_SLOW") {
         const { promise, resolve } = deferred<ProjectRun>()
         slow.push({ resolve })
@@ -479,7 +476,7 @@ describe("serveSnapshots", () => {
   test("a failure that is not the project's is a bug: reported in full, the client told, the connection lives on", async () => {
     const { sent, send, reported, rootOf } = await connectServed()
     await send({ type: "select", project: "/FAKE_BROKEN" })
-    expect(reported).toEqual([FAKE_BUG])
+    expect(reported).toEqual([fakeBug()])
     expect(sent[2]).toEqual({
       type: "error",
       project: "/FAKE_BROKEN",
