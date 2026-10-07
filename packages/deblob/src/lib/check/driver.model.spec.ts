@@ -46,7 +46,7 @@ const UNKNOWN_ARG: ArgValue = {
   received: false,
   host: false,
   span: SPAN,
-}
+} as const
 
 const callOf = (callee: ReadCall["callee"]): ReadCall => ({
   span: SPAN,

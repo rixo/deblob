@@ -49,7 +49,7 @@ const READERS: ReaderGroups = {
   host: [],
   test: [fakeTestReader("fake-runner")],
   driver: [],
-}
+} as const
 
 const resolve = (
   raw: unknown,

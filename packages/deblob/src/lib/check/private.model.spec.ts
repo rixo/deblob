@@ -353,7 +353,7 @@ describe("checkPrivate", () => {
         serviceRoot: "s/private/child",
         isPrivate: true,
       },
-    }
+    } as const
 
     it("reports the outermost violated boundary once for an outsider", () => {
       const g = graph(nodes, [

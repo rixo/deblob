@@ -872,7 +872,7 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
-]
+] as const
 
 describe("assembly", () => {
   test.each(ROWS)("$name", async (row) => {

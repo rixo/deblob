@@ -815,7 +815,7 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
-]
+] as const
 
 describe("driver", () => {
   test.each(ROWS)("$name", async (row) => {

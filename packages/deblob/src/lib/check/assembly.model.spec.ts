@@ -42,7 +42,7 @@ const READING: FileReading = {
   functions: [],
   open: [],
   driverValues: [],
-}
+} as const
 
 const graphOf = (reading: FileReading | null): ImportGraph =>
   ({

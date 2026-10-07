@@ -172,7 +172,7 @@ export const AS_MARKED: VerdictMatch = {
   missing: [],
   unexpected: [],
   unexpectedPasses: [],
-}
+} as const
 
 /** Anything a reader would take for a marker, well-formed or not. */
 const LOOKS_LIKE_MARKER =

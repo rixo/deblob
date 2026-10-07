@@ -543,7 +543,7 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
-]
+] as const
 
 describe("reader receiving", () => {
   test.each(ROWS)("$name", async (row) => {

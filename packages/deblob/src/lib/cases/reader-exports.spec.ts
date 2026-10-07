@@ -149,7 +149,7 @@ const ROWS: readonly Row[] = [
       export const GET = (event: unknown) => tool.get(event) // red: wiring-outside-hooks -- a use case outside any hook
     `),
   },
-]
+] as const
 
 describe("reader exports", () => {
   test.each(ROWS)("$name", async (row) => {

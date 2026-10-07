@@ -57,13 +57,13 @@ export const NO_COLORS: Colors = {
   strong: (text) => text,
   dim: (text) => text,
   accent: (text) => text,
-}
+} as const
 
 export const ANSI_COLORS: Colors = {
   strong: (text) => `\u001b[1m${text}\u001b[22m`,
   dim: (text) => `\u001b[2m${text}\u001b[22m`,
   accent: (text) => `\u001b[36m${text}\u001b[39m`,
-}
+} as const
 
 /** `1872` → `1,872` — fixed grouping, never locale-dependent. */
 const formatCount = (count: number): string =>

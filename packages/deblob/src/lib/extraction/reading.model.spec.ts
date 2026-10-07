@@ -89,7 +89,7 @@ const TARGETS: Readonly<Record<string, ImportTargetKind>> = {
     claim: "tech",
     layer: null,
   },
-}
+} as const
 
 const fs = createNodeFs()
 const engine = createOxcEngine({ fs })

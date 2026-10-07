@@ -43,7 +43,7 @@ const NO_SURFACE: SurfaceReport = {
   unverified: [],
   checked: 0,
   disclosed: 0,
-}
+} as const
 
 export const createJudge = ({
   coverage,

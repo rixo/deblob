@@ -180,7 +180,7 @@ const STATS: GraphStats = {
   services: 12,
   imports: 380,
   surface: null,
-}
+} as const
 
 describe("renderCheckResults", () => {
   it("counts the unknowns apart in the summary: a red the reader could not prove is still a violation, and says so", () => {

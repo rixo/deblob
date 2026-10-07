@@ -93,7 +93,7 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
-]
+] as const
 
 describe("reader hook object", () => {
   test.each(ROWS)("$name", async (row) => {

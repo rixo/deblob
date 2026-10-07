@@ -31,7 +31,7 @@ describe("snapshotFrom", () => {
     typeOnly: false,
     members: null,
     doc: "FAKE_DOC",
-  }
+  } as const
 
   const FAKE_GRAPH: ImportGraph = {
     root: "/FAKE_ROOT",
@@ -75,7 +75,7 @@ describe("snapshotFrom", () => {
       },
     ],
     broken: [],
-  }
+  } as const
 
   const FAKE_SIZES = [
     { path: "src/FAKE_A/a.model.ts", size: 100 },

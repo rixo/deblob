@@ -451,7 +451,7 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
-]
+] as const
 
 describe("reader hand-off", () => {
   test.each(ROWS)("$name", async (row) => {

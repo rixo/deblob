@@ -88,7 +88,7 @@ type CallVerdict =
       name: string | null
     }
 
-const GREEN: CallVerdict = { verdict: "green" }
+const GREEN: CallVerdict = { verdict: "green" } as const
 
 /**
  * What a root call reaches, judged. A factory call is the lane, not the crime —

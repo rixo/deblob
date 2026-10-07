@@ -462,7 +462,7 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
-]
+] as const
 
 describe("layers", () => {
   test.each(ROWS)("$name", async (row) => {

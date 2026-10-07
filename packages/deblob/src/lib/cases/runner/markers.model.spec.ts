@@ -572,8 +572,8 @@ describe("matchVerdicts", () => {
       slugs: ["stable-root"],
       riders: ["stable-root"],
       via: [],
-    }
-    const single: Reported = { ...grouped, riders: [] }
+    } as const
+    const single: Reported = { ...grouped, riders: [] } as const
 
     it("matches a group to the marker listing its lead and its riders", () => {
       expect(

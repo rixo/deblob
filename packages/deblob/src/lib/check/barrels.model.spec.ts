@@ -423,7 +423,7 @@ describe("checkBarrels", () => {
         layer: "service",
         serviceRoot: "invoice",
       },
-    }
+    } as const
 
     it("silences barrel-file", () => {
       const g = graph(nodes, [

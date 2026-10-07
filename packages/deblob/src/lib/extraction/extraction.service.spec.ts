@@ -55,7 +55,7 @@ const FIXTURE_READERS: ReaderGroups = {
   host: [createNodeReader()],
   test: [],
   driver: [],
-}
+} as const
 
 /** The reading fixture's driver tech: a parser no stock reader knows. */
 const PARSER: DriverReader = {
@@ -1031,7 +1031,7 @@ describe("the reading on the graph — the reading fixture", () => {
     ...FIXTURE_READERS,
     test: [createGoodEnoughTestsReader()],
     driver: [PARSER, driverOver(["**/+page.svelte"])],
-  }
+  } as const
 
   const extractReading = (
     readers: Partial<ReaderGroups> = {},

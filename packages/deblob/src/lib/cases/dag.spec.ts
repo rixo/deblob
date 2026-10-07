@@ -37,7 +37,7 @@ const ROWS: readonly Row[] = [
     },
     checks: ["dag"],
   },
-]
+] as const
 
 describe("dag", () => {
   test.each(ROWS)("$name", async (row) => {
