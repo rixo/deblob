@@ -1,16 +1,22 @@
 ---
 name: deblob-review
 description:
-  Use when about to report a task complete, hand a checkpoint back for review,
-  or claim tests pass in a repository following deblob conventions
-  (layer-suffixed files, history/ chapters, quintet commit bodies).
+  Use only when the user asks for a review of a named topic — "review the tests
+  of this change", "review how this handles failure" — in a repository following
+  deblob conventions (layer-suffixed files, history/ chapters, quintet commit
+  bodies). Not a pass to run before every handback or whenever tests pass.
 ---
 
-# deblob-review — the pre-checkpoint pass
+# deblob-review — a review on demand, by topic
 
-Run this pass before every checkpoint handback — not after the user asks: by
-then they are doing the QA this pass exists to replace. Tests green is not done.
-Tools see structure; the defects that survive are the judgment class —
+> **Draft, being recut (2026-10-07).** This skill is a review asked for, on one
+> named topic at a time. The checklist below was written as a pass to run before
+> every checkpoint; it is kept as raw material until it is recut by topic, and
+> must not be run as a routine.
+
+Written as: run this pass before every checkpoint handback — not after the user
+asks: by then they are doing the QA this pass exists to replace. Tests green is
+not done. Tools see structure; the defects that survive are the judgment class —
 enumerated below because "think harder" doesn't work and a list does.
 
 ## The pass — run each question against the diff
