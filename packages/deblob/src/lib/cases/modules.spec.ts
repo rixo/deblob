@@ -1060,7 +1060,7 @@ const ROOT_CALLS: readonly Row[] = [
       `,
     },
   },
-]
+] as const
 
 const READONLY_BINDINGS: readonly Row[] = [
   {
@@ -1393,7 +1393,7 @@ const READONLY_BINDINGS: readonly Row[] = [
     },
     config: { mutableModuleState: true },
   },
-]
+] as const
 
 const ROOT_STATEMENTS: readonly Row[] = [
   {
@@ -1504,7 +1504,7 @@ const ROOT_STATEMENTS: readonly Row[] = [
       `,
     },
   },
-]
+] as const
 
 /**
  * Inlining and lexical scope, as the program's own behavior. A tracked local's
@@ -1538,7 +1538,7 @@ const INLINED_SCOPE: readonly Row[] = [
       `,
     },
   },
-]
+] as const
 
 /**
  * Type-name following (SPEC 04/01_type-names). canon: "proof being a primitive
@@ -1549,8 +1549,9 @@ const INLINED_SCOPE: readonly Row[] = [
  * TypeScript resolves it, and stands for the declaration it lands on; the
  * verdict is the one that declaration's type would get written out in place.
  * One row per kind of declaration a name can land on, then the step's boundary,
- * the cycle, and a tripwire for the forms no row lists. Type names are not
- * followed yet: every row here is a confession.
+ * the cycle, and a tripwire for the forms no row lists. Written as confessions
+ * on 2026-09-23, proven since the reader follows a name the project declares
+ * (2026-10-07); the boundary row still confesses what the step leaves out.
  */
 const TYPE_NAMES: readonly Row[] = [
   {
@@ -1559,12 +1560,11 @@ const TYPE_NAMES: readonly Row[] = [
       "src/tables.model.ts": `
         type Table = Readonly<{ a: number }>
         type Loose = { a: number }
-        export const TABLE: Table = { a: 1 } // false unknown: stable-root -- type names are not followed yet
-        export const WRAPPED: Readonly<Table> = { a: 1 } // false unknown: stable-root -- type names are not followed yet
-        export const MAP_OF_PROVEN: ReadonlyMap<string, Table> = new Map() // false unknown: stable-root -- type names are not followed yet
-        // false unknown: stable-root -- type names are not followed yet
+        export const TABLE: Table = { a: 1 }
+        export const WRAPPED: Readonly<Table> = { a: 1 }
+        export const WRAPPED_LOOSE: Readonly<(Loose)> = { a: 1 }
+        export const MAP_OF_PROVEN: ReadonlyMap<string, Table> = new Map()
         export const LOOSE: Loose = { a: 1 } // red: stable-root -- the alias names a mutable record
-        // false unknown: stable-root -- type names are not followed yet
         export const LOOSE_IN_LIST: readonly Loose[] = [] // red: stable-root -- a readonly list of mutable records
       `,
     },
@@ -1575,11 +1575,11 @@ const TYPE_NAMES: readonly Row[] = [
       "src/boxes.model.ts": `
         type Frozen<T> = Readonly<T>
         type Boxed<T = number> = { readonly value: T }
-        export const FROZEN: Frozen<{ a: number }> = { a: 1 } // false unknown: stable-root -- type names are not followed yet
-        // false unknown: stable-root -- type names are not followed yet
+        type Held<T> = { readonly value: T }
+        export const FROZEN: Frozen<{ a: number }> = { a: 1 }
         export const FROZEN_OUTER: Frozen<{ inner: { n: number } }> = { inner: { n: 1 } } // red: stable-root -- Readonly is one level, the substituted inner record is mutable
-        export const BOXED: Boxed = { value: 1 } // false unknown: stable-root -- type names are not followed yet
-        // false unknown: stable-root -- type names are not followed yet
+        export const BOXED: Boxed = { value: 1 }
+        export const HELD: Held = { value: 1 } // broken -- Held without its type arguments: no argument and no default
         export const BOXED_RECORD: Boxed<{ n: number }> = { value: { n: 1 } } // red: stable-root -- the argument is a mutable record
       `,
     },
@@ -1599,15 +1599,12 @@ const TYPE_NAMES: readonly Row[] = [
         interface Derived extends Base { readonly m: number }
         interface ReadonlyBase { readonly n: number }
         interface Extended extends ReadonlyBase { readonly m: number }
-        export const ORIGIN: Point = { x: 0, y: 0 } // false unknown: stable-root -- type names are not followed yet
-        // false unknown: stable-root -- type names are not followed yet
+        export const ORIGIN: Point = { x: 0, y: 0 }
         export const LOOSE: Loose = { x: 0, y: 0 } // red: stable-root -- y is not readonly
-        export const WRAPPED_LOOSE: Readonly<Loose> = { x: 0, y: 0 } // false unknown: stable-root -- type names are not followed yet
-        // false unknown: stable-root -- type names are not followed yet
+        export const WRAPPED_LOOSE: Readonly<Loose> = { x: 0, y: 0 }
         export const MERGED: Merged = { a: 1, b: 2 } // red: stable-root -- the second declaration adds a mutable member
-        // false unknown: stable-root -- type names are not followed yet
         export const DERIVED: Derived = { n: 1, m: 2 } // red: stable-root -- n, inherited, is mutable
-        export const EXTENDED: Extended = { n: 1, m: 2 } // false unknown: stable-root -- type names are not followed yet
+        export const EXTENDED: Extended = { n: 1, m: 2 }
       `,
     },
   },
@@ -1616,7 +1613,7 @@ const TYPE_NAMES: readonly Row[] = [
     files: {
       "src/colors.model.ts": `
         enum Color { Red, Green }
-        export const DEFAULT_COLOR: Color = Color.Red // false unknown: stable-root -- type names are not followed yet
+        export const DEFAULT_COLOR: Color = Color.Red
       `,
     },
   },
@@ -1640,11 +1637,10 @@ const TYPE_NAMES: readonly Row[] = [
         import type { Table, Loose } from "./shapes.model.ts"
         import { type Point } from "./everything.model.ts"
         import type { Table as Relayed } from "./relay.model.ts"
-        export const TABLE: Table = { a: 1 } // false unknown: stable-root -- type names are not followed yet
-        // false unknown: stable-root -- type names are not followed yet
+        export const TABLE: Table = { a: 1 }
         export const LOOSE: Loose = { a: 1 } // red: stable-root -- the imported alias names a mutable record
-        export const POINT: Point = { x: 0 } // false unknown: stable-root -- type names are not followed yet
-        export const RELAYED: Relayed = { a: 1 } // false unknown: stable-root -- type names are not followed yet
+        export const POINT: Point = { x: 0 }
+        export const RELAYED: Relayed = { a: 1 }
       `,
     },
   },
@@ -1655,7 +1651,7 @@ const TYPE_NAMES: readonly Row[] = [
     files: {
       "src/shadow.model.ts": `
         type Readonly<T> = T
-        export const SHADOWED: Readonly<{ a: number }> = { a: 1 } // missed red: stable-root -- this Readonly is the local one, which keeps the record as it is; type names are not followed yet
+        export const SHADOWED: Readonly<{ a: number }> = { a: 1 } // red: stable-root -- this Readonly is the local one, which keeps the record as it is
       `,
     },
   },
@@ -1677,6 +1673,7 @@ const TYPE_NAMES: readonly Row[] = [
       `,
       "src/shapes.model.ts": `
         export type Table = Readonly<{ a: number }>
+        export interface Base { readonly n: number }
       `,
       "src/boundary.model.ts": `
         import type * as shapes from "./shapes.model.ts"
@@ -1684,11 +1681,91 @@ const TYPE_NAMES: readonly Row[] = [
         class Spot { readonly x = 1 }
         const BASE = { a: 1 } as const
         type Mapped = { readonly [K in "a"]: number }
+        interface FromNamespace extends shapes.Base { readonly m: number }
+        interface FromPackage extends SomeMadeUpType { readonly m: number }
+        export const EXTENDS_QUALIFIED: FromNamespace = { n: 1, m: 2 } // false unknown: stable-root -- qualified names are not followed yet
+        export const EXTENDS_PACKAGED: FromPackage = { a: 1, m: 2 } // false unknown: stable-root -- a package's types are the next step
+        export const WRAPPED_QUALIFIED: Readonly<shapes.Table> = { a: 1 } // false unknown: stable-root -- qualified names are not followed yet
+        export const WRAPPED_UNION: Readonly<{ readonly a: number } | null> = null
         export const SPOT: Spot = new Spot() // false unknown: stable-root -- class types are not followed yet
         export const COPY: typeof BASE = { a: 1 } // false unknown: stable-root -- typeof is not followed yet
         export const QUALIFIED: shapes.Table = { a: 1 } // false unknown: stable-root -- qualified names are not followed yet
         export const MAPPED: Mapped = { a: 1 } // false unknown: stable-root -- mapped types are not read yet
         export const PACKAGED: SomeMadeUpType = { a: 1 } // false unknown: stable-root -- a package's types are the next step
+      `,
+    },
+  },
+  {
+    // Ruled by rixo, 2026-10-07: a name the project's own files pass on and
+    // that lands on no declaration is broken, as a line that does not compile
+    // is ("fixing the code would reveal the true verdict, so it's not
+    // unknown. ofc not red or green either") — the uses of a type from a file
+    // that does not parse included. Unknown is kept for what a better reader
+    // would follow: a name a package may hold.
+    name: "a name the project's files pass on to no declaration is broken: from a file that does not parse, through a re-export loop, exported by nobody; a name a package may hold stays unknown",
+    files: {
+      "node_modules/some-made-up-package/package.json": JSON.stringify({
+        name: "some-made-up-package",
+        main: "./index.js",
+      }),
+      "node_modules/some-made-up-package/index.js": "module.exports = {}",
+      "src/loop-a.model.ts": `
+        export type { Lost } from "./loop-b.model.ts"
+      `,
+      "src/loop-b.model.ts": `
+        export type { Lost } from "./loop-a.model.ts"
+      `,
+      "src/unparsed.model.ts": `
+        export type Gone = {
+        // broken -- the file does not parse
+      `,
+      "src/through-unparsed.model.ts": `
+        export * from "./unparsed.model.ts"
+      `,
+      "src/shapes.model.ts": `
+        export type Table = Readonly<{ a: number }>
+      `,
+      "src/closed.model.ts": `
+        import * as shapes from "./shapes.model.ts"
+        export type { Gone as Relayed } from "./unparsed.model.ts"
+        export * from "./loop-a.model.ts"
+        export const LIMIT = 1
+        export function createTable() { return 1 }
+        export const Shape = 1
+        export type Shape = Readonly<{ a: number }>
+        export type Other = Readonly<{ a: number }>
+        export const Other = 1
+        export import Aliased = shapes.Table // false unknown: stable-root -- an import alias names a type, it binds no state; the reader takes it for a binding it cannot read
+      `,
+      "src/open.model.ts": `
+        export type { SomeMadeUpType as Packaged } from "some-made-up-package"
+        export type * from "some-made-up-package"
+        export * as loops from "./loop-b.model.ts"
+      `,
+      "src/through-open.model.ts": `
+        export * from "./open.model.ts"
+      `,
+      "src/uses.model.ts": `
+        import type { Lost } from "./loop-a.model.ts"
+        import type { Gone } from "./unparsed.model.ts"
+        import type { Hidden } from "./through-unparsed.model.ts"
+        import type { Missing, Relayed, Aliased } from "./closed.model.ts"
+        import type { LIMIT, createTable, Shape, Other } from "./closed.model.ts"
+        import type { Packaged, Unlisted } from "./open.model.ts"
+        import type { Unlisted as Passed } from "./through-open.model.ts"
+        export const GONE: Gone = { a: 1 } // broken -- declared in a file that does not parse
+        export const RELAYED: Relayed = { a: 1 } // broken -- relayed from a file that does not parse
+        export const HIDDEN: Hidden = { a: 1 } // broken -- the file that would export it does not parse
+        export const LOST: Lost = { a: 1 } // broken -- the re-exports come back to themselves
+        export const MISSING: Missing = { a: 1 } // broken -- no file on the way exports the name
+        export const VALUE: LIMIT = 1 // broken -- a constant used as a type
+        export const MADE: createTable = 1 // broken -- a function used as a type
+        export const SHAPE: Shape = { a: 1 }
+        export const OTHER: Other = { a: 1 }
+        export const PACKAGED: Packaged = { a: 1 } // false unknown: stable-root -- a package's types are the next step
+        export const UNLISTED: Unlisted = { a: 1 } // false unknown: stable-root -- the file re-exports all of a package, which may hold the name: a package's types are the next step
+        export const ALIASED: Aliased = { a: 1 } // false unknown: stable-root -- an import alias is not followed yet
+        export const PASSED: Passed = { a: 1 } // false unknown: stable-root -- passed on by a file that re-exports all of one that re-exports all of a package
       `,
     },
   },
@@ -1700,8 +1777,7 @@ const TYPE_NAMES: readonly Row[] = [
       "src/lists.model.ts": `
         type List = { readonly head: number; readonly next: List | null }
         type Link = { readonly next: Link | null; value: number }
-        export const EMPTY: List = { head: 0, next: null } // false unknown: stable-root -- type names are not followed yet
-        // false unknown: stable-root -- type names are not followed yet
+        export const EMPTY: List = { head: 0, next: null }
         export const LONE: Link = { next: null, value: 0 } // red: stable-root -- value is not readonly
       `,
     },
@@ -1721,11 +1797,11 @@ const TYPE_NAMES: readonly Row[] = [
       `,
       "src/uses.model.ts": `
         import type { Sheet } from "./middle.model.ts"
-        export const SHEET: Sheet = { a: 1 } // false unknown: stable-root -- type names are not followed yet
+        export const SHEET: Sheet = { a: 1 }
       `,
     },
   },
-]
+] as const
 
 describe("modules", () => {
   describe("an inlined body reads the scope it was written in", () => {
@@ -1755,7 +1831,7 @@ describe("modules", () => {
     })
   })
 
-  describe("a type name stands for what it names — not followed yet, every row confessed", () => {
+  describe("a type name stands for what it names", () => {
     test.each(TYPE_NAMES)("$name", async (row) => {
       const { judge } = assembleCase(row.files)
       const { expectedFailures, ...match } = await judge(row)
