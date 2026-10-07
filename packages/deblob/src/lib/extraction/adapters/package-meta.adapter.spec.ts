@@ -2,17 +2,12 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
-import { afterAll, describe, expect, it } from "vitest"
+import { describe, expect, it, onTestFinished } from "vitest"
 
 import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
 import type { Resolution } from "../ports/resolver.port.ts"
 import { classifyStockEntry } from "../stock-flavor.model.ts"
 import { createPackageMetaReader } from "./package-meta.adapter.ts"
-
-const roots: string[] = []
-afterAll(() =>
-  Promise.all(roots.map((root) => rm(root, { recursive: true, force: true }))),
-)
 
 /**
  * An on-disk fake package tree plus a resolver stub mapping specifiers to files
@@ -26,7 +21,7 @@ const workspace = async (
   resolvedCount: () => number
 }> => {
   const root = await mkdtemp(join(tmpdir(), "deblob-meta-"))
-  roots.push(root)
+  onTestFinished(() => rm(root, { recursive: true, force: true }))
   for (const [path, content] of Object.entries(files)) {
     await mkdir(dirname(join(root, path)), { recursive: true })
     await writeFile(join(root, path), content)
@@ -54,7 +49,7 @@ const workspace = async (
   return { layerOf: reader.layerOf, resolvedCount: () => resolved }
 }
 
-const AWARE = JSON.stringify({
+const AWARE: string = JSON.stringify({
   name: "@made-up/billing",
   deblob: {},
   exports: { ".": "./src/index.ts", "./*": "./src/*.ts" },

@@ -14,13 +14,8 @@ import { overlayLocalConfig, resolveConfig } from "../config.service.ts"
 import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
 import { createConfigLoader, importConfigDefault } from "./loader.adapter.ts"
 
-const {
-  configAt,
-  discoverConfig,
-  explicitConfigPath,
-  readPackageName,
-  readPackageSurface,
-} = createConfigLoader({ fs: createNodeFs() })
+/** The loader over the disk, built by each test that uses it. */
+const loader = () => createConfigLoader({ fs: createNodeFs() })
 
 const fixture = (name: string): string =>
   fileURLToPath(new URL(`../__fixtures__/${name}`, import.meta.url))
@@ -41,7 +36,7 @@ const READERS = { language: [], host: [], test: [], driver: [] } as const
 
 /** The assembly sequence (main's loadFor), composed here for the fixture cases. */
 const load = async (cwd: string) => {
-  const found = await discoverConfig(cwd)
+  const found = await loader().discoverConfig(cwd)
   if (found === null) {
     return resolveConfig(
       {},
@@ -75,6 +70,7 @@ const load = async (cwd: string) => {
 
 describe("discoverConfig", () => {
   it("finds the config in cwd — its directory is the root, no overlay beside it", async () => {
+    const { discoverConfig } = loader()
     expect(await discoverConfig(fixture("walk"))).toEqual({
       root: fixture("walk"),
       configPath: join(fixture("walk"), "deblob.config.ts"),
@@ -83,12 +79,14 @@ describe("discoverConfig", () => {
   })
 
   it("walks up to the nearest config — never past it", async () => {
+    const { discoverConfig } = loader()
     expect(
       (await discoverConfig(fixture("walk/nested/deeper")))?.configPath,
     ).toBe(join(fixture("walk/nested"), "deblob.config.ts"))
   })
 
   it("rejects two config files in one directory as ambiguity", async () => {
+    const { discoverConfig } = loader()
     await expect(discoverConfig(fixture("ambiguous"))).rejects.toThrowError(
       /deblob\.config\.ts and deblob\.config\.js/,
     )
@@ -97,6 +95,7 @@ describe("discoverConfig", () => {
 
 describe("configAt", () => {
   test("the config in that directory exactly — the ancestor's is not consulted", async () => {
+    const { configAt } = loader()
     expect((await configAt(fixture("walk/nested")))?.configPath).toBe(
       fixture("walk/nested/deblob.config.ts"),
     )
@@ -104,6 +103,7 @@ describe("configAt", () => {
   })
 
   test("two config files in one directory is ambiguity here too", async () => {
+    const { configAt } = loader()
     await expect(configAt(fixture("ambiguous"))).rejects.toThrowError(
       "keep exactly one deblob config per directory",
     )
@@ -112,6 +112,7 @@ describe("configAt", () => {
 
 describe("explicitConfigPath", () => {
   it("resolves a relative path from cwd, absolute passed through", async () => {
+    const { explicitConfigPath } = loader()
     const absolute = join(fixture("walk"), "deblob.config.ts")
     const expected = {
       root: fixture("walk"),
@@ -127,6 +128,7 @@ describe("explicitConfigPath", () => {
   })
 
   it("throws a teaching error on a missing explicit path, never a silent fallback", async () => {
+    const { explicitConfigPath } = loader()
     await expect(
       explicitConfigPath(fixture("walk"), "SOME_MADE_UP_PATH.config.ts"),
     ).rejects.toThrowError(/SOME_MADE_UP_PATH.*does not exist/s)
@@ -156,6 +158,7 @@ describe("the local overlay — deblob.local.ts beside the config", () => {
     `export default ${JSON.stringify(value)}\n`
 
   test("discovery reports both files; the merged value resolves, local winning per key", async () => {
+    const { discoverConfig } = loader()
     const root = await makeRoot({
       "deblob.config.ts": CONFIG,
       "deblob.local.ts": local({
@@ -178,6 +181,7 @@ describe("the local overlay — deblob.local.ts beside the config", () => {
   })
 
   test("the config's four extensions: a .mjs overlay is found as a .ts one is", async () => {
+    const { discoverConfig } = loader()
     const root = await makeRoot({
       "deblob.config.ts": CONFIG,
       "deblob.local.mjs": local({ pure: ["FAKE_MJS_LOCAL_LIB"] }),
@@ -189,6 +193,7 @@ describe("the local overlay — deblob.local.ts beside the config", () => {
   })
 
   test("a lone local file is a configless project with an overlay — found, never ignored", async () => {
+    const { discoverConfig } = loader()
     const root = await makeRoot({
       "deblob.local.ts": local({ view: { projects: ["FAKE_PKG"] } }),
     })
@@ -203,6 +208,7 @@ describe("the local overlay — deblob.local.ts beside the config", () => {
   })
 
   test("the walk stops at the lone local file, never past it to an ancestor config", async () => {
+    const { discoverConfig } = loader()
     const root = await makeRoot({ "deblob.config.ts": CONFIG })
     const nested = join(root, "nested")
     await mkdir(nested)
@@ -211,6 +217,7 @@ describe("the local overlay — deblob.local.ts beside the config", () => {
   })
 
   test("a deblob.local.json is not an overlay — the walk passes it", async () => {
+    const { discoverConfig } = loader()
     const root = await makeRoot({ "deblob.config.ts": CONFIG })
     const nested = join(root, "nested")
     await mkdir(nested)
@@ -223,6 +230,7 @@ describe("the local overlay — deblob.local.ts beside the config", () => {
   })
 
   test("two local files in one directory is ambiguity, both named", async () => {
+    const { discoverConfig } = loader()
     const root = await makeRoot({
       "deblob.local.ts": local({}),
       "deblob.local.mjs": local({}),
@@ -233,6 +241,7 @@ describe("the local overlay — deblob.local.ts beside the config", () => {
   })
 
   test("-c finds the overlay beside the explicit config", async () => {
+    const { explicitConfigPath } = loader()
     const root = await makeRoot({
       "deblob.config.ts": CONFIG,
       "deblob.local.ts": local({}),
@@ -452,6 +461,7 @@ describe("readPackageSurface", () => {
   )
 
   it("readPackageName: the manifest's string name, else null", async () => {
+    const { readPackageName } = loader()
     expect(await readPackageName(await rootWith())).toBeNull()
     expect(await readPackageName(await rootWith(JSON.stringify({})))).toBeNull()
     expect(
@@ -470,10 +480,12 @@ describe("readPackageSurface", () => {
   })
 
   it("yields null without a package.json — no claim, no check", async () => {
+    const { readPackageSurface } = loader()
     expect(await readPackageSurface(await rootWith())).toBeNull()
   })
 
   it("yields null without a deblob field — declaring is opting in", async () => {
+    const { readPackageSurface } = loader()
     const root = await rootWith(
       JSON.stringify({ name: "made-up", exports: "./src/x.service.ts" }),
     )
@@ -481,6 +493,7 @@ describe("readPackageSurface", () => {
   })
 
   it("flattens a dot-keyed exports map to subpath → targets", async () => {
+    const { readPackageSurface } = loader()
     const root = await rootWith(
       JSON.stringify({
         name: "made-up",
@@ -511,6 +524,7 @@ describe("readPackageSurface", () => {
   })
 
   it("reads a string exports and a bare conditions object as the root entry", async () => {
+    const { readPackageSurface } = loader()
     const asString = await rootWith(
       JSON.stringify({ name: "m", deblob: {}, exports: "./src/index.ts" }),
     )
@@ -536,6 +550,7 @@ describe("readPackageSurface", () => {
   })
 
   it("accepts a target without ./ as-is; yields no entries for a scalar exports", async () => {
+    const { readPackageSurface } = loader()
     const bare = await rootWith(
       JSON.stringify({ name: "m", deblob: {}, exports: "src/index.ts" }),
     )
@@ -555,6 +570,7 @@ describe("readPackageSurface", () => {
   })
 
   it("rejects a field without an exports map — the map is the surface the field claims; main is not one", async () => {
+    const { readPackageSurface } = loader()
     for (const manifest of [
       { name: "m", deblob: {} },
       { name: "m", deblob: {}, exports: null },
@@ -568,11 +584,13 @@ describe("readPackageSurface", () => {
   })
 
   it("treats a non-object manifest as empty — a scalar package.json claims nothing", async () => {
+    const { readPackageSurface } = loader()
     const root = await rootWith("42")
     expect(await readPackageSurface(root)).toBeNull()
   })
 
   it("rejects a non-object field — presence is the claim, as {}", async () => {
+    const { readPackageSurface } = loader()
     for (const field of ["stock", true, ["x"]]) {
       const root = await rootWith(JSON.stringify({ name: "m", deblob: field }))
       await expect(readPackageSurface(root)).rejects.toThrowError(
@@ -582,6 +600,7 @@ describe("readPackageSurface", () => {
   })
 
   it("rejects keys this version cannot honor — load-bearing at home, loud, never silent", async () => {
+    const { readPackageSurface } = loader()
     const root = await rootWith(
       JSON.stringify({ name: "m", deblob: { flavor: "SOME_MADE_UP_FLAVOR" } }),
     )
@@ -591,6 +610,7 @@ describe("readPackageSurface", () => {
   })
 
   it("reads the blob carve-outs — subpath patterns, as written", async () => {
+    const { readPackageSurface } = loader()
     const root = await rootWith(
       JSON.stringify({
         name: "m",
@@ -606,6 +626,7 @@ describe("readPackageSurface", () => {
   })
 
   it("rejects a malformed blob loudly at home — naming the offending value", async () => {
+    const { readPackageSurface } = loader()
     for (const [blob, offending] of [
       ["./x", '"./x"'],
       [["./ok", "legacy"], '"legacy"'],
@@ -628,6 +649,7 @@ describe("readPackageSurface", () => {
   })
 
   it("reads the assembly designations — the same pattern grammar, its own list", async () => {
+    const { readPackageSurface } = loader()
     const root = await rootWith(
       JSON.stringify({
         name: "m",
@@ -643,6 +665,7 @@ describe("readPackageSurface", () => {
   })
 
   it("rejects a malformed assembly list loudly at home — the message names the key", async () => {
+    const { readPackageSurface } = loader()
     const root = await rootWith(
       JSON.stringify({
         name: "m",
@@ -656,6 +679,7 @@ describe("readPackageSurface", () => {
   })
 
   it("rejects an unparseable own manifest loudly — home is not a stranger", async () => {
+    const { readPackageSurface } = loader()
     const root = await rootWith("{ not json")
     await expect(readPackageSurface(root)).rejects.toThrowError(ConfigError)
   })

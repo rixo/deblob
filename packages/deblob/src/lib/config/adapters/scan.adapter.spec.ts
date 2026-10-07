@@ -14,11 +14,10 @@ import { createMemoryFs } from "../../fs/adapters/memory-fs.adapter.ts"
 import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
 import { createCoverageScan } from "./scan.adapter.ts"
 
-const { scanCoverage, scanCoverageDirs, statSizes } = createCoverageScan({
-  fs: createNodeFs(),
-})
+/** The scan over the disk, built by each test that uses it. */
+const onDisk = () => createCoverageScan({ fs: createNodeFs() })
 
-const root = fileURLToPath(
+const root: string = fileURLToPath(
   new URL("../__fixtures__/scan-tree", import.meta.url),
 )
 
@@ -29,7 +28,7 @@ const scan = (
     covers: (path: string) => boolean
   }> = {},
 ) =>
-  scanCoverage({
+  onDisk().scanCoverage({
     root,
     include: overrides.include ?? [...DEFAULT_INCLUDE],
     exclude: [...EXCLUDE_BASELINE, ...(overrides.exclude ?? [])],
@@ -81,7 +80,7 @@ describe("scanCoverageDirs", () => {
   const dirsOf = (
     overrides: Partial<{ include: string[]; exclude: string[] }> = {},
   ) =>
-    scanCoverageDirs({
+    onDisk().scanCoverageDirs({
       root,
       include: overrides.include ?? [...DEFAULT_INCLUDE],
       exclude: [...EXCLUDE_BASELINE, ...(overrides.exclude ?? [])],
@@ -98,6 +97,7 @@ describe("scanCoverageDirs", () => {
   })
 
   test("a directory with no covered file yet is listed — nested, or empty", async () => {
+    const { scanCoverageDirs } = onDisk()
     const temp = await mkdtemp(join(tmpdir(), "deblob-scan-dirs-"))
     try {
       await mkdir(join(temp, "src", "FAKE_EMPTY"), { recursive: true })
@@ -118,6 +118,7 @@ describe("scanCoverageDirs", () => {
 
 describe("statSizes", () => {
   it("returns the byte size per covered file, paths preserved", async () => {
+    const { statSizes } = onDisk()
     const files = await scan({ include: ["src/**"] })
     const sizes = await statSizes(root, files)
     expect(sizes.map((entry) => entry.path)).toEqual([...files])

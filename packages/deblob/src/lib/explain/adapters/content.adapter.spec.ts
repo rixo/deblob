@@ -5,14 +5,16 @@ import { createMemoryFs } from "../../fs/adapters/memory-fs.adapter.ts"
 import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
 import { createContentReader } from "./content.adapter.ts"
 
-const { readExplainEntries } = createContentReader({ fs: createNodeFs() })
+/** The reader over the disk, built by each test that uses it. */
+const onDisk = () => createContentReader({ fs: createNodeFs() })
 
-const contentRoot = fileURLToPath(
+const contentRoot: string = fileURLToPath(
   new URL("../__fixtures__/content", import.meta.url),
 )
 
 describe("readExplainEntries", () => {
   it("assembles rule entries from the shipped summary and cards, URLs pinned to the given version", async () => {
+    const { readExplainEntries } = onDisk()
     const entries = await readExplainEntries({
       contentRoot,
       rules: ["service-purity", "private-sealed"],
@@ -51,6 +53,7 @@ describe("readExplainEntries", () => {
   })
 
   it("throws loudly when the summary lacks the rule", async () => {
+    const { readExplainEntries } = onDisk()
     await expect(
       readExplainEntries({
         contentRoot,

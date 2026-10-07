@@ -37,8 +37,6 @@ const EMPTY_PROGRAM = {
   end: 0,
 } as unknown as import("@oxc-project/types").Program
 
-const fs = createNodeFs()
-
 const fixtureRoot = (name: string) =>
   fileURLToPath(new URL(`./__fixtures__/${name}/`, import.meta.url))
 
@@ -89,7 +87,7 @@ const extractFixture = ({
 } & Designations): Promise<ImportGraph> => {
   const root = fixtureRoot(fixture)
   const extraction = createExtraction({
-    engine: createOxcEngine({ fs }),
+    engine: createOxcEngine({ fs: createNodeFs() }),
     resolvers: resolversOf(
       createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
     ),
@@ -688,7 +686,7 @@ describe("extractGraph over the resolution fixture", () => {
   it("resolves a config alias to the in-set module — bundler-only aliases teach the resolver", async () => {
     const root = fixtureRoot("resolution")
     const extraction = createExtraction({
-      engine: createOxcEngine({ fs }),
+      engine: createOxcEngine({ fs: createNodeFs() }),
       resolvers: resolversOf(
         createOxcResolver({
           alias: { "some-made-up-alias": [`${root}src/app`] },
@@ -885,7 +883,7 @@ describe("extractGraph failure modes", () => {
 
   it("throws when the flavor breaks its totality contract", async () => {
     const extraction = createExtraction({
-      engine: createOxcEngine({ fs }),
+      engine: createOxcEngine({ fs: createNodeFs() }),
       resolvers: resolversOf(createOxcResolver()),
     })
     await expect(
@@ -1043,7 +1041,7 @@ describe("the reading on the graph — the reading fixture", () => {
   ) => {
     const root = fixtureRoot("reading")
     const extraction = createExtraction({
-      engine: createOxcEngine({ fs }),
+      engine: createOxcEngine({ fs: createNodeFs() }),
       resolvers: resolversOf(
         createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
       ),
@@ -1471,7 +1469,7 @@ describe("the reading on the graph — the reading fixture", () => {
   test("a sub-driver with one agreeing site: the parser is tech, the hook is cut, the use case traced through the record", async () => {
     const root = fixtureRoot("reading")
     const extraction = createExtraction({
-      engine: createOxcEngine({ fs }),
+      engine: createOxcEngine({ fs: createNodeFs() }),
       resolvers: resolversOf(
         createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
       ),
@@ -1514,7 +1512,7 @@ describe("the reading on the graph — the reading fixture", () => {
     const root = fixtureRoot("reading")
     const stock = createTsSuffixesFactoriesFlavor()
     const extraction = createExtraction({
-      engine: createOxcEngine({ fs }),
+      engine: createOxcEngine({ fs: createNodeFs() }),
       resolvers: resolversOf(
         createOxcResolver({ tsconfigPath: `${root}tsconfig.json` }),
       ),

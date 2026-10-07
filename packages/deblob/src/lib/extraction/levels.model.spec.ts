@@ -10,7 +10,9 @@ import { createTsSuffixesFactoriesFlavor } from "./ts-suffixes-factories-flavor.
 import { createExtraction } from "./extraction.service.ts"
 import { useCaseLevels } from "./levels.model.ts"
 
-const root = fileURLToPath(new URL("./__fixtures__/reading/", import.meta.url))
+const root: string = fileURLToPath(
+  new URL("./__fixtures__/reading/", import.meta.url),
+)
 
 const FILES = [
   "src/app/app.service.ts",

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
-import { afterAll, describe, expect, it } from "vitest"
+import { describe, expect, it, onTestFinished } from "vitest"
 
 import { createVitestTestingApi } from "../../test/adapters/vitest-testing-api.adapter.ts"
 import {
@@ -12,15 +12,10 @@ import {
 } from "../fs-test-suite.service.ts"
 import { createNodeFs } from "./node-fs.adapter.ts"
 
-const roots: string[] = []
-afterAll(() =>
-  Promise.all(roots.map((root) => rm(root, { recursive: true, force: true }))),
-)
-
 /** The tree on disk, in a temp dir removed after. */
 const onDisk = async (): Promise<string> => {
   const root = await mkdtemp(join(tmpdir(), "deblob-node-fs-"))
-  roots.push(root)
+  onTestFinished(() => rm(root, { recursive: true, force: true }))
   for (const [path, content] of Object.entries(FS_TREE)) {
     await mkdir(dirname(join(root, path)), { recursive: true })
     await writeFile(join(root, path), content)

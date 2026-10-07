@@ -13,7 +13,9 @@ import {
   ruleSummaryOf,
 } from "./rule-content.model.ts"
 
-const repoRoot = fileURLToPath(new URL("../../../../..", import.meta.url))
+const repoRoot: string = fileURLToPath(
+  new URL("../../../../..", import.meta.url),
+)
 
 const architectureMd = () =>
   readFileSync(join(repoRoot, "docs/architecture.md"), "utf8")

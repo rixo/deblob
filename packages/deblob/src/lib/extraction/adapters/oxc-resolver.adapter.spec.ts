@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
-import { afterAll, describe, expect, it } from "vitest"
+import { describe, expect, it, onTestFinished } from "vitest"
 
 import { createVitestTestingApi } from "../../test/adapters/vitest-testing-api.adapter.ts"
 import {
@@ -15,17 +15,12 @@ import {
   createTsconfigLocator,
 } from "./oxc-resolver.adapter.ts"
 
-const roots: string[] = []
-afterAll(() =>
-  Promise.all(roots.map((root) => rm(root, { recursive: true, force: true }))),
-)
-
 createResolverTestSuite({ api: createVitestTestingApi() }).run({
   name: "createOxcResolver",
   // the tree on disk: oxc-resolver reads nothing else
   make: async () => {
     const root = await mkdtemp(join(tmpdir(), "deblob-oxc-resolver-"))
-    roots.push(root)
+    onTestFinished(() => rm(root, { recursive: true, force: true }))
     for (const [path, content] of Object.entries(RESOLVER_TREE)) {
       await mkdir(dirname(join(root, path)), { recursive: true })
       await writeFile(join(root, path), content)
@@ -36,19 +31,12 @@ createResolverTestSuite({ api: createVitestTestingApi() }).run({
 
 describe("createTsconfigLocator", () => {
   const { tsconfigPathOf } = createTsconfigLocator({ fs: createNodeFs() })
-  const roots: string[] = []
   const makeRoot = async (withTsconfig: boolean): Promise<string> => {
     const root = await mkdtemp(join(tmpdir(), "deblob-tsconfig-"))
-    roots.push(root)
+    onTestFinished(() => rm(root, { recursive: true, force: true }))
     if (withTsconfig) await writeFile(join(root, "tsconfig.json"), "{}\n")
     return root
   }
-  afterAll(() =>
-    Promise.all(
-      roots.map((root) => rm(root, { recursive: true, force: true })),
-    ),
-  )
-
   it("discovers tsconfig.json at the root when undeclared", async () => {
     const root = await makeRoot(true)
     expect(await tsconfigPathOf({ root, tsconfig: undefined })).toBe(

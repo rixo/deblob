@@ -27,11 +27,13 @@ const here = (path: string): string =>
   fileURLToPath(new URL(path, import.meta.url))
 
 const packageRoot = here("../../..")
-const VERSION = (
-  JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")) as {
-    version: string
-  }
-).version
+/** The package's version, read by the test that needs it. */
+const readVersion = (): string =>
+  (
+    JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")) as {
+      version: string
+    }
+  ).version
 const violatingDir = here("__fixtures__/violating")
 const cleanDir = here("__fixtures__/clean")
 const brokenConfigDir = here("../../lib/config/__fixtures__/throws")
@@ -144,7 +146,7 @@ describe("registerCommands", () => {
     registerCommands(router, createCliAssembly(host))
     await router.run(["node", "deblob", "--version"])
     expect(host.exitCode).toBe(0)
-    expect(host.out).toBe(`deblob ${VERSION}\n`)
+    expect(host.out).toBe(`deblob ${readVersion()}\n`)
   })
 
   describe("usage errors — exit 2, teaching message on stderr", () => {
@@ -541,7 +543,7 @@ describe("registerCommands", () => {
       )
       expect(out).toContain("card: dependency-matrix")
       expect(out).toContain(
-        `https://github.com/rixo/deblob/blob/v${VERSION}/docs/architecture.md#service-purity`,
+        `https://github.com/rixo/deblob/blob/v${readVersion()}/docs/architecture.md#service-purity`,
       )
     })
 
