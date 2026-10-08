@@ -273,15 +273,22 @@ export type ModulesViolation = {
        * side effects; or a call the reader cannot place, `reaches` then `null`
        * and `unknown` set. `name` is what it is called when the call names it;
        * for `export`, an import the layer rules forbid, the file's path.
+       * `registration`: a call that registers into the runner, at the root of a
+       * suite — made when a test file imports the suite, not when it calls it.
+       * `discarded`: a call to an export of a service or an assembly that keeps
+       * nothing of what it returns — no factory call, a call made for what it
+       * does.
        */
       shape: "root-call"
       reaches:
         | "tech"
         | "use-case"
         | "function"
+        | "discarded"
         | "export"
         | "wiring"
         | "unclaimed"
+        | "registration"
         | null
       name: string | null
     }

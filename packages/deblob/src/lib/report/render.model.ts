@@ -152,7 +152,9 @@ const outsideImportWords = (
     case "driver-not-imported":
       return "a driver is imported by a boot or another driver only, type imports included; a boot starts it, a driver wires it as its sub-driver"
     case "test-is-outside":
-      return "nothing imports a test file; what it shares moves out of it"
+      return importerLayer === "test"
+        ? "importing a test file registers its tests from here, by an import; tests to share move into a suite, which registers when it is called"
+        : "only a test file imports test code: the test runner stays out of the program; what it shares moves out of it"
     case "boot-one-call":
       return importerLayer === "boot"
         ? "a boot imports its one driver and nothing else; the driver imports what it needs"
@@ -293,6 +295,8 @@ const messageOf = (violation: FileViolation, prefix: string): string => {
       if (violation.shape === "root-call") {
         if (violation.reaches === null)
           return `line ${violation.line} may run ${runs}${via} — unknown: ${unknownWords({ kind: "callee" })}; ${intoCode}`
+        if (violation.reaches === "registration")
+          return `line ${violation.line} registers on import — a suite registers when a test file calls its wiring function, not when one imports it; move it inside the wiring function`
         return `line ${violation.line} runs ${runs}${via} — ${reachWords(violation.reaches, violation.name)}, presumed to act; ${intoCode}`
       }
       if (violation.unknown !== null)
@@ -555,7 +559,7 @@ const assemblyMessage = (violation: AssemblyViolation): string => {
     case "root-statement":
       return `${line} runs at the assembly's root — nothing sits there but imports; move it inside the assembly function`
     case "adapter-returned":
-      return `${line} returns ${violation.key === null ? "an adapter" : `the adapter ${violation.key}`} to a caller that is not a test — an assembly returns services; return services only, a test factory returns the adapters`
+      return `${line} returns ${violation.key === null ? "an adapter" : `the adapter ${violation.key}`} — an assembly returns services, an adapter is born here and handed to a port; return services only, a test that asserts on its fakes builds them in a suite`
   }
 }
 
@@ -674,8 +678,9 @@ const unknownWords = (condition: UnknownCondition): string => {
 
 /** What a root call reaches, in words: why it is presumed to act. */
 const reachWords = (
-  reaches: NonNullable<
-    Extract<ModulesViolation, { shape: "root-call" }>["reaches"]
+  reaches: Exclude<
+    Extract<ModulesViolation, { shape: "root-call" }>["reaches"],
+    "registration" | null
   >,
   name: string | null,
 ): string => {
@@ -688,6 +693,8 @@ const reachWords = (
       return `a call to the use case ${name}`
     case "function":
       return `a call into ${name}, a function of a file that may touch the tech`
+    case "discarded":
+      return `a call to ${name} that keeps nothing of what it returns`
     case "export":
       return `a call into an export of ${name}, a file that may touch the tech`
     case "wiring":

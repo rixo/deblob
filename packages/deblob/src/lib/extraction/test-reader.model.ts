@@ -15,4 +15,12 @@ export interface TestReader extends DriverReader {
    * `null` for a name the reader does not map — never guessed.
    */
   roleOf(input: { chain: readonly string[] }): Role | null
+  /**
+   * The suites of this runner, by glob: files of the test kind the runner does
+   * not collect, whose wiring function a test file calls at its root to
+   * register the tests they hold. The reader names them, as it knows what its
+   * runner collects; a match gives the test kind to a file the flavor leaves
+   * blob, and this reader reads it. Absent = the reader names none.
+   */
+  readonly suites?: readonly string[]
 }

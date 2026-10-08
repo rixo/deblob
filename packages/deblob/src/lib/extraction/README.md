@@ -230,9 +230,9 @@ unparsed one, has none: recognized and open.
   aliases and `index`; a builtin under its `node:` name; a bare specifier by the
   nearest `node_modules` in the tree (its manifest's `main`, else `index`). No
   tsconfig paths, no exports maps, no symlinks. The port ships its own suite,
-  `resolver-test-suite.service.ts` (a conformance kit over the `test` unit's
-  `TestingApi` port): each adapter's spec materializes `RESOLVER_TREE` where its
-  adapter reads and runs the kit under its own name.
+  `resolver.suite.ts` (`describeResolver`): each adapter's spec materializes
+  `RESOLVER_TREE` where its adapter reads and calls the suite under its own
+  name.
 - `ts-suffixes-factories-flavor.model.ts` — the stock flavor: kind from the file
   suffix (`.model`, `.port`, `.service`, `.adapter`, `.assembly`, `.driver`,
   `.boot`; test naming is not the flavor's, see the test runner), service roots
@@ -264,7 +264,9 @@ unparsed one, has none: recognized and open.
   verification, `before*`/`after*` setup and teardown by scope,
   `vi.mock`/`jest.mock` mock), a chain by the longest listed name it starts with
   (`it.skip.each` is `it`, `vi.fn` none) — a globals-mode runner's free names
-  map to none.
+  map to none. It names the suites too (`suites`, an argument of its factory,
+  `**/*.suite.*` when not written): files of the test kind the runner does not
+  collect, whose wiring function a test file calls at its root.
 - `adapters/package-meta.adapter.ts` — the cross-package reader,
   `createPackageMetaReader({ fs, resolve, anchor, classifyEntry })`: resolves a
   bare specifier to its owning package.json, reads the `deblob` field and the

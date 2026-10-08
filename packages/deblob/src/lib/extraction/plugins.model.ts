@@ -168,6 +168,9 @@ export const bindPlugins = (
     /** The file's kind: the flavor's name, else a binding or a designation. */
     kindOf: (file: string): Layer =>
       recognition.kindOf(file, classificationOf(file).layer),
+    /** Whether a test reader names the file a suite. */
+    isSuite: (file: string): boolean =>
+      recognition.isSuite(file, classificationOf(file).layer),
     /**
      * The flavor's word on export names; a flavor without the rule names
      * nothing.

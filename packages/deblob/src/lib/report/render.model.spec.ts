@@ -1041,6 +1041,22 @@ describe("renderCheckResults", () => {
           "line 7 may run on import — unknown: the reader cannot tell what this call reaches; move it inside a factory or a function",
         )
       })
+
+      it("says a call that keeps nothing of what it returns is presumed to act", () => {
+        expect(
+          message(call({ reaches: "discarded", name: "enterTmp" })),
+        ).toContain(
+          "line 7 runs on import — a call to enterTmp that keeps nothing of what it returns, presumed to act; move it inside a factory or a function",
+        )
+      })
+
+      it("says a registration at a suite's root registers on import, and where it goes", () => {
+        expect(
+          message(call({ reaches: "registration", name: null })),
+        ).toContain(
+          "line 7 registers on import — a suite registers when a test file calls its wiring function, not when one imports it; move it inside the wiring function",
+        )
+      })
     })
 
     describe("an assembly violation", () => {
@@ -1288,7 +1304,7 @@ describe("renderCheckResults", () => {
               layer: "adapters",
             },
           },
-          "returns the adapter fs to a caller that is not a test — an assembly returns services; return services only, a test factory returns the adapters",
+          "returns the adapter fs — an assembly returns services, an adapter is born here and handed to a port; return services only, a test that asserts on its fakes builds them in a suite",
         ],
         [
           {
@@ -1300,7 +1316,7 @@ describe("renderCheckResults", () => {
               layer: "adapters",
             },
           },
-          "returns an adapter to a caller that is not a test — an assembly returns services; return services only, a test factory returns the adapters",
+          "returns an adapter — an assembly returns services, an adapter is born here and handed to a port; return services only, a test that asserts on its fakes builds them in a suite",
         ],
       ] as const)("formats %o as: %s", (shape, words) => {
         expect(message(assembly(shape))).toContain(`line 7 ${words}`)
@@ -1751,7 +1767,13 @@ describe("renderCheckResults", () => {
           ["test-is-outside"],
           "model",
           "test",
-          "nothing imports a test file; what it shares moves out of it",
+          "only a test file imports test code: the test runner stays out of the program; what it shares moves out of it",
+        ],
+        [
+          ["test-is-outside"],
+          "test",
+          "test",
+          "importing a test file registers its tests from here, by an import; tests to share move into a suite, which registers when it is called",
         ],
         [
           ["boot-one-call"],

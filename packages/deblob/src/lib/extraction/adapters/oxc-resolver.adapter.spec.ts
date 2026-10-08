@@ -4,29 +4,22 @@ import { dirname, join } from "node:path"
 
 import { describe, expect, it, onTestFinished } from "vitest"
 
-import { createVitestTestingApi } from "../../test/adapters/vitest-testing-api.adapter.ts"
-import {
-  RESOLVER_TREE,
-  createResolverTestSuite,
-} from "../resolver-test-suite.service.ts"
+import { RESOLVER_TREE, describeResolver } from "../resolver.suite.ts"
 import { createNodeFs } from "../../fs/adapters/node-fs.adapter.ts"
 import {
   createOxcResolver,
   createTsconfigLocator,
 } from "./oxc-resolver.adapter.ts"
 
-createResolverTestSuite({ api: createVitestTestingApi() }).run({
-  name: "createOxcResolver",
-  // the tree on disk: oxc-resolver reads nothing else
-  make: async () => {
-    const root = await mkdtemp(join(tmpdir(), "deblob-oxc-resolver-"))
-    onTestFinished(() => rm(root, { recursive: true, force: true }))
-    for (const [path, content] of Object.entries(RESOLVER_TREE)) {
-      await mkdir(dirname(join(root, path)), { recursive: true })
-      await writeFile(join(root, path), content)
-    }
-    return { resolver: createOxcResolver(), root }
-  },
+// the tree on disk: oxc-resolver reads nothing else
+describeResolver("createOxcResolver", async () => {
+  const root = await mkdtemp(join(tmpdir(), "deblob-oxc-resolver-"))
+  onTestFinished(() => rm(root, { recursive: true, force: true }))
+  for (const [path, content] of Object.entries(RESOLVER_TREE)) {
+    await mkdir(dirname(join(root, path)), { recursive: true })
+    await writeFile(join(root, path), content)
+  }
+  return { resolver: createOxcResolver(), root }
 })
 
 describe("createTsconfigLocator", () => {

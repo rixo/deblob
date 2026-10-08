@@ -29,6 +29,9 @@ export type ReaderBinding = {
 
 type Named = ReaderBinding & { readonly name: string }
 
+/** A test reader, for recognition: its binding and the suites it names. */
+type NamedTest = Named & { readonly suites?: readonly string[] }
+
 export type Designations = {
   /**
    * The config's globs for the kinds a framework names itself — a kind claim
@@ -63,7 +66,7 @@ const matcherOf = (binding: ReaderBinding): Matcher => {
   }
 }
 
-export type Recognition<D extends Named, T extends Named> = {
+export type Recognition<D extends Named, T extends NamedTest> = {
   /**
    * The file's kind: the flavor's name; else a driver or test reader's written
    * binding (the group gives the kind), or a designation; else blob. Throws a
@@ -80,11 +83,16 @@ export type Recognition<D extends Named, T extends Named> = {
    */
   driverReadersOf(file: string, flavorLayer: Layer): readonly D[]
   testReadersOf(file: string, flavorLayer: Layer): readonly T[]
+  /**
+   * Whether a test reader names the file a suite: a file of the test kind its
+   * runner does not collect, which a test file calls.
+   */
+  isSuite(file: string, flavorLayer: Layer): boolean
   /** The language or host readers bound to a file — every file by default. */
   boundOf<R extends Named>(readers: readonly R[], file: string): readonly R[]
 }
 
-export const createRecognition = <D extends Named, T extends Named>({
+export const createRecognition = <D extends Named, T extends NamedTest>({
   driver,
   test,
   isAssembly,
@@ -94,7 +102,14 @@ export const createRecognition = <D extends Named, T extends Named>({
   test: readonly T[]
 }): Recognition<D, T> => {
   const drivers = driver.map((reader) => ({ reader, ...matcherOf(reader) }))
-  const tests = test.map((reader) => ({ reader, ...matcherOf(reader) }))
+  const tests = test.map((reader) => ({
+    reader,
+    ...matcherOf(reader),
+    names:
+      reader.suites && reader.suites.length > 0
+        ? picomatch([...reader.suites])
+        : () => false,
+  }))
   const matchers = new Map<Named, Matcher>()
   const matcherFor = (reader: Named): Matcher => {
     const known = matchers.get(reader)
@@ -112,7 +127,7 @@ export const createRecognition = <D extends Named, T extends Named>({
         by: `driver reader "${reader.name}"`,
       })),
     ...tests
-      .filter(({ explicit }) => explicit(file))
+      .filter(({ explicit, names }) => explicit(file) || names(file))
       .map(({ reader }) => ({
         layer: "test" as const,
         by: `test reader "${reader.name}"`,
@@ -160,9 +175,15 @@ export const createRecognition = <D extends Named, T extends Named>({
     testReadersOf: (file, flavorLayer) =>
       kindOf(file, flavorLayer) === "test"
         ? tests
-            .filter(({ reads }) => reads(file, flavorLayer === "test"))
+            .filter(
+              ({ reads, names }) =>
+                names(file) || reads(file, flavorLayer === "test"),
+            )
             .map(({ reader }) => reader)
         : [],
+    isSuite: (file, flavorLayer) =>
+      kindOf(file, flavorLayer) === "test" &&
+      tests.some(({ names }) => names(file)),
     boundOf: (readers, file) =>
       readers.filter((reader) => matcherFor(reader).reads(file, true)),
   }

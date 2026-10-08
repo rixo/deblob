@@ -208,6 +208,11 @@ export type ModuleNode = {
    * as blob, the driver's inbound seal kept.
    */
   asBlob?: true
+  /**
+   * A test file its reader names a suite: the runner does not collect it, a
+   * test file calls its wiring function. Its root registers nothing.
+   */
+  suite?: true
 }
 
 /** One binding of an exported function: the site, and what it handed. */
@@ -302,7 +307,11 @@ export type ArgValue = {
  */
 export type CalleeKind =
   | { kind: "factory"; layer: FactoryLayer; path: string; name: string }
-  | { kind: "wiring"; path: string; name: string }
+  /**
+   * A driver's export, called: its wiring function. `suite`: an export of a
+   * suite, called by a test file — the wiring function of a test's sub form.
+   */
+  | { kind: "wiring"; path: string; name: string; suite?: true }
   /** A model export the flavor did not name a factory: bound by result flow. */
   | { kind: "model"; path: string; name: string }
   | { kind: "forbidden-import"; layer: "ports" | "boot" | "test"; path: string }
@@ -371,12 +380,6 @@ export type ReadCall = {
    * a test file make.
    */
   registration: boolean
-  /**
-   * Every argument is the runner the file's own reader claims, handed on —
-   * `registerMatchers(expect)`: a shared driver's wiring function called with
-   * the runner, not with any tech.
-   */
-  handsRunner: boolean
   /**
    * For a call read inside a tracked local's body: the root call that ran the
    * body, the outermost when locals nest — where the call runs on import from.

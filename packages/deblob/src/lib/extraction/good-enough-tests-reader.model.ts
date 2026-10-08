@@ -55,6 +55,12 @@ const ROLES = {
 } as const satisfies Readonly<Record<string, Role>>
 
 /**
+ * A suite by its name, `*.suite.*`: no runner this reader knows collects it by
+ * default.
+ */
+const SUITES = ["**/*.suite.*"] as const
+
+/**
  * The good-enough test reader: common conventions over every runner it knows —
  * the naming, the imports — and no runner's config read, no runner asked. What
  * it buys is a start on any codebase; a runner's own reader, where one exists,
@@ -64,11 +70,16 @@ const ROLES = {
  * defines anything, and makes as many calls per hook as it likes — the four
  * exemptions. Its hooks carry the runners' roles.
  */
-export const createGoodEnoughTestsReader = (
-  binding: ReaderBinding = {},
-): TestReader => ({
+export const createGoodEnoughTestsReader = ({
+  suites = SUITES,
+  ...binding
+}: ReaderBinding & {
+  /** The files that are suites, by glob; a `.suite` name when not written. */
+  suites?: readonly string[]
+} = {}): TestReader => ({
   name: "good-enough-tests",
   ...binding,
+  suites,
   tech: RUNNERS,
   // the longest listed name the chain starts with: `it.skip.each` is `it`,
   // `vi.mock` a mock, `vi.fn` none; own keys only (`constructor` is none)

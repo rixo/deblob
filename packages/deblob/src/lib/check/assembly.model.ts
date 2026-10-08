@@ -6,8 +6,7 @@
  * literals, tech values received as parameters — never the host, found — or
  * instances; no use-case call but a declared load; a branch or loop is wiring
  * on a parameter or a loaded value; nothing is defined but assembly functions,
- * and nothing sits at root but imports; no adapter is returned to a caller that
- * is not a test.
+ * and nothing sits at root but imports; no adapter is returned.
  *
  * Reads an assembly file's `reading`. One violation per clause a statement
  * breaks; an argument that came out of a red call written in the same
@@ -242,10 +241,6 @@ const judgeReading = (
     })
   }
 
-  /** The function a non-test file calls: its production worlds. */
-  const calledInProduction = (fn: ReadFunction): boolean =>
-    node.readings.some(({ world }) => world.name === fn.name)
-
   const atRoot = violations.splice(0)
   const functions = reading.functions.map((fn, index) => {
     const body = bodies[index] as readonly ReadStatement[]
@@ -290,7 +285,9 @@ const judgeReading = (
             })
           break
         case "return":
-          if (statement.returned === null || !calledInProduction(fn)) break
+          // a helper of the file hands its adapter to the function that
+          // called it, judged there; an export hands it out
+          if (statement.returned === null || !fn.exported) break
           for (const { key, value, origin } of adaptersIn(statement.returned))
             violations.push({
               ...at(value.span),

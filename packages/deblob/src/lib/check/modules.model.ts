@@ -15,7 +15,8 @@
  * use case, or goes into a function of a file whose layer may touch the tech: a
  * property read is presumed free of side effects, a call is not. Exempt by
  * kind, a closed list: the boot's one call, a spec file's registrations into
- * its runner.
+ * its runner. A suite's root has none: it registers when a test file calls its
+ * wiring function, never on import.
  *
  * Reads a file's `reading`, the first check to do so. Pure: classified graph
  * in, violation set out — no IO, no formatting, no ordering.
@@ -26,6 +27,7 @@ import type {
   Layer,
   ModuleNode,
   ReadCall,
+  ReadFunction,
   ReadHook,
   ReadStatement,
   Span,
@@ -92,9 +94,11 @@ const GREEN: CallVerdict = { verdict: "green" } as const
 
 /**
  * What a root call reaches, judged. A factory call is the lane, not the crime —
- * what it binds is judged as a binding; a language or model call is free. A
- * call into the tech, a use case, or a function of a file that may touch the
- * tech is presumed to act; a callee the reader cannot place is an unknown.
+ * what it binds is judged as a binding, and one that keeps nothing of what it
+ * returns built nothing: it is a call made for what it does. A language or
+ * model call is free. A call into the tech, a use case, or a function of a file
+ * that may touch the tech is presumed to act; a callee the reader cannot place
+ * is an unknown.
  */
 const judgeCall = (call: ReadCall, layer: Layer): CallVerdict => {
   const { callee } = call
@@ -109,8 +113,12 @@ const judgeCall = (call: ReadCall, layer: Layer): CallVerdict => {
         ? { verdict: "red", reaches: "export", name: callee.path }
         : GREEN
     case "factory":
-      return callee.layer === "adapters" || callee.layer === "blob"
-        ? { verdict: "red", reaches: "function", name: callee.name }
+      if (callee.layer === "adapters" || callee.layer === "blob")
+        return { verdict: "red", reaches: "function", name: callee.name }
+      // nothing kept of what it returns: not called to build, so no factory
+      // call — called for what it does
+      return call.result.some((use) => use.kind === "discarded")
+        ? { verdict: "red", reaches: "discarded", name: callee.name }
         : GREEN
     case "local":
       return TOUCHES_TECH.has(layer)
@@ -132,10 +140,36 @@ const judgeCall = (call: ReadCall, layer: Layer): CallVerdict => {
 }
 
 /**
- * The exemptions by kind, a closed list: a spec file's registrations into its
- * runner — a driver's wiring function handed the runner's tech included, the
- * shared matcher canon names — and the boot's one call to its driver's wiring
- * function.
+ * A call to a sub-test's function is a registration because the function
+ * registers: `null` when it does. One that registers nothing is a call into a
+ * function of a test file, presumed to act; one the reader cannot find, an
+ * unknown.
+ */
+const subTestVerdict = (
+  call: ReadCall,
+  graph: ImportGraph,
+): CallVerdict | null => {
+  const { callee } = call
+  if (callee.kind !== "wiring" || !callee.suite) return null
+  const fn = graph.modules
+    .get(callee.path)
+    ?.reading?.functions.find(({ name }) => name === callee.name)
+  if (fn === undefined) return { verdict: "unknown", reaches: null, name: null }
+  return registers(fn)
+    ? null
+    : { verdict: "red", reaches: "function", name: callee.name }
+}
+
+/** A function whose body registers: into the runner, or through a sub-test. */
+const registers = ({ body }: ReadFunction): boolean =>
+  flattenBranches(body).some(
+    (statement) => statement.kind === "call" && statement.call.registration,
+  )
+
+/**
+ * The exemptions by kind, a closed list: a test file's registrations into its
+ * runner, made by a call into the runner or to a sub-test's wiring function,
+ * and the boot's one call to its driver's wiring function.
  */
 const isExempt = (
   call: ReadCall,
@@ -143,9 +177,7 @@ const isExempt = (
   bootCallMade: boolean,
 ): boolean => {
   if (call.registration) return true
-  if (call.callee.kind !== "wiring") return false
-  if (layer === "boot") return !bootCallMade
-  return layer === "test" && call.handsRunner
+  return call.callee.kind === "wiring" && layer === "boot" && !bootCallMade
 }
 
 /**
@@ -159,6 +191,7 @@ const isExempt = (
 const judgeModule = (
   node: ModuleNode,
   options: CheckModulesOptions,
+  graph: ImportGraph,
 ): ModulesViolation[] => {
   if (node.layer === "blob" || node.reading === null) return []
   const at = (statement: { span: Span }) => ({
@@ -176,13 +209,40 @@ const judgeModule = (
   // file loads and what it declares is shared by the group's tests, the root
   // one level in (ruled 2026-10-07)
   const inGroup: Placed = (statement) => ({ ...at(statement), group: true })
+  if (node.suite)
+    return [
+      // a group at a suite's root is the red itself: its body is not read on
+      ...judgeShared(node.reading.root, node, options, at, true, graph),
+      ...wiringBodiesOf(node.reading.functions).flatMap((body) =>
+        judgeShared(body, node, options, inGroup, false, graph),
+      ),
+    ]
   return [
-    ...judgeShared(node.reading.root, node, options, at),
-    ...(node.layer === "test" ? groupBodiesOf(node.reading.hooks) : []).flatMap(
-      (body) => judgeShared(body, node, options, inGroup),
+    ...judgeShared(node.reading.root, node, options, at, false, graph),
+    ...(node.layer === "test"
+      ? [
+          ...groupBodiesOf(node.reading.hooks),
+          ...wiringBodiesOf(node.reading.functions),
+        ]
+      : []
+    ).flatMap((body) =>
+      judgeShared(body, node, options, inGroup, false, graph),
     ),
   ]
 }
+
+/**
+ * The bodies of a test file's wiring functions, their groups' included: a
+ * function that registers runs when the spec calling it loads, and what it
+ * declares is shared by the tests that call registers — a group's body, one
+ * call away.
+ */
+const wiringBodiesOf = (
+  functions: readonly ReadFunction[],
+): (readonly ReadStatement[])[] =>
+  functions
+    .filter(registers)
+    .flatMap(({ body, hooks }) => [body, ...groupBodiesOf(hooks)])
 
 /** The bodies of a test file's groups, nested ones included. */
 const groupBodiesOf = (
@@ -217,6 +277,8 @@ const judgeShared = (
   node: ModuleNode,
   options: CheckModulesOptions,
   at: Placed,
+  suiteRoot: boolean,
+  graph: ImportGraph,
 ): ModulesViolation[] => {
   const statements = flattenBranches(body)
   // the calls first, in order: the boot's one call is its first to the wiring
@@ -228,7 +290,15 @@ const judgeShared = (
     const exempt = isExempt(call, node.layer, bootCallMade)
     if (call.callee.kind === "wiring" && node.layer === "boot")
       bootCallMade = true
-    calls.push({ call, verdict: exempt ? GREEN : judgeCall(call, node.layer) })
+    calls.push({
+      call,
+      verdict:
+        exempt && suiteRoot
+          ? { verdict: "red", reaches: "registration", name: null }
+          : exempt
+            ? (subTestVerdict(call, graph) ?? GREEN)
+            : judgeCall(call, node.layer),
+    })
   }
   /**
    * The red call a subject is the result of, from the call at `span`: that call
@@ -345,4 +415,6 @@ export const checkModules = (
   graph: ImportGraph,
   options: CheckModulesOptions = {},
 ): ModulesViolation[] =>
-  [...graph.modules.values()].flatMap((node) => judgeModule(node, options))
+  [...graph.modules.values()].flatMap((node) =>
+    judgeModule(node, options, graph),
+  )

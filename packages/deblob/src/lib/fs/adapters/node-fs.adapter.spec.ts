@@ -4,12 +4,7 @@ import { dirname, join } from "node:path"
 
 import { describe, expect, it, onTestFinished } from "vitest"
 
-import { createVitestTestingApi } from "../../test/adapters/vitest-testing-api.adapter.ts"
-import {
-  FS_EMPTY_DIRS,
-  FS_TREE,
-  createFsTestSuite,
-} from "../fs-test-suite.service.ts"
+import { FS_EMPTY_DIRS, FS_TREE, describeFs } from "../fs.suite.ts"
 import { createNodeFs } from "./node-fs.adapter.ts"
 
 /** The tree on disk, in a temp dir removed after. */
@@ -25,10 +20,10 @@ const onDisk = async (): Promise<string> => {
   return root
 }
 
-createFsTestSuite({ api: createVitestTestingApi() }).run({
-  name: "createNodeFs",
-  make: async () => ({ fs: createNodeFs(), root: await onDisk() }),
-})
+describeFs("createNodeFs", async () => ({
+  fs: createNodeFs(),
+  root: await onDisk(),
+}))
 
 describe("createNodeFs", () => {
   it("lets any failure but a missing path fly — a directory read as a file, a name too long", async () => {

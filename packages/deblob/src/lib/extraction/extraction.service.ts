@@ -549,6 +549,7 @@ export const createExtraction = ({
         reading,
         readings: [],
         ...(plugins.of(file).asBlob ? { asBlob: true as const } : {}),
+        ...(plugins.isSuite(file) ? { suite: true as const } : {}),
       })
     }
 

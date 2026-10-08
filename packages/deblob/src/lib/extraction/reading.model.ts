@@ -953,6 +953,9 @@ export const readModule = ({
   configLoads = [],
   typeOf,
 }: ReadInput): FileReading => {
+  /** A suite's export called by a test file: the sub form's wiring function. */
+  const isSuiteWiring = (callee: CalleeKind): boolean =>
+    callee.kind === "wiring" && callee.suite === true
   /** What a type written in this file is judged with: no name bound yet. */
   const types: Types = {
     knowledge,
@@ -1220,9 +1223,15 @@ export const readModule = ({
         return { rest, callee: { kind: "wiring", path, name } }
       case "model":
         return { rest, callee: modelCallee(path) }
+      case "test":
+        // a test file's export, called by a test file: the wiring function of
+        // a sub-test, as a sub-driver's is to a driver — whether the file may
+        // be imported is the import's fact, judged on its root
+        if (registers)
+          return { rest, callee: { kind: "wiring", path, name, suite: true } }
+        return { rest, callee: { kind: "forbidden-import", layer, path } }
       case "ports":
       case "boot":
-      case "test":
         return { rest, callee: { kind: "forbidden-import", layer, path } }
     }
   }
@@ -2264,21 +2273,29 @@ export const readModule = ({
     emitting: boolean,
   ): ArgValue[] => {
     const args: ArgValue[] = []
+    /** A function handed to the call, bare or inside what is handed. */
+    const readHanded = (inner: AstNode): void => {
+      // handed to a suite: the tests call it, as they call a hook's body
+      if (isSuiteWiring(callee)) {
+        body.hooks.push(readHook(inner, null, null))
+        return
+      }
+      // pointed at by a cut, asked on the call
+      if (pointed.delete(inner))
+        body.hooks.push(
+          readHook(
+            inner,
+            roleOf(calleeNode),
+            callee.kind === "tech" ? callee.package : null,
+          ),
+        )
+      else readInline(inner, callee, registeredBy.span)
+    }
     for (const arg of argNodes) {
       const inner = unwrap(arg)
       if (isFunctionNode(inner)) {
         args.push(plainArg("function", arg))
-        if (!emitting) continue
-        // pointed at by a cut, asked on the call
-        if (pointed.delete(inner))
-          body.hooks.push(
-            readHook(
-              inner,
-              roleOf(calleeNode),
-              callee.kind === "tech" ? callee.package : null,
-            ),
-          )
-        else readInline(inner, callee, registeredBy.span)
+        if (emitting) readHanded(inner)
         continue
       }
       if (arg.type === "SpreadElement") {
@@ -2287,8 +2304,30 @@ export const readModule = ({
         continue
       }
       args.push(argValueOf(arg, { kind: "argument", to: callee }, emitting))
+      // a function written inside an object or a list handed whole is handed
+      // as much as a bare one
+      if (emitting && callee.kind !== "tech")
+        for (const fn of functionsWithin(inner)) readHanded(fn)
     }
     return args
+  }
+
+  /** The functions written as members of an object or a list, at any depth. */
+  const functionsWithin = (node: AstNode): AstNode[] => {
+    const members: readonly AstNode[] =
+      node.type === "ObjectExpression"
+        ? (node["properties"] as AstNode[]).flatMap((property) =>
+            property.type === "Property" ? [property["value"] as AstNode] : [],
+          )
+        : node.type === "ArrayExpression"
+          ? (node["elements"] as (AstNode | null)[]).filter(
+              (element): element is AstNode => element !== null,
+            )
+          : []
+    return members.flatMap((member) => {
+      const inner = unwrap(member)
+      return isFunctionNode(inner) ? [inner] : functionsWithin(inner)
+    })
   }
 
   /**
@@ -2589,9 +2628,9 @@ export const readModule = ({
       result: results,
       load,
       registration:
-        registers && callee.kind === "tech" && startsFromReader(calleeNode),
-      handsRunner:
-        registers && handed.length > 0 && handed.every(startsFromReader),
+        registers &&
+        ((callee.kind === "tech" && startsFromReader(calleeNode)) ||
+          isSuiteWiring(callee)),
       site: inlineSite,
       calleeCall: calleeCallOf(calleeNode),
     }
@@ -2826,7 +2865,6 @@ export const readModule = ({
             result: resultsOf(ctx, loader, spanOf(node)),
             load: null,
             registration: false,
-            handsRunner: false,
             site: inlineSite,
             calleeCall: null,
           },

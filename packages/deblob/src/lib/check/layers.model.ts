@@ -43,10 +43,22 @@ const TYPE_EXEMPT_TARGETS: ReadonlySet<Layer> = new Set(["service", "adapters"])
 
 /**
  * The outside kinds, outermost last: `assembly < driver < boot`. The test kind
- * is outside too — assembly and driver in one — but sits in no chain: it is
- * imported by nothing, `test-is-outside`, judged in `outsideImportRules`.
+ * is outside too — assembly and driver in one — but sits in no chain: only a
+ * test file imports it, and only a suite, whose root registers nothing
+ * (`test-is-outside`, judged in `outsideImportRules`).
  */
 const OUTSIDE_RANK = { assembly: 0, driver: 1, boot: 2 } as const
+
+/**
+ * A file whose root is read and registers nothing: importing it does nothing. A
+ * file nobody read proves nothing.
+ */
+const registersNothingAtRoot = ({ reading }: ModuleNode): boolean =>
+  reading !== null &&
+  reading.hooks.length === 0 &&
+  reading.root.every(
+    (statement) => statement.kind !== "call" || !statement.call.registration,
+  )
 type ChainedOutsideKind = keyof typeof OUTSIDE_RANK
 
 const outsideRankOf = (layer: Layer): number | null =>
@@ -55,7 +67,7 @@ const outsideRankOf = (layer: Layer): number | null =>
 /**
  * An import from an outside kind that points outward — assembly to driver,
  * driver to boot: `inward-deps`. Toward the test kind the chain says nothing;
- * "imported by nothing" is judged in `outsideImportRules`. (The inside rows
+ * who imports a test file is judged in `outsideImportRules`. (The inside rows
  * cite `inward-deps` for every outside target themselves, test included: from
  * the inside, every outside kind is outward.)
  */
@@ -217,9 +229,18 @@ export const checkLayers = (
 
     const importer = moduleOf(graph, edge.from)
     const importerLayer = importer.layer
-    const outsideCells = (targetClass: TargetClass, target: Layer): void => {
-      for (const rule of outsideImportRules(importerLayer, target, typeEdge))
+    const outsideCells = (
+      targetClass: TargetClass,
+      target: Layer,
+      quietRoot = false,
+    ): void => {
+      for (const rule of outsideImportRules(importerLayer, target, typeEdge)) {
+        // a test file whose root registers nothing is a sub-test: a test file
+        // imports it, to call its wiring function
+        if (rule === "test-is-outside" && quietRoot && importerLayer === "test")
+          continue
         violations.push(matrixCell(importer, edge, targetClass, [rule]))
+      }
     }
 
     if (edge.to.type === "module") {
@@ -240,7 +261,13 @@ export const checkLayers = (
           : rules
         violations.push(matrixCell(importer, edge, target.layer, cited))
       }
-      outsideCells(target.layer, target.layer)
+      // a named suite whose root registers is red there, the fix site: one
+      // fact, one line
+      outsideCells(
+        target.layer,
+        target.layer,
+        target.suite === true || registersNothingAtRoot(target),
+      )
       continue
     }
 

@@ -1,11 +1,11 @@
 # fs
 
 The filesystem behind a port — the kernel every reader of the disk shares. One
-port, two adapters, the port's own suite as a conformance kit
-(`fs-test-suite.service.ts`, over the `test` unit's `TestingApi` port) that each
-adapter's spec runs over `FS_TREE` materialized where that adapter reads. No
-service: the kernel holds the contract; a consumer takes the port injected,
-narrowed to what it uses, and never names the adapter.
+port, two adapters, and the port's own suite (`fs.suite.ts`, `describeFs`) that
+each adapter's spec calls with a function making the adapter over `FS_TREE`,
+materialized where that adapter reads. No service: the kernel holds the
+contract; a consumer takes the port injected, narrowed to what it uses, and
+never names the adapter.
 
 ## Port
 
