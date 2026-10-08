@@ -856,8 +856,6 @@ type Binding = {
   path: readonly string[]
   /** A function or class declared by name. */
   isFunction: boolean
-  /** A hook's parameter: what the tech hands the hook. */
-  isHookParam: boolean
   /**
    * A callback's parameter: the call the callback was handed to, what hands the
    * value back — `null` for any other binding.
@@ -1043,7 +1041,6 @@ export const readModule = ({
     init: null,
     path: [],
     isFunction: false,
-    isHookParam: false,
     handedBy: null,
     type: annotationOf(node),
     reassigned: false,
@@ -1339,13 +1336,19 @@ export const readModule = ({
    * factory that built it is in a file the reader claims; as it is otherwise.
    */
   const receive = (value: Resolved): Resolved => {
-    if (value.kind !== "instance" || value.origin?.layer !== "assembly")
-      return value
-    const received = handedOverOf?.(value.origin, value.path) ?? null
+    const received = handedOver(value)
     return received === null
       ? value
       : techValue(received.package, received.path)
   }
+
+  /** The reader's tech an instance stands for, when an assembly handed it. */
+  const handedOver = (
+    value: Resolved,
+  ): { package: string; path: readonly string[] } | null =>
+    value.kind !== "instance" || value.origin?.layer !== "assembly"
+      ? null
+      : (handedOverOf?.(value.origin, value.path) ?? null)
 
   /** A call's result, by what was called. */
   const resultOf = (callee: CalleeKind): Resolved => {
@@ -1407,10 +1410,9 @@ export const readModule = ({
           }
         }
         case "parameter":
-          // a hook's parameter destructured: the part read off the event
-          return binding.isHookParam
-            ? { kind: "tech", origin: null, path: binding.path }
-            : { kind: "unknown", origin: null, path: [] }
+          // a hook's parameter has its memo, the event; any other is the
+          // caller's
+          return { kind: "unknown", origin: null, path: [] }
         case "catch":
         case "callback":
           return { kind: "computed", origin: null, path: [] }
@@ -1845,13 +1847,13 @@ export const readModule = ({
     switch (root.kind) {
       case "instance": {
         // a member of what an assembly handed over may be the reader's tech
-        const received = receive({
+        const received = handedOver({
           kind: "instance",
           origin: root.origin,
           path: [...root.path, ...members],
         })
-        return received.kind === "tech"
-          ? { kind: "tech", package: received.package ?? null }
+        return received !== null
+          ? { kind: "tech", package: received.package }
           : {
               kind: "use-case",
               member: [...root.path, ...members].join("."),
@@ -2009,7 +2011,6 @@ export const readModule = ({
     const params = (fn["params"] as AstNode[]).flatMap((param) =>
       patternNames(param).map(({ name, path, node }) =>
         newBinding(name, "parameter", node, {
-          isHookParam: true,
           path,
           // the event is the tech's the hook was handed to
           memo: techValue(pkg, path),

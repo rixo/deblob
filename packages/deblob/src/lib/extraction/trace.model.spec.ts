@@ -6,7 +6,8 @@ import { createTrace } from "./trace.model.ts"
 /**
  * The corpus (`cases/reader-receiving.spec.ts`) is what pins where a value is
  * followed; this file covers what no tree of well-formed files reaches: two
- * assemblies that return each other's result.
+ * assemblies that return each other's result, a member read off a result that
+ * has none of that name, an assembly no reader read.
  */
 
 const SPAN = { start: 0, end: 1, line: 1, column: 1 } as const
@@ -29,8 +30,15 @@ const instanceOf = (origin: InstanceOrigin): ArgValue => ({
   span: SPAN,
 })
 
-/** An assembly file whose one function returns `returned`. */
-const assemblyOf = (name: string, returned: ArgValue): ModuleNode =>
+/** A record as returned: its entries, in the order written. */
+const recordOf = (entries: ArgValue["entries"]): ArgValue => ({
+  ...instanceOf(originOf("", "")),
+  origin: null,
+  entries,
+})
+
+/** An assembly file whose one function returns `returned`; `null`, nothing. */
+const assemblyOf = (name: string, returned: ArgValue | null): ModuleNode =>
   ({
     layer: "assembly",
     readings: [],
@@ -81,5 +89,50 @@ describe("createTrace", () => {
       origin: service,
       path: ["check"],
     })
+  })
+
+  it("follows a record to the entry read off it, and nowhere when no entry has that name", () => {
+    const assembly = originOf("src/app.assembly.ts", "createApp")
+    const service: InstanceOrigin = {
+      path: "src/lib/app/app.service.ts",
+      name: "createAppService",
+      layer: "service",
+    }
+    const { trace } = createTrace(
+      new Map([
+        [
+          assembly.path,
+          assemblyOf(
+            assembly.name,
+            recordOf([{ key: "app", value: instanceOf(service) }]),
+          ),
+        ],
+      ]),
+    )
+    expect(trace(assembly, ["app", "check"])).toEqual({
+      origin: service,
+      path: ["check"],
+    })
+    expect(trace(assembly, ["other", "check"])).toBeNull()
+  })
+
+  it("follows nowhere an assembly function that returns nothing, and an assembly no reader read", () => {
+    const empty = originOf("src/empty.assembly.ts", "createEmpty")
+    const unread = originOf("src/unread.assembly.ts", "createUnread")
+    const { trace } = createTrace(
+      new Map([
+        [empty.path, assemblyOf(empty.name, null)],
+        [
+          unread.path,
+          {
+            layer: "assembly",
+            readings: [],
+            reading: null,
+          } as unknown as ModuleNode,
+        ],
+      ]),
+    )
+    expect(trace(empty, ["check"])).toBeNull()
+    expect(trace(unread, ["check"])).toBeNull()
   })
 })

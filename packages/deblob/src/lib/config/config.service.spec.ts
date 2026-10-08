@@ -291,6 +291,11 @@ describe("resolveConfig — readers: four groups, a written one replaces its def
     expect(resolved.readers.language).toBe(READERS.language)
   })
 
+  it("takes a written language group as it is: a language reader declares no tech", () => {
+    const language = [{ name: "some-language", globals: [] }]
+    expect(resolve({ readers: { language } }).readers.language).toBe(language)
+  })
+
   it("folds a bound host's pure builtins into pure — a host with none adds none", () => {
     const host = { name: "some-host", tech: ["host:str"], pure: ["host:str"] }
     const bare = { name: "other-host", tech: [] }

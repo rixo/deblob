@@ -562,6 +562,107 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
+  {
+    // A CONFESSED LIMIT, added 2026-10-08. The reader takes the event from a
+    // name bound to the tech's call; the same switch written on the call
+    // itself is on what the tech returned all the same: green (stamped
+    // 2026-10-08).
+    name: "a switch written on the tech's call itself, bound to no name, is the reader's cut all the same: seen as a branch in the wiring",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/tool.driver.ts": `
+        ${IMPORTS}
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          switch (readLine(process.argv).command) { // false red: wiring-outside-hooks -- the reader takes an event from a name bound to the call only
+            case "check":
+              return tool.check(process.argv) // false red: wiring-outside-hooks -- a hook's one call, read as the wiring's
+            default:
+              return tool.status(process.argv) // false red: wiring-outside-hooks -- the same
+          }
+        }
+      `,
+    },
+  },
+  {
+    // The reader's cut must not reach it: a value the tech's file exports is
+    // the tech's, and no call here returned it. No trigger, no event.
+    // Added 2026-10-08, and UNCERTAIN: the verdict is the agent's, taken on
+    // rixo's "go with your instinct", not ruled by him (the case is an edge
+    // and stayed abstract). What it leans on is a convention of the cut's
+    // contract (\`cut.model.ts\`: the event is the result of a call into the
+    // reader's tech, an import is not), shared by every reader that picks
+    // statements; the tech's own call is itself made during the wiring, so
+    // "a call is a trigger, an import is not" is a line drawn, not a fact.
+    // To reopen if a real reader meets it.
+    name: "a switch on a value imported from the tech, or on a name bound to it, is not the reader's cut: no call returned it, a branch in the wiring, a use case outside any hook",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/tool.driver.ts": `
+        import { readLine, LAST } from "./lib/argv/argv.model.ts"
+        import { createToolAssembly } from "./tool.assembly.ts"
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          switch (LAST.command) { // red: wiring-outside-hooks -- a branch in the wiring
+            case "check":
+              return tool.check(LAST) // red: wiring-outside-hooks -- a use case outside any hook
+          }
+          const held = LAST
+          switch (held.command) { // red: wiring-outside-hooks -- a branch in the wiring
+            case "check":
+              return tool.check(held) // red: wiring-outside-hooks -- a use case outside any hook
+          }
+        }
+      `,
+      "src/lib/argv/argv.model.ts": `
+        export type Read = { command: string; sub: string; line: readonly string[] }
+        export const LAST = { command: "", sub: "", line: [] } as const
+        export const readLine = (argv: readonly string[]): Read => {
+          const line = argv.slice(2)
+          return { command: line[0] ?? "", sub: line[1] ?? "", line }
+        }
+      `,
+    },
+  },
+  {
+    // Added and stamped 2026-10-08, at the coverage step: no row had a
+    // sub-driver's wiring function exported by default, and the check names
+    // one "default" to find it again in each caller's reading. The row "a
+    // sub-driver handed the read by one case and what another tech returned
+    // by another is red for that caller", with the function exported by
+    // default: judged per caller all the same.
+    name: "a sub-driver's wiring function exported by default is judged per caller like a named one: handed what another tech returned by one case, it is red for that caller",
+    config: CONFIG,
+    files: {
+      ...TOOL,
+      "src/tool.driver.ts": `
+        import os from "node:os"
+        ${IMPORTS}
+        import dispatchBy from "./by.driver.ts"
+        export const main = () => {
+          const { tool } = createToolAssembly()
+          const read = readLine(process.argv)
+          const platform = os.platform()
+          switch (read.command) {
+            case "check":
+              return dispatchBy(read, tool)
+            default:
+              return dispatchBy(platform, tool)
+          }
+        }
+      `,
+      "src/by.driver.ts": `
+        export default (key: unknown, tool: { check: (key: unknown) => unknown }) => {
+          switch (key) { // red: wiring-outside-hooks -- a branch in the wiring
+            default:
+              return tool.check(key) // red: wiring-outside-hooks -- a use case outside any hook
+          }
+        }
+      `,
+    },
+  },
 ] as const
 
 describe("reader cut", () => {

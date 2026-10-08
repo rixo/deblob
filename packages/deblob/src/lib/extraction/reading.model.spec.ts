@@ -16,6 +16,8 @@ import type { ImportTargetKind, ReadInput } from "./reading.model.ts"
 import { createJsReader } from "./js-reader.model.ts"
 import { createNodeReader } from "./node-reader.model.ts"
 import { createTsReader } from "./ts-reader.model.ts"
+import type { Node } from "@oxc-project/types"
+import type { CutContext } from "./cut.model.ts"
 import { answerCallbacks } from "./cut.model.ts"
 import { knowledgeOf } from "./knowledge.model.ts"
 import { readModule } from "./reading.model.ts"
@@ -1780,6 +1782,118 @@ describe("readModule", () => {
       expect(byName.size).toBe(47)
       // `REFS` closes with `as const` — readonly, and the fixture's own guard
       expect(byName.get("REFS")).toBe(true)
+    })
+  })
+
+  describe("a reader's own cut — what it may ask, and what the reading takes of its answers", () => {
+    type Callee = ReturnType<CutContext["calleeOf"]>
+
+    /** The member a call is made on, `tech.<name>(…)`; `null` for any other. */
+    const techMemberOf = (node: Node): string | null =>
+      node.type === "CallExpression" &&
+      node.callee.type === "MemberExpression" &&
+      node.callee.object.type === "Identifier" &&
+      node.callee.object.name === "tech" &&
+      node.callee.property.type === "Identifier"
+        ? node.callee.property.name
+        : null
+
+    /**
+     * A reader of `some-tech` with a cut of its own: it asks about what
+     * `tech.ask` is handed, says `tech.relay` relays, picks each case of a
+     * `switch`, and answers as the stock cut anywhere else.
+     */
+    const readCuts = (read: Read) => {
+      const asked: Callee[] = []
+      const claims = (target: string) => target === "some-tech"
+      const reading = read("cuts.ts", {
+        tech: {
+          name: "some-tech-reader",
+          cut: (node, about) => {
+            if (node.type === "SwitchStatement")
+              return [
+                {
+                  claims,
+                  cut: node.cases.map((switchCase) => ({
+                    start: switchCase.start,
+                    end: switchCase.end,
+                    body: switchCase.consequent,
+                    on: node.discriminant,
+                  })),
+                },
+              ]
+            if (node.type !== "CallExpression")
+              return answerCallbacks(node, about)
+            const [first, second] = node.arguments
+            switch (techMemberOf(node)) {
+              case "ask":
+                asked.push(...node.arguments.map((arg) => about.calleeOf(arg)))
+                return []
+              case "relay":
+                return [
+                  {
+                    claims,
+                    cut: [
+                      { fn: first as Node },
+                      {
+                        relayed: {
+                          load: second as Node,
+                          name: "dispatch",
+                          args: [],
+                        },
+                      },
+                    ],
+                  },
+                ]
+              default:
+                return answerCallbacks(node, about)
+            }
+          },
+        },
+      })
+      return { asked, reading }
+    }
+
+    it("names a tech import that carries no package by its specifier", ({
+      read,
+    }) => {
+      const [main] = readCuts(read).reading.functions
+      expect(callAt(callsOf(main?.body ?? []), 8).args).toMatchObject([
+        { kind: "tech", package: "./outside.ts" },
+      ])
+    })
+
+    it("tells a cut that asks about another node than the one it is asked on: a map over what is no proven array is not said the tech's, and what is no call is the language's", ({
+      read,
+    }) => {
+      // the tech's rows mapped, an unclaimed package's rows mapped, a literal
+      expect(readCuts(read).asked.slice(0, 3)).toEqual([
+        { kind: "other" },
+        { kind: "other" },
+        { kind: "other" },
+      ])
+    })
+
+    it("reads a relay whose load is no import() as the call it is, and the function pointed at beside it as a hook", ({
+      read,
+    }) => {
+      const [main] = readCuts(read).reading.functions
+      expect(callAt(callsOf(main?.body ?? []), 16).callee).toEqual({
+        kind: "tech",
+        package: "some-tech",
+      })
+      expect(main?.hooks.map((hook) => hook.span.line)).toContain(16)
+    })
+
+    it("takes a pick on a name bound to a call into the reader's tech only: picked on the call itself, on an imported value or on a name bound to no call, the statement reads as it is", ({
+      read,
+    }) => {
+      const [main] = readCuts(read).reading.functions
+      expect(
+        controls(main?.body ?? []).map((control) => control.span.line),
+      ).toEqual([18, 23, 29])
+      // the last switch, on `read`: its one case
+      expect(main?.hooks.map((hook) => hook.span.line)).toEqual([16, 36])
     })
   })
 })

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 
-import { genericTestApi, playwright } from "../../readers.ts"
+import { genericTestApi, node, playwright } from "../../readers.ts"
 import { assembleCase } from "./runner/cases.assembly.ts"
 import type { Row } from "./runner/markers.model.ts"
 import { AS_MARKED } from "./runner/markers.model.ts"
@@ -648,6 +648,134 @@ const SUITES: readonly Row[] = [
         import { describeFs } from "../fs.suite.ts"
         import { createMemoryFs } from "./memory-fs.adapter.ts"
         describeFs("createMemoryFs", () => createMemoryFs({}))
+      `,
+    },
+  },
+  {
+    // A CONFESSED LIMIT, added 2026-10-08 at the coverage step (stamped the
+    // same day: a better reader would see the wiring function). The suite's
+    // wiring function is made by a call, so the reader finds no function of
+    // that name in the suite and cannot say whether the spec's call
+    // registers. It does: the truth is green.
+    name: "a suite's wiring function made by a call is not found: the spec's call registers, seen as an unknown",
+    files: {
+      ...FS,
+      "src/fs/fs.suite.ts": `
+        import { describe, expect, it } from "vitest"
+        import type { Fs } from "./fs.port.ts"
+        const suiteOf = (path: string) => (name: string, make: () => Promise<Fs>) => {
+          describe(name, () => {
+            it("reads null for a missing path", async () => {
+              const fs = await make()
+              expect(await fs.readFile(path)).toBe(null)
+            })
+          })
+        }
+        export const describeFs = suiteOf("/missing") // false unknown: stable-root -- a local function called at the root only makes the wiring function: the reader does not know what it returns
+      `,
+      "src/fs/adapters/memory-fs.adapter.spec.ts": `
+        import { describeFs } from "../fs.suite.ts"
+        import { createMemoryFs } from "./memory-fs.adapter.ts"
+        describeFs("createMemoryFs", async () => createMemoryFs({})) // false unknown: stable-root -- no function named describeFs is found in the suite, so the reader cannot say the call registers
+      `,
+    },
+  },
+  {
+    // Added and stamped 2026-10-08. A runner that is a builtin module has no package on
+    // disk; what a suite passes on from it is the runner's all the same.
+    name: "a runner's function passed on by a suite from a builtin module registers tests in the spec: green",
+    files: {
+      ...FS,
+      "src/test/runner.suite.ts": `
+        export { test } from "node:test"
+      `,
+      "src/fs/adapters/memory-fs.adapter.spec.ts": `
+        import { test } from "../../test/runner.suite.ts"
+        import { createMemoryFs } from "./memory-fs.adapter.ts"
+        test("reads null for a missing path", async () => {
+          await createMemoryFs({}).readFile("/missing")
+        })
+      `,
+    },
+  },
+  {
+    // Added and stamped 2026-10-08. A project's own runner is a file its test reader
+    // lists as its tech (\`./path\`), with the name that registers; a suite
+    // passes it on under a name as it would a package's.
+    name: "a registering function of a project file the test reader claims, passed on by a suite, registers tests in the spec: green",
+    config: {
+      readers: {
+        test: [
+          {
+            name: "own-runner",
+            tech: ["./src/runner/runner.ts"],
+            roleOf: ({ chain }: { chain: readonly string[] }) =>
+              chain.join(".") === "run"
+                ? ({ kind: "behavior" } as const)
+                : null,
+          },
+        ],
+      },
+    },
+    files: {
+      ...FS,
+      "src/runner/runner.ts": `
+        export const run = (name: string, body: () => Promise<void>) => ({ name, body })
+      `,
+      "src/test/runner.suite.ts": `
+        import { run } from "../runner/runner.ts"
+        export const test = run
+      `,
+      "src/fs/adapters/memory-fs.adapter.spec.ts": `
+        import { test } from "../../test/runner.suite.ts"
+        import { createMemoryFs } from "./memory-fs.adapter.ts"
+        test("reads null for a missing path", async () => {
+          await createMemoryFs({}).readFile("/missing")
+        })
+      `,
+    },
+  },
+  {
+    // A CONFESSED LIMIT, added and stamped 2026-10-08. What a suite passes on is followed
+    // when it is the runner's; the host's function is taken for a function of
+    // the suite, and none of that name is declared there. \`join\` computes a
+    // string: the truth is green.
+    name: "a host's function passed on by a suite is the host's in the spec: seen as a function of the suite that is not found, an unknown",
+    config: { readers: { host: [node()] } },
+    files: {
+      ...FS,
+      "src/test/paths.suite.ts": `
+        export { join } from "node:path"
+      `,
+      "src/fs/adapters/memory-fs.adapter.spec.ts": `
+        import { expect, it } from "vitest"
+        import { join } from "../../test/paths.suite.ts"
+        import { createMemoryFs } from "./memory-fs.adapter.ts"
+        const MISSING = join("/", "missing") // false unknown: stable-root, stable-root -- the call and what it gave: join is the host's, passed on by the suite, and the reader looks for a function of the suite
+        it("reads null for a missing path", async () => {
+          expect(await createMemoryFs({}).readFile(MISSING)).toBe(null)
+        })
+      `,
+    },
+  },
+  {
+    // A CONFESSED LIMIT, added and stamped 2026-10-08 (left by the review of the fixture
+    // step). A registering function taken out of the runner by a pattern is
+    // the runner's function under another name, as one bound by name is; the
+    // reader follows a name, not a pattern.
+    name: "a registering function taken out of the runner by a pattern in a suite is the runner's: red in the suite and unknown in the spec, where both are green",
+    files: {
+      ...FS,
+      "src/test/runner.suite.ts": `
+        import * as runner from "vitest"
+        export const { it } = runner // false red: stable-root -- the runner's function under another name, no state: a pattern is not followed
+      `,
+      "src/fs/adapters/memory-fs.adapter.spec.ts": `
+        import { it } from "../../test/runner.suite.ts"
+        import { createMemoryFs } from "./memory-fs.adapter.ts"
+        it("reads null for a missing path", async () => { // false unknown: stable-root -- a test registered with the runner's function: the suite's pattern is not followed
+          await createMemoryFs({}).readFile("/missing")
+        })
       `,
     },
   },

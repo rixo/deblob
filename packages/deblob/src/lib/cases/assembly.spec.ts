@@ -874,6 +874,51 @@ const ROWS: readonly Row[] = [
       `,
     },
   },
+  {
+    // Added and stamped 2026-10-08, at the coverage step: no row had an
+    // assembly function exported by default, and the check names one
+    // "default" to find it again in each caller's reading. The row above
+    // ("an assembly returning what it was handed …"), with the group assembly
+    // exported by default: judged per caller all the same.
+    name: "an assembly function exported by default is judged per caller like a named one: returning what it was handed is red for the caller that hands an adapter",
+    files: {
+      "src/lib/log/sink.port.ts": `
+        export type Sink = { write: (text: string) => void }
+      `,
+      "src/lib/log/adapters/memory-sink.adapter.ts": `
+        import type { Sink } from "../sink.port.ts"
+        export const createMemorySink = (): Sink => ({ write: () => {} })
+      `,
+      "src/lib/log/log.service.ts": `
+        import type { Sink } from "./sink.port.ts"
+        export const createLog = ({ sink }: { sink: Sink }) => ({ info: (text: string) => sink.write(text) })
+      `,
+      "src/lib/thing/thing.service.ts": `
+        export const createThing = () => ({ run: () => 1 })
+      `,
+      "src/group.assembly.ts": `
+        import { createThing } from "./lib/thing/thing.service.ts"
+        export default (shared: unknown) => ({ shared, thing: createThing() }) // red: assembly-builds-only -- an adapter returned, as the second root hands it
+      `,
+      "src/a.assembly.ts": `
+        import { createMemorySink } from "./lib/log/adapters/memory-sink.adapter.ts"
+        import { createLog } from "./lib/log/log.service.ts"
+        import createGroupAssembly from "./group.assembly.ts"
+        export const createFirstAssembly = () => {
+          const log = createLog({ sink: createMemorySink() })
+          return createGroupAssembly(log)
+        }
+      `,
+      "src/b.assembly.ts": `
+        import { createMemorySink } from "./lib/log/adapters/memory-sink.adapter.ts"
+        import createGroupAssembly from "./group.assembly.ts"
+        export const createSecondAssembly = () => {
+          const sink = createMemorySink()
+          return createGroupAssembly(sink)
+        }
+      `,
+    },
+  },
 ] as const
 
 describe("assembly", () => {

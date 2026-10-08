@@ -2,7 +2,7 @@ import type { Node } from "@oxc-project/types"
 import { describe, expect, it, test } from "vitest"
 
 import type { CutContext } from "./cut.model.ts"
-import { bindPlugins } from "./plugins.model.ts"
+import { bindPlugins, CORE_TECH } from "./plugins.model.ts"
 import type { FlavorResolver } from "./flavor.model.ts"
 import type { ReaderGroups } from "./readers.model.ts"
 
@@ -185,5 +185,12 @@ describe("bindPlugins", () => {
       const plugins = bind({ driver: [{ name: "made-up", tech: ["cac"] }] })
       expect(plugins.of(SERVICE).claimsPackage("cac")).toBe(false)
     })
+  })
+})
+
+describe("CORE_TECH", () => {
+  it("claims nothing: no name of a runner has a role, and no call gives a registering function", () => {
+    expect(CORE_TECH.roleOf()).toBeNull()
+    expect(CORE_TECH.givesRegistrar()).toBe(false)
   })
 })

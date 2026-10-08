@@ -1166,6 +1166,34 @@ const ROOT_CALLS: readonly Row[] = [
       `,
     },
   },
+  {
+    // A CONFESSED LIMIT, added and stamped 2026-10-08: deblob's own specs bind a call's
+    // result in a group (`const keyFor = exportsKeyFor([…])`), and every row
+    // confessing "a call's result is not followed" sat at a file's root. The
+    // same limit, one level in: a string is no state, the truth is green.
+    name: "what a describe body binds from a call is unknown as at the file's root: a project function's result, a built-in's",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/keys.model.ts": `
+        export const keyOf = (name: string): string => name.trim()
+      `,
+      "src/keys.model.spec.ts": `
+        import { describe, expect, it } from "vitest"
+        import { keyOf } from "./keys.model.ts"
+        describe("keyOf", () => {
+          const key = keyOf(" a ") // false unknown: stable-root -- a string, but a call's result is not followed yet
+          const lines = ["a", "b"].join(",") // false unknown: stable-root -- a string, but the result of join is not known yet: built-in knowledge
+          it("trims", () => {
+            expect(key + lines).toBe("aa,b")
+          })
+        })
+      `,
+    },
+  },
 ] as const
 
 const READONLY_BINDINGS: readonly Row[] = [
@@ -1954,6 +1982,20 @@ const TYPE_NAMES: readonly Row[] = [
       "src/uses.model.ts": `
         import type { Sheet } from "./middle.model.ts"
         export const SHEET: Sheet = { a: 1 }
+      `,
+    },
+  },
+  {
+    // A CONFESSED LIMIT, added and stamped 2026-10-08: one of deblob's own specs annotates
+    // a root constant with an import() type, and no row had one. The type is
+    // the project's own and readonly: the truth is green.
+    name: "a readonly type written as an import() type proves",
+    files: {
+      "src/notes.model.ts": `
+        export type Note = { readonly id: number }
+      `,
+      "src/table.model.ts": `
+        export const FIRST: import("./notes.model.ts").Note = { id: 1 } // false unknown: stable-root -- an import() type is not read yet
       `,
     },
   },

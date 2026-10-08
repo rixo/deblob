@@ -112,6 +112,14 @@ describe("createRegistrars", () => {
       ["a type export", `import { test } from "vitest"\nexport type { test }`],
       ["a name bound to itself", `export const test = test`],
       ["a name not declared", `export { test }`],
+      [
+        "a name taken out of an object",
+        `import { runner } from "vitest"\nexport const { test } = runner`,
+      ],
+      [
+        "a type among the names passed on",
+        `export { type test, other } from "vitest"`,
+      ],
     ])("says nothing of %s", (_, source) => {
       expect(registrarsOf({ a: source }).originOf("a", "test")).toBeNull()
     })

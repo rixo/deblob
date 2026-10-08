@@ -303,8 +303,9 @@ export const createExtraction = ({
           ? bound.claimsFile(landed.path)
             ? landed.path
             : null
-          : claimOf(bound, landed, origin.specifier) === "reader"
-            ? (landed.package ?? origin.specifier)
+          : // a claimed package always has its name
+            claimOf(bound, landed, origin.specifier) === "reader"
+            ? landed.package
             : null
       return tech === null
         ? null

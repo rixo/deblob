@@ -330,6 +330,20 @@ describe("extractGraph over the forms fixture", () => {
     ])
   })
 
+  it("reads an `import()` of a template with no interpolation as the literal it is", async () => {
+    const edges = edgesFrom(await extractForms(), "src/dynamic-template.ts")
+    expect(edges).toEqual([
+      {
+        from: "src/dynamic-template.ts",
+        to: { type: "module", path: "src/dep.ts" },
+        kind: "runtime",
+        form: "dynamic",
+        reExport: false,
+        names: [],
+      },
+    ])
+  })
+
   it("surfaces a non-literal require(expr) as a diagnostic, skips argument-less require()", async () => {
     const graph = await extractForms()
     const fromRequires = graph.unresolved.filter(
@@ -1037,6 +1051,7 @@ describe("the reading on the graph — the reading fixture", () => {
     configLoads: readonly { file: string; name: string }[] = [
       { file: "src/app/app.service.ts", name: "load" },
     ],
+    files: readonly string[] = READING_FILES,
   ) => {
     const root = fixtureRoot("reading")
     const extraction = createExtraction({
@@ -1053,7 +1068,7 @@ describe("the reading on the graph — the reading fixture", () => {
         pure: ["pure-made-up-lib"],
         configLoads,
       },
-      files: READING_FILES,
+      files,
     })
   }
 
@@ -1117,6 +1132,50 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(readingOf(graph, "src/globals.spec.ts").tech).toBe(
       "generic-test-api",
     )
+  })
+
+  it("reads a function a suite passes on as its reader's tech when the import it comes from is the reader's — a builtin module, a project file listed — and as the suite's own otherwise", async () => {
+    const graph = await extractReading(
+      {
+        test: [
+          {
+            ...createGenericTestApiReader(),
+            tech: ["node:test", "./src/passed/runner.ts"],
+          },
+        ],
+      },
+      [],
+      [
+        "src/passed/lost.suite.ts",
+        "src/passed/builtin.suite.ts",
+        "src/passed/runner.ts",
+        "src/passed/claimed.suite.ts",
+        "src/passed/passed.spec.ts",
+      ],
+    )
+    expect(
+      callsOf(readingOf(graph, "src/passed/passed.spec.ts").root).map(
+        (call) => call.callee,
+      ),
+    ).toEqual([
+      { kind: "tech", package: "node:test" },
+      // the host's function, not the reader's tech: the suite's, where no
+      // function of that name is declared
+      {
+        kind: "wiring",
+        path: "src/passed/builtin.suite.ts",
+        name: "join",
+        suite: true,
+      },
+      { kind: "tech", package: "src/passed/runner.ts" },
+      // an import that lands nowhere: nothing is known of what it gave
+      {
+        kind: "wiring",
+        path: "src/passed/lost.suite.ts",
+        name: "test",
+        suite: true,
+      },
+    ])
   })
 
   it("makes a blob file a test by a test reader's written binding, read by that reader", async () => {
