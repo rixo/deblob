@@ -381,6 +381,13 @@ export type ReadCall = {
    */
   registration: boolean
   /**
+   * A registration that registers nothing: a fixture declaration
+   * (`test.extend({ … })`), or a member the reader says is of that sort
+   * (`test.each(rows)`), which gives a registering function back. It acts on
+   * nothing when the file loads, so a suite's root may make it.
+   */
+  declares: boolean
+  /**
    * For a call read inside a tracked local's body: the root call that ran the
    * body, the outermost when locals nest — where the call runs on import from.
    * `null` for a call written where it runs.
@@ -557,12 +564,12 @@ export type Role =
   | { kind: "teardown"; scope: "each" | "all" }
   | { kind: "mock" }
   /**
-   * Declares what the runner builds for the behaviors that ask for it, and
-   * gives the runner's own registering function back under another name (`const
-   * test = base.extend({ … })`): what it gave back registers as what it came
-   * from.
+   * Takes what the runner gave, adds to it, and gives the extended one back,
+   * registering nothing: a fixture declaration (`const test = base.extend({ …
+   * })`), whose result registers as what it came from, or matchers declared on
+   * a new `expect` where the runner makes one (Playwright's `expect.extend`).
    */
-  | { kind: "fixture" }
+  | { kind: "extension" }
 
 export type ReadHook = {
   span: Span

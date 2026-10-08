@@ -31,6 +31,7 @@ import { brokenLinesOf, readModule } from "./reading.model.ts"
 import type { FilePlugins, PluginsConfig } from "./plugins.model.ts"
 import { createDeclarations } from "./declarations.model.ts"
 import { bindPlugins, CORE_TECH } from "./plugins.model.ts"
+import { createRegistrars } from "./registrars.model.ts"
 import { createTrace } from "./trace.model.ts"
 import { symbolLevelOf } from "./symbols.model.ts"
 
@@ -281,6 +282,52 @@ export const createExtraction = ({
       symbolsByFile.get(path)?.symbols.find((symbol) => symbol.name === name)
         ?.form ?? null
 
+    /**
+     * The registering function a project file's export stands for, for the file
+     * importing it: the import the name started from, when that import is of
+     * the importing file's own reader's tech. `null` for any other export.
+     */
+    const registrarOf = (
+      bound: FilePlugins,
+      path: string,
+      name: string,
+    ): ReturnType<
+      NonNullable<Extract<ImportTargetKind, { kind: "module" }>["registrar"]>
+    > => {
+      const origin = registrars.originOf(path, name)
+      if (origin === null) return null
+      const landed = landedByFile.get(origin.file)?.get(origin.specifier)
+      if (landed == null) return null
+      const tech =
+        landed.type === "module"
+          ? bound.claimsFile(landed.path)
+            ? landed.path
+            : null
+          : claimOf(bound, landed, origin.specifier) === "reader"
+            ? (landed.package ?? origin.specifier)
+            : null
+      return tech === null
+        ? null
+        : { package: tech, imported: origin.imported, derived: origin.derived }
+    }
+
+    /**
+     * Where a test file's export is declared when the file passes on another
+     * test file's export by a re-export: the import the name started from,
+     * landing on that file. `null` for any other export.
+     */
+    const declaredAt = (
+      path: string,
+      name: string,
+    ): { path: string; name: string } | null => {
+      const origin = registrars.originOf(path, name)
+      if (origin === null || origin.derived.length > 0) return null
+      const landed = landedByFile.get(origin.file)?.get(origin.specifier)
+      return landed?.type === "module" && plugins.kindOf(landed.path) === "test"
+        ? { path: landed.path, name: origin.imported }
+        : null
+    }
+
     /** What an import lands on, for the reader: the target's kind, or the claim. */
     const importTargetKindOf = (
       bound: FilePlugins,
@@ -303,6 +350,8 @@ export const createExtraction = ({
           path: target.path,
           layer: plugins.kindOf(target.path),
           exportForm: (name) => exportFormOf(target.path, name),
+          registrar: (name) => registrarOf(bound, target.path, name),
+          declaredAt: (name) => declaredAt(target.path, name),
         }
       }
       return {
@@ -521,6 +570,23 @@ export const createExtraction = ({
             ] as const,
           ]
         }),
+      ),
+    )
+
+    // which import each file's export stands for, when it passes a registering
+    // function on under a name: the table a test file's reading asks
+    const registrars = createRegistrars(
+      new Map(
+        files.map((file) => [
+          file,
+          {
+            program: extractionOf(file)?.program ?? null,
+            fileOf: (specifier: string) => {
+              const target = landedByFile.get(file)?.get(specifier) ?? null
+              return target?.type === "module" ? target.path : null
+            },
+          },
+        ]),
       ),
     )
 

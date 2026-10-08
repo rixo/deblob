@@ -16,6 +16,14 @@ export interface TestReader extends DriverReader {
    */
   roleOf(input: { chain: readonly string[] }): Role | null
   /**
+   * Whether the name, called, registers nothing and gives back a function that
+   * registers as the name does: `test.each(rows)`, `it.skipIf(condition)`. The
+   * call is then a declaration, and a name that keeps what it gave is followed
+   * as the registering function it is. The chain as `roleOf` takes it. Absent =
+   * the reader knows of none.
+   */
+  givesRegistrar?(input: { chain: readonly string[] }): boolean
+  /**
    * The suites of this runner, by glob: files of the test kind the runner does
    * not collect, whose wiring function a test file calls at its root to
    * register the tests they hold. The reader names them, as it knows what its

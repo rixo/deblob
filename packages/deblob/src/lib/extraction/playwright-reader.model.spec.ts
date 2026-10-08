@@ -26,7 +26,21 @@ describe("createPlaywrightReader", () => {
       scope: "all",
     })
     expect(roleOf(["test", "step"])).toEqual({ kind: "verification" })
-    expect(roleOf(["test", "extend"])).toEqual({ kind: "fixture" })
+    expect(roleOf(["test", "extend"])).toEqual({ kind: "extension" })
     expect(roleOf(["expect"])).toBeNull()
+  })
+
+  it("reads expect.extend as a declaration: Playwright's gives a new expect back", () => {
+    const reader = createPlaywrightReader()
+    expect(reader.roleOf({ chain: ["expect", "extend"] })).toEqual({
+      kind: "extension",
+    })
+  })
+
+  it("names the suites, a .suite name when not written", () => {
+    expect(createPlaywrightReader().suites).toEqual(["**/*.suite.*"])
+    expect(
+      createPlaywrightReader({ suites: ["e2e/shared/**"] }).suites,
+    ).toEqual(["e2e/shared/**"])
   })
 })

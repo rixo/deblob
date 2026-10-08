@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 
-import { goodEnoughTests } from "../../readers.ts"
+import { goodEnoughTests, playwright } from "../../readers.ts"
 import { assembleCase } from "./runner/cases.assembly.ts"
 import type { Row } from "./runner/markers.model.ts"
 import { AS_MARKED } from "./runner/markers.model.ts"
@@ -281,20 +281,18 @@ const SUITES: readonly Row[] = [
     },
   },
   {
-    // A CONFESSED LIMIT, found 2026-10-08. A fixture declaration gives a new
-    // registering function back and registers nothing: at a suite's root it
-    // is a value like another, and the spec that imports it registers with
-    // it. The reader gets both ends wrong: it takes the declaration for a
-    // registration at the suite's root, and it does not follow the name into
-    // the spec (it does inside one file).
-    name: "a fixture declared at a suite's root and imported by a spec registers nothing where it is declared, and registers tests in the spec: green, missed twice",
+    // A fixture declaration gives a new registering function back and
+    // registers nothing: at a suite's root it is a value like another. The
+    // spec that imports it registers its tests with it, as with the test
+    // runner's own function: the name is followed across files, as it is
+    // inside one.
+    name: "a fixture declared at a suite's root registers nothing there, and the spec that imports it registers tests with it: green",
     files: {
       ...FS,
       "src/fs/fs-fixture.suite.ts": `
         import { test as base } from "vitest"
         import type { Fs } from "./fs.port.ts"
         import { createMemoryFs } from "./adapters/memory-fs.adapter.ts"
-        // false red: stable-root -- a fixture declaration registers nothing: it gives a function back
         export const test = base.extend<{ fs: Fs }>({
           fs: async ({}, use) => {
             await use(createMemoryFs({}))
@@ -304,9 +302,268 @@ const SUITES: readonly Row[] = [
       "src/fs/reads.spec.ts": `
         import { expect } from "vitest"
         import { test } from "./fs-fixture.suite.ts"
-        // false unknown: stable-root -- the test runner's function under a name a suite exports: not followed across files
         test("reads null", async ({ fs }) => {
           expect(await fs.readFile("/missing")).toBe(null)
+        })
+      `,
+    },
+  },
+  {
+    // What holds for the test runner's function holds for the one
+    // a suite gives: its members register (\`test.skip\`, \`test.describe\`),
+    // another name the suite exports for it is that function, and a group
+    // registered with it is a group: what its body declares is shared.
+    name: "the function a suite's fixture gives is the test runner's in everything: its members, another name the suite exports, and a group's body judged as a group's",
+    files: {
+      ...FS,
+      "src/fs/fs-fixture.suite.ts": `
+        import { test as base } from "vitest"
+        import type { Fs } from "./fs.port.ts"
+        import { createMemoryFs } from "./adapters/memory-fs.adapter.ts"
+        export const test = base.extend<{ fs: Fs }>({
+          fs: async ({}, use) => {
+            await use(createMemoryFs({}))
+          },
+        })
+        export const it = test
+      `,
+      "src/fs/reads.spec.ts": `
+        import { expect } from "vitest"
+        import { it, test } from "./fs-fixture.suite.ts"
+        test.skip("is not run", async ({ fs }) => {
+          expect(await fs.readFile("/missing")).toBe(null)
+        })
+        it("reads null", async ({ fs }) => {
+          expect(await fs.readFile("/missing")).toBe(null)
+        })
+        test.describe("in a group", () => {
+          let reads = 0 // red: stable-root -- a let, shared by the group's tests
+          test("counts", async ({ fs }) => {
+            reads += 1
+            expect(await fs.readFile("/missing")).toBe(null)
+          })
+        })
+      `,
+    },
+  },
+  {
+    // A fixture extends a fixture: the second suite imports the first one's
+    // function and declares on it. The name is followed through both files.
+    name: "a fixture declared on another suite's fixture is followed through both files: green",
+    files: {
+      ...FS,
+      "src/fs/fs-fixture.suite.ts": `
+        import { test as base } from "vitest"
+        import type { Fs } from "./fs.port.ts"
+        import { createMemoryFs } from "./adapters/memory-fs.adapter.ts"
+        export const test = base.extend<{ fs: Fs }>({
+          fs: async ({}, use) => {
+            await use(createMemoryFs({}))
+          },
+        })
+      `,
+      "src/fs/seeded-fixture.suite.ts": `
+        import { test as base } from "./fs-fixture.suite.ts"
+        export const test = base.extend<{ seeded: string }>({
+          seeded: async ({ fs }, use) => {
+            await use((await fs.readFile("/a")) ?? "")
+          },
+        })
+      `,
+      "src/fs/reads.spec.ts": `
+        import { expect } from "vitest"
+        import { test } from "./seeded-fixture.suite.ts"
+        test("reads what was seeded", async ({ seeded }) => {
+          expect(seeded).toBe("")
+        })
+      `,
+    },
+  },
+  {
+    // The same declaration in a file with no kind. The name is followed there
+    // too (ruled 2026-10-08): it holds the test runner's function, and blob
+    // defines none. The spec registers its tests; the blob file keeps its own
+    // verdicts, here an adapter imported outside an assembly.
+    name: "the same fixture in a file with no kind is followed too: the spec registers tests, and the blob file keeps its own reds",
+    files: {
+      ...FS,
+      "src/fs/fixtures.ts": `
+        import { test as base } from "vitest"
+        import type { Fs } from "./fs.port.ts"
+        import { createMemoryFs } from "./adapters/memory-fs.adapter.ts"
+        export const test = base.extend<{ fs: Fs }>({
+          fs: async ({}, use) => {
+            await use(createMemoryFs({}))
+          },
+        })
+        // red: adapter-assembly-only, runtime-import -- blob importing an adapter
+      `,
+      "src/fs/reads.spec.ts": `
+        import { expect } from "vitest"
+        import { test } from "./fixtures.ts"
+        test("reads null", async ({ fs }) => {
+          expect(await fs.readFile("/missing")).toBe(null)
+        })
+      `,
+    },
+  },
+  {
+    // What following into blob costs: a fixtures file
+    // in blob that imports nothing blob may not import gets no line, and
+    // neither does the spec. Nothing pushes it to be named a suite; it counts
+    // in the blob share. A function blob defines stays a call into blob.
+    name: "a fixture in a blob file that breaks no rule is silent, with the spec; a function the blob file defines, called at the spec's root, stays red",
+    files: {
+      ...FS,
+      "src/fs/fixtures.ts": `
+        import { test as base } from "vitest"
+        export const test = base.extend<{ path: string }>({ path: "/missing" })
+        export const describePaths = () => {
+          test("has a path", ({ path }) => {})
+        }
+      `,
+      "src/fs/reads.spec.ts": `
+        import { expect } from "vitest"
+        import { describePaths, test } from "./fixtures.ts"
+        test("has a path", ({ path }) => {
+          expect(path).toBe("/missing")
+        })
+        describePaths() // red: stable-root -- a call into a blob's function when the spec loads
+      `,
+    },
+  },
+  {
+    // \`test.each(rows)\` registers nothing and gives a function back, which
+    // registers when it is called, as \`test\` does: a suite may export it, a
+    // spec may keep it under a name, and \`test.for\`, \`test.skipIf\` and
+    // \`test.runIf\` are the same. The reader says which members are of that
+    // sort; the name is followed like a fixture's.
+    name: "the function test.each gives registers nothing where it is made and registers tests where it is called: exported by a suite, or kept under a name in the spec, green",
+    files: {
+      ...FS,
+      "src/fs/paths.suite.ts": `
+        import { test } from "vitest"
+        export const eachPath = test.each(["/a", "/b"])
+        export const onLinux = test.runIf(true)
+        export const eachOnLinux = test.runIf(true).each(["/a"])
+        export const eachSkipped = test.skip.each(["/a"])
+      `,
+      "src/fs/reads.spec.ts": `
+        import { expect, it } from "vitest"
+        import { eachOnLinux, eachPath, eachSkipped, onLinux } from "./paths.suite.ts"
+        const eachDepth = it.for([1, 2])
+        eachPath("reads %s", (path) => {
+          expect(path).toBeDefined()
+        })
+        onLinux("reads on linux", () => {
+          expect(1).toBe(1)
+        })
+        eachOnLinux("reads %s on linux", (path) => {
+          expect(path).toBeDefined()
+        })
+        eachSkipped("does not read %s", (path) => {
+          expect(path).toBeDefined()
+        })
+        eachDepth("reads at depth %i", (depth) => {
+          expect(depth).toBeDefined()
+        })
+      `,
+    },
+  },
+  {
+    // Only what the reader says gives a registering
+    // function registers. A mock function made at a suite's root is a call
+    // into the runner when the suite loads; what it gives is the runner's, and
+    // no registering function: the spec's call to it is a call into the runner
+    // when the spec loads, and no registration.
+    name: "what a call into the runner gave is the runner's, and registers only if the reader says so: a mock function made at a suite's root is red there, and red again called at a spec's root",
+    files: {
+      ...FS,
+      "src/fs/spies.suite.ts": `
+        import { vi } from "vitest"
+        export const onRead = vi.fn() // red: stable-root + stable-root -- a call into the runner when the suite loads, and what it made is shared by the tests
+      `,
+      "src/fs/reads.spec.ts": `
+        import { expect, it, vi } from "vitest"
+        import { onRead } from "./spies.suite.ts"
+        onRead() // red: stable-root -- a call into the runner when the spec loads, and no registration
+        // false unknown: stable-root -- the reader does not know what vi.fn() gave, made in another file or in this one
+        // red: stable-root -- a mock function kept at a spec's root records its calls: state the tests share
+        const kept = onRead
+        // false unknown: stable-root -- the same, made here
+        // red: stable-root -- a mock function kept at a spec's root
+        const made = vi.fn()
+        it("was called", () => {
+          expect([onRead, kept, made]).toBeDefined()
+        })
+      `,
+    },
+  },
+  {
+    // A suite passes on another suite's wiring function by a re-export; the
+    // spec's call registers the tests, as it would called from the first
+    // suite, and the function it hands runs in the tests. The function is
+    // found in the file that declares it, through the re-export.
+    name: "a suite's wiring function re-exported by another suite and called at a spec's root is a registration: green",
+    files: {
+      ...FS,
+      "src/fs/fs.suite.ts": SUITE,
+      "src/test/all.suite.ts": `
+        export { describeFs } from "../fs/fs.suite.ts"
+      `,
+      "src/fs/adapters/memory-fs.adapter.spec.ts": `
+        import { describeFs } from "../../test/all.suite.ts"
+        import { createMemoryFs } from "./memory-fs.adapter.ts"
+        describeFs("createMemoryFs", async () => createMemoryFs({}))
+      `,
+    },
+  },
+  {
+    // The root decides, not the name: a spec file whose
+    // root only declares a fixture registers nothing, so a test file may
+    // import it, as it may a spec whose root is quiet.
+    name: "a spec file whose root only declares a fixture registers nothing: another spec imports it and registers tests with it, green",
+    files: {
+      ...FS,
+      "src/fs/fs-fixture.spec.ts": `
+        import { test as base } from "vitest"
+        export const test = base.extend<{ path: string }>({ path: "/missing" })
+      `,
+      "src/fs/reads.spec.ts": `
+        import { expect } from "vitest"
+        import { test } from "./fs-fixture.spec.ts"
+        test("has a path", ({ path }) => {
+          expect(path).toBe("/missing")
+        })
+      `,
+    },
+  },
+  {
+    // Playwright's \`expect.extend\` gives a new
+    // \`expect\` back and changes nothing: a declaration, like its
+    // \`test.extend\`. Its reader says so. (vitest's and jest's write the
+    // runner's own \`expect\` and give nothing back: an act, red at a suite's
+    // root — the row "a matcher registered in a suite's function".)
+    name: "Playwright's expect.extend at a suite's root declares a new expect and registers nothing, by its reader: green",
+    config: { readers: { test: [playwright()] } },
+    files: {
+      ...FS,
+      "node_modules/@playwright/test/package.json": JSON.stringify({
+        name: "@playwright/test",
+        main: "./index.js",
+      }),
+      "node_modules/@playwright/test/index.js": "module.exports = {}",
+      "src/test/matchers.suite.ts": `
+        import { expect as base } from "@playwright/test"
+        export const expect = base.extend({
+          toBeRed: (received: unknown) => ({ pass: received === "red", message: () => "not red" }),
+        })
+      `,
+      "src/colors.spec.ts": `
+        import { test } from "@playwright/test"
+        import { expect } from "./test/matchers.suite.ts"
+        test("is red", () => {
+          expect("red").toBeDefined()
         })
       `,
     },

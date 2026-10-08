@@ -43,6 +43,8 @@ export type PluginsConfig = Designations & {
 export type BoundTech = {
   name: string
   roleOf: (chain: readonly string[]) => Role | null
+  /** Whether a reader says the name, called, gives a registering function. */
+  givesRegistrar: (chain: readonly string[]) => boolean
   cut: (node: Node, about: CutContext) => CutAnswer[]
 }
 
@@ -73,6 +75,7 @@ export type FilePlugins = {
 export const CORE_TECH = {
   name: "core",
   roleOf: () => null,
+  givesRegistrar: () => false,
   cut: answerCallbacks,
 } as const satisfies BoundTech
 
@@ -88,6 +91,12 @@ const stackedTech = (
     }
     return null
   },
+  givesRegistrar: (chain) =>
+    readers.some(
+      (reader) =>
+        "givesRegistrar" in reader &&
+        reader.givesRegistrar?.({ chain }) === true,
+    ),
   // every reader's cut that answers, with what that reader claims; the
   // default cut last
   cut: (node, about) => [

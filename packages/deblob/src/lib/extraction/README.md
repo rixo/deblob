@@ -256,17 +256,20 @@ unparsed one, has none: recognized and open.
   nothing (builtins and host globals are tech by the reading's table,
   third-party packages by `driverTech`); exempts nothing; maps no role.
 - `good-enough-tests-reader.model.ts` — the good-enough test reader, common
-  conventions over every runner it knows: binds the test naming (`*.spec.*`,
-  `*.test.*`, `__tests__/`) and reads the test kind only, so its binding is what
-  makes a file a test file — canon's "spec files by the test globs"; claims the
-  runners it knows (a census, `driverTech` for the next one); maps the runners'
-  shared names to roles (`describe`/`suite` group, `it` behavior, `test`
-  verification, `before*`/`after*` setup and teardown by scope,
-  `vi.mock`/`jest.mock` mock), a chain by the longest listed name it starts with
-  (`it.skip.each` is `it`, `vi.fn` none) — a globals-mode runner's free names
-  map to none. It names the suites too (`suites`, an argument of its factory,
-  `**/*.suite.*` when not written): files of the test kind the runner does not
-  collect, whose wiring function a test file calls at its root.
+  conventions over every runner it knows. It is tested on vitest only: the other
+  runners it claims (jest, `node:test`, `bun:test`, mocha, ava, uvu, tap) were
+  never run through it, so where one differs from vitest the reader is wrong and
+  no test says so. It binds the test naming (`*.spec.*`, `*.test.*`,
+  `__tests__/`) and reads the test kind only, so its binding is what makes a
+  file a test file — canon's "spec files by the test globs"; claims the runners
+  it knows (a census, `driverTech` for the next one); maps the runners' shared
+  names to roles (`describe`/`suite` group, `it` behavior, `test` verification,
+  `before*`/`after*` setup and teardown by scope, `vi.mock`/`jest.mock` mock), a
+  chain by the longest listed name it starts with (`it.skip.each` is `it`,
+  `vi.fn` none) — a globals-mode runner's free names map to none. It names the
+  suites too (`suites`, an argument of its factory, `**/*.suite.*` when not
+  written): files of the test kind the runner does not collect, whose wiring
+  function a test file calls at its root.
 - `adapters/package-meta.adapter.ts` — the cross-package reader,
   `createPackageMetaReader({ fs, resolve, anchor, classifyEntry })`: resolves a
   bare specifier to its owning package.json, reads the `deblob` field and the

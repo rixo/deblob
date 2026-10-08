@@ -4,9 +4,10 @@ import type { TestReader } from "./test-reader.model.ts"
 
 /**
  * Playwright's names, in deblob's roles — `test` alone, its members for the
- * rest. `test` states a verification, as the good-enough reader reads a
- * runner's `test`; `test.step` maps to none: a step inside a test, no role in
- * deblob's vocabulary, never guessed.
+ * rest, and `expect.extend`, a declaration like `test.extend`. `test` states a
+ * verification, as the good-enough reader reads a runner's `test`; `test.step`
+ * maps to none: a step inside a test, no role in deblob's vocabulary, never
+ * guessed.
  */
 const ROLES = {
   "test.describe": { kind: "group" },
@@ -15,8 +16,16 @@ const ROLES = {
   "test.beforeAll": { kind: "setup", scope: "all" },
   "test.afterEach": { kind: "teardown", scope: "each" },
   "test.afterAll": { kind: "teardown", scope: "all" },
-  "test.extend": { kind: "fixture" },
+  "test.extend": { kind: "extension" },
+  // Playwright's gives a new `expect` back and changes none: a declaration
+  "expect.extend": { kind: "extension" },
 } as const satisfies Readonly<Record<string, Role>>
+
+/**
+ * A suite by its name, `*.suite.*`: Playwright collects `*.spec.*` and
+ * `*.test.*` by default, and no such file.
+ */
+const SUITES = ["**/*.suite.*"] as const
 
 /**
  * The Playwright runner: `@playwright/test` claimed, the good-enough reader's
@@ -26,11 +35,16 @@ const ROLES = {
  * stack it before `goodEnoughTests()` for the e2e files alone: `playwright({
  * include: ["tests/**\/*.e2e.ts"] })`.
  */
-export const createPlaywrightReader = (
-  binding: ReaderBinding = {},
-): TestReader => ({
+export const createPlaywrightReader = ({
+  suites = SUITES,
+  ...binding
+}: ReaderBinding & {
+  /** The files that are suites, by glob; a `.suite` name when not written. */
+  suites?: readonly string[]
+} = {}): TestReader => ({
   name: "playwright",
   ...binding,
+  suites,
   tech: ["@playwright/test"],
   // the longest listed name the chain starts with: `test.describe.only` is a
   // group, `test.skip` a verification; own keys only

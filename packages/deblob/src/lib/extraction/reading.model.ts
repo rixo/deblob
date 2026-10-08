@@ -56,6 +56,27 @@ export type ImportTargetKind =
        * `class`, …); `null` when it declares no such name. Absent = not known.
        */
       exportForm?: (name: string) => string | null
+      /**
+       * The registering function the target's export stands for, when it passes
+       * one on under a name (`export const test = base.extend({ … })`, `export
+       * const it = test`): the export of the importing file's own reader's tech
+       * it started from (`package`, `imported`), and the members called on the
+       * way (`derived`) — each a call that gives a registering function back or
+       * the name is no registrar, by the reader's word. `null` for any other
+       * export. Absent = not known.
+       */
+      registrar?: (name: string) => {
+        package: string
+        imported: string
+        derived: readonly (readonly string[])[]
+      } | null
+      /**
+       * Where the target's export is declared, when the target passes on
+       * another test file's export by a re-export: that file and the name
+       * there. `null` when the target declares it itself, or passes on anything
+       * else. Absent = not known.
+       */
+      declaredAt?: (name: string) => { path: string; name: string } | null
     }
   | {
       kind: "external"
@@ -88,6 +109,11 @@ export type ReadInput = {
   tech: {
     name: string
     roleOf?: (chain: readonly string[]) => Role | null
+    /**
+     * Whether the name, called, registers nothing and gives a registering
+     * function back (`test.each(rows)`); absent = no name does.
+     */
+    givesRegistrar?: (chain: readonly string[]) => boolean
     /**
      * The reader's own cut: its word on a statement, `null` where it has none,
      * with what that reader claims — whether a package or a project file (by
@@ -1156,6 +1182,53 @@ export const readModule = ({
     }
   }
 
+  /**
+   * What a test file's import from a project file holds of the reader's tech:
+   * the name is followed across files as it is inside one (`fixtureBaseOf`),
+   * down to the export of the tech it started from, through a file of any kind
+   * — the name holds what the runner gave, the files on the way define none.
+   * `null` for any other import. `chain` is the name as the reader reads it
+   * when it holds a registering function: the export it started from, a fixture
+   * declaration leaving it as it was (`base.extend({ … })` is `base`), a member
+   * that gives a registering function back added to it (`test.each(rows)` is
+   * `test`, `each`); `null` when some call on the way gave anything else
+   * (`vi.fn()`): the runner's still, and no registering function.
+   */
+  const importedTechOf = (
+    binding: ImportBinding,
+  ): {
+    package: string
+    chain: readonly string[] | null
+    /** Whether a call made it: a call's result, not the export itself. */
+    made: boolean
+  } | null => {
+    if (!registers || binding.imported === "*") return null
+    const target = importTargetOf(binding.specifier)
+    if (target.kind !== "module") return null
+    const registrar = target.registrar?.(binding.imported) ?? null
+    if (registrar === null) return null
+    const made = registrar.derived.length > 0
+    const chain = [registrar.imported]
+    for (const members of registrar.derived) {
+      const called = [...chain, ...members]
+      if (tech?.roleOf?.(called)?.kind === "extension") continue
+      if (tech?.givesRegistrar?.(called) !== true)
+        return { package: registrar.package, chain: null, made }
+      chain.push(...members)
+    }
+    return { package: registrar.package, chain, made }
+  }
+
+  /** The registering function such an import stands for, when it is one. */
+  const importedRegistrarOf = (
+    binding: ImportBinding,
+  ): { package: string; chain: readonly string[] } | null => {
+    const held = importedTechOf(binding)
+    return held === null || held.chain === null
+      ? null
+      : { package: held.package, chain: held.chain }
+  }
+
   // --- the kinds table ---------------------------------------------------
   const calleeOfImport = (
     binding: ImportBinding,
@@ -1213,6 +1286,11 @@ export const readModule = ({
       }
     }
     const { path, layer } = target
+    // what the runner gave, passed on by a file under a name, is the runner's:
+    // the call is a call into the tech, as under the name the runner gave it
+    const held = importedTechOf(binding)
+    if (held !== null)
+      return { rest, callee: { kind: "tech", package: held.package } }
     switch (layer) {
       case "service":
       case "adapters":
@@ -1227,8 +1305,17 @@ export const readModule = ({
         // a test file's export, called by a test file: the wiring function of
         // a sub-test, as a sub-driver's is to a driver — whether the file may
         // be imported is the import's fact, judged on its root
+        // — and the function is the file's that declares it, through a
+        // re-export
         if (registers)
-          return { rest, callee: { kind: "wiring", path, name, suite: true } }
+          return {
+            rest,
+            callee: {
+              kind: "wiring",
+              ...(target.declaredAt?.(name) ?? { path, name }),
+              suite: true,
+            },
+          }
         return { rest, callee: { kind: "forbidden-import", layer, path } }
       case "ports":
       case "boot":
@@ -1308,6 +1395,8 @@ export const readModule = ({
             (target.claim === "tech" || target.claim === "reader")
           )
             return techValue(target.package ?? binding.import!.specifier, [])
+          const held = importedTechOf(binding.import!)
+          if (held !== null) return techValue(held.package, [])
           return {
             kind:
               target.kind === "unresolved" || isValueForm(form)
@@ -1489,15 +1578,15 @@ export const readModule = ({
   /**
    * A binding whose tech value is a read: an import or a hook's parameter, a
    * loop's element of what it iterates, or a definition bound to a read (`const
-   * env = process.env`), never to a call.
+   * env = process.env`), never to a call — in this file or, for an import, in
+   * the file it comes from.
    */
   const holdsRead = (binding: Binding): boolean => {
-    if (
-      binding.kind === "import" ||
-      binding.kind === "parameter" ||
-      binding.kind === "callback"
-    )
-      return true
+    // an import of what a call into the tech gave, made in another file, is
+    // that call's result as much as one made here
+    if (binding.kind === "import")
+      return importedTechOf(binding.import!)?.made !== true
+    if (binding.kind === "parameter" || binding.kind === "callback") return true
     // past those, only a definition with an initializer resolves to tech
     // (resolveBinding): a catch binding is computed, a callback's is unless it
     // is a loop's element, and so is a definition without an initializer
@@ -1613,6 +1702,7 @@ export const readModule = ({
     const base = fixtureBaseOf(binding)
     if (base !== null) return startsFromReader(base)
     if (binding.kind !== "import") return false
+    if (importedRegistrarOf(binding.import!) !== null) return true
     const target = importTargetOf(binding.import!.specifier)
     return target.kind === "external" && target.claim === "reader"
   }
@@ -1647,8 +1737,12 @@ export const readModule = ({
     if (callee.type !== "MemberExpression") return null
     derivingFixture.add(binding)
     const role = roleOf(callee)
+    // what a member that gives a registering function gave (`const eachRow =
+    // test.each(rows)`) stands for that call
+    const gives = role?.kind !== "extension" && givesRegistrar(callee)
     derivingFixture.delete(binding)
-    return role?.kind === "fixture" ? (callee["object"] as AstNode) : null
+    if (role?.kind === "extension") return callee["object"] as AstNode
+    return gives ? init : null
   }
   /** The names whose fixture declaration is being read: a cycle stops there. */
   const derivingFixture = new Set<Binding>()
@@ -1666,6 +1760,28 @@ export const readModule = ({
   ): Role | null => {
     const translate = tech?.roleOf
     if (translate === undefined) return null
+    const chain = readerChainOf(calleeNode, read)
+    return chain === null ? null : translate(chain)
+  }
+
+  /**
+   * Whether a call's callee is a member the reader says gives a registering
+   * function back, called for the first time: `test.each` in `test.each(rows)`,
+   * never `test.each(rows)` in `test.each(rows)("name", fn)`.
+   */
+  const givesRegistrar = (calleeNode: AstNode): boolean => {
+    const gives = tech?.givesRegistrar
+    if (gives === undefined) return false
+    if (unwrap(calleeNode).type !== "MemberExpression") return false
+    const chain = readerChainOf(calleeNode)
+    return chain !== null && gives(chain)
+  }
+
+  /** A callee as the reader reads it: the chain `roleOf` translates. */
+  const readerChainOf = (
+    calleeNode: AstNode,
+    read: readonly string[] = [],
+  ): readonly string[] | null => {
     const members: string[] = [...read]
     let current = unwrap(calleeNode)
     while (
@@ -1684,12 +1800,15 @@ export const readModule = ({
     // a name holding what a fixture declaration gave back is the registering
     // function it was declared on: `test.skip` reads as `base.skip`
     const base = fixtureBaseOf(binding)
-    if (base !== null) return roleOf(base, members)
+    if (base !== null) return readerChainOf(base, members)
     if (binding.kind !== "import") return null
+    // a file's name for a registering function reads as the runner's own
+    const registrar = importedRegistrarOf(binding.import!)
+    if (registrar !== null) return [...registrar.chain, ...members]
     const { specifier, imported } = binding.import!
     const target = importTargetOf(specifier)
     if (target.kind !== "external" || target.claim !== "reader") return null
-    return translate(imported === "*" ? members : [imported, ...members])
+    return imported === "*" ? members : [imported, ...members]
   }
 
   /**
@@ -2621,16 +2740,21 @@ export const readModule = ({
     const results = resultsOf(ctx, callee, spanOf(node))
     const load = callee.kind === "use-case" ? loadOf(callee) : null
     if (ctx.kind === "bound" && load !== null) ctx.binding.boundLoad = true
+    const registration =
+      registers &&
+      ((callee.kind === "tech" && startsFromReader(calleeNode)) ||
+        isSuiteWiring(callee))
     const call: ReadCall = {
       span: spanOf(node),
       callee,
       args: [],
       result: results,
       load,
-      registration:
-        registers &&
-        ((callee.kind === "tech" && startsFromReader(calleeNode)) ||
-          isSuiteWiring(callee)),
+      registration,
+      declares:
+        registration &&
+        (roleOf(calleeNode)?.kind === "extension" ||
+          givesRegistrar(calleeNode)),
       site: inlineSite,
       calleeCall: calleeCallOf(calleeNode),
     }
@@ -2865,6 +2989,7 @@ export const readModule = ({
             result: resultsOf(ctx, loader, spanOf(node)),
             load: null,
             registration: false,
+            declares: false,
             site: inlineSite,
             calleeCall: null,
           },

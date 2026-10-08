@@ -51,13 +51,17 @@ const OUTSIDE_RANK = { assembly: 0, driver: 1, boot: 2 } as const
 
 /**
  * A file whose root is read and registers nothing: importing it does nothing. A
- * file nobody read proves nothing.
+ * declaration that gives a registering function back (`test.extend({ … })`)
+ * registers nothing. A file nobody read proves nothing.
  */
 const registersNothingAtRoot = ({ reading }: ModuleNode): boolean =>
   reading !== null &&
   reading.hooks.length === 0 &&
   reading.root.every(
-    (statement) => statement.kind !== "call" || !statement.call.registration,
+    (statement) =>
+      statement.kind !== "call" ||
+      !statement.call.registration ||
+      statement.call.declares,
   )
 type ChainedOutsideKind = keyof typeof OUTSIDE_RANK
 

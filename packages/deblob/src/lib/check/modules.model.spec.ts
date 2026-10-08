@@ -58,6 +58,7 @@ describe("checkModules", () => {
                 result: [{ kind: "discarded", span }],
                 load: null,
                 registration: false,
+                declares: false,
                 site: null,
                 calleeCall: null,
               },

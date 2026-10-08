@@ -65,8 +65,47 @@ describe("createGoodEnoughTestsReader", () => {
       expect(roleOf(["it", "skip", "each"])).toEqual({ kind: "behavior" })
       expect(roleOf(["describe", "each"])).toEqual({ kind: "group" })
       expect(roleOf(["vi", "mock"])).toEqual({ kind: "mock" })
-      expect(roleOf(["test", "extend"])).toEqual({ kind: "fixture" })
-      expect(roleOf(["it", "extend"])).toEqual({ kind: "fixture" })
+      expect(roleOf(["test", "extend"])).toEqual({ kind: "extension" })
+      expect(roleOf(["it", "extend"])).toEqual({ kind: "extension" })
+    })
+
+    it("reads a group registered as a member of the registering function", () => {
+      expect(
+        [
+          ["test", "describe"],
+          ["it", "describe"],
+          ["test", "suite"],
+          ["it", "suite"],
+          ["test", "describe", "skip"],
+        ].map(roleOf),
+      ).toEqual(Array.from({ length: 5 }, () => ({ kind: "group" })))
+    })
+
+    it("says which members give a registering function back: a giving member last, on a name that registers", () => {
+      const gives = (chain: readonly string[]) =>
+        reader.givesRegistrar?.({ chain })
+      expect(
+        [
+          ["test", "each"],
+          ["it", "for"],
+          ["describe", "skipIf"],
+          ["test", "runIf"],
+          ["it", "skip", "each"],
+          ["test", "describe", "each"],
+        ].map(gives),
+      ).toEqual(Array.from({ length: 6 }, () => true))
+      expect(
+        [
+          ["test"],
+          ["each"],
+          ["test", "each", "skip"],
+          ["test", "extend"],
+          ["vi", "mock", "each"],
+          ["beforeEach", "each"],
+          ["bench", "each"],
+          [],
+        ].map(gives),
+      ).toEqual(Array.from({ length: 8 }, () => false))
     })
 
     it.each([

@@ -58,6 +58,7 @@ const callOf = (callee: ReadCall["callee"]): ReadCall => ({
   result: [{ kind: "returned", span: SPAN }],
   load: null,
   registration: false,
+  declares: false,
   site: null,
   calleeCall: null,
 })

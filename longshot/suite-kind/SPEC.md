@@ -60,17 +60,55 @@ factory, a setup helper. A suite has the rights of the spec files that call it.
 The dirt a test needs stays where only tests can reach it; that is what holds
 the risk, no rule on what a test may do.
 
-Out: following a fixture declared in a suite into the specs that import it;
-reading a hook written inside an object handed to the tech; a reader per runner
-that would find setup files alone. All three are confessed by rows.
+A fixture declaration (`export const test = base.extend({ … })`) gives a new
+registering function back and registers nothing: a suite's root may make it. The
+spec that imports the name registers its tests with it, as with the test
+runner's own function: its members (`test.skip`, `test.describe`), another name
+the suite exports for it (`export const it = test`), a fixture declared on
+another suite's fixture. The name is followed from file to file, through a file
+of any kind: it holds the test runner's function, and the files on the way
+define none. A fixtures file left in blob keeps its own verdicts and gets no
+line for the fixture.
+
+The same holds for a member that, called, registers nothing and gives a
+registering function back: `test.each(rows)`, `it.for(rows)`,
+`test.skipIf(condition)`, `test.runIf(condition)`. A suite may export what it
+gave, a spec may keep it under a name, and the call that uses it registers.
+Which members are of that sort is the reader's to say (`givesRegistrar`); the
+reading follows the name.
+
+Out: reading a hook written inside an object handed to the tech; a reader per
+runner that would find setup files alone. Both are confessed by rows.
 
 ## API
 
 - `goodEnoughTests({ suites })`: the files the test reader names suites, by
   glob, `**/*.suite.*` when not written (`TestReader.suites`). A match gives the
   test kind to a file the flavor leaves blob, and makes a registration at its
-  root a red. The playwright reader names none. (The reader is to be renamed
-  `genericTestApi`, its own step.)
+  root a red. `playwright({ suites })` takes the same argument, with the same
+  default. (The stock reader is to be renamed `genericTestApi`, its own step.)
+- `expect.extend` is what each reader says of its own runner. The stock reader's
+  runners write the shared `expect` and give nothing back: a call into the
+  runner, red at a suite's root. Playwright's gives a new `expect` back and
+  changes none: its reader reads it as a declaration, like `test.extend`.
+- What a call into the runner gave is the runner's across files too: a name a
+  file exports for it, called by a test file, is a call into the runner, and a
+  registration only when the reader says the call gave a registering function.
+- The stock reader's roles gain the group written as a member of the registering
+  function: `test.describe`, `it.describe`, `test.suite`, `it.suite`.
+- `TestReader.givesRegistrar({ chain })`, optional: whether the name, called,
+  registers nothing and gives a registering function back. The stock reader
+  answers yes for `each`, `for`, `skipIf` and `runIf` on a name that registers.
+- The role a reader gives `test.extend` is renamed `extension` (it was
+  `fixture`): the call takes what the runner gave, adds to it and gives the
+  extended one back. Playwright's `expect.extend` has it too.
+- A suite's wiring function re-exported by another suite is found in the file
+  that declares it: the spec's call is a registration.
+- A declaration that gives a registering function back registers nothing for
+  `test-is-outside` too: a spec file whose root only declares a fixture is
+  imported by a test file like one whose root is quiet.
+- The stock reader is tested on vitest only; its doc block and the extraction
+  README say so.
 - A setup file or a global setup file is a test file once the reader is bound to
   it (`include`); unbound it is blob.
 - Messages, new or changed:
@@ -103,9 +141,17 @@ Rows, every one read and stamped by rixo unless said:
   calls a suite; a spec with a quiet root is imported like a suite and one whose
   root registers is not; a matcher and a test factory live in a suite; a suite's
   function that registers nothing is no registration; the reader's `suites`
-  names them; a wiring function is judged like a group's body. Confessed: the
-  handed function called while registering (an unknown where the truth is red);
-  a fixture declared in a suite (a false red, a false unknown).
+  names them; a wiring function is judged like a group's body; a fixture
+  declared at a suite's root and followed into the spec, with its members,
+  another name for it, and a fixture declared on it in a second suite; the same
+  fixture in a file with no kind, followed too, and silent when the blob file
+  breaks no rule; the function `test.each(rows)` gives, exported by a suite or
+  kept under a name, through `skip` and `runIf` too; a mock function made at a
+  suite's root, red there and red again called at a spec's root; Playwright's
+  `expect.extend` at a suite's root, a declaration by its reader; a wiring
+  function re-exported by a second suite; a spec file whose root only declares a
+  fixture, imported by a spec (not stamped). Confessed: the handed function
+  called while registering (an unknown where the truth is red).
 - `lib/cases/setup.spec.ts`, new: both setup forms with their usual content, the
   test reader bound to them. One common shape is red, an instance built at a
   setup file's root; the clean shapes carry its teardown with it.

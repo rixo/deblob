@@ -293,7 +293,8 @@ const judgeShared = (
     calls.push({
       call,
       verdict:
-        exempt && suiteRoot
+        // a fixture declaration registers nothing: a suite's root may make it
+        exempt && suiteRoot && !call.declares
           ? { verdict: "red", reaches: "registration", name: null }
           : exempt
             ? (subTestVerdict(call, graph) ?? GREEN)
