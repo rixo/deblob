@@ -401,7 +401,7 @@ const driverMessage = (violation: DriverViolation): string => {
   switch (violation.shape) {
     case "unread":
       return violation.kind === "test"
-        ? `no test reader reads this test file — its premises do not cover it; bind one under readers.test (goodEnoughTests() is the default a written group drops)`
+        ? `no test reader reads this test file — its premises do not cover it; bind one under readers.test (genericTestApi() is the default a written group drops)`
         : `no driver reader reads this driver — its premises do not cover it; bind the reader of its tech under readers.driver, or blobDriver({ include }) to count it as blob on purpose`
     case "call": {
       const name = calleeName(violation.callee)

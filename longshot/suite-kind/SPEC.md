@@ -82,11 +82,10 @@ runner that would find setup files alone. Both are confessed by rows.
 
 ## API
 
-- `goodEnoughTests({ suites })`: the files the test reader names suites, by
-  glob, `**/*.suite.*` when not written (`TestReader.suites`). A match gives the
-  test kind to a file the flavor leaves blob, and makes a registration at its
-  root a red. `playwright({ suites })` takes the same argument, with the same
-  default. (The stock reader is to be renamed `genericTestApi`, its own step.)
+- `genericTestApi({ suites })`: the files the test reader names suites, by glob,
+  `**/*.suite.*` when not written (`TestReader.suites`). A match gives the test
+  kind to a file the flavor leaves blob, and makes a registration at its root a
+  red. `playwright({ suites })` takes the same argument, with the same default.
 - `expect.extend` is what each reader says of its own runner. The stock reader's
   runners write the shared `expect` and give nothing back: a call into the
   runner, red at a suite's root. Playwright's gives a new `expect` back and

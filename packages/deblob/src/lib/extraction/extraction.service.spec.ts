@@ -6,7 +6,7 @@ import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import { createOxcResolver } from "./adapters/oxc-resolver.adapter.ts"
 import { createTsSuffixesFactoriesFlavor } from "./ts-suffixes-factories-flavor.model.ts"
 import { createExtraction } from "./extraction.service.ts"
-import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.model.ts"
+import { createGenericTestApiReader } from "./generic-test-api-reader.model.ts"
 import { createJsReader } from "./js-reader.model.ts"
 import { createNodeReader } from "./node-reader.model.ts"
 import { createTsReader } from "./ts-reader.model.ts"
@@ -1024,12 +1024,11 @@ describe("the reading on the graph — the reading fixture", () => {
   /**
    * Test factory: the fixture project with its readers — the fixture drivers'
    * parser (a package no stock reader knows), the pages (a `.svelte` file the
-   * flavor leaves blob), the good-enough test reader — and the project's
-   * claims.
+   * flavor leaves blob), the generic test reader — and the project's claims.
    */
   const READING_READERS: ReaderGroups = {
     ...FIXTURE_READERS,
-    test: [createGoodEnoughTestsReader()],
+    test: [createGenericTestApiReader()],
     driver: [PARSER, driverOver(["**/+page.svelte"])],
   } as const
 
@@ -1082,7 +1081,7 @@ describe("the reading on the graph — the reading fixture", () => {
     expect(readingOf(graph, "src/cli.driver.ts").tech).toBe("made-up-parser")
     expect(readingOf(graph, "src/cli.boot.ts").tech).toBe("core")
     expect(readingOf(graph, "src/app/app.service.spec.ts").tech).toBe(
-      "good-enough-tests",
+      "generic-test-api",
     )
     expect(readingOf(graph, "src/app/app.model.ts").tech).toBeNull()
     expect(readingOf(graph, "src/app/app.model.ts").functions).toEqual([])
@@ -1116,19 +1115,19 @@ describe("the reading on the graph — the reading fixture", () => {
       readings: [],
     })
     expect(readingOf(graph, "src/globals.spec.ts").tech).toBe(
-      "good-enough-tests",
+      "generic-test-api",
     )
   })
 
   it("makes a blob file a test by a test reader's written binding, read by that reader", async () => {
     const bound = await extractReading({
       test: [
-        createGoodEnoughTestsReader({ include: ["src/legacy.ts"] }),
-        createGoodEnoughTestsReader(),
+        createGenericTestApiReader({ include: ["src/legacy.ts"] }),
+        createGenericTestApiReader(),
       ],
     })
     expect(bound.modules.get("src/legacy.ts")).toMatchObject({ layer: "test" })
-    expect(readingOf(bound, "src/legacy.ts").tech).toBe("good-enough-tests")
+    expect(readingOf(bound, "src/legacy.ts").tech).toBe("generic-test-api")
     expect(bound.modules.get("src/globals.spec.ts")?.layer).toBe("test")
   })
 

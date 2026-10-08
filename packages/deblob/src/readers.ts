@@ -2,7 +2,7 @@
  * The reader factories, for the config to import (`deblob/readers` — GUESS: R1,
  * the entry chosen). Each takes `include`/`exclude` over its default binding.
  * Language: `js`, `ts` (default both). Host: `node` (no default). Test:
- * `goodEnoughTests` (default), `playwright`. Driver: `hostDriver` (a driver
+ * `genericTestApi` (default), `playwright`. Driver: `hostDriver` (a driver
  * whose tech is the host alone), `cac`, `vite`, `astro` (claims only, the stock
  * cut), `blobDriver` (binds nothing unless told).
  */
@@ -10,7 +10,7 @@
 export { createJsReader as js } from "./lib/extraction/js-reader.model.ts"
 export { createTsReader as ts } from "./lib/extraction/ts-reader.model.ts"
 export { createNodeReader as node } from "./lib/extraction/node-reader.model.ts"
-export { createGoodEnoughTestsReader as goodEnoughTests } from "./lib/extraction/good-enough-tests-reader.model.ts"
+export { createGenericTestApiReader as genericTestApi } from "./lib/extraction/generic-test-api-reader.model.ts"
 export { createPlaywrightReader as playwright } from "./lib/extraction/playwright-reader.model.ts"
 export { createCacReader as cac } from "./lib/extraction/cac-reader.model.ts"
 export {

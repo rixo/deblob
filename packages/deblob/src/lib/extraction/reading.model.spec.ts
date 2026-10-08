@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, test as base } from "vitest"
 
 import { createNodeFs } from "../fs/adapters/node-fs.adapter.ts"
-import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.model.ts"
+import { createGenericTestApiReader } from "./generic-test-api-reader.model.ts"
 import { createOxcEngine } from "./adapters/oxc-extraction.adapter.ts"
 import type {
   CalleeKind,
@@ -557,7 +557,7 @@ describe("readModule", () => {
       const reading = read("root-forms.ts", {
         layer: "test",
         tech: {
-          name: "good-enough-tests",
+          name: "generic-test-api",
           cut: answerCallbacks,
         },
         knowledge: globalsRunnerKnowledge(),
@@ -578,9 +578,9 @@ describe("readModule", () => {
 
   describe("roles — what a test hook is for, in deblob's words", () => {
     const TESTS = {
-      name: "good-enough-tests",
+      name: "generic-test-api",
       roleOf: (chain: readonly string[]) =>
-        createGoodEnoughTestsReader().roleOf({ chain }),
+        createGenericTestApiReader().roleOf({ chain }),
       cut: answerCallbacks,
     } as const
 
@@ -662,7 +662,7 @@ describe("readModule", () => {
       const reading = read("roles.ts", {
         layer: "test",
         tech: {
-          name: "good-enough-tests",
+          name: "generic-test-api",
           cut: answerCallbacks,
         },
       })

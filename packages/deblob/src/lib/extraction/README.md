@@ -255,7 +255,7 @@ unparsed one, has none: recognized and open.
   every script file, reads the assembly, driver and boot ones among them; claims
   nothing (builtins and host globals are tech by the reading's table,
   third-party packages by `driverTech`); exempts nothing; maps no role.
-- `good-enough-tests-reader.model.ts` — the good-enough test reader, common
+- `generic-test-api-reader.model.ts` — the generic test reader, common
   conventions over every runner it knows. It is tested on vitest only: the other
   runners it claims (jest, `node:test`, `bun:test`, mocha, ava, uvu, tap) were
   never run through it, so where one differs from vitest the reader is wrong and

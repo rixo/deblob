@@ -63,7 +63,7 @@ export type DeblobConfig = {
   /**
    * The readers, by concern: `language` (default `[js(), ts()]`), `host`
    * (default `[]` — `node()` is shipped, bound by the project), `test` (default
-   * `[goodEnoughTests()]`), `driver` (default `[]`). Each entry is a reader
+   * `[genericTestApi()]`), `driver` (default `[]`). Each entry is a reader
    * instance — a stock factory called, or an inline object of the group's
    * interface — bound by `include`/`exclude`. A group written replaces its
    * defaults whole; readers of one group stack on a file, the first written
@@ -300,7 +300,7 @@ const readersOf = (value: unknown, defaults: DefaultReaders): ReaderGroups => {
   if (value === undefined) return defaults
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new ConfigError(
-      `config key "readers" must be an object of reader groups — { language, host, test, driver }, each an array of readers (node(), goodEnoughTests(), …)`,
+      `config key "readers" must be an object of reader groups — { language, host, test, driver }, each an array of readers (node(), genericTestApi(), …)`,
     )
   }
   const record = value as Record<string, unknown>
@@ -324,7 +324,7 @@ const readersOf = (value: unknown, defaults: DefaultReaders): ReaderGroups => {
       )
     ) {
       throw new ConfigError(
-        `config key "readers.${group}" must be an array of readers — a stock factory called (node(), goodEnoughTests()) or an object with a name`,
+        `config key "readers.${group}" must be an array of readers — a stock factory called (node(), genericTestApi()) or an object with a name`,
       )
     }
     if (group === "driver" || group === "test" || group === "host") {
@@ -618,7 +618,7 @@ export const resolveConfig = (
   }
   if ("tests" in record) {
     throw new ConfigError(
-      `config key "tests" is gone — the flavor names test files (*.spec.*, *.test.*, *.e2e.*); bind other paths with readers: { test: [goodEnoughTests({ include: [...] })] }`,
+      `config key "tests" is gone — the flavor names test files (*.spec.*, *.test.*, *.e2e.*); bind other paths with readers: { test: [genericTestApi({ include: [...] })] }`,
     )
   }
   if ("driverTech" in record || "drivers" in record) {

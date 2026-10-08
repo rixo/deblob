@@ -1,7 +1,7 @@
 /**
  * The test axis — a test file is a driver in its own right (`test-is-outside`),
  * and a test reader is a driver reader with the test vocabulary: what a hook is
- * for. Stock: `goodEnoughTests`, the default.
+ * for. Stock: `genericTestApi`, the default.
  */
 
 import type { Role } from "./graph.model.ts"

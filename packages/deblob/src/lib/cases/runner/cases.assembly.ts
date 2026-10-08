@@ -12,7 +12,7 @@ import { createConfigLoader } from "../../config/adapters/loader.adapter.ts"
 import { createCoverageScan } from "../../config/adapters/scan.adapter.ts"
 import { createConfigService } from "../../config/config.service.ts"
 import { createFsResolvers } from "../../extraction/adapters/fs-resolver.adapter.ts"
-import { createGoodEnoughTestsReader } from "../../extraction/good-enough-tests-reader.model.ts"
+import { createGenericTestApiReader } from "../../extraction/generic-test-api-reader.model.ts"
 import { createHostDriverReader } from "../../extraction/host-driver-reader.model.ts"
 import { createJsReader } from "../../extraction/js-reader.model.ts"
 import { createNodeReader } from "../../extraction/node-reader.model.ts"
@@ -47,7 +47,7 @@ export const assembleCase = (files: Case["files"]) => {
       readers: {
         language: [createJsReader(), createTsReader()],
         host: [createNodeReader()],
-        test: [createGoodEnoughTestsReader()],
+        test: [createGenericTestApiReader()],
         driver: [createHostDriverReader()],
       },
     }),

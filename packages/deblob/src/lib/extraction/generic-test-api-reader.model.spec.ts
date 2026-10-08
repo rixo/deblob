@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import { createGoodEnoughTestsReader } from "./good-enough-tests-reader.model.ts"
+import { createGenericTestApiReader } from "./generic-test-api-reader.model.ts"
 import { isTechPackage } from "./tech.model.ts"
 
-describe("createGoodEnoughTestsReader", () => {
+describe("createGenericTestApiReader", () => {
   it("binds the flavor's test files by default, claims the runners it knows by package", () => {
-    const reader = createGoodEnoughTestsReader()
-    expect(reader.name).toBe("good-enough-tests")
+    const reader = createGenericTestApiReader()
+    expect(reader.name).toBe("generic-test-api")
     expect(reader.include).toBeUndefined()
     expect(isTechPackage(reader.tech, "vitest")).toBe(true)
     expect(isTechPackage(reader.tech, "@jest/globals")).toBe(true)
@@ -18,7 +18,7 @@ describe("createGoodEnoughTestsReader", () => {
 
   it("takes include and exclude over its default binding", () => {
     expect(
-      createGoodEnoughTestsReader({
+      createGenericTestApiReader({
         include: ["e2e/**"],
         exclude: ["e2e/x.ts"],
       }),
@@ -26,7 +26,7 @@ describe("createGoodEnoughTestsReader", () => {
   })
 
   describe("roleOf", () => {
-    const reader = createGoodEnoughTestsReader()
+    const reader = createGenericTestApiReader()
     const roleOf = (chain: readonly string[]) => reader.roleOf({ chain })
 
     it("translates the runners' names into roles, a setup or teardown with its scope", () => {

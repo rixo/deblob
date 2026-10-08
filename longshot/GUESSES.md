@@ -18,7 +18,7 @@ Sources: `docs/architecture.md` (canon), `history/20260913_driver-layer/`
   reader that needs one (`.svelte`) is out of longshot. Status: parked.
 - **R3 — `pure`: knowledge or neighbour.** (Root board, S07:357.) Default: stays
   a top-level key, a premise beside the readers. Status: parked.
-- **R4 — `good-enough-tests` stays the default test reader.** (S07 ruling 7,
+- **R4 — `generic-test-api` stays the default test reader.** (S07 ruling 7,
   chapter PLAN.) Default: yes. Status: taken — `readers.assembly.ts`.
 - **R5 — Where `PURE_BUILTINS` goes** (`node:path`, `node:querystring`; not in
   the cp3 move list). Default: the `node` reader, as pure builtins it claims.

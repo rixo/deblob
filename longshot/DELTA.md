@@ -7,7 +7,7 @@ leaves when its branch integrates it.
 
 - **04/07 checkpoints 2–6, in one pass** (milestone 2). Readers in four groups
   (`language`, `host`, `test`, `driver`), each an array of instances bound by
-  `include`/`exclude`, stacking; `js`, `ts`, `node`, `goodEnoughTests`,
+  `include`/`exclude`, stacking; `js`, `ts`, `node`, `genericTestApi`,
   `hostDriver` (D7), `blobDriver` stock, exported at `deblob/readers` (R1).
   Knowledge out of `reading.model.ts` into the readers (`knowledge.model.ts`
   composes the bound ones per file). The flavor names tests (`.spec`, `.test`,

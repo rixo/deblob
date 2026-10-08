@@ -1611,7 +1611,7 @@ describe("renderCheckResults", () => {
         expect(
           message(driver("driver-reader", { shape: "unread", kind: "test" })),
         ).toContain(
-          "driver   no test reader reads this test file — its premises do not cover it; bind one under readers.test (goodEnoughTests() is the default a written group drops) (driver-reader)",
+          "driver   no test reader reads this test file — its premises do not cover it; bind one under readers.test (genericTestApi() is the default a written group drops) (driver-reader)",
         )
       })
 

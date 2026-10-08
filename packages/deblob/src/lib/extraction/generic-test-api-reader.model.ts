@@ -81,10 +81,10 @@ const REGISTERING: ReadonlySet<string> = new Set([
 const SUITES = ["**/*.suite.*"] as const
 
 /**
- * The good-enough test reader: common conventions over every runner it knows —
- * the naming, the imports — and no runner's config read, no runner asked. What
- * it buys is a start on any codebase; a runner's own reader, where one exists,
- * is the precise one.
+ * The generic test reader: common conventions over every runner it knows — the
+ * naming, the imports — and no runner's config read, no runner asked. What it
+ * buys is a start on any codebase; a runner's own reader, where one exists, is
+ * the precise one.
  *
  * What it is tested on: vitest, and nothing else. Every row and every test file
  * of deblob's own imports vitest. The other runners are claimed and their names
@@ -98,7 +98,7 @@ const SUITES = ["**/*.suite.*"] as const
  * as many calls per hook as it likes — the four exemptions. Its hooks carry the
  * runners' roles.
  */
-export const createGoodEnoughTestsReader = ({
+export const createGenericTestApiReader = ({
   suites = SUITES,
   ...binding
 }: ReaderBinding & {
@@ -115,7 +115,7 @@ export const createGoodEnoughTestsReader = ({
     return null
   }
   return {
-    name: "good-enough-tests",
+    name: "generic-test-api",
     ...binding,
     suites,
     tech: RUNNERS,

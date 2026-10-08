@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 
-import { goodEnoughTests, playwright } from "../../readers.ts"
+import { genericTestApi, playwright } from "../../readers.ts"
 import { assembleCase } from "./runner/cases.assembly.ts"
 import type { Row } from "./runner/markers.model.ts"
 import { AS_MARKED } from "./runner/markers.model.ts"
@@ -573,7 +573,7 @@ const SUITES: readonly Row[] = [
     // argument to its factory; a name it does not list is no suite.
     name: "the reader's suites argument names the suites: another name is a suite, and .suite no longer is",
     config: {
-      readers: { test: [goodEnoughTests({ suites: ["**/*.shared.ts"] })] },
+      readers: { test: [genericTestApi({ suites: ["**/*.shared.ts"] })] },
     },
     files: {
       ...FS,

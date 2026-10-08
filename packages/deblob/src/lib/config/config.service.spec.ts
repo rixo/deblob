@@ -265,7 +265,7 @@ describe("resolveConfig — the outside kinds: designations, configLoads", () =>
 
   it("rejects the gone tests key with a teaching error naming the test group", () => {
     expect(() => resolve({ tests: ["e2e/**"] })).toThrowError(
-      /"tests" is gone.*readers: \{ test: \[goodEnoughTests/s,
+      /"tests" is gone.*readers: \{ test: \[genericTestApi/s,
     )
   })
 

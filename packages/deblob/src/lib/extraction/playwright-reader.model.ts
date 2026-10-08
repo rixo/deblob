@@ -5,8 +5,8 @@ import type { TestReader } from "./test-reader.model.ts"
 /**
  * Playwright's names, in deblob's roles — `test` alone, its members for the
  * rest, and `expect.extend`, a declaration like `test.extend`. `test` states a
- * verification, as the good-enough reader reads a runner's `test`; `test.step`
- * maps to none: a step inside a test, no role in deblob's vocabulary, never
+ * verification, as the generic reader reads a runner's `test`; `test.step` maps
+ * to none: a step inside a test, no role in deblob's vocabulary, never
  * guessed.
  */
 const ROLES = {
@@ -28,12 +28,12 @@ const ROLES = {
 const SUITES = ["**/*.suite.*"] as const
 
 /**
- * The Playwright runner: `@playwright/test` claimed, the good-enough reader's
- * four exemptions (a test file registers, imports and defines what it needs,
- * makes as many calls per hook as it likes — GUESS: T1, what a test body may
- * do, is not ruled). Bound by default to every file the flavor names a test —
- * stack it before `goodEnoughTests()` for the e2e files alone: `playwright({
- * include: ["tests/**\/*.e2e.ts"] })`.
+ * The Playwright runner: `@playwright/test` claimed, the generic reader's four
+ * exemptions (a test file registers, imports and defines what it needs, makes
+ * as many calls per hook as it likes — GUESS: T1, what a test body may do, is
+ * not ruled). Bound by default to every file the flavor names a test — stack it
+ * before `genericTestApi()` for the e2e files alone: `playwright({ include:
+ * ["tests/**\/*.e2e.ts"] })`.
  */
 export const createPlaywrightReader = ({
   suites = SUITES,

@@ -29,7 +29,7 @@ the copies drifted.
   `.assembly.ts`, `.driver.ts`, `.boot.ts` regardless), `readers` (reader name →
   globs, a stock reader bound to more files than its builtin naming, config's
   binding first; a test file is one the test reader's binding names, so
-  `{ "good-enough-tests": ["e2e/**"] }` is how other test paths are declared —
+  `{ "generic-test-api": ["e2e/**"] }` is how other test paths are declared —
   the `tests` key of the unreleased step 01 is gone and says so), `configLoads`
   (the use cases an assembly may await, `"<file>#<name>"`, one or a list),
   `driverTech` (specifier patterns over packages a driver may import as its

@@ -8,13 +8,13 @@ showed.
 ## Where a test sits
 
 - **Named by the flavor** (`.spec`, `.test`, `.e2e`), read by a test reader:
-  `goodEnoughTests` by default, `playwright` stacked before it for e2e trees. A
+  `genericTestApi` by default, `playwright` stacked before it for e2e trees. A
   test file is a driver and an assembly in one (`test-is-outside`): it imports
   anything, adapters and fakes included, and nothing imports it.
 - **No reader, red** (`driver-reader`): writing `test: []`, or a runner no
   reader claims, makes every test file red on its own line — the premises do not
   cover it. On the partners' trees every test file was read: vitest by
-  `goodEnoughTests`, Playwright by `playwright`.
+  `genericTestApi`, Playwright by `playwright`.
 - **Unit and e2e differ by reader, not by kind.** Both are the test kind; the
   e2e ones claim `@playwright/test`, carry its roles, and import built output
   (`dist/`) — a check run needs the build there, or it cannot resolve them.

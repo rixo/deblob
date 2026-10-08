@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 
-import { goodEnoughTests } from "../../readers.ts"
+import { genericTestApi } from "../../readers.ts"
 import { assembleCase } from "./runner/cases.assembly.ts"
 import type { Row } from "./runner/markers.model.ts"
 import { AS_MARKED } from "./runner/markers.model.ts"
@@ -42,7 +42,7 @@ const MSW = {
 const BOUND = {
   readers: {
     test: [
-      goodEnoughTests({
+      genericTestApi({
         include: [
           "**/*.spec.ts",
           "**/vitest.setup.ts",
