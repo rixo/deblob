@@ -51,6 +51,13 @@ Added 2026-09-30, after the talk-through opened (each with its own SPEC,
    copies had drifted into a product bug (L8) and because the T1+T5 dossier
    should judge specs on their final shape.
 
+Added 2026-10-08, written after the fact like the two above:
+
+9. **Shared test code** ([suite-kind/SPEC.md](suite-kind/SPEC.md)). The suite, a
+   test file with nothing at its root that a spec calls; with it go the test
+   runner as a port, the exemption for a driver handed the runner, and the
+   assembly rule's exception for a test caller.
+
 ## Rules of the road
 
 - Commits land on `longshot` in this clone only; `origin` is the local deblob,

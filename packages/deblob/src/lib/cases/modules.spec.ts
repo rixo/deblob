@@ -899,12 +899,14 @@ const ROOT_CALLS: readonly Row[] = [
     },
   },
   {
-    // canon: `test-is-outside`, "a matcher … registered on the runner a driver
-    // whose wiring function the spec file calls with the tech". Read through
-    // the inlining principle, the call at the spec's root is its body,
-    // `expect.extend(…)`: a registration into the runner, the exemption
-    // `stable-root` names (ruled 2026-09-25).
-    name: "a spec calling a shared matcher driver's wiring function at root is a registration: inlined, it is the runner's",
+    // Was green until 2026-10-08, by an exemption for a driver handed nothing
+    // but the test runner: the shape canon gave a shared matcher. A matcher
+    // shared by several specs is a suite now (`cases/suite.spec.ts`), which
+    // imports the runner itself. A driver is a driver: its wiring function
+    // called at a spec's root sets up its tech when the spec loads, and inside
+    // it a matcher is red as any logic in a driver is. Its two lines were
+    // marked false while canon made this shape the matcher's; they are true.
+    name: "a spec calling a driver's wiring function at its root is red, handed the test runner or not: what registers on the runner is a suite",
     files: {
       "node_modules/vitest/package.json": JSON.stringify({
         name: "vitest",
@@ -913,8 +915,9 @@ const ROOT_CALLS: readonly Row[] = [
       "node_modules/vitest/index.js": "module.exports = {}",
       "src/test/matchers.driver.ts": `
         export const registerMatchers = (expect: { extend: (matchers: object) => void }) => {
-          // false unknown: driver-calls-services -- the runner, handed in by a spec: a test's call site binds no parameter
-          // false red: wiring-outside-hooks -- matchers in a record handed to the runner: the reader cuts a hook only when handed alone
+          // false unknown: driver-calls-services -- the reader does not tell what a parameter holds: a test's call site binds none
+          // red: driver-calls-services -- the test runner, handed in by a spec: a tech no reader claims for this driver
+          // red: wiring-outside-hooks -- a matcher is logic, and a driver holds none: in its wiring, or as a hook that calls no use case
           expect.extend({
             toBeRed: (received: unknown) => ({ pass: received === "red", message: () => "not red" }),
           })
@@ -923,7 +926,7 @@ const ROOT_CALLS: readonly Row[] = [
       "src/colors.spec.ts": `
         import { expect, it } from "vitest"
         import { registerMatchers } from "./test/matchers.driver.ts"
-        registerMatchers(expect)
+        registerMatchers(expect) // red: stable-root -- a driver's wiring function runs when the spec loads; a shared matcher is a suite
         it("is red", () => {
           expect("red").toBeDefined()
         })
@@ -931,10 +934,9 @@ const ROOT_CALLS: readonly Row[] = [
     },
   },
   {
-    // canon: "a driver whose wiring function the spec file calls with the
-    // tech" — the tech is the runner the file is read for: a wiring function
-    // handed the host sets up the host's tech on import, like `main()`.
-    name: "a spec calling a shared driver's wiring function with the host at root is red: only the runner handed on is a registration",
+    // The row above, the driver handed the host: its wiring function sets up
+    // the host's tech when the spec loads, like `main()`.
+    name: "a spec calling a shared driver's wiring function with the host at root is red",
     files: {
       "node_modules/vitest/package.json": JSON.stringify({
         name: "vitest",
@@ -950,6 +952,69 @@ const ROOT_CALLS: readonly Row[] = [
         import { expect, it } from "vitest"
         import { enterTmp } from "./test/cwd.driver.ts"
         enterTmp(process) // red: stable-root -- the driver's wiring runs at import time, handed the host, not the runner
+        it("runs in tmp", () => {
+          expect(1).toBe(1)
+        })
+      `,
+    },
+  },
+  {
+    // Found 2026-10-07. The row above, its function in a service
+    // file. Every export of a service file is read as a factory, and a
+    // factory call at a root is the lane, not the crime: what it binds is
+    // judged. This call keeps nothing of what the function returns, so it
+    // built nothing: it is made for what the function does.
+    name: "the same function in a service file, called with the host at a spec's root and nothing kept of what it returns, is red: a call made for what it does",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/test/cwd.service.ts": `
+        export const enterTmp = (host: { chdir: (path: string) => void }) => {
+          host.chdir("/tmp")
+        }
+      `,
+      "src/cwd.spec.ts": `
+        import { expect, it } from "vitest"
+        import { enterTmp } from "./test/cwd.service.ts"
+        enterTmp(process) // red: stable-root -- nothing is kept of what it returns: called for what it does, when the spec loads
+        it("runs in tmp", () => {
+          expect(1).toBe(1)
+        })
+      `,
+    },
+  },
+  {
+    // Found 2026-10-07. A function handed to a call at a root is
+    // read as run there; written inside an object or a list that is handed, it
+    // is handed as much. Not so when the call is into the tech: there the
+    // reader's cut says which function is a hook, and it points at bare ones
+    // only (confessed in `cases/driver.spec.ts`).
+    name: "a function handed to a root call inside an object is run there like one handed bare: red",
+    files: {
+      "node_modules/vitest/package.json": JSON.stringify({
+        name: "vitest",
+        main: "./index.js",
+      }),
+      "node_modules/vitest/index.js": "module.exports = {}",
+      "src/test/step.driver.ts": `
+        export const runStep = (step: () => void) => {
+          step() // false unknown: driver-calls-services -- a function handed in by a spec: a test's call site binds no parameter
+        }
+      `,
+      "src/test/steps.driver.ts": `
+        export const runSteps = (steps: { first: () => void }) => {
+          steps.first() // false unknown: driver-calls-services -- a function handed in by a spec: a test's call site binds no parameter
+        }
+      `,
+      "src/cwd.spec.ts": `
+        import { expect, it } from "vitest"
+        import { runStep } from "./test/step.driver.ts"
+        import { runSteps } from "./test/steps.driver.ts"
+        runStep(() => process.chdir("/tmp")) // red: stable-root, stable-root -- the driver's wiring runs at import time; and the function handed changes the host's directory there
+        runSteps({ first: () => process.chdir("/tmp") }) // red: stable-root, stable-root -- the same, the function handed in an object
         it("runs in tmp", () => {
           expect(1).toBe(1)
         })

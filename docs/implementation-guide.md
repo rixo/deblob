@@ -39,6 +39,7 @@ states the flavor's two identity axes — suffix naming (§1) and factory inject
 | `*.adapter.ts` | adapters | port implementation — assembly-only import                               |
 | `*.context.ts` | assembly | context wiring (web/UI runtimes)                                         |
 | `*.spec.ts`    | test     | unit test, colocated with its subject                                    |
+| `*.suite.ts`   | test     | shared test code, called by spec files — never collected by the runner   |
 | `*.e2e.ts`     | test     | end-to-end test, lives outside `src/`                                    |
 
 - The theory allows the bare layer filename (`icons/model.ts`) as a degenerate
@@ -317,15 +318,16 @@ Consequences of [architecture](./architecture.md) Testing, materialized:
 - **Fixtures**: unit fixtures colocate (`__fixtures__/` next to the specs); e2e
   fixtures live with the e2e tests. Fixtures are test-purpose adapters — shared
   ones follow the normal sharing progression.
-- **Shared test utils** live in `test/` directories that are ordinary services:
-  `src/lib/test/` for the codebase-wide kernel, `src/lib/<domain>/test/` for
-  domain-scoped sharing. Named layers, usual packaging rules (`private/` etc.).
-  Not `__tests__/` — test runners execute what's in there, and the name promises
-  "tests that run" to anyone from the Jest crowd; don't overload it.
-- **Test utils are NOT coverage-excluded.** They get no dedicated tests (that
-  goes circular) but must reach 100% transitively, through the tests that use
-  them. A util below 100% is dead weight or hiding something — justify
-  case-by-case or rip it.
+- **Shared test code** goes where it fits: a fake is an adapter, a data builder
+  a model. What fits no kind (a port's suite, a test factory, a matcher, a setup
+  helper) belongs in a suite: a `*.suite.ts` file next to what it serves, a test
+  file with nothing at its root, imported by test files only. Not `__tests__/` —
+  test runners execute what's in there, and the name promises "tests that run"
+  to anyone from the Jest crowd; don't overload it.
+- **Suites are NOT coverage-excluded.** They get no dedicated tests (that goes
+  circular) but must reach 100% transitively, through the specs that call them.
+  A suite below 100% is dead weight or hiding something — justify case-by-case
+  or rip it.
 - **No exporting internals "for tests".** Wiring a unit test into a
   previously-internal function by exporting it = violation (tests go through the
   contract). Promoting it to genuine public API — kept exported regardless of

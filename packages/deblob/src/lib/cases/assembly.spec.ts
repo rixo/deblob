@@ -434,9 +434,11 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // canon: "An assembly does not return adapters, except when called by a
-    // test … an assembly that returns adapters can only be called by tests."
-    name: "the same assembly, called by a spec file only, is a test factory: green",
+    // Was green until 2026-10-08, by "except when called by a test": the
+    // assembly was judged by who called it. canon now: "An assembly does not
+    // return adapters". A test factory that hands its fakes back is a suite's
+    // function (`cases/suite.spec.ts`).
+    name: "the same assembly, called by a spec file only, is red all the same: an assembly is judged by itself",
     files: {
       ...NOTES,
       ...VITEST,
@@ -444,7 +446,7 @@ const ROWS: readonly Row[] = [
         ${IMPORTS}
         export const createNotesAssembly = ({ cwd }: { cwd: string; store: "fs" | "memory" }) => {
           const fs = createFsStore(cwd)
-          return { notes: createNotes({ store: fs }), fs }
+          return { notes: createNotes({ store: fs }), fs } // red: assembly-builds-only -- an adapter returned, whoever calls
         }
       `,
       "src/notes.spec.ts": `

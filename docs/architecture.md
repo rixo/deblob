@@ -260,10 +260,11 @@ Outside it, inward to outward:
 - **Boot** (`.boot.ts`) — the entry. Imports one driver and calls its wiring
   function once, at module root, with no arguments. The one module whose
   evaluation performs a call. One right: start, one call to its one driver.
-- **Test** (`.spec`, `.test`, `.e2e`) — assembly and driver in one, by the shape
-  of the test tech. Imports anything, blob included; defines anything; imported
-  by nothing (`test-is-outside`). Shared test code is not test kind: it is an
-  adapter, an assembly, a model or a driver, by what it is.
+- **Test** (`.spec`, `.test`, `.e2e`; `.suite` for a suite) — assembly and
+  driver in one, by the shape of the test tech. Imports anything, blob included;
+  defines anything; imported by a test file only, and only when its own root
+  registers nothing: a suite (`test-is-outside`). Other shared test code is an
+  adapter or a model when it fits one, a suite when it does not.
 
 Suffixless files are blob — no layer declaration, no layer guarantees.
 
@@ -503,10 +504,12 @@ composition units, so the chunk graph is the assembly graph. A feature loaded on
 demand is a sub-driver loaded on demand, which builds its own app from its group
 assembly (`sub-driver-wiring`); an assembly loads nothing lazily itself.
 
-An assembly does not return adapters, except when called by a test: a spec file
-asserts on what its fakes recorded, so a test factory hands them back (see
-[The test factory pattern](#the-test-factory-pattern)). The corollary is that an
-assembly that returns adapters can only be called by tests.
+An assembly brokers the inside of the hexagon: what it hands out is services and
+shared model instances, the only kinds the inside has at run time (a port is a
+type). So it does not return adapters: an adapter is born in an assembly and
+handed to a port, and has no other use. A spec file that asserts on what its
+fakes recorded builds them itself, or through a test factory in a suite, which
+hands them back (see [The test factory pattern](#the-test-factory-pattern)).
 
 How the checker reads it: by the flavor's kind, with no reader bound — an
 assembly listens to no tech, so there is nothing for a reader to claim or cut —
@@ -566,18 +569,19 @@ drivers get.
 
 A file's kind comes from the flavor's name: `.driver.ts`, and test files by
 `.spec`, `.test`, `.e2e`. A reader's binding gives a kind only to a file the
-flavor leaves blob — a framework's entry point, `+page.svelte` — or agrees with
-the flavor; a binding that names a file differently from the flavor is a config
-error. The kind does not make the file read: a `.driver.ts` file still needs its
-reader. Web drivers are open, research in progress; the one thing claimed for
-them is the recognition rule: a component a driver reader binds may import an
-assembly, any other component doing so is a violation. What the codebase imports
-lands in the graph, whatever its extension: a file of an unruled tech, bound by
-no reader, is blob until one is bound to it — the suffix rule reads `.ts` files,
-so no layer is declared for such a file, and undeclared is what blob means. It
-is seen and counted like any other blob, since the honest report is that the
-tool cannot read it yet, not that it is absent. Matching a coverage glob is not
-itself enough to pull a file in; being imported is.
+flavor leaves blob — a framework's entry point, `+page.svelte`, a suite the test
+reader names (`.suite` by default) — or agrees with the flavor; a binding that
+names a file differently from the flavor is a config error. The kind does not
+make the file read: a `.driver.ts` file still needs its reader. Web drivers are
+open, research in progress; the one thing claimed for them is the recognition
+rule: a component a driver reader binds may import an assembly, any other
+component doing so is a violation. What the codebase imports lands in the graph,
+whatever its extension: a file of an unruled tech, bound by no reader, is blob
+until one is bound to it — the suffix rule reads `.ts` files, so no layer is
+declared for such a file, and undeclared is what blob means. It is seen and
+counted like any other blob, since the honest report is that the tool cannot
+read it yet, not that it is absent. Matching a coverage glob is not itself
+enough to pull a file in; being imported is.
 
 The driver rules make thin the only legal shape:
 
@@ -630,18 +634,18 @@ The driver rules make thin the only legal shape:
   wiring function, during its own wiring, passing tech and instances. Never a
   hook, never data from the hexagon. This is how one entry point splits its
   hooks across files: a CLI whose command groups each live in their own driver,
-  a server whose route files the main driver mounts, a spec file calling a
-  shared `registerMatchers(expect)`. The sub-driver exports that one wiring
-  function and no hook, so the only thing the root can do with the import is let
-  it attach its callbacks. Calling a sub-driver from inside a hook, or handing
-  it a use-case result, would let one hook chain two calls through one level of
-  indirection. A sub-driver may be loaded on demand, where the tech's reading
-  leaves the hand-off in the wiring: a literal `import()` of the driver file,
-  its wiring function called with tech and instances — written by the driver, or
-  made by the tech where its reader says so. A computed path is no hand-off. A
-  tech whose hooks are callbacks has no such place today: its hook may not load
-  a sub-driver, so its features load at startup. A parent component rendering a
-  child in markup is not this rule; that is the tech mounting it.
+  a server whose route files the main driver mounts. The sub-driver exports that
+  one wiring function and no hook, so the only thing the root can do with the
+  import is let it attach its callbacks. Calling a sub-driver from inside a
+  hook, or handing it a use-case result, would let one hook chain two calls
+  through one level of indirection. A sub-driver may be loaded on demand, where
+  the tech's reading leaves the hand-off in the wiring: a literal `import()` of
+  the driver file, its wiring function called with tech and instances — written
+  by the driver, or made by the tech where its reader says so. A computed path
+  is no hand-off. A tech whose hooks are callbacks has no such place today: its
+  hook may not load a sub-driver, so its features load at startup. A parent
+  component rendering a child in markup is not this rule; that is the tech
+  mounting it.
 - **`driver-not-imported`** — nothing but a boot or another driver imports a
   driver, type imports included.
 
@@ -715,8 +719,9 @@ program:
 - **`boot-one-call`** — a boot imports a single driver and calls its wiring
   function once, at module root, with no arguments. It imports nothing else,
   defines nothing, holds nothing, touches no tech: `process`, `document`, the
-  parser are the driver's to read. Nothing imports a boot; a program has one per
-  entry point — a bin, a server, an app.
+  parser are the driver's to read. Nothing imports a boot: its root acts, and
+  importing it is acting at one's own root (`stable-root`). A program has one
+  per entry point — a bin, a server, an app.
 
 The CLI's boot is `cli.boot.ts`. A single-page app's boot calls the driver's
 `main()` that mounts the root component. A framework that loads route files
@@ -875,7 +880,7 @@ means no rule forbids it.
 | **Assembly** | Model, ports, composition units, assemblies, blob | Drivers, concrete (a declared container library excepted)  |
 | **Drivers**  | Assemblies, drivers, their own tech               | Composition units, model, blob, boot                       |
 | **Boot**     | One driver                                        | Everything else, tech included                             |
-| **Test**     | Anything, blob included                           | — (imported by nothing)                                    |
+| **Test**     | Anything, blob and suites included                | A test file whose root registers, a boot                   |
 
 The matrix governs **runtime imports**. What assemblies, drivers and boots may
 _call_ is narrower than what they may import — see their rules. Type-only
@@ -1019,13 +1024,32 @@ needs tooling that knows service boundaries.
   module root that the test tech owns (`stable-root` exempts the registration,
   not mutable state). Named by the flavor (`.spec`, `.test`, `.e2e`) and read by
   a test reader. It imports anything, blob included; it defines anything; the
-  hook count and services-only do not apply; nothing imports it. Shared test
-  code gets none of this and is placed by what it is: a fake or in-memory
-  implementation is an adapter, a test factory an assembly function, a data
-  builder model, and a matcher, fixture or shared hook registered on the runner
-  a driver whose wiring function the spec file calls with the tech. Test edges
-  count for rights and coverage, never for use-case level. End-to-end tests are
-  neither: users of the shipped drivers, outside the graph.
+  hook count and services-only do not apply. Test code is outermost: only a test
+  file imports a test file, so the test runner never enters the program. And a
+  file whose root acts is imported by nothing (`stable-root`): importing a test
+  file whose root registers would register that file's tests from the importer's
+  root, by an import. What is left to import is a test file whose root registers
+  nothing: a **suite**, the sub-test, as a driver has its sub-driver. Its tests
+  are written inside a wiring function, which a spec file calls at its root. A
+  call to a function that registers is a registration, and that function's body
+  is a group's body: what it declares is shared by the tests the call registers.
+  The most common reason for a suite is a port with several adapters: the port's
+  suite states once what every adapter must do, and each adapter's spec
+  registers those tests against its own adapter. Splitting a spec that has
+  grown, or keeping the tests of one concern together, is reason enough too. A
+  suite is a test file in everything. Its name (`.suite` by default, the test
+  reader says which) is there so that the test runner does not collect it, and a
+  registration at its root is red: it would register by an import, not by the
+  call. What its wiring function is handed is a function that makes the subject,
+  called by the tests. Other shared test code is placed by what it is when it
+  fits a kind: a fake or in-memory implementation is an adapter, a data builder
+  model. What fits none goes in a suite: what registers on the test runner (a
+  matcher, a shared hook), a test factory, and the other helpers of a test's
+  setup. A test file is given what a test needs, and a suite is the part of it
+  that is shared: it has the rights of the spec files that call it, and nothing
+  but a test file imports it. Test edges count for rights and coverage, never
+  for use-case level. End-to-end tests are neither: users of the shipped
+  drivers, outside the graph.
 
 **Assembly rules** (detail in
 [Assembly — the composition root](#assembly--the-composition-root)):
@@ -1034,11 +1058,13 @@ needs tooling that knows service boundaries.
   assembly builds, and nothing there touches what was built** — arguments are
   literals, tech values received as parameters, or instances; what the assembly
   builds — a call's result, whatever layer it came from, a declared load's aside
-  — is passed on or returned, never computed with or member-accessed; it returns
-  services and shared model instances, and adapters only when called by a test;
-  no use-case call but the loads the project declares, whose results count as
-  tech values; a branch or loop on parameters or loaded values with factory arms
-  is wiring, none on an instance's output; nothing at module root but imports.
+  — is passed on or returned, never computed with or member-accessed; it hands
+  out the inside of the hexagon and nothing else — services and shared model
+  instances, the only kinds the inside has at run time, a port being a type — so
+  never an adapter; no use-case call but the loads the project declares, whose
+  results count as tech values; a branch or loop on parameters or loaded values
+  with factory arms is wiring, none on an instance's output; nothing at module
+  root but imports.
 - <a id="assembly-driver-only"></a>`assembly-driver-only` — **An assembly is
   imported only by drivers and assemblies** — type imports included; an assembly
   has no contract to depend on.
@@ -1089,49 +1115,58 @@ needs tooling that knows service boundaries.
   leaves anything behind that could change, nor holds anything that differs from
   one load to the next. State lives in factory closures: a factory is a
   function, it does nothing until called, and an instance exists only where it
-  was called, reached by argument and never by import. What is red at module
-  root follows from that sentence, and the shapes below are the known ones, not
-  a closed list — a shape nobody has written down yet is judged by the rule, not
-  waved through for being absent here. A binding whose immutability the syntax
-  does not prove — proof being a primitive type, `as const`, a readonly array,
-  record, map or set, or `Object.freeze` over a literal, each proven to its
-  depth: `as const` is deep, `Readonly<…>` is one level, a named type the reader
-  cannot resolve proves nothing (`Readonly<Store>`), and `Readonly<Map<…>>` does
-  not even remove the mutators. A value read from the machine is proven by no
-  type: a value read from the tech, the clock, randomness. Stored in a root
-  binding, it captures the machine's state at load time, and `: string` says
-  nothing about where the string came from —
-  `export const PORT: string = process.env["PORT"] ?? "3000"` is red, and so is
-  `const STARTED_AT = Date.now()`: the file cannot be tested under another
-  environment, or at another moment, without reloading it. A module's own
-  location (`import.meta.url`, `__dirname`) is presumed not to be one: it is the
-  module's identity, fixed at load, and no test is expected to vary it — unlike
-  what else `import.meta` may carry (`import.meta.env` is the environment). A
-  call's result stored at root adds nothing to the call: the call is judged
-  where it sits, below. A readonly map or set is proof over the binding, not
-  over the value: `Object.freeze` cannot lock a Map, so a codebase without the
-  types has no way to write one — and such a codebase turns this half off in
-  config anyway (`mutableModuleState: true`), which lifts the bindings and
-  nothing else. And a call that reaches the tech or something no reading claims,
-  runs a use case, or goes into a local function of a file whose layer is
-  allowed side effects — an adapter's, a blob's — where the reader cannot rule
-  the side effect out. A property read is presumed free of side effects and a
-  call is not: `if (process.env["X"])` at root is green, `process.cwd()` at root
-  is red, stored or not, until the reading that claims it declares that call
-  effect-free — and the config setting, being about state, does not lift it. And
-  a root statement that is neither of those and still does something when the
-  module is evaluated: an assignment, a `delete`, and their like — whatever sits
-  at root runs on import, so a statement that only makes sense at run time is a
-  side effect at load time. A `throw` is not one: it creates no state and
-  touches nothing outside, and a crash on import is the author's call to make.
-  What decides it — an environment read, say — is judged where it sits, by its
-  layer. Root calls are the lane the first two targets use to get around the
-  rule, not the crime: a factory call at root is not itself the violation, what
-  it binds is, when that binding is not provably immutable. Exemptions, by
-  contrast, are a closed list, since an open set of escapes is a hole: two
-  shapes are exempt by kind, the boot's one call and a spec file's registration
-  calls into the runner. Assembly and driver need no exception — each builds
-  inside its function.
+  was called, reached by argument and never by import. Two kinds have a root
+  that acts, each for one thing: a boot's makes its one call, a test file's
+  registers its tests. Importing a file runs its root as part of the importer's
+  own load, so importing a root that acts is acting at one's own root: the
+  import line itself starts the program, or registers the tests, with no call
+  written there to show it. No root may do that, a test file's included: the
+  registrations it is allowed are the calls written at its root, not what an
+  import brings along. So a file whose root acts is imported by nothing, and
+  those two kinds are the two nothing imports. A test file whose root registers
+  nothing is no such file: it is the suite, under `test-is-outside`. What is red
+  at module root follows from the rule's first sentence, and the shapes below
+  are the known ones, not a closed list — a shape nobody has written down yet is
+  judged by the rule, not waved through for being absent here. A binding whose
+  immutability the syntax does not prove — proof being a primitive type,
+  `as const`, a readonly array, record, map or set, or `Object.freeze` over a
+  literal, each proven to its depth: `as const` is deep, `Readonly<…>` is one
+  level, a named type the reader cannot resolve proves nothing
+  (`Readonly<Store>`), and `Readonly<Map<…>>` does not even remove the mutators.
+  A value read from the machine is proven by no type: a value read from the
+  tech, the clock, randomness. Stored in a root binding, it captures the
+  machine's state at load time, and `: string` says nothing about where the
+  string came from — `export const PORT: string = process.env["PORT"] ?? "3000"`
+  is red, and so is `const STARTED_AT = Date.now()`: the file cannot be tested
+  under another environment, or at another moment, without reloading it. A
+  module's own location (`import.meta.url`, `__dirname`) is presumed not to be
+  one: it is the module's identity, fixed at load, and no test is expected to
+  vary it — unlike what else `import.meta` may carry (`import.meta.env` is the
+  environment). A call's result stored at root adds nothing to the call: the
+  call is judged where it sits, below. A readonly map or set is proof over the
+  binding, not over the value: `Object.freeze` cannot lock a Map, so a codebase
+  without the types has no way to write one — and such a codebase turns this
+  half off in config anyway (`mutableModuleState: true`), which lifts the
+  bindings and nothing else. And a call that reaches the tech or something no
+  reading claims, runs a use case, or goes into a local function of a file whose
+  layer is allowed side effects — an adapter's, a blob's — where the reader
+  cannot rule the side effect out. A property read is presumed free of side
+  effects and a call is not: `if (process.env["X"])` at root is green,
+  `process.cwd()` at root is red, stored or not, until the reading that claims
+  it declares that call effect-free — and the config setting, being about state,
+  does not lift it. And a root statement that is neither of those and still does
+  something when the module is evaluated: an assignment, a `delete`, and their
+  like — whatever sits at root runs on import, so a statement that only makes
+  sense at run time is a side effect at load time. A `throw` is not one: it
+  creates no state and touches nothing outside, and a crash on import is the
+  author's call to make. What decides it — an environment read, say — is judged
+  where it sits, by its layer. Root calls are the lane the first two targets use
+  to get around the rule, not the crime: a factory call at root is not itself
+  the violation, what it binds is, when that binding is not provably immutable.
+  Exemptions, by contrast, are a closed list, since an open set of escapes is a
+  hole: two shapes are exempt by kind, the boot's one call and a spec file's
+  registration calls into the runner. Assembly and driver need no exception —
+  each builds inside its function.
 
 ---
 
@@ -1216,12 +1251,12 @@ dominates and the intent drowns. The fix is a **test factory**, typically one
 per test module, that centralizes the assembly. It calls the service factory
 with sensible defaults — real adapters with fixture data, nominal config, mock
 ports — and each test overrides only what its scenario requires. A test factory
-shared across test modules is an assembly function in an assembly file, as its
-shape says; the fakes it wires are adapters, and it may return them alongside
-the service because a test is its caller, which then is the only caller it may
-have (see [Assembly](#assembly--the-composition-root)). A matcher or shared hook
-registered on the runner is a driver the spec file calls. No shared test code is
-blob or test kind.
+shared across test modules is a suite's function: it builds as a test does, and
+nothing but a test file imports it. The fakes it wires are adapters, and it
+returns them alongside the service for the tests to assert on. Tests written
+apart from the spec file that registers them are a suite, and so is what
+registers on the test runner for several of them, a matcher or a shared hook,
+and a setup helper that fits no other kind. No shared test code is blob.
 
 Default argument values, harmful in production factories (see
 [Inversion of Control](#inversion-of-control)), are right here: test bundles

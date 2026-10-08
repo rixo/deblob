@@ -172,6 +172,27 @@ const ROWS: readonly Row[] = [
     },
   },
   {
+    // A CONFESSED LIMIT, found 2026-10-07. The row above, its first
+    // hook written inside an object handed to the tech. The reader's cut
+    // points at a function handed bare; one inside an object is not read.
+    name: "a hook written inside an object handed to the tech is a hook like one handed bare: a write beside its call is red, missed",
+    config: CONFIG,
+    files: {
+      ...CLI,
+      "src/cli.driver.ts": `
+        ${IMPORTS}
+        export const main = () => {
+          const { cli } = createCliAssembly({ cwd: process.cwd() })
+          const parser = cac("notes")
+          parser.command("check").action(async (opts) => { process.exitCode = 0; return cli.check(opts) }) // red: hook-one-call -- a write beside the call
+          // missed red: hook-one-call -- the same hook, handed in an object
+          parser.command("deep").action({ run: async (opts) => { process.exitCode = 0; return cli.check(opts) } })
+          parser.parse(process.argv)
+        }
+      `,
+    },
+  },
+  {
     // Re-read at the lens step (2026-09-26), was green: canon said "wiring
     // may also sit inside a hook — an assembly imported lazily on first
     // event". Now: "a hook does not wire … laziness is the assembly's, at
@@ -528,7 +549,7 @@ const ROWS: readonly Row[] = [
   {
     // canon: `sub-driver-wiring`, "a driver imports another driver only to
     // call its wiring function, during its own wiring, passing tech and
-    // instances … a spec file calling a shared `registerMatchers(expect)`".
+    // instances".
     name: "a sub-driver's wiring function called during the root's wiring, with tech and instances: green",
     config: CONFIG,
     files: {
